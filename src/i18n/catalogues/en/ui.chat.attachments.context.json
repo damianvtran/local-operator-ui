@@ -154,5 +154,14 @@
 		"placeholders": {
 			"name": "the attachment's file name (last path segment), never translated"
 		}
+	},
+	"ui.chat.attachments.not_viewable_too_large": {
+		"role": "warning line on an attachment card for a file that is over the preview size cap, where the file itself is fine",
+		"tone": "plain statement, no trailing punctuation",
+		"length": "One short sentence; truncates with an ellipsis on a narrow card.",
+		"note": "Says WHY there is no preview: the file is not broken, it is too big to show, and the card offers the operating system instead. Distinct from `not_viewable_detail`, whose three guessed causes (incomplete, deleted, moved) would be false here. The file name opens the sentence, so a language that cannot start with a name may reorder it.",
+		"placeholders": {
+			"name": "the attachment's file name (last path segment), never translated"
+		}
 	}
 }

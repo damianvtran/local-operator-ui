@@ -44,6 +44,7 @@ import enUiAgentsSkills from "./catalogues/en/ui.agents.skills.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
 import enUiAgentsTeams from "./catalogues/en/ui.agents.teams.json";
 import enUiAgentsUpload from "./catalogues/en/ui.agents.upload.json";
+import enUiBrowserAttention from "./catalogues/en/ui.browser.attention.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowserErrors from "./catalogues/en/ui.browser.errors.json";
 import enUiBrowserExtensions from "./catalogues/en/ui.browser.extensions.json";
@@ -213,6 +214,7 @@ import esUiAgentsSkills from "./catalogues/es/ui.agents.skills.json";
 import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
 import esUiAgentsTeams from "./catalogues/es/ui.agents.teams.json";
 import esUiAgentsUpload from "./catalogues/es/ui.agents.upload.json";
+import esUiBrowserAttention from "./catalogues/es/ui.browser.attention.json";
 import esUiBrowserChrome from "./catalogues/es/ui.browser.chrome.json";
 import esUiBrowserErrors from "./catalogues/es/ui.browser.errors.json";
 import esUiBrowserExtensions from "./catalogues/es/ui.browser.extensions.json";
@@ -382,6 +384,7 @@ import frUiAgentsSkills from "./catalogues/fr/ui.agents.skills.json";
 import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
 import frUiAgentsTeams from "./catalogues/fr/ui.agents.teams.json";
 import frUiAgentsUpload from "./catalogues/fr/ui.agents.upload.json";
+import frUiBrowserAttention from "./catalogues/fr/ui.browser.attention.json";
 import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
 import frUiBrowserErrors from "./catalogues/fr/ui.browser.errors.json";
 import frUiBrowserExtensions from "./catalogues/fr/ui.browser.extensions.json";
@@ -551,6 +554,7 @@ import hiUiAgentsSkills from "./catalogues/hi/ui.agents.skills.json";
 import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
 import hiUiAgentsTeams from "./catalogues/hi/ui.agents.teams.json";
 import hiUiAgentsUpload from "./catalogues/hi/ui.agents.upload.json";
+import hiUiBrowserAttention from "./catalogues/hi/ui.browser.attention.json";
 import hiUiBrowserChrome from "./catalogues/hi/ui.browser.chrome.json";
 import hiUiBrowserErrors from "./catalogues/hi/ui.browser.errors.json";
 import hiUiBrowserExtensions from "./catalogues/hi/ui.browser.extensions.json";
@@ -720,6 +724,7 @@ import ruUiAgentsSkills from "./catalogues/ru/ui.agents.skills.json";
 import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
 import ruUiAgentsTeams from "./catalogues/ru/ui.agents.teams.json";
 import ruUiAgentsUpload from "./catalogues/ru/ui.agents.upload.json";
+import ruUiBrowserAttention from "./catalogues/ru/ui.browser.attention.json";
 import ruUiBrowserChrome from "./catalogues/ru/ui.browser.chrome.json";
 import ruUiBrowserErrors from "./catalogues/ru/ui.browser.errors.json";
 import ruUiBrowserExtensions from "./catalogues/ru/ui.browser.extensions.json";
@@ -889,6 +894,7 @@ import urUiAgentsSkills from "./catalogues/ur/ui.agents.skills.json";
 import urUiAgentsStarters from "./catalogues/ur/ui.agents.starters.json";
 import urUiAgentsTeams from "./catalogues/ur/ui.agents.teams.json";
 import urUiAgentsUpload from "./catalogues/ur/ui.agents.upload.json";
+import urUiBrowserAttention from "./catalogues/ur/ui.browser.attention.json";
 import urUiBrowserChrome from "./catalogues/ur/ui.browser.chrome.json";
 import urUiBrowserErrors from "./catalogues/ur/ui.browser.errors.json";
 import urUiBrowserExtensions from "./catalogues/ur/ui.browser.extensions.json";
@@ -1058,6 +1064,7 @@ import viUiAgentsSkills from "./catalogues/vi/ui.agents.skills.json";
 import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
 import viUiAgentsTeams from "./catalogues/vi/ui.agents.teams.json";
 import viUiAgentsUpload from "./catalogues/vi/ui.agents.upload.json";
+import viUiBrowserAttention from "./catalogues/vi/ui.browser.attention.json";
 import viUiBrowserChrome from "./catalogues/vi/ui.browser.chrome.json";
 import viUiBrowserErrors from "./catalogues/vi/ui.browser.errors.json";
 import viUiBrowserExtensions from "./catalogues/vi/ui.browser.extensions.json";
@@ -1227,6 +1234,7 @@ import zhCNUiAgentsSkills from "./catalogues/zh-CN/ui.agents.skills.json";
 import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
 import zhCNUiAgentsTeams from "./catalogues/zh-CN/ui.agents.teams.json";
 import zhCNUiAgentsUpload from "./catalogues/zh-CN/ui.agents.upload.json";
+import zhCNUiBrowserAttention from "./catalogues/zh-CN/ui.browser.attention.json";
 import zhCNUiBrowserChrome from "./catalogues/zh-CN/ui.browser.chrome.json";
 import zhCNUiBrowserErrors from "./catalogues/zh-CN/ui.browser.errors.json";
 import zhCNUiBrowserExtensions from "./catalogues/zh-CN/ui.browser.extensions.json";
@@ -1399,6 +1407,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsStarters,
 	...enUiAgentsTeams,
 	...enUiAgentsUpload,
+	...enUiBrowserAttention,
 	...enUiBrowserChrome,
 	...enUiBrowserErrors,
 	...enUiBrowserExtensions,
@@ -1576,6 +1585,7 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentsStarters,
 		...esUiAgentsTeams,
 		...esUiAgentsUpload,
+		...esUiBrowserAttention,
 		...esUiBrowserChrome,
 		...esUiBrowserErrors,
 		...esUiBrowserExtensions,
@@ -1747,6 +1757,7 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsStarters,
 		...frUiAgentsTeams,
 		...frUiAgentsUpload,
+		...frUiBrowserAttention,
 		...frUiBrowserChrome,
 		...frUiBrowserErrors,
 		...frUiBrowserExtensions,
@@ -1918,6 +1929,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentsStarters,
 		...hiUiAgentsTeams,
 		...hiUiAgentsUpload,
+		...hiUiBrowserAttention,
 		...hiUiBrowserChrome,
 		...hiUiBrowserErrors,
 		...hiUiBrowserExtensions,
@@ -2089,6 +2101,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsStarters,
 		...ruUiAgentsTeams,
 		...ruUiAgentsUpload,
+		...ruUiBrowserAttention,
 		...ruUiBrowserChrome,
 		...ruUiBrowserErrors,
 		...ruUiBrowserExtensions,
@@ -2260,6 +2273,7 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentsStarters,
 		...urUiAgentsTeams,
 		...urUiAgentsUpload,
+		...urUiBrowserAttention,
 		...urUiBrowserChrome,
 		...urUiBrowserErrors,
 		...urUiBrowserExtensions,
@@ -2431,6 +2445,7 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentsStarters,
 		...viUiAgentsTeams,
 		...viUiAgentsUpload,
+		...viUiBrowserAttention,
 		...viUiBrowserChrome,
 		...viUiBrowserErrors,
 		...viUiBrowserExtensions,
@@ -2602,6 +2617,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentsStarters,
 		...zhCNUiAgentsTeams,
 		...zhCNUiAgentsUpload,
+		...zhCNUiBrowserAttention,
 		...zhCNUiBrowserChrome,
 		...zhCNUiBrowserErrors,
 		...zhCNUiBrowserExtensions,
@@ -2859,6 +2875,12 @@ export type MessageParams = {
 	"ui.agentMessages.settings.refusal.rate_limited": undefined;
 	"ui.agentMessages.settings.refusal.sign_in": undefined;
 	"ui.agentMessages.settings.saving": undefined;
+	"ui.agentMessages.settings.screening.automatic": { model: string };
+	"ui.agentMessages.settings.screening.help": undefined;
+	"ui.agentMessages.settings.screening.route_provider": { provider: string };
+	"ui.agentMessages.settings.screening.route_radient": undefined;
+	"ui.agentMessages.settings.screening.title": undefined;
+	"ui.agentMessages.settings.screening.unavailable": undefined;
 	"ui.agentMessages.settings.section": undefined;
 	"ui.agentMessages.settings.session.help": undefined;
 	"ui.agentMessages.settings.session.none": undefined;
@@ -2959,6 +2981,7 @@ export type MessageParams = {
 	"ui.agents.descriptions.ux_reviewer": undefined;
 	"ui.agents.detail.install.action.install_to_edit": undefined;
 	"ui.agents.detail.install.action.installing": undefined;
+	"ui.agents.detail.install.error_generic": undefined;
 	"ui.agents.detail.action.ask_change": undefined;
 	"ui.agents.detail.action.create_copy": undefined;
 	"ui.agents.detail.action.creating": undefined;
@@ -2981,13 +3004,22 @@ export type MessageParams = {
 	"ui.agents.detail.alert.save_failed_title": undefined;
 	"ui.agents.detail.alert.unconfirmed_body": undefined;
 	"ui.agents.detail.alert.unconfirmed_title": undefined;
+	"ui.agents.detail.ask_change_prefill": { name: string };
 	"ui.agents.detail.badge.modified": undefined;
 	"ui.agents.detail.class.error_title": undefined;
 	"ui.agents.detail.class.label": undefined;
 	"ui.agents.detail.create.description_duplicate": { name: string };
 	"ui.agents.detail.create.description_new": undefined;
+	"ui.agents.detail.create.error_generic": undefined;
+	"ui.agents.detail.create.error_instructions_required": undefined;
+	"ui.agents.detail.create.error_name_grammar": undefined;
+	"ui.agents.detail.create.error_name_required": undefined;
+	"ui.agents.detail.create.error_name_taken": { name: string };
+	"ui.agents.detail.create.title_duplicate": undefined;
+	"ui.agents.detail.create.title_new": undefined;
 	"ui.agents.detail.delegate.aria": undefined;
 	"ui.agents.detail.delegate.label": undefined;
+	"ui.agents.detail.edit.error_generic": undefined;
 	"ui.agents.detail.empty.description": undefined;
 	"ui.agents.detail.empty.instructions": undefined;
 	"ui.agents.detail.empty.used_by": undefined;
@@ -3024,6 +3056,8 @@ export type MessageParams = {
 	"ui.agents.detail.tools.add_label": undefined;
 	"ui.agents.detail.tools.all_label": undefined;
 	"ui.agents.detail.tools.empty": undefined;
+	"ui.agents.detail.tools.error_duplicate": undefined;
+	"ui.agents.detail.tools.error_grammar": undefined;
 	"ui.agents.detail.tools.every_tool_aria": undefined;
 	"ui.agents.detail.tools.may_use_any": undefined;
 	"ui.agents.detail.tools.placeholder": undefined;
@@ -3663,6 +3697,32 @@ export type MessageParams = {
 	"ui.agents.upload.title.published_public": { name: string };
 	"ui.agents.upload.title.republished": { name: string };
 	"ui.agents.upload.title.update_listing": { name: string };
+	"ui.browser.attention.announce": {
+		session: string;
+		need: string;
+		site: string;
+	};
+	"ui.browser.attention.announce_paused": {
+		session: string;
+		need: string;
+		site: string;
+	};
+	"ui.browser.attention.heading": undefined;
+	"ui.browser.attention.more": { count: number; countText: string };
+	"ui.browser.attention.no_site": undefined;
+	"ui.browser.attention.open_label": {
+		need: string;
+		site: string;
+		session: string;
+	};
+	"ui.browser.attention.open_label_paused": {
+		need: string;
+		site: string;
+		session: string;
+	};
+	"ui.browser.attention.passkey": undefined;
+	"ui.browser.attention.popup": undefined;
+	"ui.browser.attention.site_access": undefined;
 	"ui.browser.chrome.accessible_tab": {
 		title: string;
 		loading: string;
@@ -4781,6 +4841,7 @@ export type MessageParams = {
 	"ui.chat.attachments.file_unnamed": undefined;
 	"ui.chat.attachments.not_viewable": { name: string };
 	"ui.chat.attachments.not_viewable_detail": { name: string };
+	"ui.chat.attachments.not_viewable_too_large": { name: string };
 	"ui.chat.attachments.open": undefined;
 	"ui.chat.attachments.open_named": { name: string };
 	"ui.chat.attachments.open_title": { name: string };
@@ -7763,6 +7824,8 @@ export type MessageParams = {
 	"ui.chat.trace.action.write.running": undefined;
 	"ui.chat.trace.action.write.settled": undefined;
 	"ui.chat.trace.object.file_count": { count: number };
+	"ui.chat.trace.reasoning.label": undefined;
+	"ui.chat.trace.reasoning.with_duration": { label: string; duration: string };
 	"ui.chat.trace.send.delivery.failed.note": undefined;
 	"ui.chat.trace.send.delivery.failed.verb": undefined;
 	"ui.chat.trace.send.delivery.failed.word": undefined;
@@ -13097,6 +13160,7 @@ export type MessageParams = {
 	"ui.teamBridge.delivery.info_held": undefined;
 	"ui.teamBridge.delivery.info_label": undefined;
 	"ui.teamBridge.delivery.info_refused": undefined;
+	"ui.teamBridge.delivery.not_delivered": { recipient: string };
 	"ui.teamBridge.delivery.pending": { recipient: string };
 	"ui.teamBridge.delivery.recipient_unnamed": { person: string };
 	"ui.teamBridge.delivery.refused": { recipient: string };

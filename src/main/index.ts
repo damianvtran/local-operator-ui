@@ -131,6 +131,7 @@ import {
 	parseDevDriverScript,
 	runDevDriverScript,
 } from "./dev-driver-script";
+import { devRendererUrl } from "./dev-renderer-url";
 import { shouldToggleDevTools } from "./dev-shortcuts";
 import {
 	listDirectory,
@@ -138,6 +139,7 @@ import {
 	resolveUserPath as resolveUserPathWith,
 } from "./directory-listing";
 import { type MiniViewRegistrar, createRegistrar } from "./hotkey-registration";
+import { runLaunchProbeIfRequested } from "./launch-probe";
 import { isProcessAlive, startLauncherWatch } from "./launcher-watch";
 import type { LauncherWatch } from "./launcher-watch";
 import { LinkPreviewArtifactCache } from "./link-preview/artifact-cache";
@@ -238,6 +240,20 @@ import {
 	reportSkippedWhileQuitting,
 } from "./window-raise";
 import { attachWindowSurface } from "./window-surface";
+
+/*
+ * THE RELEASE GATE'S LAUNCH PROBE, FIRST, before any statement of this module
+ * that touches the window, the Dock, the profile lock or the backend. Reaching
+ * this line at all is what the gate measures (the launcher exec'd, `app.asar`
+ * passed integrity, this bytecode loaded under the bundle's own V8); see
+ * `./launch-probe.ts` for why it replaced the node-mode checks. On a match it
+ * calls `app.exit(0)`, which before `ready` ends the process inside the same
+ * tick: measured with the npm Electron (44.3.0), a `writeSync` placed after
+ * `app.exit(0)`, a `requestSingleInstanceLock()`, a timer and a `whenReady`
+ * handler all never ran. So the rest of this module never executes on a probe
+ * launch, and the probe cannot reach the operator's running instance.
+ */
+runLaunchProbeIfRequested(app);
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
 
@@ -603,7 +619,7 @@ function configureAboutPanel(): void {
  */
 function createApplicationMenu(): void {
 	// Check if we're in development mode
-	const isDev = Boolean(process.env.ELECTRON_RENDERER_URL);
+	const isDev = Boolean(devRendererUrl(app.isPackaged));
 	/*
 	 * Resolved per BUILD, not once at import: the labels live in the catalogue and
 	 * the main process's locale follows the backend (see `main-locale.ts`), so a
@@ -894,7 +910,7 @@ const ownLaunchRequest = (): RaiseRequest => ({
  * trusted frame" is how one of them drifts.
  */
 const rendererDocumentUrl = (): string =>
-	process.env.ELECTRON_RENDERER_URL ||
+	devRendererUrl(app.isPackaged) ||
 	pathToFileURL(join(__dirname, "../renderer/index.html")).href;
 
 /**
@@ -1091,7 +1107,7 @@ function createWindow(
 			sandbox: false,
 			// Only enable devTools when running with 'pnpm dev'
 			// Disable for 'pnpm start' and production builds
-			devTools: Boolean(process.env.ELECTRON_RENDERER_URL),
+			devTools: Boolean(devRendererUrl(app.isPackaged)),
 			// Security settings
 			nodeIntegration: false,
 			contextIsolation: true,
@@ -1318,8 +1334,11 @@ function createWindow(
 
 	// HMR for renderer base on electron-vite cli.
 	// Load the remote URL for development or the local html file for production.
-	if (is.dev && process.env.ELECTRON_RENDERER_URL) {
-		mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
+	// Through `devRendererUrl` like every other read, so the loaded document and
+	// `rendererDocumentUrl` (the frame the IPC trusts) can never disagree.
+	const devUrl = devRendererUrl(app.isPackaged);
+	if (is.dev && devUrl) {
+		mainWindow.loadURL(devUrl);
 	} else {
 		mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
 	}

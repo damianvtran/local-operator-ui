@@ -6322,6 +6322,27 @@ export const STORIES = [
 			},
 		},
 	]),
+	/*
+	 * THE BROWSER'S WAITS AS SIDEBAR NOTIFICATION ROWS (operator report
+	 * 2026-11-15, "the browser is stealing the view"): a passkey hold, a held
+	 * sign-in popup and an approval listed under the destinations instead of
+	 * switching views, and the fold past three. Waits for the rows themselves.
+	 */
+	...[
+		["browser-waits", 3],
+		["browser-waits-folded", 3],
+	].map(([state, rows]) => [
+		`shell-sidebar-attention-badges--${state}`,
+		1024,
+		900,
+		{
+			expect: {
+				pollMs: 8000,
+				expression: `document.querySelectorAll('[data-browser-attention-row]').length === ${rows}`,
+				message: `the sidebar lists ${rows} browser notification rows`,
+			},
+		},
+	]),
 	["shell-app-shell--agents", 1280, 800],
 	["shell-app-shell--agents", 1000, 800],
 	["shell-app-shell--agents", 900, 800],

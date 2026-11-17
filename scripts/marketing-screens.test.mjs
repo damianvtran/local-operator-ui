@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { stripTypeScriptTypes } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -71,6 +72,75 @@ test("all new capture scenes have committed stories, current default origin and 
 			bridge.includes(
 				`export const ${scene[0].toUpperCase()}${scene.slice(1)}`,
 			),
+		);
+	}
+});
+
+test("world bridge answers config and avatar callers with CRUD envelopes", async () => {
+	// Execute the actual case bodies without mounting the React story or a live
+	// backend. Extract only these cases: importing the TSX world starts UI setup.
+	const start = library.indexOf('\t\t\tcase "config.get":');
+	const end = library.indexOf('\t\t\tcase "sessions.list":', start);
+	assert.ok(
+		start > 0 && end > start,
+		"both legacy reads precede catalogue reads",
+	);
+	const route = new Function(
+		"request",
+		"NOW",
+		"LEGACY_AGENTS",
+		`${stripTypeScriptTypes(
+			`function respond() { switch (request.op) { ${library.slice(start, end)} } }`,
+		)}\nreturn respond();`,
+	);
+	const agents = JSON.parse(
+		library
+			.match(/const LEGACY_AGENTS = (\[[\s\S]*?\n\]);/)[1]
+			.replace(/(\w+):/g, '"$1":')
+			.replace(/,\s*]/g, "]"),
+	);
+	const now = Date.parse("2026-11-16T12:00:00Z");
+	const config = await route({ op: "config.get" }, now, agents);
+	assert.equal(config.status, 200);
+	assert.equal(config.body.status, 200);
+	assert.equal(config.body.message, "ok");
+	assert.equal(typeof config.body.result.version, "string");
+	assert.equal(
+		config.body.result.metadata.last_modified,
+		new Date(now).toISOString(),
+	);
+	const values = config.body.result.values;
+	for (const key of [
+		"conversation_length",
+		"detail_length",
+		"max_learnings_history",
+	])
+		assert.equal(typeof values[key], "number", key);
+	for (const key of ["hosting", "model_name"])
+		assert.equal(typeof values[key], "string", key);
+	assert.equal(typeof values.auto_save_conversation, "boolean");
+	// agent-avatar.ts requests page 1/perPage 500 and iterates result.agents.
+	const roster = await route(
+		{ op: "legacy.agents.list", page: 1, perPage: 500 },
+		now,
+		agents,
+	);
+	assert.equal(roster.status, 200);
+	assert.equal(roster.body.status, 200);
+	assert.equal(roster.body.message, "ok");
+	assert.deepEqual(roster.body.result, {
+		agents,
+		total: agents.length,
+		page: 1,
+		per_page: 500,
+	});
+	for (const agent of roster.body.result.agents) {
+		assert.equal(typeof agent.id, "string");
+		assert.equal(typeof agent.name, "string");
+		assert.equal(
+			agent.avatar,
+			undefined,
+			"world roster has no uploaded pictures",
 		);
 	}
 });
@@ -289,6 +359,89 @@ test("the Mention scene drives the composer by its real role and holds the shutt
 	assert.ok(picker > 0 && release > picker, "released only after the picker");
 });
 
+test("Team Bridge clears only its QA draft before children initialize", () => {
+	// Run the actual shell's pre-JSX mount code with hooks deferred as React's
+	// layout effects are. Merely finding a reset in an effect misses Q11: a
+	// child can already have snapshotted the stale draft before that effect.
+	const start = bridge.indexOf("function MarketingShell(");
+	const render = bridge.indexOf("\n\treturn (\n\t\t<div", start);
+	assert.ok(start > 0 && render > start);
+	const createShell = new Function(
+		"useState",
+		"useLayoutEffect",
+		"useConversationInputStore",
+		"teamBridgeComposerKey",
+		"draftTargetKey",
+		"SELF",
+		"TENANT",
+		"QA",
+		`${stripTypeScriptTypes(`${bridge.slice(start, render)}\nreturn children;\n}`)}\nreturn MarketingShell;`,
+	);
+	let ready = false;
+	const effects = [];
+	let mounting = true;
+	const drafts = new Map([
+		["self/tenant/qa", "@"],
+		["self/tenant/other", "keep"],
+	]);
+	const shell = createShell(
+		(initial) => {
+			assert.equal(initial, false, "first render must withhold children");
+			return [
+				ready,
+				(value) => {
+					ready = value;
+				},
+			];
+		},
+		(effect, deps) => {
+			assert.deepEqual(
+				deps,
+				[],
+				"reset is once per shell mount, not every render",
+			);
+			if (mounting) effects.push(effect);
+		},
+		{
+			getState: () => ({
+				setComposerText: (key, value) => drafts.set(key, value),
+			}),
+		},
+		(account, tenant, target) => `${account}/${tenant}/${target}`,
+		(target) => {
+			assert.equal(target.type, "conversation");
+			return target.id;
+		},
+		"self",
+		"tenant",
+		{ id: "qa" },
+	);
+	const child = {};
+	assert.equal(
+		shell({ children: child }),
+		null,
+		"no child initializes before effects",
+	);
+	effects[0]();
+	assert.equal(drafts.get("self/tenant/qa"), "");
+	assert.equal(
+		drafts.get("self/tenant/other"),
+		"keep",
+		"other conversations untouched",
+	);
+	assert.equal(ready, true, "release follows the scoped reset");
+	mounting = false;
+	assert.equal(
+		shell({ children: child }),
+		child,
+		"children may now initialize cleanly",
+	);
+	// Mention play runs after mount. A later shell render must not erase it.
+	drafts.set("self/tenant/qa", "@");
+	assert.equal(shell({ children: child }), child);
+	assert.equal(drafts.get("self/tenant/qa"), "@");
+});
+
 test("the Asks scene mounts the fleet ask drawer once, through ChatLayout", () => {
 	// ChatLayout owns the drawer behind the store flag the shell sets; a
 	// second mount in the story painted two drawers (10 "Send answer" for 5 asks).
@@ -495,49 +648,92 @@ test("every marketing scene opts into the shipped glass, and the rig refuses one
 	}
 	// The URL stays theme-only: the stories default glass on themselves.
 	assert.match(capture, /args=theme:\$\{theme\}`/);
-	const glassSet = capture.slice(
-		capture.indexOf("const GLASS_SCENES"),
-		capture.indexOf("]);", capture.indexOf("const GLASS_SCENES")),
+	// Read the literal registry without importing the executable capture rig.
+	// Keep intent explicit, but derive story IDs so adding a Bridge or memory
+	// scene cannot silently skip the glass check behind a copied ID list.
+	const scenes = JSON.parse(
+		capture.match(/const SCENES = (\[[\s\S]*?\n\]);/)[1].replace(/,\s*]/g, "]"),
 	);
-	for (const id of [
-		"docs-app-hero--scene",
-		"docs-library--teams",
-		"docs-library--mesh",
-		"docs-library--notifications",
-		"docs-library--asks",
-		"docs-library--review-pane",
-		"docs-team-bridge--channel",
-		"docs-team-bridge--thread",
-		"docs-team-bridge--approval",
-		"docs-team-bridge--mention",
-		"docs-team-bridge--launch",
-		"docs-memory--taught",
-		"docs-memory--recalled",
-	])
-		assert.ok(glassSet.includes(`"${id}"`), `${id} is checked for glass`);
+	const glassIds = JSON.parse(
+		capture
+			.match(/const GLASS_SCENES = new Set\((\[[\s\S]*?\n\])\);/)[1]
+			.replace(/,\s*]/g, "]"),
+	);
+	const intended = new Set([
+		"hero",
+		"teams",
+		"mesh",
+		"notifications",
+		"asks",
+		"review-pane",
+	]);
+	for (const name of intended) {
+		assert.ok(
+			scenes.some(([scene]) => scene === name),
+			`${name} is captured`,
+		);
+	}
+	const expected = scenes
+		.filter(
+			([name]) =>
+				intended.has(name) ||
+				name.startsWith("bridge-") ||
+				name.startsWith("memory-"),
+		)
+		.map(([, id]) => id);
+	assert.deepEqual(new Set(glassIds), new Set(expected));
 	assert.match(capture, /glass scene rendered without glass/);
 });
 
-test("programmatic focus is blurred for the still, until a person takes over", async () => {
-	const listeners = new Map();
-	let blurs = 0;
-	const field = { blur: () => blurs++ };
-	const doc = {
-		body: {},
-		activeElement: field,
-		addEventListener: (type, fn) => listeners.set(type, fn),
-		removeEventListener: (type) => listeners.delete(type),
-	};
-	const stop = blurProgrammaticFocus(doc);
-	assert.equal(blurs, 1, "focus already taken at mount is dropped");
-	listeners.get("focusin")();
-	await new Promise((resolve) => setTimeout(resolve, 5));
-	assert.equal(blurs, 2, "a later programmatic focus is dropped");
-	// A story's own `userEvent` is untrusted and must not end the guard...
-	listeners.get("pointerdown")({ isTrusted: false });
-	assert.ok(listeners.has("focusin"));
-	// ...a real pointer does, and focus is the person's again.
-	listeners.get("pointerdown")({ isTrusted: true });
-	assert.equal(listeners.size, 0);
-	stop();
-});
+for (const input of ["pointerdown", "keydown"]) {
+	test(`programmatic focus is blurred until trusted ${input}`, async () => {
+		const listeners = new Map();
+		let blurs = 0;
+		const field = { blur: () => blurs++ };
+		const doc = {
+			body: {},
+			activeElement: field,
+			addEventListener: (type, fn) => listeners.set(type, fn),
+			removeEventListener: (type) => listeners.delete(type),
+		};
+		const stop = blurProgrammaticFocus(doc);
+		assert.equal(blurs, 1, "focus already taken at mount is dropped");
+		listeners.get("focusin")();
+		await new Promise((resolve) => setTimeout(resolve, 5));
+		assert.equal(blurs, 2, "a later programmatic focus is dropped");
+		// A story's own `userEvent` is untrusted and must not end the guard...
+		listeners.get(input)({ isTrusted: false });
+		assert.ok(listeners.has("focusin"));
+		// ...trusted pointer or keyboard input hands focus back to the person.
+		listeners.get(input)({ isTrusted: true });
+		assert.equal(listeners.size, 0);
+		stop();
+	});
+}
+
+for (const handoff of ["stop", "pointerdown", "keydown"]) {
+	test(`queued focus blurs are cancelled on ${handoff}`, async () => {
+		const listeners = new Map();
+		let blurs = 0;
+		const doc = {
+			body: {},
+			activeElement: { blur: () => blurs++ },
+			addEventListener: (type, fn) => listeners.set(type, fn),
+			removeEventListener: (type) => listeners.delete(type),
+		};
+		const stop = blurProgrammaticFocus(doc);
+		try {
+			assert.equal(blurs, 1);
+			// Multiple focus moves may queue before teardown in the same task.
+			listeners.get("focusin")();
+			listeners.get("focusin")();
+			if (handoff === "stop") stop();
+			else listeners.get(handoff)({ isTrusted: true });
+			assert.equal(listeners.size, 0);
+			await new Promise((resolve) => setTimeout(resolve, 5));
+			assert.equal(blurs, 1, "queued work cannot blur after handoff/unmount");
+		} finally {
+			stop();
+		}
+	});
+}

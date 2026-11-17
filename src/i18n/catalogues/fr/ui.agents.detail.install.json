@@ -1,4 +1,5 @@
 {
 	"ui.agents.detail.install.action.install_to_edit": "Installer pour modifier",
-	"ui.agents.detail.install.action.installing": "Installation…"
+	"ui.agents.detail.install.action.installing": "Installation…",
+	"ui.agents.detail.install.error_generic": "Impossible d’installer l’agent."
 }

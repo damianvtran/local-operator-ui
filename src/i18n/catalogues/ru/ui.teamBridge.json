@@ -328,6 +328,7 @@
 	"ui.teamBridge.delivery.refused_abusive": "Не доставлено агенту {recipient}: отклонено его модерацией (похоже на оскорбительный контент)",
 	"ui.teamBridge.delivery.refused_unsafe_content": "Не доставлено агенту {recipient}: отклонено его модерацией (похоже на небезопасный контент или ссылки)",
 	"ui.teamBridge.delivery.refused_out_of_scope": "Не доставлено агенту {recipient}: отклонено его модерацией (похоже на запрос вне задач этого агента)",
+	"ui.teamBridge.delivery.not_delivered": "Не доставлено агенту {recipient}.",
 	"ui.teamBridge.delivery.held": "Ещё не доставлено агенту {recipient}…",
 	"ui.teamBridge.delivery.held_screening": "Ещё не доставлено агенту {recipient}. Идёт проверка.",
 	"ui.teamBridge.delivery.held_screening_unavailable": "Ещё не доставлено агенту {recipient}. Проверить не удалось; повторная попытка будет выполнена автоматически.",

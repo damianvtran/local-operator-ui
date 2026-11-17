@@ -414,11 +414,16 @@ jobs:
       #      copies it to `Contents/embedded.provisionprofile` of the MAIN bundle
       #      only) and `-c.mac.entitlements` = the rendered plist. The rendered plist
       #      goes to `mac.entitlements` ONLY: `entitlementsInherit` stays the
-      #      committed, group-free plist (package.json), because Chromium reads the
+      #      committed, group-free `build/entitlements.mac.inherit.plist`
+      #      (package.json), because Chromium reads the
       #      MAIN executable's entitlement and a helper or ShipIt carrying the group
       #      has no profile of its own and is refused — the 0.29.6 failure.
-      #   4. `pnpm verify-macos-artifacts` (below) spawns every bundle
-      #      (`app-spawn`), requires every restricted claim in every executable to
+      #   4. `pnpm verify-macos-artifacts` (below) launches every bundle's own
+      #      `--lo-launch-probe` (`app-spawn`; node mode is gone with the RunAsNode
+      #      fuse, F2), requires the hardened fuse wire (`app-electron-fuses`), the
+      #      `LOAttestationEpoch` key and no DYLD/get-task-allow entitlement on any
+      #      executable nor library-validation opt-out on main
+      #      (`app-hardening-entitlements`), requires every restricted claim in every executable to
       #      be authorized by the embedded profile (`app-profile-authorization`),
       #      and requires the main executable's group to be this app's and
       #      authorized (`app-webauthn-entitlement`) before anything is attached.

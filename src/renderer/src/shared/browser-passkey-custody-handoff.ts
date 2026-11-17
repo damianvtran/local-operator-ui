@@ -3,11 +3,13 @@
  *
  * WHY THIS EXISTS (UX round 1, U1; design D3). When a password manager's prompt
  * comes up in an agent-driven tab (`main/browser/extensions/passkey-custody.ts`)
- * the shell moves the user to it UNPROMPTED: the agent's conversation with its
- * browser pane open, or the browser route. Unlike a consent banner click, the
- * user did not choose that move, so once the hold ends they get their previous
- * view back: route, conversation (or draft), and the pane's open state for the
- * conversation they were already in.
+ * the hold is listed as a sidebar notification row (`browser-user-attention.ts`;
+ * it used to move the user to it unprompted, which the operator reported as the
+ * browser "stealing the view", 2026-11-15). Clicking the row takes them to the
+ * agent's conversation with its browser pane open, or the browser route. That
+ * trip exists only to answer the prompt, so once the hold ends they get their
+ * previous view back: route, conversation (or draft), and the pane's open state
+ * for the conversation they were already in.
  *
  * THE ONE RULE: give back ONLY if the user is still exactly where the handoff
  * put them. Anything else means they chose another view meanwhile (another
@@ -142,3 +144,12 @@ export class CustodyHandoffs {
 		return restorePlan(entry.before, entry.handoff);
 	}
 }
+
+/**
+ * The shell's ONE handoff ledger. A module instance rather than a ref in the
+ * shell because two places share it: the sidebar notification row's click
+ * records a handoff (`openBrowserAttention`), and the shell's ended listener
+ * gives it back. Before 2026-11-15 the attention event recorded it, which is
+ * how a hold nobody asked to see moved the view; now only the click does.
+ */
+export const shellCustodyHandoffs = new CustodyHandoffs();

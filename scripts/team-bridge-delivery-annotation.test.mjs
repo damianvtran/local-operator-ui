@@ -103,12 +103,16 @@ const {
 const createElement = React.createElement;
 const MODERATION_LOCALES = ["en", "fr", "es", "zh-CN", "ru", "vi", "ur", "hi"];
 const MODERATION_EM_DASH = /\u2014/u;
-const RECIPIENT_LINE_KEY = /^ui\.teamBridge\.delivery\.(refused|held|pending)/;
+const RECIPIENT_LINE_KEY =
+	/^ui\.teamBridge\.delivery\.(refused|held|pending|not_delivered)/;
 const SPLICED_PARTS = /\{(agent|owner)\}/;
 const INFO_LABEL = /aria-label="About message screening"/;
 const UNREAD_FIELDS = /SECRET-REASON|harassment|0\.97/;
 const INFO_REFUSED_CONSTANT = /t\("ui\.teamBridge\.delivery\.info_refused"\)/;
 const INFO_HELD_CONSTANT = /t\("ui\.teamBridge\.delivery\.info_held"\)/;
+// Any cause or coaching word, in English: the sender learns THAT, never why.
+const SENDER_CAUSE_WORDS = /moderat|refus|screen|block|rephras|looked like/i;
+const SENDER_LINE_TEXT = /Not delivered to Aida \(Sam\)\./;
 const REFUSED_TIP_TEXT = /A refused message wasn't passed to the agent/;
 const BUTTON_MARKUP = /<button[\s\S]*?<\/button>/;
 const NOWRAP_RUN = /<span class="whitespace-nowrap">([\s\S]*?)<\/span><\/li>/;
@@ -1003,18 +1007,16 @@ const NOT_DELIVERED_COUNTS = {
 	notReviewed: 0,
 	notDelivered: 1,
 };
-test("a single not_delivered entry names its recipient like a classless refusal", () => {
+test("a single not_delivered entry names its recipient and says only that it was not delivered", () => {
 	const states = [entry({ state: "not_delivered" })];
-	assert.deepEqual(lineTexts(render(states)), [
-		"Not delivered to Aida (Sam). Refused by moderation.",
-	]);
+	assert.deepEqual(lineTexts(render(states)), ["Not delivered to Aida (Sam)."]);
 	// Even a class a future or faulty hub attaches stays unread: the sender's
 	// contract carries none.
 	assert.deepEqual(
 		lineTexts(
 			render([entry({ state: "not_delivered", refusal_class: "abusive" })]),
 		),
-		["Not delivered to Aida (Sam). Refused by moderation."],
+		["Not delivered to Aida (Sam)."],
 	);
 	const summary = teamBridgeDeliverySummary({
 		...HUMAN_SOURCE,
@@ -1030,9 +1032,7 @@ test("a group with one not_delivered names only that recipient and counts it", (
 		entry({ endpoint_id: "b", recipient_label: "Bo", state: "not_delivered" }),
 		entry({ endpoint_id: "c", recipient_label: "Cy", state: "delivered" }),
 	];
-	assert.deepEqual(lineTexts(render(states)), [
-		"Not delivered to Bo (Sam). Refused by moderation.",
-	]);
+	assert.deepEqual(lineTexts(render(states)), ["Not delivered to Bo (Sam)."]);
 	const summary = teamBridgeDeliverySummary({
 		...HUMAN_SOURCE,
 		delivery_states: states,
@@ -1040,8 +1040,12 @@ test("a group with one not_delivered names only that recipient and counts it", (
 	});
 	assert.deepEqual(summary.counts, { ...NOT_DELIVERED_COUNTS, delivered: 2 });
 	assert.deepEqual(
-		summary.lines.map((line) => [line.kind, line.agent, line.refusalClass]),
-		[["refused", "Bo", null]],
+		summary.lines.map((line) => [
+			line.kind,
+			line.agent,
+			"refusalClass" in line,
+		]),
+		[["not_delivered", "Bo", false]],
 	);
 	// Without the hub's summary the derived count agrees.
 	assert.deepEqual(
@@ -1060,7 +1064,7 @@ test("an owner's classed refusal and a hold render unchanged beside not_delivere
 	assert.deepEqual(lineTexts(render(states)), [
 		"Not delivered to Aida (Sam): refused by their moderation (looked like a request for personal information)",
 		"Not delivered to Bo (Sam) yet…",
-		"Not delivered to Cy (Sam). Refused by moderation.",
+		"Not delivered to Cy (Sam).",
 	]);
 	assert.deepEqual(
 		teamBridgeDeliverySummary({ ...HUMAN_SOURCE, delivery_states: states })
@@ -1082,8 +1086,10 @@ test("all moderation copy in every shipped locale has no em dash", () => {
 		// lines (`held_screening`, `held_not_reviewed`) and the not-reviewed
 		// footer, less the dropped `summary.pending` (#1832 round 1), plus the
 		// four uncounted `summary.single.*` outstanding forms (2026-11-10; no
-		// `single.delivered`, since #1858 a complete message renders no line).
-		assert.equal(entries.length, 29, locale);
+		// `single.delivered`, since #1858 a complete message renders no line),
+		// plus the sender's neutral `not_delivered` line (D1 on #1882; its tip
+		// was dropped with the sender's info glyph, #1928 round 1 D2/C2).
+		assert.equal(entries.length, 30, locale);
 		for (const [key, value] of entries) {
 			assert.doesNotMatch(value, MODERATION_EM_DASH, `${locale}:${key}`);
 		}
@@ -1934,5 +1940,119 @@ test("composer focus survives a hover open/close and an Escape typed in it (U1)"
 	} finally {
 		await act(async () => root.unmount());
 		composer.remove();
+	}
+});
+
+// Design D1 / review R1-m2 on #1882: since agent-server #377 the hub tells a
+// sender only THAT a recipient did not get the message. The sender's line and
+// its tip must carry no cause (moderation, refusal, screening, blocking) and
+// no rephrase coaching, in any locale; the owner's own classed and classless
+// lines stay exactly as they were.
+test("the sender's not_delivered line names no cause in English, carries no info glyph, and the owner's lines are unchanged", () => {
+	const sender = render([entry({ state: "not_delivered" })]);
+	assert.deepEqual(lineTexts(sender), ["Not delivered to Aida (Sam)."]);
+	assert.doesNotMatch(lineTexts(sender)[0], SENDER_CAUSE_WORDS);
+	// #1928 round 1 (S-1/D1/C1/R3, D2/C2): no glyph, so no accessible name.
+	assert.doesNotMatch(sender, ANY_BUTTON);
+	// The owner keeps the classless and the classed refusal copy, and the glyph.
+	const ownerClassless = render([entry()]);
+	assert.deepEqual(lineTexts(ownerClassless), [
+		"Not delivered to Aida (Sam). Refused by moderation.",
+	]);
+	assert.match(ownerClassless, INFO_LABEL);
+	assert.deepEqual(lineTexts(render([entry({ refusal_class: "abusive" })])), [
+		"Not delivered to Aida (Sam): refused by their moderation (looked like abusive content)",
+	]);
+});
+
+/*
+ * Every ATTRIBUTE, not just the visible text (#1928 round 1, S-1): the leak
+ * that test missed was an `aria-label`, which a screen reader announces and a
+ * frame never shows. This mounts the real annotation as the sender sees it,
+ * opens the details panel (portalled, so the walk covers the whole document),
+ * and checks every attribute value and every text node. `class` and `style`
+ * are presentational and never announced, and Tailwind's `block` utilities
+ * would false-match the cause list, so those two are the only exclusions.
+ */
+test("no attribute or text anywhere in the sender's opened view names screening, moderation or refusal", async () => {
+	const root = createRoot(document.getElementById("root"));
+	try {
+		await act(async () =>
+			root.render(
+				createElement(TeamBridgeDeliveryAnnotation, {
+					message: {
+						...HUMAN_SOURCE,
+						delivery_states: [
+							entry({ endpoint_id: "a", state: "delivered" }),
+							entry({
+								endpoint_id: "b",
+								state: "not_delivered",
+								// A faulty hub's stray class must reach no attribute either.
+								refusal_class: "abusive",
+							}),
+						],
+						delivery_summary: { total: 2, delivered: 1, not_delivered: 1 },
+					},
+				}),
+			),
+		);
+		const trigger = document.querySelector("button");
+		await act(async () => {
+			trigger.dispatchEvent(
+				new dom.window.MouseEvent("click", { bubbles: true, cancelable: true }),
+			);
+		});
+		assert.match(document.body.textContent, SENDER_LINE_TEXT);
+		const values = [];
+		for (const element of document.body.querySelectorAll("*")) {
+			for (const attribute of element.attributes) {
+				if (attribute.name === "class" || attribute.name === "style") continue;
+				values.push(`${attribute.name}=${attribute.value}`);
+			}
+		}
+		assert.ok(
+			values.some((value) => value.startsWith("aria-label=")),
+			"the walk reaches the labelled panel",
+		);
+		for (const value of values) {
+			assert.doesNotMatch(value, SENDER_CAUSE_WORDS, value);
+		}
+		assert.doesNotMatch(document.body.textContent, SENDER_CAUSE_WORDS);
+		// Exactly one button: the summary trigger. No info glyph on the line.
+		assert.equal(document.querySelectorAll("button").length, 1);
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
+
+test("in every locale the sender's not_delivered copy shares no wording with the owner's refusal copy", () => {
+	for (const locale of MODERATION_LOCALES) {
+		const catalogue = JSON.parse(
+			readFileSync(`src/i18n/catalogues/${locale}/ui.teamBridge.json`, "utf8"),
+		);
+		const line = catalogue["ui.teamBridge.delivery.not_delivered"];
+		assert.ok(line, `${locale}: the sender key exists`);
+		// The sender's tip key is gone with its glyph (#1928 round 1, D2/C2).
+		assert.equal(
+			catalogue["ui.teamBridge.delivery.info_not_delivered"],
+			undefined,
+			`${locale}: no sender tip key`,
+		);
+		/*
+		 * Language-neutral proof of "no cause": whatever the owner's classless
+		 * line adds after its first "{recipient}" sentence is the cause in that
+		 * locale's own words ("Refused by moderation."). The sender's line must
+		 * be one sentence carrying none of it. Split on the owner's first
+		 * terminator rather than requiring a shared prefix: vi words the
+		 * sender's line differently on purpose (i18n audit I1 on #1928 avoids
+		 * the prohibitive "không được"), so the prefix differs by design.
+		 */
+		const owner = catalogue["ui.teamBridge.delivery.refused"];
+		const firstEnd = owner.search(/[.。।۔]/u);
+		assert.ok(firstEnd > 0, `${locale}: ${owner}`);
+		assert.ok(line.includes("{recipient}"), `${locale}: ${line}`);
+		const cause = owner.slice(firstEnd + 1).trim();
+		assert.ok(cause.length > 0, `${locale}: the owner line carries a cause`);
+		assert.ok(!line.includes(cause), `${locale}: sender line has no cause`);
 	}
 });

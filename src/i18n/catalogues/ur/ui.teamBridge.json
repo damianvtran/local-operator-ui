@@ -328,6 +328,7 @@
 	"ui.teamBridge.delivery.refused_abusive": "{recipient} تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (توہین آمیز مواد جیسا لگا)",
 	"ui.teamBridge.delivery.refused_unsafe_content": "{recipient} تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (غیر محفوظ مواد یا لنکس جیسا لگا)",
 	"ui.teamBridge.delivery.refused_out_of_scope": "{recipient} تک نہیں پہنچا: ان کی ماڈریشن نے مسترد کر دیا (اس ایجنٹ کے دائرۂ کار سے باہر کی درخواست جیسا لگا)",
+	"ui.teamBridge.delivery.not_delivered": "{recipient} تک نہیں پہنچا۔",
 	"ui.teamBridge.delivery.held": "{recipient} تک ابھی نہیں پہنچا…",
 	"ui.teamBridge.delivery.held_screening": "{recipient} تک ابھی نہیں پہنچا۔ اس کی جانچ جاری ہے۔",
 	"ui.teamBridge.delivery.held_screening_unavailable": "{recipient} تک ابھی نہیں پہنچا۔ جانچ نہیں ہو سکی؛ خود بخود دوبارہ کوشش کی جا رہی ہے۔",

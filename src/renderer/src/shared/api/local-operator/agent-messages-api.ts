@@ -3,10 +3,12 @@ import {
 	type AgentMessagesAllowlistResult,
 	type AgentMessagesBoundary,
 	type AgentMessagesConsentPut,
+	type AgentMessagesScreening,
 	type AgentMessagesSettingsPut,
 	type AgentMessagesSettingsResult,
 	agentMessagesAllowlistResultSchema,
 	agentMessagesOnboardingDismissResultSchema,
+	agentMessagesScreeningSchema,
 	agentMessagesSettingsResultSchema,
 	agentMessagesStatusSchema,
 } from "../../../../../shared/agent-messages-contract";
@@ -98,6 +100,24 @@ export const agentMessagesApi = {
 		return typeof answer?.share_typing === "boolean"
 			? answer.share_typing
 			: shareTyping;
+	},
+	/**
+	 * The Screening model preference: a state-less, machine-local PUT (like
+	 * share_typing; no hub call, no consent or endpoint-state effect). Returns
+	 * the block the answer echoes when it carries a readable one, else null, so
+	 * the caller re-reads settings rather than trusting the value it sent.
+	 */
+	async setScreeningModel(
+		accountId: string,
+		screeningModel: string,
+	): Promise<AgentMessagesScreening | null> {
+		const answer = await desktopResult<{ screening?: unknown } | null>({
+			op: "agent_messages.settings.screening_model",
+			expected_account_id: accountId,
+			screening_model: screeningModel,
+		});
+		const parsed = agentMessagesScreeningSchema.safeParse(answer?.screening);
+		return parsed.success ? parsed.data : null;
 	},
 	async localSetting(
 		key: "team_bridge.enabled" | "team_bridge.session",

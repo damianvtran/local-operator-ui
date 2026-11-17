@@ -24,7 +24,11 @@
  */
 
 import { AgentMark } from "@shared/agent-avatar/agent-mark";
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	DesktopControlError,
+	desktopResult,
+	userFacingMessage,
+} from "@shared/api/local-operator/desktop-api";
 import type {
 	ReusableProfile,
 	ReusableTeam,
@@ -55,7 +59,7 @@ import {
 } from "@shared/components/ui/select";
 import { Switch } from "@shared/components/ui/switch";
 import { Textarea } from "@shared/components/ui/textarea";
-import { t } from "@shared/i18n";
+import { t, translateRaw } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -71,6 +75,10 @@ import {
 	useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+	DESKTOP_MACHINE_DETAIL,
+	DESKTOP_REFUSAL_CODE,
+} from "../../../../../shared/desktop-contract";
 import {
 	type ActionClass,
 	BUILTIN_SWITCH_DISCLOSURE,
@@ -115,6 +123,41 @@ type Draft = {
 };
 
 const TOOL_TOKEN = /^[A-Za-z0-9_.:-]{1,128}$/;
+
+/**
+ * The sentence a failed write hands to `refusalCopy`, in the interface language.
+ *
+ * WHY NOT `caught.message`. When the backend is unreachable main answers with
+ * its own transport sentence (`DESKTOP_MACHINE_DETAIL.transportFailed`, English
+ * by construction: it is a machine vocabulary shared with main, not catalogue
+ * copy), and handing that string on put English on the save alert, the install
+ * alert and the install toast in EVERY language (QA round 1, Q1).
+ *
+ * TWO ARMS, in this order:
+ *  1. The transport failure itself is worded by
+ *     `ui.common.errors.desktop_transport_failed`, the key the sibling read-state
+ *     pane (`missing-definition-error.tsx`) already uses for the same refusal.
+ *     NOT `userFacingMessage`'s own sentence for that code ("The Local Operator
+ *     server did not answer this request."): that key is deliberately worded
+ *     differently (see its context note) and using it would change the English a
+ *     user already reads on this pane.
+ *  2. Every other desktop error goes through `userFacingMessage`: the pairing and
+ *     server-updating refusals become their translated sentences, an authored
+ *     backend refusal (name taken, grammar, instructions...) comes back verbatim
+ *     so `refusalCopy` still recognises and routes it, and a value that is not an
+ *     authored message becomes `fallback` instead of a stack-trace fragment.
+ */
+function writeFailureSentence(caught: unknown, fallback: string): string {
+	if (
+		caught instanceof DesktopControlError &&
+		(caught.code === DESKTOP_REFUSAL_CODE.transportFailed ||
+			(!caught.code &&
+				caught.message === DESKTOP_MACHINE_DETAIL.transportFailed))
+	) {
+		return t("ui.common.errors.desktop_transport_failed");
+	}
+	return userFacingMessage(caught, fallback);
+}
 
 /*
  * The summary portrait's box: 80px, and borderless - `AgentAvatar` carries a
@@ -202,7 +245,8 @@ export function AgentMeta({ profile }: { profile: ReusableProfile }) {
 		sourceLabel(profile.source),
 		classOf(profile) === "proactive" ? CLASS_LABEL.proactive : null,
 		profile.delegate ? t("ui.agents.detail.meta.delegates") : null,
-		profile.kind === "specialist" ? "Specialist" : null,
+		// One word, one key: the roster's kind label for the same wire value.
+		profile.kind === "specialist" ? t("ui.hub.teams.kind.specialist") : null,
 	].filter(Boolean);
 	return (
 		<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -466,13 +510,11 @@ function ToolsEditor({
 		const token = entry.trim();
 		if (!token) return;
 		if (!TOOL_TOKEN.test(token)) {
-			setEntryError(
-				"Tool names are letters, digits, dot, underscore, dash or colon.",
-			);
+			setEntryError(t("ui.agents.detail.tools.error_grammar"));
 			return;
 		}
 		if (tools?.includes(token)) {
-			setEntryError("That tool is already listed.");
+			setEntryError(t("ui.agents.detail.tools.error_duplicate"));
 			return;
 		}
 		setEntryError(null);
@@ -798,7 +840,7 @@ export function AgentDetail({
 			typeof changed.instructions === "string" &&
 			!changed.instructions.trim()
 		) {
-			setError("Give the agent instructions.");
+			setError(t("ui.agents.detail.create.error_instructions_required"));
 			setErrorField("instructions");
 			return;
 		}
@@ -828,9 +870,7 @@ export function AgentDetail({
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {
 			const copy = refusalCopy(
-				caught instanceof Error
-					? caught.message
-					: "The agent could not be saved.",
+				writeFailureSentence(caught, t("ui.agents.detail.edit.error_generic")),
 			);
 			setError(copy.message);
 			setErrorField(copy.field);
@@ -909,9 +949,10 @@ export function AgentDetail({
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {
 			const copy = refusalCopy(
-				caught instanceof Error
-					? caught.message
-					: "The agent could not be installed.",
+				writeFailureSentence(
+					caught,
+					t("ui.agents.detail.install.error_generic"),
+				),
 			);
 			setError(copy.message);
 			showErrorToast(copy.message);
@@ -1044,7 +1085,17 @@ export function AgentDetail({
 								<Button
 									variant="ghost"
 									onClick={() =>
-										onAskAgent(`Change the agent ${profile.name}: `)
+										onAskAgent(
+											// `translateRaw`, NOT `t`: this text is pre-filled into the chat
+											// composer and SENT to the assistant, so it is data. In an RTL
+											// catalogue (ur) `t` wraps the Latin agent name in U+2068/2069
+											// (src/i18n/bidi.ts), and those invisible controls would travel
+											// in the message and could stop the assistant matching the
+											// agent by name. English and every LTR locale are unchanged.
+											translateRaw("ui.agents.detail.ask_change_prefill", {
+												name: profile.name,
+											}),
+										)
 									}
 								>
 									{t("ui.agents.detail.action.ask_change")}
@@ -1575,7 +1626,7 @@ export function AgentCreate({
 		event?.preventDefault();
 		if (pending) return;
 		if (!name.trim()) {
-			setError("Give the agent a name.");
+			setError(t("ui.agents.detail.create.error_name_required"));
 			setErrorField("name");
 			nameRef.current?.focus();
 			return;
@@ -1590,21 +1641,21 @@ export function AgentCreate({
 		 * failure on this form, and the only one with no field marked (Q3/U4/D5).
 		 */
 		if (/[\\/\s]/.test(name.trim())) {
-			setError("Names cannot contain spaces or slashes.");
+			setError(t("ui.agents.detail.create.error_name_grammar"));
 			setErrorField("name");
 			nameRef.current?.focus();
 			return;
 		}
 		if (takenNames.includes(name.trim())) {
 			setError(
-				`An agent called “${name.trim()}” already exists. Choose another name, or open the existing one to change it.`,
+				t("ui.agents.detail.create.error_name_taken", { name: name.trim() }),
 			);
 			setErrorField("name");
 			nameRef.current?.focus();
 			return;
 		}
 		if (!draft.instructions.trim()) {
-			setError("Give the agent instructions.");
+			setError(t("ui.agents.detail.create.error_instructions_required"));
 			setErrorField("instructions");
 			instructionsRef.current?.focus();
 			return;
@@ -1641,9 +1692,10 @@ export function AgentCreate({
 			onSaved(result.name);
 		} catch (caught) {
 			const copy = refusalCopy(
-				caught instanceof Error
-					? caught.message
-					: "The agent could not be created.",
+				writeFailureSentence(
+					caught,
+					t("ui.agents.detail.create.error_generic"),
+				),
 			);
 			setError(copy.message);
 			setErrorField(copy.field);
@@ -1652,7 +1704,13 @@ export function AgentCreate({
 		}
 	};
 
-	const title = initial ? "Duplicate as a new agent" : "New agent";
+	/*
+	 * The heading is a catalogue message now (S18d): it was the last English on
+	 * this form in every language, sitting directly above translated copy.
+	 */
+	const title = initial
+		? t("ui.agents.detail.create.title_duplicate")
+		: t("ui.agents.detail.create.title_new");
 
 	return (
 		<div className="space-y-8">

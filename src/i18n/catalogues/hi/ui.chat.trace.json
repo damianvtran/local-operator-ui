@@ -18,6 +18,8 @@
 	"ui.chat.trace.action.write.running": "लिख रहा है",
 	"ui.chat.trace.action.write.settled": "लिखा",
 	"ui.chat.trace.object.file_count": "{count, plural, one {{count, number, ::group-off} फ़ाइल} other {{count, number, ::group-off} फ़ाइलें}}",
+	"ui.chat.trace.reasoning.label": "तर्क",
+	"ui.chat.trace.reasoning.with_duration": "{label}, {duration} तक",
 	"ui.chat.trace.send.delivery.failed.note": "कुछ भी नहीं पहुँचा। नीचे बताए गए कारण को ठीक करें, या दोबारा भेजें।",
 	"ui.chat.trace.send.delivery.failed.verb": "प्रयास किया",
 	"ui.chat.trace.send.delivery.failed.word": "पहुँचा नहीं",

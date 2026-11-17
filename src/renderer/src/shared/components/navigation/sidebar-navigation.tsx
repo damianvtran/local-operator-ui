@@ -2,7 +2,11 @@ import { aidaControlFailureCopy } from "@features/aida/aida-control";
 import { useAidaMissedMessages } from "@features/aida/use-aida-missed-messages";
 import { useAidaOpener, useAidaTarget } from "@features/aida/use-aida-target";
 import { useAidaWorking } from "@features/aida/use-aida-working";
-import { useAppWideApprovals } from "@features/browser/hooks/use-app-wide-approvals";
+import {
+	BrowserAttentionAnnouncer,
+	BrowserAttentionRows,
+} from "@features/browser/components/browser-attention-rows";
+import { useBrowserAttention } from "@features/browser/hooks/use-browser-attention";
 /*
  * THE MIDPOINT RULE IS IMPORTED, not re-derived (design § 5): the pinned chat
  * reorder's `pinDragSlot` is the shipped answer to "which slot is the pointer
@@ -413,9 +417,12 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * per-conversation badge can: is an agent anywhere in this app blocked on me?
 	 * The count is the projection's own live set, unattributed requests included -
 	 * see `useAppWideApprovals` for why that one deliberately disagrees with the
-	 * chat header's count.
+	 * chat header's count. Since 2026-11-15 it also counts the passkey holds and
+	 * held popups that used to pull the user into the browser ("the browser is
+	 * stealing the view"): those are now the notification rows drawn below the
+	 * destinations, and this badge is how a collapsed rail learns of them.
 	 */
-	const browserApprovals = useAppWideApprovals();
+	const browserApprovals = useBrowserAttention().count;
 	/*
 	 * Whether this device is in a mesh AT ALL, and it takes TWO facts rather than one
 	 * (review round 1, R1-1). `features.peers` is a CAPABILITY: lop advertises it on
@@ -2408,6 +2415,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					{dropBand}
 				</div>
 				{announcementRegion}
+				{/* A browser wait arriving is read out in either form (U4). */}
+				<BrowserAttentionAnnouncer />
 				<div className="mt-auto flex flex-col items-center gap-1 pb-2">
 					{/*
 					 * The phone access offer's collapsed form (UX review U1): the docked
@@ -2511,7 +2520,17 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					{dropBand}
 				</div>
 				{announcementRegion}
+				{/* A browser wait arriving is read out in either form (U4). */}
+				<BrowserAttentionAnnouncer />
 			</div>
+
+			{/*
+			 * THE BROWSER'S NOTIFICATIONS (operator report 2026-11-15): what agent tabs
+			 * are waiting on the user for, opened when the user chooses rather than
+			 * forced on them. Renders nothing without a row, so the 16px tier below
+			 * is untouched in the ordinary case (`browser-attention-rows.tsx`).
+			 */}
+			<BrowserAttentionRows />
 
 			{/*
 			 * THE BODY: the one chat list, one scroll region.

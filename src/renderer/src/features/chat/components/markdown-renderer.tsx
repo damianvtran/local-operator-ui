@@ -33,6 +33,7 @@ import { opensInCanvas } from "../utils/open-in-canvas";
 import { remarkLinkifyTargets } from "../utils/remark-linkify-targets";
 import { remarkSkillInk } from "../utils/remark-skill-ink";
 import { remarkSoftBreaks } from "../utils/remark-soft-breaks";
+import { remarkTableHtml } from "../utils/remark-table-html";
 import { citationAwareAnchor } from "./credential-citation";
 import { remarkCredentialCitations } from "./credential-citation-remark";
 import { MarkdownImage } from "./markdown-image";
@@ -45,8 +46,8 @@ import remarkGuardedMath from "./markdown-math-guarded";
 import { MarkdownTable } from "./markdown-table";
 import "./markdown.css";
 import { MAX_PROBE_PATHS } from "../../../../../shared/desktop-contract";
+import { ChatDiagram } from "./chat-diagram";
 import { containsRenderableMath } from "./markdown-math";
-import { MermaidDiagram } from "./mermaid-diagram";
 import { SEPARATOR_CLASS, SEPARATOR_RUN } from "./slash-token";
 
 // katex.min.css is unconditional dead weight for the vast majority of messages,
@@ -391,7 +392,7 @@ const MARKDOWN_COMPONENTS: Components = {
 
 		if (language === "mermaid") {
 			return (
-				<MermaidDiagram chart={String(children).replace(NEWLINE_REGEX, "")} />
+				<ChatDiagram chart={String(children).replace(NEWLINE_REGEX, "")} />
 			);
 		}
 
@@ -423,8 +424,8 @@ const MARKDOWN_COMPONENTS_WITH_CITATIONS: Components = {
 	a: citationAwareAnchor(MarkdownAnchor),
 };
 
-const GFM_ONLY = [remarkGfm];
-const GFM_AND_MATH = [remarkGfm, remarkGuardedMath];
+const GFM_ONLY = [remarkGfm, remarkTableHtml];
+const GFM_AND_MATH = [remarkGfm, remarkTableHtml, remarkGuardedMath];
 /*
  * Every combination of the three things this pipeline can add, hoisted for the
  * reason `MARKDOWN_COMPONENTS`'s comment records - and, MEASURED on
@@ -442,8 +443,13 @@ const GFM_AND_MATH = [remarkGfm, remarkGuardedMath];
  * Eight constants rather than a builder, and `REMARK_PIPELINES` below is only a
  * selector over them.
  */
-const GFM_LINKIFY = [remarkGfm, remarkLinkifyTargets];
-const GFM_MATH_LINKIFY = [remarkGfm, remarkGuardedMath, remarkLinkifyTargets];
+const GFM_LINKIFY = [remarkGfm, remarkTableHtml, remarkLinkifyTargets];
+const GFM_MATH_LINKIFY = [
+	remarkGfm,
+	remarkTableHtml,
+	remarkGuardedMath,
+	remarkLinkifyTargets,
+];
 /*
  * THE FOUR CITATION-BEARING PIPELINES ARE ALSO THE FOUR USER-TURN PIPELINES,
  * and `remarkSoftBreaks` rides them (operator report, 2026-09-25). The report:
@@ -473,23 +479,27 @@ const GFM_MATH_LINKIFY = [remarkGfm, remarkGuardedMath, remarkLinkifyTargets];
  */
 const GFM_AND_CITATIONS = [
 	remarkGfm,
+	remarkTableHtml,
 	remarkCredentialCitations,
 	remarkSoftBreaks,
 ];
 const GFM_MATH_AND_CITATIONS = [
 	remarkGfm,
+	remarkTableHtml,
 	remarkGuardedMath,
 	remarkCredentialCitations,
 	remarkSoftBreaks,
 ];
 const GFM_LINKIFY_AND_CITATIONS = [
 	remarkGfm,
+	remarkTableHtml,
 	remarkLinkifyTargets,
 	remarkCredentialCitations,
 	remarkSoftBreaks,
 ];
 const GFM_MATH_LINKIFY_AND_CITATIONS = [
 	remarkGfm,
+	remarkTableHtml,
 	remarkGuardedMath,
 	remarkLinkifyTargets,
 	remarkCredentialCitations,

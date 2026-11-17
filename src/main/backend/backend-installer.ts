@@ -36,6 +36,7 @@ import {
 	parseInstallMarker,
 	splitLines,
 } from "../../shared/install-progress";
+import { devRendererUrl } from "../dev-renderer-url";
 import {
 	ensureVenvBytecodeGuard,
 	withPythonBytecodeCache,
@@ -1190,9 +1191,11 @@ export class BackendInstaller {
 		this.preparationWindow = progressWindow;
 
 		// Load the installer HTML file
-		if (is.dev && process.env.ELECTRON_RENDERER_URL) {
+		// The dev server only in an unpackaged build (`devRendererUrl`).
+		const devUrl = devRendererUrl(app.isPackaged);
+		if (is.dev && devUrl) {
 			// In development mode, use the dev server URL
-			progressWindow.loadURL(`${process.env.ELECTRON_RENDERER_URL}/installer`);
+			progressWindow.loadURL(`${devUrl}/installer`);
 		} else {
 			// In production mode, load the file directly
 			progressWindow.loadFile(join(__dirname, "../renderer/installer.html"));

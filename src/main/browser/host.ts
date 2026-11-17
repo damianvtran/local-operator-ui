@@ -50,6 +50,7 @@ import { redactToken, surfaceToken } from "./registry";
 import type { PersistedTab } from "./session-store";
 import { permittedScheme } from "./settle";
 import { TabAudioTracker } from "./tab-audio";
+import type { UserAttentionEntry } from "./user-attention";
 import { safeHttpUrl } from "./vendor/driver/origin-policy";
 
 const DUPLICATABLE_WEB_URL = /^https?:\/\//i;
@@ -479,6 +480,9 @@ export interface BrowserHostOptions {
 	/** The active tab's passkey custody (`extensions/passkey-custody.ts`). Absent
 	 * means none: the projection then carries null. */
 	passkeyCustody?: (tabId: number) => PasskeyCustodyView | null;
+	/** Every wait an agent tab has on a person, across ALL tabs
+	 * (`user-attention.ts`). Absent means none: the projection carries `[]`. */
+	waitingOnUser?: () => UserAttentionEntry[];
 	/** The active tab's camera/microphone prompt (or macOS notice), from
 	 * `media-permissions.ts`. Absent means none: the projection carries null. */
 	mediaPermission?: (tabId: number) => MediaPermissionView | null;
@@ -559,6 +563,7 @@ export class BrowserHost implements BrowserActionContext {
 	private readonly approvalsCard: BrowserHostOptions["approvalsCard"];
 	/** Constructor-assigned, not a field initialiser: see `tabAudio` above. */
 	private readonly passkeyNotice: BrowserHostOptions["passkeyNotice"];
+	private readonly waitingOnUser: BrowserHostOptions["waitingOnUser"];
 	private readonly passkeyCustody: BrowserHostOptions["passkeyCustody"];
 	private readonly mediaPermission: BrowserHostOptions["mediaPermission"];
 	private readonly isActiveExtension: BrowserHostOptions["isActiveExtension"];
@@ -610,6 +615,7 @@ export class BrowserHost implements BrowserActionContext {
 		this.forgetSiteData = options.forgetSiteData;
 		this.approvalsCard = options.approvalsCard;
 		this.passkeyNotice = options.passkeyNotice;
+		this.waitingOnUser = options.waitingOnUser;
 		this.passkeyCustody = options.passkeyCustody;
 		this.mediaPermission = options.mediaPermission;
 		this.isActiveExtension = options.isActiveExtension;
@@ -1209,6 +1215,11 @@ export class BrowserHost implements BrowserActionContext {
 				// one) would then be published to the UI.
 				requesterSessionId: sessionRequesterOf(entry.requester),
 			})),
+			// WHAT AN AGENT TAB IS WAITING ON A PERSON FOR, across every tab: a custody
+			// hold or a held popup (`user-attention.ts`). The sidebar draws these as
+			// notification rows and the Browser badge counts them; nothing moves the
+			// user's view until they click one (operator report 2026-11-15).
+			waitingOnUser: this.waitingOnUser?.() ?? [],
 			// Which sites an agent may act on as the user RIGHT NOW (design 9.3's
 			// honesty requirement). Shipped in the same projection as the strip rather
 			// than behind a second channel: the answer is only useful next to the tabs

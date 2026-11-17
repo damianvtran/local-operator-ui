@@ -1,0 +1,48 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "b01f8b5ae4ca",
+  "locale": "fr",
+  "status": "passed",
+  "independent_from_translator_session": true,
+  "translator_session_label": "prA-tr-fr",
+  "audit_date": "2026-11-17",
+  "english_commit": "f430d4fd43fbf0cbc0b15e9b5595dc080e8b7c13",
+  "scope": "Five new keys (edit.error_generic, tools.error_grammar, tools.error_duplicate, ask_change_prefill, install.error_generic) + context-widened create.error_instructions_required and ui.hub.teams.kind.specialist (value only, in place, file untouched); all other keys byte-identical to HEAD.",
+  "namespaces": {
+    "ui.agents.detail": {
+      "status": "passed",
+      "sha256": {
+        "target": "52bc556e1fdec0a4a7342025c8313daae7179a112c2ef35f00053863b5f9d6ae",
+        "source": "6c57644117286a0662933b9354f9a8307a0091fe7ff0b12cb703f9505abcf5f8"
+      },
+      "findings": [
+        {
+          "id": "F1",
+          "severity": "MINOR",
+          "key": "ui.agents.detail.tools.error_grammar",
+          "current": "Les noms d’outils peuvent contenir des lettres, des chiffres, un point, un tiret bas, un trait d’union ou deux-points.",
+          "problem": "'peuvent contenir' is permissive, not exclusive (English 'are' = only these; context: do not soften the rule). Singular 'un point, un tiret bas, un trait d’union' can read as 'one of each'; 'deux-points' lacks the article the other items carry.",
+          "suggestion": "Les noms d’outils ne contiennent que des lettres, des chiffres, des points, des tirets bas, des traits d’union ou des deux-points."
+        },
+        {
+          "id": "F2",
+          "severity": "NIT",
+          "key": "ui.agents.detail.tools.error_duplicate",
+          "current": "Cet outil est déjà répertorié.",
+          "problem": "'répertorié' is correct but slightly formal/catalogue-like for an inline field error.",
+          "suggestion": "Cet outil figure déjà dans la liste."
+        }
+      ]
+    },
+    "ui.agents.detail.install": {
+      "status": "passed",
+      "sha256": {
+        "target": "937c0dfb26c3667415a9faddeccb61e8c445b8541909c39d368baf6f299738c1",
+        "source": "7dd4c6301ada0b2c94a4970508a073150a8bb7f7fdc304834bdca3ca1cc81cd3"
+      },
+      "findings": []
+    }
+  },
+  "notes": "ui.hub.teams.kind.specialist = 'Spécialiste' audited in place as a value only (ui.hub.teams.json unchanged in git); no finding. No rendering performed; not a native-speaker review; no MT used."
+}

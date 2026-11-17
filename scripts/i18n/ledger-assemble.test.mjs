@@ -37,6 +37,7 @@ import { checkLedger } from "./ledger-check.mjs";
 import {
 	countFindings,
 	isPlaceholderInstance,
+	isRepoReceiptPath,
 	supportedStatus,
 	validateAuditSet,
 } from "./ledger-rules.mjs";
@@ -806,14 +807,45 @@ test("placeholder detection: stock words and short ids are placeholders, a 12-he
 		"unknown",
 		"",
 		"abc",
+		// A path-like string is still not a run id, whatever its case.
+		"zh-CN/trace",
 		undefined,
 		null,
 		42,
 	]) {
 		assert.equal(isPlaceholderInstance(value), true, String(value));
 	}
-	for (const value of ["340d8507700f", "run-aaaaaaaa"]) {
+	for (const value of [
+		"340d8507700f",
+		"run-aaaaaaaa",
+		// Regression: the zh-CN audit lane suffixes the run id with its locale, and
+		// BCP 47 spells the region subtag in upper case. The writer refused this as a
+		// placeholder, so the row could not be bound at all (S18d).
+		"52583bdfa254-zh-CN",
+	]) {
 		assert.equal(isPlaceholderInstance(value), false, value);
+	}
+});
+
+/**
+ * Both charsets must accept what a run id can be: a receipt is named after its
+ * instance, so a rule that took the instance's `zh-CN` suffix but refused the file
+ * named from it left every zh-CN row stuck at `pending` (S18d). Path safety is
+ * unchanged - no slash, no dot, still exactly one directory and a `.json` leaf.
+ */
+const RECEIPT_PATH_CASES = [
+	["i18n/receipts/340d8507700f.json", true],
+	["i18n/receipts/52583bdfa254-zh-CN.json", true],
+	["i18n/receipts/../secrets.json", false],
+	["i18n/receipts/nested/340d8507700f.json", false],
+	["/absolute/340d8507700f.json", false],
+	["~/340d8507700f.json", false],
+	["i18n/receipts/340d8507700f.txt", false],
+];
+
+test("receipt paths: same charset as instances, still one flat directory of JSON", () => {
+	for (const [value, expected] of RECEIPT_PATH_CASES) {
+		assert.equal(isRepoReceiptPath(value), expected, value);
 	}
 });
 

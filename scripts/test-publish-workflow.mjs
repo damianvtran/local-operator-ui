@@ -631,6 +631,12 @@ test("passkeys are wired: profile and rendered entitlements reach the MAIN execu
 	 * passes hand the profile and the rendered plist to the main executable; and
 	 * nothing ever overrides `entitlementsInherit`, which stays the committed,
 	 * group-free plist from package.json.
+	 *
+	 * F2 split the two committed plists: main keeps `build/entitlements.mac.plist`
+	 * (no DYLD, no disable-library-validation), and every nested executable is
+	 * signed with `build/entitlements.mac.inherit.plist` (library validation off
+	 * for the python seed's wheels). Both must stay group-free; the rendered
+	 * plist above is the only place the access group may appear.
 	 */
 	const macSteps = steps("build-macos");
 	const stageIndex = macSteps.findIndex(
@@ -669,18 +675,29 @@ test("passkeys are wired: profile and rendered entitlements reach the MAIN execu
 			`${build.name}: helpers and ShipIt keep the committed, group-free plist — a group there is the 0.29.6 brick`,
 		);
 	}
-	// package.json's inherit plist is the committed one, and it stays
-	// secret-free and group-free: every helper is signed with it.
+	// package.json's plists are the committed ones, and both stay secret-free
+	// and group-free: main's is replaced by the rendered plist on CI, and every
+	// helper is signed with the inherit plist as committed.
+	assert.equal(pkg.build.mac.entitlements, "build/entitlements.mac.plist");
 	assert.equal(
 		pkg.build.mac.entitlementsInherit,
-		"build/entitlements.mac.plist",
+		"build/entitlements.mac.inherit.plist",
 	);
-	const committed = readFileSync(
-		new URL("../build/entitlements.mac.plist", import.meta.url),
-		"utf8",
-	);
-	assert.doesNotMatch(committed, /keychain-access-groups/);
-	assert.doesNotMatch(committed, /application-identifier|team-identifier/);
+	for (const plist of [
+		pkg.build.mac.entitlements,
+		pkg.build.mac.entitlementsInherit,
+	]) {
+		const committed = readFileSync(
+			new URL(`../${plist}`, import.meta.url),
+			"utf8",
+		);
+		assert.doesNotMatch(committed, /keychain-access-groups/, plist);
+		assert.doesNotMatch(
+			committed,
+			/application-identifier|team-identifier/,
+			plist,
+		);
+	}
 	for (const job of ["build-windows", "build-linux"])
 		assert.doesNotMatch(
 			JSON.stringify(jobs[job]),

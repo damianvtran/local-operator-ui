@@ -1,0 +1,48 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "5e135ce1101a",
+  "locale": "zh-CN",
+  "status": "passed",
+  "audit_date": "2026-11-17",
+  "translator_session": "prA-tr-zh-CN",
+  "independent_from_translator_session": true,
+  "scope": "5 new keys (edit.error_generic, tools.error_grammar, tools.error_duplicate, ask_change_prefill, install.error_generic) + context-widened create.error_instructions_required and ui.hub.teams.kind.specialist (value 专家, file untouched)",
+  "namespaces": {
+    "ui.agents.detail": {
+      "status": "passed",
+      "sha256": {
+        "zh-CN": "2aa960a15832bc95a2e71a9b31c839f0be4374f4b18628e5b823c28406eed8c6",
+        "en": "6c57644117286a0662933b9354f9a8307a0091fe7ff0b12cb703f9505abcf5f8"
+      },
+      "findings": [
+        {
+          "id": "zhCN-N1",
+          "severity": "NIT",
+          "namespace": "ui.agents.detail",
+          "key": "ui.agents.detail.tools.error_grammar",
+          "current": "工具名称只能包含字母、数字、点号、下划线、连字符或冒号。",
+          "problem": "All six characters named, in source order and recognisable; optionally show the glyphs to remove any doubt between 点号 and 句号 readers.",
+          "suggestion": "Optional: 工具名称只能包含字母、数字、点号（.）、下划线（_）、连字符（-）或冒号（:）。 — keep as is if width under the narrow input matters more."
+        },
+        {
+          "id": "zhCN-N2",
+          "severity": "NIT",
+          "namespace": "ui.agents.detail",
+          "key": "ui.agents.detail.create.error_instructions_required",
+          "current": "请为智能体填写指令。",
+          "problem": "Context-widened key reads correctly on both create and edit forms. Style guide limits 请 to where English says please; pre-existing and identical in pattern to sibling create.error_name_required, so not gating.",
+          "suggestion": "No change in this PR; if ever revisited, change both siblings together (e.g. 需为智能体填写指令。/ keep 请 consistently)."
+        }
+      ]
+    },
+    "ui.agents.detail.install": {
+      "status": "passed",
+      "sha256": {
+        "zh-CN": "d15347450cd7840d23509afdfad9a6fa3c7e731dbda350bcfe3da948af534263",
+        "en": "7dd4c6301ada0b2c94a4970508a073150a8bb7f7fdc304834bdca3ca1cc81cd3"
+      },
+      "findings": []
+    }
+  }
+}

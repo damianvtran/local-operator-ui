@@ -2667,8 +2667,10 @@ export class UpdateService {
 		this.quietReason = options?.quietReason ?? null;
 
 		// Determine if we're in dev mode
-		this.isDevMode =
-			!app.isPackaged || Boolean(process.env.ELECTRON_RENDERER_URL);
+		// `app.isPackaged` alone: `ELECTRON_RENDERER_URL` used to switch a
+		// PACKAGED app into dev mode (no updates) too, and a packaged build no
+		// longer lets that variable decide anything (`./dev-renderer-url.ts`).
+		this.isDevMode = !app.isPackaged;
 
 		// Determine if this is an npx installation
 		// Check if the app is running from a node_modules/.bin directory which is typical for npx

@@ -148,6 +148,7 @@ let requests = [];
 let features = { projects: 2, projects_by_session: 1 };
 let sessionRows = () => [row("canvas-alpha", { title: "Canvas alpha" })];
 let failSessionRead = false;
+let delaySessionRead = null;
 /* Round-1 gate variants: a capabilities read that fails, an unpaired app,
    and a read failure that carries no sentence of its own. */
 let failCapabilities = false;
@@ -171,6 +172,7 @@ const answer = (request) => {
 		};
 	}
 	if (request.op === "projects.for_session") {
+		if (delaySessionRead) return delaySessionRead(request);
 		if (failSessionRead)
 			return {
 				status: 500,
@@ -215,12 +217,17 @@ dom.window.electron = {
 const ENTRY = `
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, onlineManager } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { CanvasProjectsViewer } from "./src/renderer/src/features/chat/components/canvas/canvas-projects-viewer";
 import { ProjectDetailScreen } from "./src/renderer/src/features/projects/components/project-detail";
 import { useProjectReadsTurnRefresh, useSessionProjects } from "./src/renderer/src/features/projects/hooks/use-projects-queries";
-export { projectKeys, linkedProjectTotal } from "./src/renderer/src/features/projects/hooks/use-projects-queries";
+import { projectKeys } from "./src/renderer/src/features/projects/hooks/use-projects-queries";
+export { projectKeys };
+// The SAME bundled instance the viewer's queries consult, so going offline
+// here pauses the viewer's refetch (a separate package copy would not).
+export { onlineManager };
+export { linkedProjectTotal } from "./src/renderer/src/features/projects/hooks/use-projects-queries";
 export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store";
 export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";
 
@@ -228,10 +235,11 @@ const wrap = (client, child) =>
 	createElement(QueryClientProvider, { client },
 		createElement(MemoryRouter, null, child));
 
-export function mount(container, props) {
+export function mount(container, props, cachedRows) {
 	const client = new QueryClient({
 		defaultOptions: { queries: { retry: false, gcTime: 0 } },
 	});
+	if (cachedRows) client.setQueryData(projectKeys.forSession(props.sessionId), cachedRows, { updatedAt: Date.now() - 60_000 });
 	const root = createRoot(container);
 	const render = (next) =>
 		root.render(wrap(client, createElement(CanvasProjectsViewer, next)));
@@ -323,6 +331,7 @@ const {
 	mountRailProbe,
 	mountRouteDetail,
 	projectKeys,
+	onlineManager,
 	linkedProjectTotal,
 	useCanvasStore,
 	desktopRequestSchema,
@@ -378,6 +387,7 @@ const reset = () => {
 	features = { projects: 2, projects_by_session: 1 };
 	sessionRows = () => [row("canvas-alpha", { title: "Canvas alpha" })];
 	failSessionRead = false;
+	delaySessionRead = null;
 	failCapabilities = false;
 	desktopAvailable = true;
 	silentSessionFailure = false;
@@ -501,6 +511,10 @@ test("rows: title, status and the board's own meta formatters", async () => {
 
 test("a row opens the SAME detail screen, without quick-send, and back returns to the list", async () => {
 	reset();
+	sessionRows = () => [
+		row("canvas-alpha", { title: "Canvas alpha" }),
+		row("beta"),
+	];
 	await fresh((container) =>
 		mount(container, { sessionId: SESSION, nowMs: NOW_MS }),
 	);
@@ -682,6 +696,10 @@ test("focus follows the swap: open lands on the back link, back returns to the o
 
 test("the open project survives a remount (view switch / close-reopen) per conversation (U4)", async () => {
 	reset();
+	sessionRows = () => [
+		row("canvas-alpha", { title: "Canvas alpha" }),
+		row("beta"),
+	];
 	const props = {
 		sessionId: SESSION,
 		conversationId: CONVERSATION,
@@ -696,11 +714,20 @@ test("the open project survives a remount (view switch / close-reopen) per conve
 		"canvas-alpha",
 	);
 	/* Unmount + mount is what a view switch or close/reopen does to the viewer. */
+	const composer = document.createElement("textarea");
+	document.body.append(composer);
+	composer.focus();
 	await fresh((container) => mount(container, props));
 	await waitFor(
 		() => text().includes("Canvas list renders"),
 		"the same project, not the list",
 	);
+	assert.equal(
+		document.activeElement,
+		composer,
+		"restoration does not steal composer focus",
+	);
+	composer.remove();
 	/* Another conversation does not inherit it. */
 	await fresh((container) =>
 		mount(container, { ...props, conversationId: "agent-2" }),
@@ -713,7 +740,10 @@ test("the open project survives a remount (view switch / close-reopen) per conve
 
 test("a remembered project no longer linked here falls back to the list (U4)", async () => {
 	reset();
-	useCanvasStore.getState().setSelectedProject(CONVERSATION, "gone-project");
+	sessionRows = () => [];
+	useCanvasStore
+		.getState()
+		.setSelectedProject(CONVERSATION, "gone-project", SESSION);
 	await fresh((container) =>
 		mount(container, {
 			sessionId: SESSION,
@@ -721,15 +751,266 @@ test("a remembered project no longer linked here falls back to the list (U4)", a
 			nowMs: NOW_MS,
 		}),
 	);
-	await waitFor(
-		() => current.container.querySelector("[data-canvas-projects-list]"),
-		"the list",
-	);
+	await waitFor(() => text().includes("No linked projects"), "the empty state");
 	assert.equal(ops("projects.get").length, 0, "the stale record is never read");
 	assert.equal(
 		useCanvasStore.getState().conversations[CONVERSATION]?.selectedProjectId,
 		null,
 	);
+});
+
+/* Singleton navigation is derived from the settled linked read, never from
+   the rail count or an effect that could reopen the canvas after close. */
+const detailPane = () =>
+	current.container.querySelector("[data-canvas-project-detail]");
+const listPane = () =>
+	current.container.querySelector("[data-canvas-projects-list]");
+const props = {
+	sessionId: SESSION,
+	conversationId: CONVERSATION,
+	nowMs: NOW_MS,
+};
+const refreshLinks = async () => {
+	await act(async () => {
+		void current.handle.client.invalidateQueries({
+			queryKey: projectKeys.forSession(SESSION),
+		});
+	});
+	await tick();
+};
+const deferredLinks = () => {
+	let resolve;
+	delaySessionRead = () =>
+		new Promise((done) => {
+			resolve = done;
+		});
+	return async (entries, sessionId = SESSION) => {
+		assert.ok(resolve, "the delayed read started");
+		delaySessionRead = null;
+		await act(async () =>
+			resolve({
+				status: 200,
+				body: {
+					result: { session_id: sessionId, projects: entries },
+				},
+			}),
+		);
+		await tick();
+	};
+};
+
+test("singleton: authoritative one opens detail immediately without moving composer focus or chat scroll", async () => {
+	reset();
+	const composer = document.createElement("textarea");
+	const chat = document.createElement("div");
+	document.body.append(composer, chat);
+	composer.focus();
+	chat.scrollTop = 217;
+	await fresh((container) => mount(container, props));
+	await waitFor(
+		() => text().includes("Canvas list renders"),
+		"automatic singleton detail",
+	);
+	assert.ok(detailPane());
+	assert.equal(listPane(), null, "no redundant one-row chooser");
+	assert.equal(
+		document.activeElement,
+		composer,
+		"automatic entry never focuses the back link",
+	);
+	assert.equal(chat.scrollTop, 217);
+	assert.equal(
+		current.container.querySelector('[data-tour-tag="project-quick-send"]'),
+		null,
+	);
+	assert.ok(text().includes("Design") && text().includes("This chat"));
+	assert.equal(
+		Boolean(useCanvasStore.getState().conversations[CONVERSATION]?.isOpen),
+		false,
+		"loading links never opens the canvas store",
+	);
+	composer.remove();
+	chat.remove();
+});
+
+test("singleton: Back escapes across remount and unchanged refetch; changed links permit forwarding again", async () => {
+	reset();
+	await fresh((container) => mount(container, props));
+	await waitFor(() => text().includes("Canvas list renders"), "detail");
+	await click(buttonByText("Linked projects"));
+	assert.ok(listPane());
+	await refreshLinks();
+	await waitFor(() => listPane(), "Back survives unchanged refetch");
+	await fresh((container) => mount(container, props));
+	await waitFor(() => listPane(), "Back survives close/reopen");
+	sessionRows = () => [row("canvas-alpha"), row("beta")];
+	await refreshLinks();
+	await waitFor(
+		() =>
+			current.container.querySelectorAll("[data-canvas-project-row]").length ===
+			2,
+		"many",
+	);
+	sessionRows = () => [row("canvas-alpha")];
+	await refreshLinks();
+	await waitFor(() => detailPane(), "many to one forwards again");
+});
+
+test("singleton: automatic one to many chooses; explicit valid selection persists; deletion resolves remaining singleton", async () => {
+	reset();
+	await fresh((container) => mount(container, props));
+	await waitFor(() => detailPane(), "one detail");
+	sessionRows = () => [row("canvas-alpha"), row("beta")];
+	await refreshLinks();
+	await waitFor(() => listPane(), "automatic one to many chooser");
+	await click(
+		current.container.querySelector('[data-canvas-project-row="beta"]'),
+	);
+	await waitFor(() => detailPane(), "explicit beta");
+	sessionRows = () => [row("canvas-alpha"), row("beta"), row("gamma")];
+	await refreshLinks();
+	await waitFor(
+		() => detailPane(),
+		"valid explicit choice survives link change",
+	);
+	assert.equal(ops("projects.get").at(-1).key, "beta");
+	sessionRows = () => [row("gamma")];
+	await refreshLinks();
+	await waitFor(
+		() => ops("projects.get").at(-1)?.key === "gamma",
+		"deleted beta replaced by singleton",
+	);
+	sessionRows = () => [];
+	await refreshLinks();
+	await waitFor(
+		() => text().includes("No linked projects"),
+		"unlink last project",
+	);
+	assert.equal(detailPane(), null);
+});
+
+test("singleton: delayed authoritative read never treats a stale cached one as final", async () => {
+	reset();
+	const finish = deferredLinks();
+	await fresh((container) => mount(container, props, [row("canvas-alpha")]));
+	await waitFor(() => ops("projects.for_session").length > 0, "pending read");
+	assert.equal(detailPane(), null);
+	assert.equal(listPane(), null);
+	assert.equal(ops("projects.get").length, 0);
+	await finish([row("canvas-alpha"), row("beta")]);
+	await waitFor(() => listPane(), "authoritative many");
+	assert.equal(ops("projects.get").length, 0);
+});
+
+test("singleton: pending and failed revalidation cannot expose stale selected details", async () => {
+	reset();
+	await fresh((container) => mount(container, props));
+	await waitFor(() => detailPane(), "initial singleton");
+	const finish = deferredLinks();
+	await refreshLinks();
+	assert.equal(
+		detailPane(),
+		null,
+		"stale cached singleton hidden while refetch is unresolved",
+	);
+	assert.equal(listPane(), null);
+	await finish([row("canvas-alpha"), row("beta")]);
+	await waitFor(() => listPane(), "settled many");
+	await click(
+		current.container.querySelector('[data-canvas-project-row="canvas-alpha"]'),
+	);
+	await waitFor(() => detailPane(), "explicit selection");
+	failSessionRead = true;
+	await refreshLinks();
+	await waitFor(
+		() => text().includes("Linked projects could not be loaded"),
+		"failed revalidation",
+	);
+	assert.equal(
+		detailPane(),
+		null,
+		"error takes priority over stale linked data",
+	);
+	failSessionRead = false;
+	await click(buttonByText("Try again"));
+	await waitFor(() => detailPane(), "confirmed selection restored");
+});
+
+test("singleton: paused offline revalidation never authorizes the stale cached one (R1)", async () => {
+	reset();
+	await fresh((container) => mount(container, props));
+	await waitFor(() => detailPane(), "initial singleton");
+	const key = projectKeys.forSession(SESSION);
+	const reads = () => ops("projects.for_session").length;
+	try {
+		/* Offline + invalidate: TanStack parks the refetch as fetchStatus
+		   "paused" with isSuccess true and isFetching false on the cached
+		   singleton, the exact shape `!isFetching` mistook for settled. */
+		sessionRows = () => [row("canvas-alpha"), row("beta")];
+		const before = reads();
+		await act(async () => onlineManager.setOnline(false));
+		await refreshLinks();
+		const paused = current.handle.client.getQueryState(key);
+		assert.equal(paused.status, "success");
+		assert.equal(paused.fetchStatus, "paused");
+		assert.equal(reads(), before, "no confirming read ran while offline");
+		assert.equal(Boolean(detailPane()), false, "paused: stale detail hidden");
+		assert.equal(Boolean(listPane()), false, "paused: no stale chooser");
+
+		/* Resume: the parked read runs (pending/fetching keeps detail hidden)
+		   and only its settled idle singleton answer opens detail again. */
+		const finish = deferredLinks();
+		await act(async () => onlineManager.setOnline(true));
+		await waitFor(() => reads() > before, "resumed read started");
+		assert.equal(
+			current.handle.client.getQueryState(key).fetchStatus,
+			"fetching",
+		);
+		assert.equal(Boolean(detailPane()), false, "resumed but pending: hidden");
+		await finish([row("canvas-alpha")]);
+		await waitFor(() => detailPane(), "settled idle singleton opens detail");
+		assert.equal(current.handle.client.getQueryState(key).fetchStatus, "idle");
+
+		/* A failed read over the cached singleton is not authorization either. */
+		failSessionRead = true;
+		await refreshLinks();
+		await waitFor(
+			() => text().includes("Linked projects could not be loaded"),
+			"failed revalidation",
+		);
+		assert.equal(Boolean(detailPane()), false, "failed: stale detail hidden");
+	} finally {
+		failSessionRead = false;
+		onlineManager.setOnline(true);
+	}
+});
+
+test("singleton: same conversation key with a new backend session never inherits explicit choice or Back escape", async () => {
+	reset();
+	sessionRows = () => [row("canvas-alpha"), row("beta")];
+	await fresh((container) => mount(container, props));
+	await waitFor(() => listPane(), "first session list");
+	await click(
+		current.container.querySelector('[data-canvas-project-row="beta"]'),
+	);
+	await waitFor(() => detailPane(), "first session detail");
+	const finish = deferredLinks();
+	const nextSession = "bbbbbbbbbbbb";
+	await act(async () =>
+		current.handle.render({ ...props, sessionId: nextSession }),
+	);
+	await waitFor(
+		() => ops("projects.for_session").some((r) => r.sessionId === nextSession),
+		"new session read",
+	);
+	assert.equal(detailPane(), null);
+	await finish([row("canvas-alpha"), row("beta")], nextSession);
+	await waitFor(() => listPane(), "new backend session chooses independently");
+	await act(async () =>
+		current.handle.render({ ...props, conversationId: "agent-2" }),
+	);
+	await waitFor(() => listPane(), "switch conversation");
+	assert.equal(detailPane(), null);
 });
 
 test.after(async () => {

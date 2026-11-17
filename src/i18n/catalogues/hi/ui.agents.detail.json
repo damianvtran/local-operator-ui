@@ -67,5 +67,16 @@
 	"ui.agents.detail.action.creating": "बनाया जा रहा है…",
 	"ui.agents.detail.action.discard_new_agent": "यह नया एजेंट बनाना छोड़ दें?",
 	"ui.agents.detail.create.description_duplicate": "{name} की कॉपी। यह एक अलग एजेंट है: इसे बदलने से मूल एजेंट नहीं बदलता।",
-	"ui.agents.detail.create.description_new": "बार-बार इस्तेमाल होने वाले निर्देश, जिन्हें एजेंट कमांड, उप-एजेंट और टीमें साझा करती हैं। चैट अलग रहती हैं।"
+	"ui.agents.detail.create.description_new": "बार-बार इस्तेमाल होने वाले निर्देश, जिन्हें एजेंट कमांड, उप-एजेंट और टीमें साझा करती हैं। चैट अलग रहती हैं।",
+	"ui.agents.detail.create.error_generic": "एजेंट बनाया नहीं जा सका।",
+	"ui.agents.detail.create.error_instructions_required": "एजेंट के लिए निर्देश लिखें।",
+	"ui.agents.detail.create.error_name_grammar": "नामों में स्पेस या स्लैश नहीं हो सकते।",
+	"ui.agents.detail.create.error_name_required": "एजेंट का नाम लिखें।",
+	"ui.agents.detail.create.error_name_taken": "“{name}” नाम का एजेंट पहले से मौजूद है। दूसरा नाम चुनें या मौजूदा एजेंट खोलकर उसका नाम बदलें।",
+	"ui.agents.detail.create.title_duplicate": "नए एजेंट के रूप में कॉपी करें",
+	"ui.agents.detail.create.title_new": "नया एजेंट",
+	"ui.agents.detail.edit.error_generic": "एजेंट सहेजा नहीं जा सका।",
+	"ui.agents.detail.tools.error_grammar": "टूल के नाम में अक्षर, अंक, बिंदु (.), अंडरस्कोर (_), हाइफ़न (-) या कोलन (:) हो सकते हैं।",
+	"ui.agents.detail.tools.error_duplicate": "यह टूल पहले से सूचीबद्ध है।",
+	"ui.agents.detail.ask_change_prefill": "“{name}” एजेंट में बदलाव करें: "
 }

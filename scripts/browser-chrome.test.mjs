@@ -190,6 +190,10 @@ const bundle = await build({
 			// hook's callbacks and refs exist) without running effects, which is
 			// exactly what the rect scheduler needs to be observable. See the R4 test.
 			PROBE,
+			// The sidebar rows' height budget (PR #1933 design review D1), asserted
+			// against the window's minimum height below.
+			'export { ATTENTION_SECTION_MAX_PX, MAX_ATTENTION_ROWS } from "./src/renderer/src/features/browser/components/browser-attention-rows";',
+			'export { WINDOW_MIN_HEIGHT } from "./src/main/window-mode";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -240,6 +244,9 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const mod = await import(bundlePath.href);
 await unlink(bundlePath);
 const {
+	ATTENTION_SECTION_MAX_PX,
+	MAX_ATTENTION_ROWS,
+	WINDOW_MIN_HEIGHT,
 	renderBrowserChrome,
 	render,
 	el,
@@ -3621,6 +3628,183 @@ test("the rail's Browser item draws that count, with the number in its accessibl
 			markup.includes('aria-label="Browser, 3 waiting"'),
 			"and the control's own name carries the count, because the digit is not the only channel (spec 5.1) — including for the request no conversation owns",
 		);
+	} finally {
+		globalThis.window = previousWindow;
+	}
+});
+
+test("the browser's waits are sidebar notification rows and badge counts, not a view switch (operator report 2026-11-15)", async () => {
+	// "the browser is stealing the view": a passkey hold and an agent's popup used to
+	// pull the operator into the Browser. They are now rows under the destinations,
+	// naming what is needed, the site and the conversation, and the Browser badge
+	// counts them with the approvals. Rendering moves nothing: the route stub below is
+	// /chat, and the markup is the rail on that route.
+	const previousWindow = globalThis.window;
+	globalThis.window = {
+		location: { hash: "#/chat", pathname: "/chat" },
+		innerWidth: 1380,
+		api: {
+			browser: {
+				state: async () => ({
+					tabs: [
+						{
+							tabId: 1,
+							url: "https://login.microsoft.com/fido",
+							sessionId: null,
+							owner: "agent",
+							title: "",
+						},
+						{
+							tabId: 3,
+							url: "https://idp.example/authorize",
+							sessionId: null,
+							owner: "agent",
+							title: "",
+						},
+					],
+					pendingConsent: [
+						{ ...PENDING, entryId: "one", requesterSessionId: null },
+					],
+					waitingOnUser: [
+						{ kind: "passkey", tabId: 1, at: 10 },
+						{ kind: "popup", tabId: 3, at: 20 },
+					],
+					approvedGrants: [],
+				}),
+			},
+		},
+	};
+	try {
+		await refreshBrowserProjection();
+		const markup = render(
+			el(
+				QueryClientProvider,
+				{ client: new QueryClient() },
+				el(
+					MemoryRouter,
+					null,
+					el(ChatLayout, { sidebar: el(SidebarNavigation), content: null }),
+				),
+			),
+		);
+		assert.ok(
+			markup.includes('aria-label="Browser, 3 waiting"'),
+			"the badge counts the hold and the held popup with the approval",
+		);
+		// Two rows, then the fold (D1): the approval is the third wait, so it is
+		// counted by the badge and the "more" row rather than drawn.
+		for (const kind of ["passkey", "popup"])
+			assert.ok(
+				markup.includes(`data-browser-attention-row="${kind}"`),
+				`a ${kind} row is drawn`,
+			);
+		assert.ok(
+			!markup.includes('data-browser-attention-row="site-access"'),
+			"the third wait folds",
+		);
+		assert.ok(markup.includes("1 more in Browser"));
+		assert.ok(markup.includes("Password manager needs you"));
+		assert.ok(
+			markup.includes("A page opened a window"),
+			"a held popup is any window a page opened, not only sign-in (U1/D3)",
+		);
+		assert.ok(
+			markup.includes("login.microsoft.com"),
+			"the row names the site as a host",
+		);
+		// D2: a pointer user can read what the 220px column cuts, conversation first.
+		assert.match(
+			markup,
+			/title="Password manager needs you — An agent · login\.microsoft\.com"/,
+		);
+		// U4: the accessible name says the agent is paused for a passkey hold, and
+		// the polite live region is in the tree before anything arrives (a region
+		// only announces changes to a node that already exists).
+		assert.ok(
+			markup.includes(
+				"Password manager needs you on login.microsoft.com. An agent is paused until you respond. Open it.",
+			),
+		);
+		assert.match(
+			markup,
+			/<span data-browser-attention-announcer="" class="sr-only" aria-live="polite" aria-atomic="true">/,
+		);
+	} finally {
+		globalThis.window = previousWindow;
+	}
+});
+
+test("the waiting-on-you section never crowds out the chat list (PR #1933 design review D1)", async () => {
+	// Measured on the round-1 head: three two-line rows came to ~178px and left
+	// the chat list ONE row at a 680px preview, for as long as an agent waited.
+	// The budget is a quarter of the sidebar at the smallest window the app
+	// allows; the rows are single-line at the destinations' 32px pitch.
+	assert.equal(MAX_ATTENTION_ROWS, 2);
+	assert.ok(
+		ATTENTION_SECTION_MAX_PX <= WINDOW_MIN_HEIGHT / 4,
+		`${ATTENTION_SECTION_MAX_PX}px must fit a quarter of ${WINDOW_MIN_HEIGHT}px`,
+	);
+	const previousWindow = globalThis.window;
+	const tabs = [1, 2, 3, 4].map((tabId) => ({
+		tabId,
+		url: `https://site${tabId}.example/`,
+		sessionId: null,
+		owner: "agent",
+		title: "",
+	}));
+	globalThis.window = {
+		location: { hash: "#/chat", pathname: "/chat" },
+		innerWidth: 1380,
+		api: {
+			browser: {
+				state: async () => ({
+					tabs,
+					pendingConsent: [],
+					waitingOnUser: tabs.map(({ tabId }) => ({
+						kind: "popup",
+						tabId,
+						at: tabId,
+					})),
+					approvedGrants: [],
+				}),
+			},
+		},
+	};
+	try {
+		await refreshBrowserProjection();
+		const markup = render(
+			el(
+				QueryClientProvider,
+				{ client: new QueryClient() },
+				el(
+					MemoryRouter,
+					null,
+					el(ChatLayout, { sidebar: el(SidebarNavigation), content: null }),
+				),
+			),
+		);
+		const section = markup.slice(
+			markup.indexOf("<section data-browser-attention"),
+			markup.indexOf(
+				"</section>",
+				markup.indexOf("<section data-browser-attention"),
+			),
+		);
+		assert.match(
+			section,
+			/class="flex max-h-\[25dvh\] shrink-0 flex-col overflow-y-auto/,
+		);
+		assert.equal(
+			section.match(/data-browser-attention-row=/g)?.length,
+			2,
+			"four waits draw two rows",
+		);
+		for (const row of section.match(
+			/<button[^>]*data-browser-attention-row[^>]*>/g,
+		))
+			assert.match(row, /class="flex h-8 w-full items-center/, "one 32px line");
+		assert.match(section, /data-browser-attention-more="" class="flex h-6 /);
+		assert.ok(section.includes("2 more in Browser"));
 	} finally {
 		globalThis.window = previousWindow;
 	}

@@ -170,7 +170,17 @@ function splitLastGrapheme(text: string): [string, string] {
  */
 const DeliveryLine: FC<{ line: TeamBridgeDeliveryLine }> = ({ line }) => {
 	const text = deliveryLineText(line);
-	if (line.kind === "pending") return <>{text}</>;
+	/*
+	 * No info glyph on `pending` (nothing to explain) or on the sender's
+	 * `not_delivered` (#1928 round 1, S-1/D1/C1/R3, D2/C2). The sender line is
+	 * complete as it stands: any tip could only repeat it, and the shared
+	 * glyph's accessible name ("About message screening") told a screen-reader
+	 * sender the cause the hub deliberately withholds. With no button there is
+	 * no attribute left to leak one; a test walks every attribute of the
+	 * sender's rendered subtree to keep it that way.
+	 */
+	if (line.kind === "pending" || line.kind === "not_delivered")
+		return <>{text}</>;
 	const [head, last] = splitLastGrapheme(text);
 	/* The separator is a character of its own, so a CJK sentence can end flush
 	 * against the glyph without losing the space every other script needs. */
@@ -181,17 +191,19 @@ const DeliveryLine: FC<{ line: TeamBridgeDeliveryLine }> = ({ line }) => {
 			<span className="whitespace-nowrap">
 				{last}
 				{join}
-				<DeliveryInfo
-					text={
-						line.kind === "refused"
-							? t("ui.teamBridge.delivery.info_refused")
-							: t("ui.teamBridge.delivery.info_held")
-					}
-				/>
+				<DeliveryInfo text={deliveryInfoText(line.kind)} />
 			</span>
 		</>
 	);
 };
+
+function deliveryInfoText(
+	kind: Exclude<TeamBridgeDeliveryLine["kind"], "pending" | "not_delivered">,
+): string {
+	return kind === "refused"
+		? t("ui.teamBridge.delivery.info_refused")
+		: t("ui.teamBridge.delivery.info_held");
+}
 
 function deliveryLineText(line: TeamBridgeDeliveryLine): string {
 	/*
@@ -211,6 +223,10 @@ function deliveryLineText(line: TeamBridgeDeliveryLine): string {
 	};
 	if (line.kind === "pending") {
 		return t("ui.teamBridge.delivery.pending", params);
+	}
+	if (line.kind === "not_delivered") {
+		// THAT it was not delivered, never why: see the model's header.
+		return t("ui.teamBridge.delivery.not_delivered", params);
 	}
 	if (line.kind === "held") {
 		/* The coarse phase (cross-PR contract 2026-11-09) is the same bucket the

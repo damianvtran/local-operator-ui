@@ -1,6 +1,7 @@
 import { SettingsSection } from "@features/settings/components/settings-section";
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, waitFor } from "@storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
 import { MessageSquare } from "lucide-react";
 import allowlistFixture from "../../../../../scripts/fixtures/agent-messages-allowlist.json";
 import settingsFixture from "../../../../../scripts/fixtures/agent-messages-settings.json";
@@ -307,5 +308,175 @@ export const ShareTypingSwitch: Story = {
 			"agent-messages.share-typing",
 			"agent-messages.session",
 		]);
+	},
+};
+
+/*
+ * Screening model (local-operator #3632). The vetted list is the runtime's,
+ * served on the settings read; these stories use the four pairs it ships.
+ * Automatic (`preferred: null`) is the default and names the first model.
+ */
+const SCREENING_MODELS = [
+	["anthropic", "claude-sonnet-5-5"],
+	["radient", "anthropic/claude-sonnet-5.5"],
+	["anthropic", "claude-opus-5-5"],
+	["radient", "anthropic/claude-opus-5.5"],
+].map(([provider, model_id]) => ({
+	value: `${provider}/${model_id}`,
+	provider,
+	model_id,
+}));
+
+function screeningSettings(
+	preferred: string | null,
+	models = SCREENING_MODELS,
+	state: "active" | "paused" = "active",
+): AgentMessagesSettingsResult {
+	return { ...settingsWith(state), screening: { preferred, models } };
+}
+
+/* `local.enrolled: true`: this machine holds the endpoint, the only case the
+   row is offered in (#1928 round 1, S-2). */
+const screeningStatus = statusWith({
+	surface_state: "C",
+	local: { enabled: true, enrolled: true, session: "aaaaaaaaaaaa" },
+});
+
+/* The state-less local write (runtime #4066), echoing the stored block the
+   way the runtime answers, so a story save reads back like the real one. */
+function screeningApi(
+	settings: AgentMessagesSettingsResult,
+): AgentMessagesSettingsApi {
+	return {
+		...fakeApi(settings),
+		setScreeningModel: async (_account, value) => ({
+			preferred: value === "" ? null : value,
+			models: settings.screening?.models ?? [],
+		}),
+	};
+}
+
+const findScreeningRow = (canvasElement: HTMLElement) =>
+	waitFor(() => {
+		const row = canvasElement.querySelector<HTMLElement>(
+			"[data-agent-messages-screening-model]",
+		);
+		expect(row).not.toBeNull();
+		return row as HTMLElement;
+	});
+
+/** The default: Automatic, naming the first vetted model. */
+export const ScreeningModelAutomatic: Story = {
+	args: { status: screeningStatus, api: screeningApi(screeningSettings(null)) },
+	play: async ({ canvasElement }) => {
+		const row = await findScreeningRow(canvasElement);
+		expect(within(row).getByRole("combobox")).toHaveTextContent(
+			"anthropic/claude-sonnet-5-5",
+		);
+	},
+};
+
+/** The list open: Automatic first, then the vetted models only. */
+export const ScreeningModelOpen: Story = {
+	args: { status: screeningStatus, api: screeningApi(screeningSettings(null)) },
+	play: async ({ canvasElement }) => {
+		const row = await findScreeningRow(canvasElement);
+		await userEvent.click(within(row).getByRole("combobox"));
+		await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(5));
+	},
+};
+
+/** A chosen preference, read back from the runtime's answer. */
+export const ScreeningModelChosen: Story = {
+	args: {
+		status: screeningStatus,
+		api: screeningApi(screeningSettings("anthropic/claude-opus-5-5")),
+	},
+	play: async ({ canvasElement }) => {
+		const row = await findScreeningRow(canvasElement);
+		expect(within(row).getByRole("combobox")).toHaveTextContent(
+			"anthropic/claude-opus-5-5",
+		);
+	},
+};
+
+/** The runtime lists no models: a notice that screening still runs. */
+export const ScreeningModelUnavailable: Story = {
+	args: {
+		status: screeningStatus,
+		api: screeningApi(screeningSettings(null, [])),
+	},
+	play: async ({ canvasElement }) => {
+		const row = await findScreeningRow(canvasElement);
+		expect(within(row).queryByRole("combobox")).toBeNull();
+	},
+};
+
+/** A refused save: the section's shared refusal line, and the row re-reads
+ * settings so it shows the stored value (#1928 round 1, R2/S-4). */
+export const ScreeningModelSaveFailed: Story = {
+	args: {
+		status: screeningStatus,
+		api: {
+			...screeningApi(screeningSettings(null)),
+			setScreeningModel: async () => {
+				throw new DesktopControlError(
+					429,
+					"Too many requests",
+					undefined,
+					"rate_limited",
+				);
+			},
+		},
+	},
+	play: async ({ canvasElement }) => {
+		const row = await findScreeningRow(canvasElement);
+		await userEvent.click(within(row).getByRole("combobox"));
+		const option = await screen.findByRole("option", {
+			name: "anthropic/claude-opus-5-5",
+		});
+		await userEvent.click(option);
+		await waitFor(() =>
+			expect(within(row).getByRole("combobox")).not.toBeDisabled(),
+		);
+	},
+};
+
+/** A PAUSED endpoint this machine holds: the row is offered, and a save
+ * cannot resume it because the write carries no state (#1928 round 1, D4). */
+export const ScreeningModelPaused: Story = {
+	args: {
+		status: statusWith({
+			surface_state: "D",
+			local: { enabled: true, enrolled: true, session: "aaaaaaaaaaaa" },
+		}),
+		api: screeningApi(screeningSettings(null, SCREENING_MODELS, "paused")),
+	},
+	play: async ({ canvasElement }) => {
+		const row = await findScreeningRow(canvasElement);
+		expect(within(row).getByRole("combobox")).toBeEnabled();
+	},
+};
+
+/** The hub endpoint is active but THIS machine is not enrolled ("on
+ * elsewhere"): no Screening model row (#1928 round 1, S-2). */
+export const ScreeningModelNotEnrolledHere: Story = {
+	args: {
+		status: statusWith({
+			surface_state: "C",
+			local: { enabled: false, enrolled: false, session: "" },
+		}),
+		api: screeningApi(screeningSettings(null)),
+	},
+	play: async ({ canvasElement }) => {
+		await waitFor(() =>
+			expect(
+				// The reach editor renders once the settings read is ready.
+				canvasElement.querySelector("[data-agent-messages-allowlist]"),
+			).not.toBeNull(),
+		);
+		expect(
+			canvasElement.querySelector("[data-agent-messages-screening-model]"),
+		).toBeNull();
 	},
 };

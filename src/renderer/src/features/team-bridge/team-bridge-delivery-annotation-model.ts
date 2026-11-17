@@ -19,14 +19,20 @@ import type {
  * - an unknown `refusal_class` drops the parenthetical (the generic refusal);
  * - an unknown `hold_class` drops the reason (the generic hold).
  *
- * `not_delivered` IS A REFUSAL WITHOUT A CLASS. Since agent-server #377 the hub
- * serves a SENDER a recipient's moderation refusal as `state:"not_delivered"`
- * with no `refusal_class` (a neutral sender-side view); only the recipient
- * endpoint's owner still gets `refused` plus the class. Reading it as an unknown
- * state would drop the one line telling the sender WHICH recipient did not get
- * the message, so it renders and counts exactly like a classless `refused`.
- * Any class on it is ignored, never shown: the hub's contract is that the
- * sender gets none. An older hub never sends it, so nothing changes there.
+ * `not_delivered` IS THE SENDER'S NEUTRAL OUTCOME. Since agent-server #377 the
+ * hub serves a SENDER a recipient's refusal as `state:"not_delivered"` with no
+ * `refusal_class`; only the recipient endpoint's owner still gets `refused`
+ * plus the class. It counts exactly like a refusal (one terminal "not
+ * delivered"), but it is its OWN line kind so the sender's copy can say only
+ * THAT the recipient did not get the message, never why: no "moderation", no
+ * "refused", no rephrase coaching (design D1 on #1882). Two reasons. The hub's
+ * contract is that the sender learns no cause, and a cause-shaped sentence is
+ * an oracle a prober can iterate against; and if the hub ever emits
+ * `not_delivered` for a non-moderation cause, a moderation sentence would be
+ * false. Reading it as an unknown state would drop the one line telling the
+ * sender WHICH recipient missed the message (review R1-1 on agent-server #377),
+ * so it still renders, named. Any class on it is ignored, never shown. An older
+ * hub never sends it, so nothing changes there.
  *
  * SECURITY SHAPE. The line names the recipient agent, its owner and, at most,
  * ONE coarse class from a closed list. It never reads anything else off the
@@ -88,7 +94,10 @@ export type TeamBridgeDeliveryLine =
 			 * whose copy is more specific and wins unless the phase is stale. */
 			phase: TeamBridgeHoldPhase | null;
 	  }
-	| { kind: "pending"; key: string; agent: string; owner: string };
+	| { kind: "pending"; key: string; agent: string; owner: string }
+	/* The sender's neutral view of a refusal (agent-server #377): no class
+	 * field at all, so no renderer can show one by mistake. */
+	| { kind: "not_delivered"; key: string; agent: string; owner: string };
 
 const isRefusalClass = (value: unknown): value is TeamBridgeRefusalClass =>
 	(TEAM_BRIDGE_REFUSAL_CLASSES as readonly unknown[]).includes(value);
@@ -150,7 +159,10 @@ export function teamBridgeDeliveryLines(
 		const agent = entry.recipient_label.trim();
 		const owner = entry.recipient_owner_label.trim();
 		const key = `${entry.state}:${entry.endpoint_id}`;
-		if (isNotDelivered(entry.state)) {
+		if (entry.state === "not_delivered") {
+			seen.add(entry.endpoint_id);
+			lines.push({ kind: "not_delivered", key, agent, owner });
+		} else if (entry.state === "refused") {
 			seen.add(entry.endpoint_id);
 			lines.push({
 				kind: "refused",
@@ -158,9 +170,7 @@ export function teamBridgeDeliveryLines(
 				agent,
 				owner,
 				refusalClass:
-					entry.state === "refused" &&
-					knownHuman &&
-					isRefusalClass(entry.refusal_class)
+					knownHuman && isRefusalClass(entry.refusal_class)
 						? entry.refusal_class
 						: null,
 			});

@@ -245,7 +245,10 @@ const REAL_NOTARIZATION_REPORT = [
 	"Disk image notarized and stapled: /Users/runner/work/local-operator-ui/local-operator-ui/dist/local-operator-ui-0.30.15-x64.dmg",
 ];
 const REQUIRE_REPORT = /require-report\.sh/;
-const BYTECODE_CHECK_ID = /id: "app-bytecode-loadable"/;
+// Since F2 the check that loads the shipped bytecode is the launch probe (`app-spawn`
+// running `--lo-launch-probe`): its line is printed from the bundle's own
+// `index.jsc`, which replaced the node-mode `app-bytecode-loadable` row.
+const BYTECODE_CHECK_ID = /args: \[\s*LAUNCH_PROBE_FLAG,/;
 const FEED_SAVE = /merge-update-feed\.mjs[^\n]*--save/;
 const FEED_MERGE = /merge-update-feed\.mjs[^\n]*--merge/;
 
@@ -888,7 +891,7 @@ test("promoting a Release is unreachable without the macOS artifact gate", () =>
 	assert.match(
 		gateSource,
 		BYTECODE_CHECK_ID,
-		"verify-macos-artifacts no longer carries the app-bytecode-loadable probe, which is the only check that loads the bytecode a bundle ships.",
+		"verify-macos-artifacts no longer runs the --lo-launch-probe launch, which is the only check that loads the bytecode a bundle ships.",
 	);
 });
 

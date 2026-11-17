@@ -1,6 +1,6 @@
 {
   "name": "local-operator-ui",
-  "version": "0.57.4",
+  "version": "0.57.9",
   "productName": "Local Operator",
   "description": "User interface for AI agent assistants that run Python code safely on your device through an intuitive chat interface. Supports local and cloud LLM models with built-in security features.",
   "main": "./out/main/index.js",
@@ -209,6 +209,7 @@
     "mdast-util-math": "^3.0.0",
     "mermaid": "^11.6.0",
     "micromark-extension-math": "^3.1.0",
+    "pele": "1.13.0",
     "posthog-js": "^1.235.0",
     "radix-ui": "1.6.7",
     "pptx-browser": "4.1.5",
@@ -297,6 +298,17 @@
     },
     "afterSign": "scripts/notarize.js",
     "afterPack": "scripts/after-pack.mjs",
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "enableCookieEncryption": true,
+      "loadBrowserProcessSpecificV8Snapshot": false,
+      "grantFileProtocolExtraPrivileges": true,
+      "resetAdHocDarwinSignature": true
+    },
     "mac": {
       "icon": "build/icon.icns",
       "extraResources": [
@@ -334,7 +346,10 @@
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.inherit.plist",
+      "extendInfo": {
+        "LOAttestationEpoch": "1"
+      },
       "target": [
         {
           "target": "dmg"

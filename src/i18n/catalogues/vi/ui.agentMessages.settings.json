@@ -92,5 +92,11 @@
 	"ui.agentMessages.settings.action.turn_on_again": "Bật lần nữa",
 	"ui.agentMessages.settings.consent.via_default_on": "Bật theo mặc định",
 	"ui.agentMessages.settings.share_typing.label": "Hiển thị khi tôi đang nhập",
-	"ui.agentMessages.settings.share_typing.description": "Mọi người trong các cuộc trò chuyện Team Bridge của bạn sẽ thấy một dòng “đang nhập” ngắn khi bạn soạn tin. Nội dung bạn nhập không bao giờ được chia sẻ."
+	"ui.agentMessages.settings.share_typing.description": "Mọi người trong các cuộc trò chuyện Team Bridge của bạn sẽ thấy một dòng “đang nhập” ngắn khi bạn soạn tin. Nội dung bạn nhập không bao giờ được chia sẻ.",
+	"ui.agentMessages.settings.screening.title": "Mô hình sàng lọc",
+	"ui.agentMessages.settings.screening.help": "Không bắt buộc. Chọn mô hình mà máy này thử trước tiên khi sàng lọc tin nhắn từ tác nhân gửi đến. Nếu không kết nối được mô hình đó, mô hình không có sẵn cho tài khoản của bạn, hoặc hết hạn mức hay hết tín dụng, việc sàng lọc chuyển sang mô hình mặc định của máy này và các phương án dự phòng, nên Team Bridge vẫn tiếp tục hoạt động. Nếu nhà cung cấp chặn yêu cầu hoặc gặp lỗi nội bộ, thay vào đó tin nhắn gửi đến sẽ bị giữ lại, vì vậy hãy chọn mô hình mà tài khoản của bạn được phép dùng.",
+	"ui.agentMessages.settings.screening.automatic": "Tự động, bắt đầu với {model}",
+	"ui.agentMessages.settings.screening.unavailable": "Phiên bản Local Operator này không cho phép chọn mô hình sàng lọc. Việc sàng lọc vẫn dùng mô hình mặc định của máy này và các phương án dự phòng.",
+	"ui.agentMessages.settings.screening.route_provider": "qua tài khoản {provider} của bạn",
+	"ui.agentMessages.settings.screening.route_radient": "qua tài khoản Radient của bạn"
 }

@@ -1,0 +1,12 @@
+{
+	"ui.browser.attention.heading": "Đang chờ bạn",
+	"ui.browser.attention.passkey": "Trình quản lý mật khẩu cần bạn",
+	"ui.browser.attention.popup": "Một trang web đã mở cửa sổ",
+	"ui.browser.attention.site_access": "Yêu cầu truy cập trang web",
+	"ui.browser.attention.no_site": "Một trang",
+	"ui.browser.attention.open_label": "{need}: {site}, {session}. Mở.",
+	"ui.browser.attention.open_label_paused": "{need} trên {site}. {session} đang tạm dừng cho đến khi bạn phản hồi. Mở.",
+	"ui.browser.attention.more": "{count, plural, other {Thêm {countText} mục trong Trình duyệt}}",
+	"ui.browser.attention.announce": "{session} đang chờ bạn: {need}, {site}",
+	"ui.browser.attention.announce_paused": "{session} đang tạm dừng và chờ bạn: {need}, {site}"
+}

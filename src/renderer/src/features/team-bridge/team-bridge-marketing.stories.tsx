@@ -12,7 +12,7 @@
 import "../chat/components/story-electron-shim";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor, within } from "@storybook/test";
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeDirectoryMember,
@@ -466,11 +466,14 @@ const BASE: TeamBridgePageViewProps = {
 };
 
 function MarketingShell({ children }: { children: React.ReactNode }) {
+	const [draftReady, setDraftReady] = useState(false);
 	useLayoutEffect(() => {
-		/* THE COMPOSER DRAFT IS DURABLE, per account, scope and conversation, and
-		   Mention's play types "@" into qa-coordination's. Without this a later
-		   Channel or Thread load in the same browser showed that "@" (QA round 4
-		   Q11). Every scene starts empty; Mention types after this runs. */
+		/* The durable QA draft must be cleared BEFORE children initialize their
+		   composer state: a parent's layout effect alone runs too late. Q11's
+		   first Mention -> Channel transition retained "@" despite the reset.
+		   Gate the subtree until this scoped reset completes; layout effects
+		   release it before paint, and Mention's play types only after mount.
+		   Do not clear on every render or erase drafts for other conversations. */
 		useConversationInputStore
 			.getState()
 			.setComposerText(
@@ -481,6 +484,7 @@ function MarketingShell({ children }: { children: React.ReactNode }) {
 				),
 				"",
 			);
+		setDraftReady(true);
 	}, []);
 	useLayoutEffect(() => {
 		const root = document.documentElement;
@@ -503,6 +507,7 @@ function MarketingShell({ children }: { children: React.ReactNode }) {
 				delete root.dataset[key];
 		};
 	}, []);
+	if (!draftReady) return null;
 	return (
 		<div
 			className="relative flex flex-col overflow-hidden"

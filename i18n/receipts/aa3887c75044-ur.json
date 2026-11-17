@@ -1,0 +1,155 @@
+{
+	"schema": 1,
+	"agent": "i18n-auditor",
+	"session": "2b1d92514d9d",
+	"instance": "aa3887c75044-ur",
+	"model": "anthropic/claude-opus-5-5",
+	"requested_model": "anthropic/claude-opus-5-5",
+	"fallback": false,
+	"independence": "Independent auditor; did not author or modify any translations.",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "2b1d92514d9d",
+		"instance": "aa3887c75044-ur",
+		"model": "anthropic/claude-opus-5-5",
+		"requested_model": "anthropic/claude-opus-5-5",
+		"fallback": false,
+		"independence": "Independent auditor; did not author or modify any translations.",
+		"model_source": "Session system prompt: Model: anthropic/claude-opus-5-5; no model-switch notice during this audit.",
+		"independent_from_translator_session": true
+	},
+	"locale": "ur",
+	"date": "2026-11-15",
+	"head": "76a8ed3406 + uncommitted ur catalogue edits",
+	"branch": "feat/i18n-s18d-english-source",
+	"pr": "damianvtran/local-operator-ui#1922",
+	"scope": "Independent audit of exactly the 10 new ur keys (ui.chat.trace.reasoning.{label,with_duration}; ui.chat.attachments.not_viewable_too_large; ui.agents.detail.create.{title_new,title_duplicate,error_name_required,error_name_grammar,error_name_taken,error_instructions_required,error_generic}); existing values are terminology context only.",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"findings": {
+		"blocker": [],
+		"major": [],
+		"minor": [
+			{
+				"severity": "MINOR",
+				"key": "ui.agents.detail.create.error_name_grammar",
+				"message": "Same English (\"Names cannot contain spaces or slashes.\") and same rule as existing ur ui.agents.refusals.name_grammar = «ناموں میں خالی جگہ یا سلیش نہیں ہو سکتے۔», which the backend refusal path (backend-copy.ts:132) shows on this same form; new value «نام میں اسپیس یا سلیش نہیں ہو سکتے۔» uses اسپیس (vs خالی جگہ, also used by ui.agentMessages.settings.allowlist.identifier_invalid) and singular نام. Two wordings for one rule on one form. Suggest byte-identical: «ناموں میں خالی جگہ یا سلیش نہیں ہو سکتے۔»"
+			}
+		],
+		"nit": [
+			{
+				"severity": "NIT",
+				"key": "ui.agents.detail.create.title_duplicate",
+				"message": "«نئے ایجنٹ کے طور پر نقل بنائیں» vs the button that opens the form, ui.agents.detail.action.duplicate «نئے ایجنٹ کے طور پر نقل کریں»: verb differs (بنائیں/کریں) for near-identical English. Both read correctly; نقل بنائیں is arguably the better verb. Optional: align, or use a noun-phrase heading per sidecar («نئے ایجنٹ کے طور پر نقل»)."
+			},
+			{
+				"severity": "NIT",
+				"key": "ui.chat.attachments.not_viewable_too_large",
+				"message": "Sidecar: truncates with ellipsis on a narrow card. «فائل {name} پیش منظر کے لیے بہت بڑی ہے» puts the reason after a possibly long file name, so a narrow card can cut the reason (same risk as English, not a regression). Optional: reason-first like sibling not_viewable «…: {name}», e.g. «پیش منظر کے لیے بہت بڑی فائل: {name}»."
+			}
+		]
+	},
+	"kind": "independent_delta_i18n_audit",
+	"audit_kind": "linguistic_and_mechanical_delta",
+	"round": 1,
+	"checks": {
+		"placeholders": "byte-identical sets, each once: {label},{duration} / {name} / {name}",
+		"plural_cldr": "no plural/select in any of the 10 keys (none expected)",
+		"english_left": "none: only Latin in values is inside {placeholder} braces",
+		"bidi_controls": "none (no Cf chars); runtime src/i18n/bidi.ts isolateArguments FSI-wraps Latin {name}/{duration} values",
+		"keyset": "en/ur key sets equal in all 3 namespaces; no existing ur value changed vs origin/main",
+		"validators_run": "check-duplicates ok; context-parity ok; ledger-check FAILED only on stale hashes expected pre-ledger"
+	},
+	"audited_namespaces": [
+		"ui.chat.trace",
+		"ui.chat.attachments",
+		"ui.agents.detail"
+	],
+	"namespaces": {
+		"ui.chat.trace": {
+			"namespace": "ui.chat.trace",
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "147a8c429074d2edb65d6c2ce7818688e6035bc6fa3072d343111b8f615ace45",
+				"ur": "5016af01ff90bfacb7c5115d9d29fef1e55f9019dd7dcd926254656de92af0be"
+			},
+			"context_sha256": "473323333f9e25e6ee1edf599089ae36eaed04b4f5e1c6503de29bfb85818c4a",
+			"keys_read": 2,
+			"reviewed_keys": [
+				"ui.chat.trace.reasoning.label",
+				"ui.chat.trace.reasoning.with_duration"
+			],
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": []
+			}
+		},
+		"ui.chat.attachments": {
+			"namespace": "ui.chat.attachments",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"sha256": {
+				"en": "6a631b5377f126f0ac98019b3bba075f3b1dfb4d1f544c74fb3a6e0fa10a32f8",
+				"ur": "261443882c8d8c78567aac4b5fd2919f50c510c9d64d3f02c8b5be195c9eb81f"
+			},
+			"context_sha256": "96d2dcbb08fdae8fa6ad4071afa0dd495154d772a5bdc154ac174ad627b1a1ff",
+			"keys_read": 1,
+			"reviewed_keys": [
+				"ui.chat.attachments.not_viewable_too_large"
+			],
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": [
+					{
+						"severity": "NIT",
+						"key": "ui.chat.attachments.not_viewable_too_large",
+						"message": "Sidecar: truncates with ellipsis on a narrow card. «فائل {name} پیش منظر کے لیے بہت بڑی ہے» puts the reason after a possibly long file name, so a narrow card can cut the reason (same risk as English, not a regression). Optional: reason-first like sibling not_viewable «…: {name}», e.g. «پیش منظر کے لیے بہت بڑی فائل: {name}»."
+					}
+				]
+			}
+		},
+		"ui.agents.detail": {
+			"namespace": "ui.agents.detail",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"sha256": {
+				"en": "54d5d16e2bce91a8e6884e1e7e230884f2571927540c9badb8ae2fd58966625e",
+				"ur": "7c725d8415bcaeed224d5d450d92542a225b2ecfe89a636916b354e8506c84df"
+			},
+			"context_sha256": "60714c4d363a2eb3c0e818e42eaea94770f78a0d815c385ba1f54ab81f325db7",
+			"keys_read": 7,
+			"reviewed_keys": [
+				"ui.agents.detail.create.title_new",
+				"ui.agents.detail.create.title_duplicate",
+				"ui.agents.detail.create.error_name_required",
+				"ui.agents.detail.create.error_name_grammar",
+				"ui.agents.detail.create.error_name_taken",
+				"ui.agents.detail.create.error_instructions_required",
+				"ui.agents.detail.create.error_generic"
+			],
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [
+					{
+						"severity": "MINOR",
+						"key": "ui.agents.detail.create.error_name_grammar",
+						"message": "Same English (\"Names cannot contain spaces or slashes.\") and same rule as existing ur ui.agents.refusals.name_grammar = «ناموں میں خالی جگہ یا سلیش نہیں ہو سکتے۔», which the backend refusal path (backend-copy.ts:132) shows on this same form; new value «نام میں اسپیس یا سلیش نہیں ہو سکتے۔» uses اسپیس (vs خالی جگہ, also used by ui.agentMessages.settings.allowlist.identifier_invalid) and singular نام. Two wordings for one rule on one form. Suggest byte-identical: «ناموں میں خالی جگہ یا سلیش نہیں ہو سکتے۔»"
+					}
+				],
+				"nit": [
+					{
+						"severity": "NIT",
+						"key": "ui.agents.detail.create.title_duplicate",
+						"message": "«نئے ایجنٹ کے طور پر نقل بنائیں» vs the button that opens the form, ui.agents.detail.action.duplicate «نئے ایجنٹ کے طور پر نقل کریں»: verb differs (بنائیں/کریں) for near-identical English. Both read correctly; نقل بنائیں is arguably the better verb. Optional: align, or use a noun-phrase heading per sidecar («نئے ایجنٹ کے طور پر نقل»)."
+					}
+				]
+			}
+		}
+	}
+}

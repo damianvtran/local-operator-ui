@@ -1,3 +1,4 @@
+import type { WaitingOnUserInput } from "@shared/browser-user-attention";
 import { t } from "@shared/i18n";
 import { unwrapIpcErrorMessage } from "@shared/utils/ipc-error-message";
 import { showErrorToast } from "@shared/utils/toast-manager";
@@ -207,6 +208,11 @@ export interface BrowserChromeState {
 	/** Null while the active tab's last navigation succeeded, is still loading, or
 	 * has no document yet. */
 	navFailure: LoadFailureView | null;
+	/** What agent tabs are waiting on the user for, across ALL tabs: a passkey
+	 * custody hold or a held popup (`main/browser/user-attention.ts`). Drawn as
+	 * sidebar notification rows and counted in the Browser badge; nothing moves
+	 * the view until the user clicks one. Optional for a host that predates it. */
+	waitingOnUser?: WaitingOnUserInput[];
 }
 
 /** One transfer decision, as the host reports it.

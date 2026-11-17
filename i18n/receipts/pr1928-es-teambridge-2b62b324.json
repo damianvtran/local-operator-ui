@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of the 2 PR #1928 keys added in this namespace (scope: ui.teamBridge.delivery.not_delivered, ui.teamBridge.delivery.info_not_delivered; pre-existing keys byte-identical to merge-base 8dd26ed8b1 and out of scope)",
+  "locale": "es",
+  "namespace": "ui.teamBridge",
+  "pr": 1928,
+  "date": "2026-11-15",
+  "head": "b083a717ea3b5b70f9c2331a9e935c3312328d58",
+  "instance": "pr1928-es-teambridge-2b62b324",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team radientdev, task role); not the translator (coder job abe41ec364b7 (manager session 2c6111e02b16) on anthropic/claude-opus-5-5, no fallback)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 5bbe5f24d420: a different session and agent from the translator (coder job abe41ec364b7); same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. Judgement derived from English, the context sidecar and the shipped corpus (ui.teamBridge.delivery.*, ui.chat.pickers.failovers_panel.*); no MT or translation service used. Disclosure: the remediation lines of fixed findings (commit b083a717ea) were written by this auditor, so they are auditor-authored and re-bound here, not independently re-reviewed.",
+    "instance": "pr1928-es-teambridge-2b62b324"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.delivery.not_delivered",
+      "note": "Neutrality verified: the line is the first sentence of the shipped ui.teamBridge.delivery.refused value in this locale minus the reason sentence; no word for refused, blocked, moderated or screened, and no rephrase/retry advice, in either new key."
+    }
+  ],
+  "binding": "Verified at b083a717ea3b: target src/i18n/catalogues/es/ui.teamBridge.json (sha256 3a482af662b309770de2592fa4d514af600811836ff8761835687ae7702ff52f); English src/i18n/catalogues/en/ui.teamBridge.json (sha256 b152eb09f41f5764b52a278581c1888f8643c00b65837850673cd8b6d3655aa9); context sidecar sha256 1c93d373e182ecfe8148f3904a99fbf998456f1d682b1b2b13158ebc818f5239. Key set equals English. Checks (python): JSON valid, ICU argument names identical to English for every audited key ({recipient}/{model} intact and untranslated), values NFC, no Cf characters. not_delivered = 'Mensaje para {recipient} no entregado.' (38/29 chars) | info_not_delivered = 'Este destinatario no recibió el mensaje.' (40/42 chars)",
+  "scope": "ui.teamBridge for es: 2 PR #1928 round-1 keys at branch head b083a717ea3b",
+  "revisions": {
+    "head": "b083a717ea3b5b70f9c2331a9e935c3312328d58"
+  },
+  "en_sha256": "b152eb09f41f5764b52a278581c1888f8643c00b65837850673cd8b6d3655aa9",
+  "context_sha256": "1c93d373e182ecfe8148f3904a99fbf998456f1d682b1b2b13158ebc818f5239",
+  "target_sha256": "3a482af662b309770de2592fa4d514af600811836ff8761835687ae7702ff52f",
+  "sha256": {
+    "es": "3a482af662b309770de2592fa4d514af600811836ff8761835687ae7702ff52f",
+    "en": "b152eb09f41f5764b52a278581c1888f8643c00b65837850673cd8b6d3655aa9"
+  }
+}

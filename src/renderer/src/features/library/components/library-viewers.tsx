@@ -34,6 +34,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import * as XLSX from "xlsx";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
+import { remarkTableHtml } from "../../chat/utils/remark-table-html";
 import { isPathBacked } from "../hooks/use-library-file-watch";
 import {
 	useLibraryBytes,
@@ -675,7 +676,9 @@ const MarkdownAssetView: FC<{
 					{t("ui.library.preview.read_only_markdown")}
 				</p>
 				<div className="prose-lo max-w-none text-body text-ink">
-					<ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+					<ReactMarkdown remarkPlugins={[remarkGfm, remarkTableHtml]}>
+						{text}
+					</ReactMarkdown>
 				</div>
 			</div>
 		</div>

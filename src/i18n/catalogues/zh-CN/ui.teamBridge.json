@@ -328,6 +328,7 @@
 	"ui.teamBridge.delivery.refused_abusive": "未送达{recipient}：已被其审核拒绝（看起来像是辱骂性内容）",
 	"ui.teamBridge.delivery.refused_unsafe_content": "未送达{recipient}：已被其审核拒绝（看起来像是不安全的内容或链接）",
 	"ui.teamBridge.delivery.refused_out_of_scope": "未送达{recipient}：已被其审核拒绝（看起来像是超出该智能体处理范围的请求）",
+	"ui.teamBridge.delivery.not_delivered": "未送达{recipient}。",
 	"ui.teamBridge.delivery.held": "尚未送达{recipient}……",
 	"ui.teamBridge.delivery.held_screening": "尚未送达{recipient}。正在检查。",
 	"ui.teamBridge.delivery.held_screening_unavailable": "尚未送达{recipient}。暂时无法检查，正在自动重试。",

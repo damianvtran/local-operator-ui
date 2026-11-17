@@ -1,0 +1,126 @@
+{
+	"schema": 1,
+	"agent": "i18n-auditor",
+	"session": "129f72eb4ce1",
+	"instance": "52583bdfa254-zh-CN",
+	"model": "anthropic/claude-opus-5-5",
+	"requested_model": "anthropic/claude-opus-5-5",
+	"fallback": false,
+	"independence": "Independent auditor; did not author or modify any translations.",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "129f72eb4ce1",
+		"instance": "52583bdfa254-zh-CN",
+		"model": "anthropic/claude-opus-5-5",
+		"requested_model": "anthropic/claude-opus-5-5",
+		"fallback": false,
+		"independence": "Independent auditor; did not author or modify any translations.",
+		"independent_from_translator_session": true
+	},
+	"locale": "zh-CN",
+	"date": "2026-11-15",
+	"head": "76a8ed3406 + uncommitted zh-CN catalogue edits",
+	"branch": "feat/i18n-s18d-english-source",
+	"scope": "Independent audit of exactly the 10 new S18d zh-CN keys (ui.chat.trace.reasoning.{label,with_duration}; ui.chat.attachments.not_viewable_too_large; ui.agents.detail.create.{title_new,title_duplicate,error_name_required,error_name_grammar,error_name_taken,error_instructions_required,error_generic}); existing values used as terminology context only.",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"findings": {
+		"minor": [
+			{
+				"severity": "MINOR",
+				"key": "ui.agents.detail.create.error_name_grammar",
+				"message": "'名称不能包含空格或斜杠。' — in zh-CN 斜杠 reads as '/' only; 反斜杠 is a distinct term, yet agent-detail.tsx:1592 rejects /[\\\\/\\s]/ (backslash too), so a name with '\\' gets a message that does not name its cause. Suggest '名称不能包含空格、斜杠或反斜杠。'"
+			},
+			{
+				"severity": "MINOR",
+				"key": "ui.chat.trace.reasoning.with_duration",
+				"message": "'{label}，用时{duration}' is correct and placeholders intact, but neighbouring transcript keys use 耗时 with no comma (ui.chat.canonical.transcript.worked_for '工作耗时{duration}', turn_summary.took '耗时{duration}'). Suggest '{label}耗时{duration}' (推理耗时12s / 思考耗时12s) for consistency and a tighter row label."
+			}
+		],
+		"blocker": [],
+		"major": [],
+		"nit": []
+	},
+	"namespaces": {
+		"ui.chat.trace": {
+			"namespace": "ui.chat.trace",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"sha256": {
+				"en": "147a8c429074d2edb65d6c2ce7818688e6035bc6fa3072d343111b8f615ace45",
+				"zh-CN": "132254edbc63ab6c24d6a01ab0d3ac3895b1c2dddb7d86be6b0072165d3aa5e4"
+			},
+			"context_sha256": "473323333f9e25e6ee1edf599089ae36eaed04b4f5e1c6503de29bfb85818c4a",
+			"keys_read": 32,
+			"reviewed_keys": [
+				"ui.chat.trace.reasoning.label",
+				"ui.chat.trace.reasoning.with_duration"
+			],
+			"findings": {
+				"minor": [
+					{
+						"severity": "MINOR",
+						"key": "ui.chat.trace.reasoning.with_duration",
+						"message": "'{label}，用时{duration}' is correct and placeholders intact, but neighbouring transcript keys use 耗时 with no comma (ui.chat.canonical.transcript.worked_for '工作耗时{duration}', turn_summary.took '耗时{duration}'). Suggest '{label}耗时{duration}' (推理耗时12s / 思考耗时12s) for consistency and a tighter row label."
+					}
+				],
+				"blocker": [],
+				"major": [],
+				"nit": []
+			}
+		},
+		"ui.chat.attachments": {
+			"namespace": "ui.chat.attachments",
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "6a631b5377f126f0ac98019b3bba075f3b1dfb4d1f544c74fb3a6e0fa10a32f8",
+				"zh-CN": "f0798477ca6b503d3d17701323acbd82435b774477c0bbdaac7f6503e10ab8b2"
+			},
+			"context_sha256": "96d2dcbb08fdae8fa6ad4071afa0dd495154d772a5bdc154ac174ad627b1a1ff",
+			"keys_read": 27,
+			"reviewed_keys": [
+				"ui.chat.attachments.not_viewable_too_large"
+			],
+			"findings": {
+				"minor": [],
+				"blocker": [],
+				"major": [],
+				"nit": []
+			}
+		},
+		"ui.agents.detail": {
+			"namespace": "ui.agents.detail",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"sha256": {
+				"en": "54d5d16e2bce91a8e6884e1e7e230884f2571927540c9badb8ae2fd58966625e",
+				"zh-CN": "edc3b273ba8019e8c771c62d0d47039d8afd5ed39169cb9ff10d69c2e7b2eb89"
+			},
+			"context_sha256": "60714c4d363a2eb3c0e818e42eaea94770f78a0d815c385ba1f54ab81f325db7",
+			"keys_read": 76,
+			"reviewed_keys": [
+				"ui.agents.detail.create.title_new",
+				"ui.agents.detail.create.title_duplicate",
+				"ui.agents.detail.create.error_name_required",
+				"ui.agents.detail.create.error_name_grammar",
+				"ui.agents.detail.create.error_name_taken",
+				"ui.agents.detail.create.error_instructions_required",
+				"ui.agents.detail.create.error_generic"
+			],
+			"findings": {
+				"minor": [
+					{
+						"severity": "MINOR",
+						"key": "ui.agents.detail.create.error_name_grammar",
+						"message": "'名称不能包含空格或斜杠。' — in zh-CN 斜杠 reads as '/' only; 反斜杠 is a distinct term, yet agent-detail.tsx:1592 rejects /[\\\\/\\s]/ (backslash too), so a name with '\\' gets a message that does not name its cause. Suggest '名称不能包含空格、斜杠或反斜杠。'"
+					}
+				],
+				"blocker": [],
+				"major": [],
+				"nit": []
+			}
+		}
+	},
+	"checks": "JSON valid; key sets equal en (32/27/76); placeholders byte-identical; no Latin letters, bidi/format controls or NBSP; no plural/select; quotes U+201C/U+201D as in file; no CJK–{placeholder} spacing, matching file practice; check-strings.mjs ok; context-parity.mjs ok."
+}

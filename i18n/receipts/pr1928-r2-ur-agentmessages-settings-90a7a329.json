@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 2, PR #1928 (fresh auditor)",
+  "locale": "ur",
+  "namespace": "ui.agentMessages.settings",
+  "pr": 1928,
+  "date": "2026-11-15",
+  "head": "5e278359128c56de4faf43398a8b2b2055eb446d",
+  "instance": "pr1928-r2-ur-agentmessages-settings-90a7a329",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (team radientdev, task role); not the translators (coder jobs 610e98de331a and 4611f0d5274e (manager session 2c6111e02b16) re-drafted the changed/new keys; coder job abe41ec364b7 drafted the unchanged keys; all anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 619fdcf93ce8, a fresh task-agent instance: not the round-1 auditor (job c5c73f8c6c4b, session 5bbe5f24d420) and not any translator (coder jobs abe41ec364b7, 610e98de331a, 4611f0d5274e). Same served model family anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Judgement from English, the context sidecar and the shipped ui.teamBridge.delivery.* corpus; no MT used. This audit reviews the round-1 auditor's own fix lines (b083a717ea: vi not_delivered; screening term in es/fr/ru/hi/ur/zh-CN) as the separation step. Disclosure: this auditor's own fix lines (5e27835912, screening.help) are auditor-authored and still need a separate review by a different auditor.",
+    "instance": "pr1928-r2-ur-agentmessages-settings-90a7a329"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "MINOR",
+      "id": "I4",
+      "key": "ui.agentMessages.settings.screening.help",
+      "issue": "English says incoming messages are 'held instead' - the contrast that marks the block/internal-error case as NOT falling back. The translation dropped 'instead'.",
+      "fix": "… تو اس کے بجائے آنے والے پیغامات روک کر رکھے جاتے ہیں، …",
+      "fixed_in": "5e27835912",
+      "authored_by": "this auditor (needs separation review)"
+    },
+    {
+      "severity": "MINOR",
+      "id": "I5",
+      "key": "ui.agentMessages.settings.screening.help",
+      "issue": "'blocks' was 'روک دے' and 'held' was 'روک لیے جاتے ہیں' - one verb for the provider's block and the message hold.",
+      "fix": "'blocks' -> 'بلاک کر دے'; 'held' -> 'روک کر رکھے جاتے ہیں' (corpus root of held_awaiting_review 'روکا گیا ہے').",
+      "fixed_in": "5e27835912",
+      "authored_by": "this auditor (needs separation review)"
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.agentMessages.settings.screening.title",
+      "note": "Screening term 'جانچ' matches shipped held_screening/pending/info_held; title/help/unavailable consistent (round-1 auditor fix b083a717ea reviewed and accepted)."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.agentMessages.settings.screening.route_provider",
+      "note": "route_provider/route_radient parallel, {provider} intact, Radient untranslated; automatic keeps {model} as one unit; register matches the corpus."
+    }
+  ],
+  "audited_values": {
+    "ui.agentMessages.settings.screening.title": "جانچ ماڈل",
+    "ui.agentMessages.settings.screening.help": "اختیاری۔ آنے والے ایجنٹ پیغامات کی جانچ کرتے وقت یہ مشین سب سے پہلے کون سا ماڈل آزمائے، یہ چنتا ہے۔ اگر اس ماڈل تک رسائی نہ ہو سکے، وہ آپ کے اکاؤنٹ پر دستیاب نہ ہو، یا اس کا کوٹہ یا کریڈٹ ختم ہو جائے تو جانچ اس مشین کے ڈیفالٹ ماڈل اور اس کے فال بیکس پر چلی جاتی ہے، اس لیے Team Bridge کام کرتا رہتا ہے۔ اگر فراہم کنندہ درخواست بلاک کر دے یا کسی اندرونی خرابی سے ناکام ہو جائے تو اس کے بجائے آنے والے پیغامات روک کر رکھے جاتے ہیں، اس لیے ایسا ماڈل چنیں جسے استعمال کرنے کی آپ کے اکاؤنٹ کو اجازت ہو۔",
+    "ui.agentMessages.settings.screening.unavailable": "Local Operator کے اس ورژن میں جانچ ماڈل چننے کا اختیار نہیں ہے۔ جانچ اب بھی اس مشین کے ڈیفالٹ ماڈل اور اس کے فال بیکس پر چلتی ہے۔",
+    "ui.agentMessages.settings.screening.automatic": "خودکار، {model} سے شروع",
+    "ui.agentMessages.settings.screening.route_provider": "آپ کے {provider} اکاؤنٹ سے",
+    "ui.agentMessages.settings.screening.route_radient": "آپ کے Radient اکاؤنٹ سے"
+  },
+  "binding": "Verified at 5e278359128c: target src/i18n/catalogues/ur/ui.agentMessages.settings.json sha256 667f186c2cd66419a41fcbb808b85808911c7bee4d71165a35b38fce8785ddff; English src/i18n/catalogues/en/ui.agentMessages.settings.json sha256 3a69f5d8d73732cf7f0fb7fb09cc9cb28aca83b25499561590336ab5d4b651bf; context sha256 709ec9074196216a43f355474c8f2bf65fe7727a41fbfdc7ea567898d79cd569. Key set equals English; ICU placeholders identical to English.",
+  "scope": "PR #1928 round 2: ui.agentMessages.settings.screening.{title,help,unavailable,automatic,route_provider,route_radient}",
+  "en_sha256": "3a69f5d8d73732cf7f0fb7fb09cc9cb28aca83b25499561590336ab5d4b651bf",
+  "context_sha256": "709ec9074196216a43f355474c8f2bf65fe7727a41fbfdc7ea567898d79cd569",
+  "target_sha256": "667f186c2cd66419a41fcbb808b85808911c7bee4d71165a35b38fce8785ddff",
+  "sha256": {
+    "ur": "667f186c2cd66419a41fcbb808b85808911c7bee4d71165a35b38fce8785ddff",
+    "en": "3a69f5d8d73732cf7f0fb7fb09cc9cb28aca83b25499561590336ab5d4b651bf"
+  }
+}
