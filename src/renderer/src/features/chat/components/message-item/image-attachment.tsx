@@ -20,11 +20,7 @@ import {
 } from "../../utils/image-actions";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import { ImageActionsMenu } from "../image-actions-menu";
-import {
-	ATTACHMENT_UNAVAILABLE_COPY,
-	AttachmentFrame,
-	BrokenAttachment,
-} from "./attachment-frame";
+import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
 
 /**
  * Props for the ImageAttachment component (base)
@@ -625,7 +621,7 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 						fallback={
 							<BrokenAttachment
 								name={name}
-								detail={isLocalFile ? undefined : ATTACHMENT_UNAVAILABLE_COPY}
+								kind={isLocalFile ? undefined : "unavailable"}
 							/>
 						}
 					/>

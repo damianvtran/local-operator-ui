@@ -68,7 +68,7 @@
  * which is what lets the whole matrix be asserted without an Electron process.
  */
 
-import { t } from "@shared/i18n";
+import { isolateLtr, t } from "@shared/i18n";
 import { type TargetEvidence, normalizeFileUrl } from "./link-grammar";
 import {
 	MAX_EAGER_READ_BYTES,
@@ -773,16 +773,32 @@ const MISSING_NOTE_MAX_CHARS = 40;
  * The full path is still on the anchor above the strip and in `title`.
  */
 export function missingNote(target: string): { note: string; title: string } {
-	const title = `No file at ${target}`;
+	/* A path is LTR content inside a sentence that may be RTL; a no-op in LTR. */
+	const sentence = (path: string) =>
+		t("ui.chat.canonical.link_actions.missing_file", {
+			path: isolateLtr(path),
+		});
+	const title = sentence(target);
 	const base = baseName(target) || target;
 	const parts = target.split("/").filter(Boolean);
 	const directory = parts.length > 1 ? parts[parts.length - 2] : "";
-	const withDirectory = directory ? `No file at …/${directory}/${base}` : title;
+	const withDirectory = directory ? sentence(`…/${directory}/${base}`) : title;
 	return {
+		/*
+		 * The budget is measured on the WHOLE translated sentence, and the choice is
+		 * between two whole messages - never a slice of one - so a translation can
+		 * lengthen the frame around the path without this ever cutting a word. One
+		 * number serves every language on purpose: it is a character proxy for the
+		 * slot's pixel width, the catalogue context asks translators to keep the
+		 * frame short (about 16 characters), and a frame that is longer still lands
+		 * on the base-name-only message, which keeps the part that tells one missing
+		 * path from another; past that the slot's CSS ellipsis is the backstop,
+		 * exactly as it already is for an over-long English base name.
+		 */
 		note:
 			withDirectory.length <= MISSING_NOTE_MAX_CHARS
 				? withDirectory
-				: `No file at ${base}`,
+				: sentence(base),
 		title,
 	};
 }
@@ -832,16 +848,17 @@ export function linkToolbarModel(input: {
 }): LinkToolbarModel | null {
 	const { kind, target, probe, quotable, canOpenInCanvas } = input;
 	if (kind === "other") return null;
-	const leading = quotable ? [action("quote", "Quote")] : [];
-	const trailing = quotable ? [] : [action("quote", "Quote")];
+	const quote = t("ui.chat.canonical.link_actions.quote");
+	const leading = quotable ? [action("quote", quote)] : [];
+	const trailing = quotable ? [] : [action("quote", quote)];
 	const name = baseName(target) || target;
 
 	if (kind === "url") {
 		return {
 			actions: [
 				...leading,
-				action("copy", "Copy link"),
-				action("open", "Open in browser"),
+				action("copy", t("ui.chat.canonical.link_actions.copy_link")),
+				action("open", t("ui.chat.canonical.link_actions.open_in_browser")),
 				...trailing,
 			],
 			note: null,
@@ -860,7 +877,11 @@ export function linkToolbarModel(input: {
 	if (missing) {
 		const reason = missingNote(target);
 		return {
-			actions: [...leading, action("copy", "Copy path"), ...trailing],
+			actions: [
+				...leading,
+				action("copy", t("ui.chat.canonical.link_actions.copy_path")),
+				...trailing,
+			],
 			note: reason.note,
 			noteTitle: reason.title,
 			label: t("ui.chat.canonical.link_toolkit.actions_for", { name }),
@@ -879,6 +900,16 @@ export function linkToolbarModel(input: {
 		canOpenInCanvas,
 	});
 	/*
+	 * THE NOTE: the sentence a strip shows when the canvas is on offer for the TYPE but a press
+	 * would refuse this FILE.
+	 *
+	 * The note slot is the missing-path one's, and the reason it is reused rather than
+	 * a button being dropped silently is the reader's own expectation: the operator's
+	 * rule is that a supported file opens in the canvas, so a `.csv` with no canvas
+	 * button reads as a bug unless the strip says why. Sentence case, and short enough
+	 * to sit in the strip's own line, because it renders beside the buttons.
+	 */
+	/*
 	 * A file the canvas can show but the press will refuse for its size gets the
 	 * honest alternative and the sentence that explains it (round 3, U8a): the
 	 * no-canvas action shape, plus the same note slot the missing path uses. Without
@@ -889,29 +920,19 @@ export function linkToolbarModel(input: {
 	return {
 		actions: [
 			...leading,
-			action("copy", "Copy path"),
+			action("copy", t("ui.chat.canonical.link_actions.copy_path")),
 			...fileActions,
 			...trailing,
 		],
-		note: overCeiling ? TOO_LARGE_NOTE : null,
-		noteTitle: overCeiling ? TOO_LARGE_TITLE : null,
+		note: overCeiling
+			? t("ui.chat.canonical.link_actions.too_large_note")
+			: null,
+		noteTitle: overCeiling
+			? t("ui.chat.canonical.link_actions.too_large_title")
+			: null,
 		label: t("ui.chat.canonical.link_toolkit.actions_for", { name }),
 	};
 }
-
-/**
- * The sentence a strip shows when the canvas is on offer for the TYPE but a press
- * would refuse this FILE.
- *
- * The note slot is the missing-path one's, and the reason it is reused rather than
- * a button being dropped silently is the reader's own expectation: the operator's
- * rule is that a supported file opens in the canvas, so a `.csv` with no canvas
- * button reads as a bug unless the strip says why. Sentence case, and short enough
- * to sit in the strip's own line, because it renders beside the buttons.
- */
-const TOO_LARGE_NOTE = "Too large for the canvas preview";
-const TOO_LARGE_TITLE =
-	"Too large for the canvas preview, so Open uses the default app";
 
 /**
  * Whether the press on this path would REFUSE it for the read ceiling.
@@ -975,7 +996,9 @@ function actionListFor(input: {
 	probe: ProbedTarget;
 	canOpenInCanvas: boolean;
 }): LinkAction[] {
-	if (input.isDirectory) return [action("open", "Open")];
+	const open = t("ui.chat.canonical.link_actions.open");
+	const openFolder = t("ui.chat.canonical.link_actions.open_folder");
+	if (input.isDirectory) return [action("open", open)];
 	/*
 	 * Where the app can show the file itself, the canvas is what `Open` means and
 	 * the OS gets a press of its own: the operator's ask is that a supported file
@@ -986,10 +1009,13 @@ function actionListFor(input: {
 	 */
 	if (canvasActionFor(input)) {
 		return [
-			action("open", "Open in canvas"),
-			action("open-default", "Open in default app"),
-			action("open-folder", "Open folder"),
+			action("open", t("ui.chat.canonical.link_actions.open_in_canvas")),
+			action(
+				"open-default",
+				t("ui.chat.canonical.link_actions.open_in_default_app"),
+			),
+			action("open-folder", openFolder),
 		];
 	}
-	return [action("open", "Open"), action("open-folder", "Open folder")];
+	return [action("open", open), action("open-folder", openFolder)];
 }

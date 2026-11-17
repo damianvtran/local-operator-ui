@@ -3,7 +3,10 @@ import type {
 	TranscriptRecord,
 	TranscriptState,
 } from "../../canonical/transcript-reducer";
-import type { WorkingLineState } from "../../canonical/working-line-model";
+import type {
+	WorkingActivity,
+	WorkingLineState,
+} from "../../canonical/working-line-model";
 
 /**: the arithmetic behind the header popover.
  *
@@ -587,13 +590,28 @@ export const deriveChildWorkingLine = (
 	// The label the relay would have sent for this state, and the phase the
 	// classification reads: see the docstring on why the fallback is classified
 	// rather than the raw field.
-	const activity = row.activity || "thinking";
+	const wire = row.activity || "thinking";
+	// Only the two words the relay's own constants (`ACTIVITY_THINKING`,
+	// `ACTIVITY_RESPONDING`) put on the wire are KEYED, so the reader speaks the
+	// viewer's language for them exactly as the parent line does. Everything else
+	// the relay can send - a tool's `running <name>`, a batch's `running N tools`,
+	// the model's own intent - is shown as the wire wrote it (`text`): the
+	// roster row above the reader prints the same string, and re-deriving a
+	// translation from English words would be guessing at a vocabulary this side
+	// does not own. The phase classification reads the same two words, so it is
+	// unchanged by the keying.
+	const activity: WorkingActivity =
+		wire === "thinking"
+			? { kind: "thinking" }
+			: wire === "responding"
+				? { kind: "responding" }
+				: { kind: "text", text: wire };
 	return {
 		activity,
 		phase:
-			activity === "thinking"
+			activity.kind === "thinking"
 				? "thinking"
-				: activity === "responding"
+				: activity.kind === "responding"
 					? "responding"
 					: "running",
 		// No anchor for this phase exists on the wire, so this row carries no

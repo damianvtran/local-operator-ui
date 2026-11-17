@@ -54,12 +54,24 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { WorkingLine } from "./${trace}working-line";
-			export {
-				deriveWorkingLine,
+			/*
+			 * The ladder answers a rung plus arguments (\`WorkingActivity\`); this suite
+			 * pins its ENGLISH, so it reads the state, and the two exported rungs,
+			 * through the shipped resolver (\`scripts/working-line-english.ts\`). The
+			 * literals below are unchanged from before the words were keyed.
+			 */
+			import {
+				deriveWorkingLine as rawDeriveWorkingLine,
 				workingLineInputFor,
-				ADMITTED_SEND_ACTIVITY,
-				STARTING_SESSION_ACTIVITY,
+				ADMITTED_SEND_ACTIVITY as ADMITTED_RUNG,
+				STARTING_SESSION_ACTIVITY as STARTING_RUNG,
 			} from "./${canonical}working-line-model";
+			import { english, englishState } from "./scripts/working-line-english";
+			export { workingLineInputFor };
+			export const deriveWorkingLine = (...args) =>
+				englishState(rawDeriveWorkingLine(...args));
+			export const ADMITTED_SEND_ACTIVITY = english(ADMITTED_RUNG);
+			export const STARTING_SESSION_ACTIVITY = english(STARTING_RUNG);
 		`,
 		loader: "tsx",
 		resolveDir: process.cwd(),
@@ -627,7 +639,7 @@ async function fixture({ startedAt, now }, run) {
 			await act(() =>
 				root.render(
 					h(WorkingLine, {
-						activity: "running bash",
+						activity: { kind: "text", text: "running bash" },
 						phase: nextPhase,
 						...(anchor === undefined ? {} : { startedAt: anchor }),
 						...(nextClock === undefined ? {} : { clock: nextClock }),

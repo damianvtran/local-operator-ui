@@ -62,10 +62,7 @@ import { ImageLightbox } from "@shared/components/common/image-lightbox";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type ReactNode, useEffect } from "react";
 import "../../../../styles/index.css";
-import {
-	ATTACHMENT_UNAVAILABLE_COPY,
-	BrokenAttachment,
-} from "./attachment-frame";
+import { BrokenAttachment } from "./attachment-frame";
 import { ImageAttachment } from "./image-attachment";
 
 /**
@@ -291,12 +288,7 @@ const FailedOverlay = () => {
 				label="Screenshot"
 				open={true}
 				onOpenChange={() => {}}
-				fallback={
-					<BrokenAttachment
-						name="Screenshot"
-						detail={ATTACHMENT_UNAVAILABLE_COPY}
-					/>
-				}
+				fallback={<BrokenAttachment name="Screenshot" kind="unavailable" />}
 			/>
 		</div>
 	);

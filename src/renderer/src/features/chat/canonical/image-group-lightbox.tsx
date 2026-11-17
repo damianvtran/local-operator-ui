@@ -64,7 +64,6 @@ import {
 	useState,
 } from "react";
 import {
-	ATTACHMENT_UNAVAILABLE_COPY,
 	AttachmentFrame,
 	BrokenAttachment,
 	RetryableAttachment,
@@ -509,7 +508,7 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 				source.state === "retryable" ? (
 					<RetryableAttachment name={label} onRetry={source.retry} />
 				) : (
-					<BrokenAttachment name={label} detail={ATTACHMENT_UNAVAILABLE_COPY} />
+					<BrokenAttachment name={label} kind="unavailable" />
 				)
 			}
 			layerRef={layerRef}

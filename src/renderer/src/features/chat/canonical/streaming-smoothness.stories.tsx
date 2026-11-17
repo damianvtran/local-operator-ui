@@ -1149,7 +1149,10 @@ function Frame({
 							awaitingHydration={false}
 							onReconnect={() => {}}
 							workingLine={{
-								activity: "Working on the synthetic fixture",
+								activity: {
+									kind: "text",
+									text: "Working on the synthetic fixture",
+								},
 								phase: "thinking",
 								clock: false,
 							}}

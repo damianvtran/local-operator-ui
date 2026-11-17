@@ -2143,7 +2143,10 @@ test("a child reader's null snapshot is not a gap: its settle releases the fold 
 	const live = {
 		frontend: null,
 		status: "live",
-		workingLine: { activity: "running", phase: "running" },
+		workingLine: {
+			activity: { kind: "text", text: "running" },
+			phase: "running",
+		},
 	};
 	const child = await mount(t, records, live);
 	assert.ok(
@@ -3809,7 +3812,7 @@ for (const isSmallView of [false, true])
 		const frontend = { session_id: `synthetic-active-${isSmallView}` };
 		const phase = {
 			phase: "thinking",
-			activity: "thinking",
+			activity: { kind: "thinking" },
 			startedAt: Date.now() - 8000,
 			clock: true,
 		};
@@ -3872,7 +3875,11 @@ test("active summary keeps legacy unanchored clock at footer; known current phas
 	const rows = activeSourceRows();
 	const mounted = await mount(t, rows, {
 		waiting: true,
-		workingLine: { phase: "thinking", activity: "thinking", clock: true },
+		workingLine: {
+			phase: "thinking",
+			activity: { kind: "thinking" },
+			clock: true,
+		},
 	});
 	assert.ok(bar(mounted).querySelector("[data-lo-working-line]") === null);
 	assert.ok(
@@ -3894,7 +3901,7 @@ test("active summary keeps legacy unanchored clock at footer; known current phas
 		hasMore: true,
 		workingLine: {
 			phase: "thinking",
-			activity: "thinking",
+			activity: { kind: "thinking" },
 			clock: true,
 			startedAt: since,
 		},

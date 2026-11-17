@@ -73,7 +73,6 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-	AUDIO_UNAVAILABLE_COPY,
 	BrokenAttachment,
 	RetryableAttachment,
 } from "../components/message-item/attachment-frame";
@@ -330,7 +329,7 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 					</span>
 				))}
 			{source.state === "missing" ? (
-				<BrokenAttachment name={label} detail={AUDIO_UNAVAILABLE_COPY} />
+				<BrokenAttachment name={label} kind="media_unavailable" />
 			) : source.state === "retryable" ? (
 				<RetryableAttachment name={label} onRetry={source.retry} />
 			) : source.state === "resolving" ? (

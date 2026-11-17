@@ -3243,6 +3243,166 @@
 			"name": "file basename or URL; insert verbatim"
 		}
 	},
+	"ui.chat.canonical.working_line.thinking": {
+		"role": "working-line label while the model is working and nothing has been written yet",
+		"tone": "lower-case machine-voice status phrase, no ellipsis, no trailing punctuation",
+		"length": "Short; one slot on the transcript's working line, which truncates with an ellipsis when narrow and sits beside a seconds clock.",
+		"note": "The harness reporting its own state on the live working line at the foot of the transcript, not the app narrating: keep it lower-case where the language has case, and keep it one word where the language allows. A model call is in flight; not a claim that text is arriving (that is `responding`).",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.working_line.responding": {
+		"role": "working-line label while the model's reply text is actually streaming",
+		"tone": "lower-case machine-voice status phrase, no ellipsis, no trailing punctuation",
+		"length": "Short; one slot on the transcript's working line, which truncates with an ellipsis when narrow and sits beside a seconds clock.",
+		"note": "The harness reporting its own state on the live working line at the foot of the transcript, not the app narrating: keep it lower-case where the language has case, and keep it one word where the language allows. Used only once prose is arriving; before that the line says `thinking`.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.working_line.waiting_for_agent": {
+		"role": "working-line label for a message the app has sent and that has produced nothing yet",
+		"tone": "lower-case machine-voice status phrase, no ellipsis, no trailing punctuation",
+		"length": "Short; one slot on the transcript's working line, which truncates with an ellipsis when narrow and sits beside a seconds clock.",
+		"note": "The harness reporting its own state on the live working line at the foot of the transcript, not the app narrating: keep it lower-case where the language has case, and state only the waiting. Do not name the runtime or the model.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.working_line.starting_session": {
+		"role": "working-line label while the app is creating the conversation's session before the message can be sent",
+		"tone": "lower-case machine-voice status phrase, no ellipsis, no trailing punctuation",
+		"length": "Short; one slot on the transcript's working line, which truncates with an ellipsis when narrow and sits beside a seconds clock.",
+		"note": "The harness reporting its own state on the live working line at the foot of the transcript, not the app narrating: keep it lower-case where the language has case, and state the action literally. Shares one running clock with `waiting_for_agent`, so the two may differ in wording but must stay short.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.working_line.compacting": {
+		"role": "working-line label while the harness compacts (summarises and shrinks) the conversation's context",
+		"tone": "lower-case machine-voice status phrase, no ellipsis, no trailing punctuation",
+		"length": "Short; one slot on the transcript's working line, which truncates with an ellipsis when narrow and sits beside a seconds clock.",
+		"note": "The harness reporting its own state on the live working line at the foot of the transcript, not the app narrating: keep it lower-case where the language has case, matching the terminal app's own phrase for the same state. 'context' is the model's working memory for this conversation, not the screen.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.working_line.stopping": {
+		"role": "working-line label after the user pressed Stop and the running turn has not yet stopped",
+		"tone": "lower-case machine-voice status phrase, no ellipsis, no trailing punctuation",
+		"length": "Short; one slot on the transcript's working line, which truncates with an ellipsis when narrow and sits beside a seconds clock.",
+		"note": "The harness reporting its own state on the live working line at the foot of the transcript, not the app narrating: keep it lower-case where the language has case, and keep the in-progress sense. 'turn' is one run of the agent answering a message.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.working_line.running_tool": {
+		"role": "working-line label while exactly one tool call is running and it stated no purpose of its own",
+		"tone": "lower-case machine-voice status phrase, no ellipsis, no trailing punctuation",
+		"length": "Short; one slot on the transcript's working line, which truncates with an ellipsis when narrow and sits beside a seconds clock.",
+		"note": "The harness reporting its own state on the live working line at the foot of the transcript, not the app narrating: keep it lower-case where the language has case, with the tool name inserted verbatim.",
+		"placeholders": {
+			"tool": "the tool's name (an identifier such as bash or read_file), shown verbatim and never translated; the code wraps it in a directional isolate"
+		}
+	},
+	"ui.chat.canonical.working_line.running_tools": {
+		"role": "working-line label while several tool calls run together (a batch)",
+		"tone": "lower-case machine-voice status phrase, no ellipsis, no trailing punctuation",
+		"length": "Short; one slot on the transcript's working line, which truncates with an ellipsis when narrow and sits beside a seconds clock.",
+		"note": "The harness reporting its own state on the live working line at the foot of the transcript, not the app narrating: keep it lower-case where the language has case, with the count as a digit. Provide every plural category the language has. In practice the count is always 2 or more, but keep the singular arm.",
+		"placeholders": {
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
+		}
+	},
+	"ui.chat.canonical.working_line.composing": {
+		"role": "working-line label while the model is still writing the request for one or more tool calls",
+		"tone": "lower-case machine-voice status phrase, no ellipsis, no trailing punctuation",
+		"length": "Short; one slot on the transcript's working line, which truncates with an ellipsis when narrow and sits beside a seconds clock.",
+		"note": "The harness reporting its own state on the live working line at the foot of the transcript, not the app narrating: keep it lower-case where the language has case, with the count as a digit. 'call' is one tool call the model is about to make. Provide every plural category the language has; the singular arm reads 'a call'.",
+		"placeholders": {
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
+		}
+	},
+	"ui.chat.canonical.working_line.queued": {
+		"role": "working-line label while tool calls have been written but have not started, because an earlier call is still running",
+		"tone": "lower-case machine-voice status phrase, no ellipsis, no trailing punctuation",
+		"length": "Short; one slot on the transcript's working line, which truncates with an ellipsis when narrow and sits beside a seconds clock.",
+		"note": "The harness reporting its own state on the live working line at the foot of the transcript, not the app narrating: keep it lower-case where the language has case, with the count as a digit. 'call' is one tool call. Provide every plural category the language has; the singular arm reads 'a call'. This label carries no clock.",
+		"placeholders": {
+			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
+			"count_display": "Raw display string from String(count), preserving the original JavaScript interpolation without grouping or rounding. Keep count numeric for CLDR plural selection; do not number-format count_display."
+		}
+	},
+	"ui.chat.canonical.link_actions.quote": {
+		"role": "button that quotes the selected link or file path into the composer",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Short; a small button in the link strip under a message.",
+		"note": "Appears first when the reader has highlighted text inside the link. Same meaning as the transcript selection menu's Quote. Shown as a one-line label in the link strip under a message; it is both the visible text and the tooltip and accessible name, so keep it short and sentence case.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.link_actions.copy_link": {
+		"role": "button that copies a web link's address to the clipboard",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Short; a small button in the link strip under a message.",
+		"note": "The link is an http(s) address. Shown as a one-line label in the link strip under a message; it is both the visible text and the tooltip and accessible name, so keep it short and sentence case.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.link_actions.open_in_browser": {
+		"role": "button that opens a web link in the user's browser",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Short; a small button in the link strip under a message.",
+		"note": "Same meaning as the image menu's Open in browser. Shown as a one-line label in the link strip under a message; it is both the visible text and the tooltip and accessible name, so keep it short and sentence case.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.link_actions.copy_path": {
+		"role": "button that copies a local file or folder path to the clipboard",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Short; a small button in the link strip under a message.",
+		"note": "The path is on this computer. Shown as a one-line label in the link strip under a message; it is both the visible text and the tooltip and accessible name, so keep it short and sentence case.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.link_actions.open": {
+		"role": "button that opens a local file or folder with the app's default handling",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Short; a small button in the link strip under a message.",
+		"note": "Shown alone when the app cannot preview the file itself, and for folders; where the app can preview the file, `open_in_canvas` is used instead. Shown as a one-line label in the link strip under a message; it is both the visible text and the tooltip and accessible name, so keep it short and sentence case.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.link_actions.open_in_canvas": {
+		"role": "button that opens a local file in the app's own canvas viewer",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Short; a small button in the link strip under a message.",
+		"note": "'canvas' is the app's side pane for viewing and editing files; keep whatever word the translated app uses for it elsewhere. Shown as a one-line label in the link strip under a message; it is both the visible text and the tooltip and accessible name, so keep it short and sentence case.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.link_actions.open_in_default_app": {
+		"role": "button that hands a local file to the operating system's default application",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Short; a small button in the link strip under a message.",
+		"note": "Same meaning as the canvas viewer's Open in default app. Shown as a one-line label in the link strip under a message; it is both the visible text and the tooltip and accessible name, so keep it short and sentence case.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.link_actions.open_folder": {
+		"role": "button that shows the folder containing a local file in the file manager",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Short; a small button in the link strip under a message.",
+		"note": "Same meaning as the canvas file list's Open folder. Shown as a one-line label in the link strip under a message; it is both the visible text and the tooltip and accessible name, so keep it short and sentence case.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.link_actions.too_large_note": {
+		"role": "short note beside the link strip when a file is over the size the canvas will read",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "Short; it shares the strip's line with the buttons (about 38 Latin characters wide) and truncates with an ellipsis.",
+		"note": "Says why the strip offers `Open` (the operating system) instead of `Open in canvas`. The sentence may be shortened by the strip's width, but is never cut by code.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.link_actions.too_large_title": {
+		"role": "tooltip and accessible name that expand `too_large_note` with its consequence",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "One short sentence; it has the room the visible note does not.",
+		"note": "Begins with the same words as `too_large_note` and adds what the Open button now does. Keep the two consistent.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.link_actions.missing_file": {
+		"role": "note beside the link strip saying that the path a link names does not exist on this computer",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "The visible note is budgeted to 40 characters INCLUDING the path: if the version with a directory does not fit, the code switches to the version with only the file name (a whole message each time, never cut mid-word). Keep the words around {path} as short as the language allows (about 16 characters or fewer); the full path always remains in the tooltip.",
+		"note": "Used for the visible note, the tooltip and the accessible name. The reader is told the path names nothing rather than left to think the app is broken.",
+		"placeholders": {
+			"path": "a file path or a shortened form of one ('…/folder/file.pdf' or 'file.pdf'), shown verbatim and never translated; the code wraps it in a directional isolate"
+		}
+	},
 	"ui.chat.canonical.tool.never_sent_composed": {
 		"role": "one-line status of a tool call that never reached a tool, after the model had already written part of its request",
 		"tone": "terse lower-case status line, no trailing punctuation; the middle dot is a separator between status and detail",

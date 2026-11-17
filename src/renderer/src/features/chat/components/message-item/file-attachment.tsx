@@ -12,11 +12,7 @@ import { getFileTypeFromPath } from "../../utils/file-types";
 import { getFileName } from "../../utils/get-file-name";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import { isSpreadsheetFile } from "../../utils/is-spreadsheet-file";
-import {
-	ATTACHMENT_UNAVAILABLE_COPY,
-	AttachmentFrame,
-	BrokenAttachment,
-} from "./attachment-frame";
+import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
 /**
  * Props for the FileAttachment component (base)
  */
@@ -373,12 +369,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 								 * copy is the honest sentence here — the split
 								 * `canonical-image.tsx` makes for the same reason.
 								 */
-								fallback={
-									<BrokenAttachment
-										name={name}
-										detail={ATTACHMENT_UNAVAILABLE_COPY}
-									/>
-								}
+								fallback={<BrokenAttachment name={name} kind="unavailable" />}
 							/>
 						</>
 					)}

@@ -2243,18 +2243,24 @@ export const MixedProseCodeAndTables: Story = {
 export const WorkingLabels: Story = {
 	render: () => (
 		<div className="flex flex-col gap-4 p-8">
-			<WorkingLine activity="thinking" phase="thinking" />
-			<WorkingLine activity="responding" phase="responding" />
-			<WorkingLine activity="composing a call" phase="composing" />
+			<WorkingLine activity={{ kind: "thinking" }} phase="thinking" />
+			<WorkingLine activity={{ kind: "responding" }} phase="responding" />
+			<WorkingLine
+				activity={{ kind: "composing", count: 1 }}
+				phase="composing"
+			/>
 			{/* The model's own stated intent, when it wrote one — this is why the
 			    label is not the word "working". */}
 			<WorkingLine
-				activity="Auditing tickets against merged MRs"
+				activity={{ kind: "text", text: "Auditing tickets against merged MRs" }}
 				phase="running"
 			/>
 			{/* A batch drops the intents for a COUNT: presenting one call's purpose
 			    as the whole batch's activity is a claim the rows above contradict. */}
-			<WorkingLine activity="running 3 tools" phase="running" />
+			<WorkingLine
+				activity={{ kind: "running_tools", count: 3 }}
+				phase="running"
+			/>
 		</div>
 	),
 };

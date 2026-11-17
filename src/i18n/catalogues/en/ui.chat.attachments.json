@@ -25,5 +25,8 @@
 	"ui.chat.attachments.owner_unreachable": "couldn't be fetched from the device that holds it.",
 	"ui.chat.attachments.retry_fetch": "Retry",
 	"ui.chat.attachments.not_viewable_detail": "{name} is not viewable (file may be incomplete, deleted, or moved)",
-	"ui.chat.attachments.not_viewable_too_large": "{name} is too large to preview"
+	"ui.chat.attachments.not_viewable_too_large": "{name} is too large to preview",
+	"ui.chat.attachments.broken_moved": "{name} could not be displayed. It may have been moved, renamed, or deleted.",
+	"ui.chat.attachments.broken_unavailable": "{name} could not be displayed. Its stored copy is not available to this reader.",
+	"ui.chat.attachments.broken_media_unavailable": "{name} could not be played. Its stored copy is not available to this reader."
 }
