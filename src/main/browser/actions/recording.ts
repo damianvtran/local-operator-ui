@@ -1295,6 +1295,20 @@ export function discardRecordingForCustody(webContentsId: number): void {
 	if (recording && !stopping) void endReplaced(recording);
 }
 
+/**
+ * Whether a recording is running, stopping or starting (reserved) on this tab.
+ * The tab reaper (`tab-reaper.ts`) must never close a tab mid-recording: the
+ * agent's `record_stop` would lose the file, and the idle clock does not tick
+ * on a recording's frames.
+ */
+export function isRecordingTab(webContentsId: number): boolean {
+	if (recordings.has(webContentsId)) return true;
+	for (const reservation of reservations.values())
+		if (reservation.webContentsId === webContentsId && !reservation.cancelled)
+			return true;
+	return false;
+}
+
 /** Finalize at most once per recording, and share the result. */
 function finish(
 	webContentsId: number,

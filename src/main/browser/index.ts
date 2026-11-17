@@ -42,7 +42,10 @@ import {
 	focusBrowserChordTarget,
 	presentPopupWindow,
 } from "../window-raise";
-import { discardRecordingForCustody } from "./actions/recording";
+import {
+	discardRecordingForCustody,
+	isRecordingTab,
+} from "./actions/recording";
 import {
 	createRecordingEncoderService,
 	disposeAllRecordingEncoders,
@@ -177,6 +180,11 @@ import {
 	stateFilePath,
 } from "./state-file";
 import {
+	REAP_SWEEP_INTERVAL_MS,
+	type RosterRow,
+	TabReaper,
+} from "./tab-reaper";
+import {
 	HeldPopups,
 	type UserAttentionEntry,
 	createCustodyAttention,
@@ -247,6 +255,14 @@ export interface StartBrowserHostOptions {
 	 * consent banner when nobody is at the screen (design 11.4).
 	 */
 	windowShow: "focus" | "inactive" | "never";
+	/**
+	 * The daemon's session roster (`backend-service.ts` `servingSessionFleet`),
+	 * or null when it cannot be read. The agent-tab reaper reads it to close tabs
+	 * whose owning session's runtime is gone (`tab-reaper.ts`): the loopback RPC is
+	 * stateless, so this is the only session-ended signal the host has. Optional —
+	 * absent, only the idle rule reaps.
+	 */
+	readSessionRoster?: () => Promise<readonly RosterRow[] | null>;
 	/**
 	 * The app's vetted door to the OS URL handlers (`openVettedExternal` bound to
 	 * `shell.openExternal`, in `src/main/index.ts`). Injected rather than imported
@@ -1714,6 +1730,8 @@ async function initializeBrowserHost(
 		 * callback re-pushes the expiry-aware count with no extra traffic.
 		 */
 		let approvalsExpiryTimer: ReturnType<typeof setTimeout> | null = null;
+		// Assigned once the reaper is wired below; the stop path clears its sweep.
+		let stopTabReaper = (): void => {};
 		let syncApprovalsOverlay = (): void => {};
 		const approvals = new ApprovalStore({
 			dir: join(options.userDataDir, "browser"),
@@ -1737,6 +1755,41 @@ async function initializeBrowserHost(
 			},
 			log,
 		});
+		// Agent-tab reaper (`tab-reaper.ts` has the why): closes agent tabs whose
+		// session ended or that sat idle, and makes room at the cap by evicting the
+		// stalest. Every "a person or command is still using this" fact is read from
+		// the state that already owns it, so there is no second notion of busy.
+		const tabReaper = new TabReaper({
+			registry,
+			guards: {
+				userEngaged: (record) =>
+					registry.activeTab === record ||
+					heldPopups.entries().some((entry) => entry.tabId === record.tabId),
+				inCustody: (record) =>
+					passkeyCustody.isHeld(record.view.webContents.id),
+				busy: (record) => registry.isBusy(record.tabId),
+				recording: (record) => isRecordingTab(record.view.webContents.id),
+				sessionAwaitingUser: (sessionId) =>
+					approvals
+						.pendingEntries()
+						.some((entry) => sessionRequesterOf(entry.requester) === sessionId),
+			},
+			reap: (record, reason) => {
+				const token = surfaceToken(record);
+				if (token) approvals.forgetDocument(token);
+				registry.reap(record.tabId, reason);
+			},
+			readRoster: options.readSessionRoster,
+			log,
+		});
+		registry.setCapacityEvictor(() => tabReaper.evictForCapacity());
+		const tabReapTimer = setInterval(
+			() => void tabReaper.sweep().catch(() => {}),
+			REAP_SWEEP_INTERVAL_MS,
+		);
+		tabReapTimer.unref?.();
+		rollback.add(() => clearInterval(tabReapTimer));
+		stopTabReaper = () => clearInterval(tabReapTimer);
 		syncApprovalsOverlay = () => {
 			// The app icon uses this SAME expiry clock even without an overlay.
 			// No parallel timer/renderer lifetime or second approval model.
@@ -2371,6 +2424,7 @@ async function initializeBrowserHost(
 				// The overlay child goes before the page views: its webContents is a
 				// child of the same window, and disposal is idempotent with rollback.
 				addressOverlay?.dispose("host-stop");
+				stopTabReaper();
 				if (approvalsExpiryTimer) {
 					clearTimeout(approvalsExpiryTimer);
 					approvalsExpiryTimer = null;

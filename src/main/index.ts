@@ -5107,6 +5107,10 @@ app
 					// the screen, and re-deciding it there would be a second policy beside
 					// `window-mode.ts`.
 					windowShow: windowLaunch.show,
+					// The daemon's roster, for the agent-tab reaper's session-ended rule
+					// (`src/main/browser/tab-reaper.ts`). The same read the update gate
+					// makes; null on any failure, which the reaper treats as no evidence.
+					readSessionRoster: () => backendService.servingSessionFleet(),
 					// The vetted door to the OS's URL handlers, for the passkey notice's
 					// "Open in system browser" (see `src/main/browser/passkey-notice.ts`).
 					openExternal: openExternalVetted,
