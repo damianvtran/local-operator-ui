@@ -1,0 +1,25 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "c7b72ef216da-fr-chat-canonical-r2",
+  "auditor_session": "c7b72ef216da",
+  "status": "passed",
+  "namespace": "ui.chat.canonical",
+  "locale": "fr",
+  "sha256": {
+    "en": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+    "fr": "620d4ab2d3db4a9c16b64c62fdd44c4e44ff55fe65b1b7f06e835db435319877"
+  },
+  "findings": [],
+  "audit_date": "2026-11-10",
+  "serialized_at": "2026-11-11T04:31:56Z",
+  "serialization": "portable copy of the actual audit findings; not a new review, not backdated",
+  "independence": "not translator sessions f1932d263d6c, ebb1d6beb853, f940 (translation lane); did not read first auditor 567a24a88e45",
+  "source_audit": {
+    "record": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-audit2/fr-delta-audit.json",
+    "record_sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763",
+    "prior_record_sha256": "6e521a9d16092557a9d95881d2a34ef9ec34dc0ea6abf08f28cacf7ee7f6e20d",
+    "history": "FR-1 MAJOR at prior fr 933bc72d… (round 2 second audit) resolved by fr 620d4ab2…; delta audit found 0 findings"
+  },
+  "method": "source-only; rendering/RTL/fit not proven"
+}

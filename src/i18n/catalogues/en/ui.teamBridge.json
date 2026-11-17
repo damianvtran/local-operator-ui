@@ -328,6 +328,7 @@
 	"ui.teamBridge.delivery.refused_abusive": "Not delivered to {recipient}: refused by their moderation (looked like abusive content)",
 	"ui.teamBridge.delivery.refused_unsafe_content": "Not delivered to {recipient}: refused by their moderation (looked like unsafe content or links)",
 	"ui.teamBridge.delivery.refused_out_of_scope": "Not delivered to {recipient}: refused by their moderation (looked like a request outside what this agent handles)",
+	"ui.teamBridge.delivery.not_delivered": "Not delivered to {recipient}.",
 	"ui.teamBridge.delivery.held": "Not delivered to {recipient} yet…",
 	"ui.teamBridge.delivery.held_screening": "Not delivered to {recipient} yet. It is being screened.",
 	"ui.teamBridge.delivery.held_screening_unavailable": "Not delivered to {recipient} yet. It could not be screened; retrying automatically.",

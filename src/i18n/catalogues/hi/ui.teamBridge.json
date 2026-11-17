@@ -328,6 +328,7 @@
 	"ui.teamBridge.delivery.refused_abusive": "{recipient} तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया (अपमानजनक सामग्री जैसा लगा)",
 	"ui.teamBridge.delivery.refused_unsafe_content": "{recipient} तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया (असुरक्षित सामग्री या लिंक जैसा लगा)",
 	"ui.teamBridge.delivery.refused_out_of_scope": "{recipient} तक नहीं पहुँचा: उनके मॉडरेशन ने अस्वीकार कर दिया (इस एजेंट के दायरे से बाहर के अनुरोध जैसा लगा)",
+	"ui.teamBridge.delivery.not_delivered": "{recipient} तक नहीं पहुँचा।",
 	"ui.teamBridge.delivery.held": "{recipient} तक अभी नहीं पहुँचा…",
 	"ui.teamBridge.delivery.held_screening": "{recipient} तक अभी नहीं पहुँचा। इसकी जाँच जारी है।",
 	"ui.teamBridge.delivery.held_screening_unavailable": "{recipient} तक अभी नहीं पहुँचा। जाँच नहीं हो सकी; अपने-आप दोबारा कोशिश की जा रही है।",

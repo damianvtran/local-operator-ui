@@ -328,6 +328,7 @@
 	"ui.teamBridge.delivery.refused_abusive": "Không được chuyển tới {recipient}: bị bộ kiểm duyệt của họ từ chối (có vẻ là nội dung lăng mạ)",
 	"ui.teamBridge.delivery.refused_unsafe_content": "Không được chuyển tới {recipient}: bị bộ kiểm duyệt của họ từ chối (có vẻ là nội dung hoặc liên kết không an toàn)",
 	"ui.teamBridge.delivery.refused_out_of_scope": "Không được chuyển tới {recipient}: bị bộ kiểm duyệt của họ từ chối (có vẻ là một yêu cầu nằm ngoài phạm vi của tác nhân này)",
+	"ui.teamBridge.delivery.not_delivered": "Không chuyển được tới {recipient}.",
 	"ui.teamBridge.delivery.held": "Chưa được chuyển tới {recipient}…",
 	"ui.teamBridge.delivery.held_screening": "Chưa được chuyển tới {recipient}. Đang sàng lọc.",
 	"ui.teamBridge.delivery.held_screening_unavailable": "Chưa được chuyển tới {recipient}. Chưa thể sàng lọc; đang tự động thử lại.",

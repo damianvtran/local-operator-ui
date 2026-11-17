@@ -1254,7 +1254,12 @@ the update card - are not solid: the operator reported them as opaque plates ove
 translucent column (#1706), so they take the floating layer's derived translucency
 (`--lo-glass-a-overlay`) behind a 12px backdrop blur, which is what keeps the
 column under them from reading through. Their edge on glass is § 2's contact
-shadow, darkened, never a stroke. A panel's own *frame* (the Schedules list, the Agent hub category
+shadow, darkened, never a stroke. The exception is a panel over a live page:
+while the browser draws its picture of the page under an open overlay
+(`data-browser-live-composite` on the root), these panels take the opaque plate
+(`--lo-glass-a-overlay` pinned to 1 on the root), because the page is an opaque
+arbitrary ground, not the app's column, and the muted ink on the translucent
+panel fell to 3.36:1 over a white page. A panel's own *frame* (the Schedules list, the Agent hub category
 rail) is a surface and goes glass; the cards inside it are blocks (tints). The
 canvas, ask, run-detail, console and code-review panes are text-bearing panes: on
 glass their ROOT is the pane ground and every plane inside them is clear or a

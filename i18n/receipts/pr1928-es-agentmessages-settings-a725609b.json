@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of the 4 PR #1928 keys added in this namespace (scope: ui.agentMessages.settings.screening.title, ui.agentMessages.settings.screening.help, ui.agentMessages.settings.screening.automatic, ui.agentMessages.settings.screening.unavailable; pre-existing keys byte-identical to merge-base 8dd26ed8b1 and out of scope)",
+  "locale": "es",
+  "namespace": "ui.agentMessages.settings",
+  "pr": 1928,
+  "date": "2026-11-15",
+  "head": "b083a717ea3b5b70f9c2331a9e935c3312328d58",
+  "instance": "pr1928-es-agentmessages-settings-a725609b",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team radientdev, task role); not the translator (coder job abe41ec364b7 (manager session 2c6111e02b16) on anthropic/claude-opus-5-5, no fallback)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 5bbe5f24d420: a different session and agent from the translator (coder job abe41ec364b7); same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. Judgement derived from English, the context sidecar and the shipped corpus (ui.teamBridge.delivery.*, ui.chat.pickers.failovers_panel.*); no MT or translation service used. Disclosure: the remediation lines of fixed findings (commit b083a717ea) were written by this auditor, so they are auditor-authored and re-bound here, not independently re-reviewed.",
+    "instance": "pr1928-es-agentmessages-settings-a725609b"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "id": "I3",
+      "severity": "MINOR",
+      "key": "ui.agentMessages.settings.screening.title",
+      "keys": [
+        "ui.agentMessages.settings.screening.title",
+        "ui.agentMessages.settings.screening.help",
+        "ui.agentMessages.settings.screening.unavailable"
+      ],
+      "issue": "Term for 'screening' diverged from every shipped Team Bridge line for the same act (Se está analizando / Analizado: ui.teamBridge.delivery.held_screening, .pending, .info_held). Owners see those lines for the step this setting controls, so the setting must use the same word.",
+      "disposition": "fixed in b083a717ea ('filtrado/filtra' -> 'análisis/analiza')"
+    }
+  ],
+  "binding": "Verified at b083a717ea3b: target src/i18n/catalogues/es/ui.agentMessages.settings.json (sha256 7facca8eb1ecd92b6bcd58806ed28bf51bb52a453a29ceb009b0761c0ccb36c1); English src/i18n/catalogues/en/ui.agentMessages.settings.json (sha256 dcd5cf5a347565133dfd3447915132a25b0adf8e8d5e2d4ccd800ba8064ab46f); context sidecar sha256 9d93a962644c1a01ca7a22893b225934062786f63fff608e2ceba0c732721711. Key set equals English. Checks (python): JSON valid, ICU argument names identical to English for every audited key ({recipient}/{model} intact and untranslated), values NFC, no Cf characters. title = 'Modelo de análisis' (18/15 chars) | help = 'Opcional. Elige qué modelo analiza primero los mensajes de agente entrantes en esta máquina. Si ese modelo no está disponible o se queda sin cuota, el análisis pasa al modelo predeterminado de esta máquina y a sus alternativas, así que Team Bridge sigue funcionando.' (266/226 chars) | automatic = 'Automático, empezando por {model}' (33/32 chars) | unavailable = 'Esta versión de Local Operator no ofrece modelos de análisis para elegir. El análisis sigue usando el modelo predeterminado de esta máquina y sus alternativas.' (159/140 chars)",
+  "scope": "ui.agentMessages.settings for es: 4 PR #1928 round-1 keys at branch head b083a717ea3b",
+  "revisions": {
+    "head": "b083a717ea3b5b70f9c2331a9e935c3312328d58"
+  },
+  "en_sha256": "dcd5cf5a347565133dfd3447915132a25b0adf8e8d5e2d4ccd800ba8064ab46f",
+  "context_sha256": "9d93a962644c1a01ca7a22893b225934062786f63fff608e2ceba0c732721711",
+  "target_sha256": "7facca8eb1ecd92b6bcd58806ed28bf51bb52a453a29ceb009b0761c0ccb36c1",
+  "sha256": {
+    "es": "7facca8eb1ecd92b6bcd58806ed28bf51bb52a453a29ceb009b0761c0ccb36c1",
+    "en": "dcd5cf5a347565133dfd3447915132a25b0adf8e8d5e2d4ccd800ba8064ab46f"
+  }
+}

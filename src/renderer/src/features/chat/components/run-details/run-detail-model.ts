@@ -936,7 +936,7 @@ const wireNumber = (value: unknown): number | null => {
  * a single space and control characters are dropped — the same boundary the
  * TUI's `clean_intent` runs before painting intent text.
  */
-const oneLine = (text: string): string =>
+export const oneLine = (text: string): string =>
 	text
 		// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping them is the point
 		.replace(/[\u0000-\u001f\u007f]+/g, " ")

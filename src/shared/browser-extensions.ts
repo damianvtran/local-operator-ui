@@ -64,6 +64,13 @@ export interface ExtensionSummary {
 	/** Pages the extension asked to show while the app was not focused, queued
 	 * until the user next opens it (review U1). Count only; URLs stay in main. */
 	waitingPages: number;
+	/** Desktop apps (native messaging hosts) the user allowed this extension to
+	 * talk to; each can be revoked from the details page. */
+	nativeHosts: { name: string; description: string }[];
+	/** Desktop apps refused this session ("Don't allow" or Revoke). Shown as
+	 * "Not allowed" with "Ask again", which only clears the refusal: the next
+	 * attempt still goes through the native consent sheet. */
+	refusedHosts: { name: string; description: string }[];
 }
 
 /** An install in progress, before the consent dialog (review U5). No name yet:
@@ -97,7 +104,13 @@ export type ExtensionsRequest =
 	/** Reload an enabled extension whose worker was not ready (review U7). */
 	| { op: "retry"; id: string }
 	| { op: "check-updates" }
-	| { op: "cancel"; id: string };
+	| { op: "cancel"; id: string }
+	/** Withdraw the extension's consent for one desktop app; main also closes
+	 * any live connection to it. */
+	| { op: "revoke-native-host"; id: string; host: string }
+	/** Forget this session's refusal of one desktop app. Grants nothing: the
+	 * extension's next attempt asks through the native consent sheet. */
+	| { op: "clear-native-refusal"; id: string; host: string };
 
 export interface ExtensionsResponse {
 	extensions: ExtensionSummary[];
@@ -108,6 +121,11 @@ export interface ExtensionsResponse {
 	/** Installs downloading/verifying right now (any op's response carries it). */
 	installing?: ExtensionInstallProgress[];
 }
+
+/** Chrome's native messaging host name grammar (lowercase dotted
+ * identifiers). The patched library enforces the same rule before any host
+ * lookup; main re-checks it on every grant read and revoke request. */
+export const NATIVE_HOST_NAME = /^[a-z0-9_]+(\.[a-z0-9_]+)*$/;
 
 /** Strict decoder: closed op set, exact field set, id regex. Returns null for
  * anything else so the IPC handler can reject without interpreting it. */
@@ -138,6 +156,15 @@ export function decodeExtensionsRequest(
 				typeof value.enabled === "boolean"
 				? { op: "set-enabled", id: value.id, enabled: value.enabled }
 				: null;
+		case "revoke-native-host":
+		case "clear-native-refusal":
+			return keys === "host,id,op" &&
+				isExtensionId(value.id) &&
+				typeof value.host === "string" &&
+				value.host.length <= 255 &&
+				NATIVE_HOST_NAME.test(value.host)
+				? { op: value.op, id: value.id, host: value.host }
+				: null;
 		default:
 			return null;
 	}
@@ -161,9 +188,12 @@ export function storeListingUrl(id: string): string {
  * Plain-language permission rows (design D3): Chrome's own warning set, keyed
  * to `ui.browser.extensions.permission_<key>` messages. Permissions Chrome shows
  * no warning for (storage, alarms, scripting…) are omitted, as Chrome omits
- * them. `nativeMessaging` and `notifications` are DENIED globally by this
- * browser's adapter policy, so they are listed as blocked, never as granted.
- * Anything unknown is returned raw for a monospace fallback row.
+ * them. `nativeMessaging` gets Chrome's own row ("Communicate with
+ * cooperating desktop apps"): it is available, but each desktop app still
+ * needs its own consent on first use (manager.ts authorizeNativeHost), and
+ * the details page lists the apps allowed so far. `notifications` gets
+ * Chrome's "Display notifications" row. Anything unknown is returned raw for
+ * a monospace fallback row.
  */
 export type PermissionLabelKey =
 	| "ui.browser.extensions.permission_block_content"
@@ -172,12 +202,14 @@ export type PermissionLabelKey =
 	| "ui.browser.extensions.permission_clipboard_write"
 	| "ui.browser.extensions.permission_content_settings"
 	| "ui.browser.extensions.permission_cookies"
+	| "ui.browser.extensions.permission_desktop_apps"
 	| "ui.browser.extensions.permission_debugger"
 	| "ui.browser.extensions.permission_downloads"
 	| "ui.browser.extensions.permission_email"
 	| "ui.browser.extensions.permission_history"
 	| "ui.browser.extensions.permission_location"
 	| "ui.browser.extensions.permission_management"
+	| "ui.browser.extensions.permission_notifications"
 	| "ui.browser.extensions.permission_passkeys"
 	| "ui.browser.extensions.permission_privacy"
 	| "ui.browser.extensions.permission_proxy"
@@ -206,6 +238,8 @@ const PERMISSION_LABELS: Record<string, PermissionLabelKey> = {
 	proxy: "ui.browser.extensions.permission_proxy",
 	webAuthenticationProxy: "ui.browser.extensions.permission_passkeys",
 	"identity.email": "ui.browser.extensions.permission_email",
+	nativeMessaging: "ui.browser.extensions.permission_desktop_apps",
+	notifications: "ui.browser.extensions.permission_notifications",
 };
 
 const SILENT_PERMISSIONS = new Set([
@@ -234,17 +268,9 @@ const SILENT_PERMISSIONS = new Set([
 	"background",
 ]);
 
-export type BlockedCapability = "desktop_apps" | "notifications";
-
-const BLOCKED: Record<string, BlockedCapability> = {
-	nativeMessaging: "desktop_apps",
-	notifications: "notifications",
-};
-
 export interface PermissionSummary {
 	/** Message keys, de-duplicated, in first-seen order. */
 	labels: PermissionLabelKey[];
-	blocked: BlockedCapability[];
 	/** Unknown tokens, shown raw as a fallback. */
 	other: string[];
 }
@@ -253,18 +279,14 @@ export function describePermissions(
 	permissions: readonly string[],
 ): PermissionSummary {
 	const labels: PermissionLabelKey[] = [];
-	const blocked: BlockedCapability[] = [];
 	const other: string[] = [];
 	for (const permission of permissions) {
 		const label = PERMISSION_LABELS[permission];
-		const denied = BLOCKED[permission];
-		if (denied) {
-			if (!blocked.includes(denied)) blocked.push(denied);
-		} else if (label) {
+		if (label) {
 			if (!labels.includes(label)) labels.push(label);
 		} else if (!SILENT_PERMISSIONS.has(permission)) other.push(permission);
 	}
-	return { labels, blocked, other };
+	return { labels, other };
 }
 
 /**
@@ -279,6 +301,16 @@ const PASSWORD_MANAGER_IDS: ReadonlySet<string> = new Set([
 	"nngceckbapebfimnlniiiahkandclblb", // Bitwarden
 	"hdokiejnpimakedhajhdlcegeplioahd", // LastPass
 	"fdjamakpfbbddfjaooikfcpapjohcfmg", // Dashlane
+]);
+
+/**
+ * Chrome Web Store ids of the official 1Password extension. Its desktop app
+ * (1Password-BrowserSupport) only answers browsers the user added in
+ * 1Password → Settings → Browser, so the details page shows that step under
+ * the desktop-app list (design D4). Wording only; never an access decision.
+ */
+export const ONEPASSWORD_EXTENSION_IDS: ReadonlySet<string> = new Set([
+	"aeblfdkhhhdcdjpifhhbdiojplfjncoa", // 1Password (Chrome Web Store)
 ]);
 
 /** The first installed, turned-on extension that can hold passkeys, if any. */

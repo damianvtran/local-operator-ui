@@ -44,6 +44,7 @@ import enUiAgentsSkills from "./catalogues/en/ui.agents.skills.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
 import enUiAgentsTeams from "./catalogues/en/ui.agents.teams.json";
 import enUiAgentsUpload from "./catalogues/en/ui.agents.upload.json";
+import enUiBrowserAttention from "./catalogues/en/ui.browser.attention.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowserErrors from "./catalogues/en/ui.browser.errors.json";
 import enUiBrowserExtensions from "./catalogues/en/ui.browser.extensions.json";
@@ -51,6 +52,7 @@ import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiBrowserMediaAccess from "./catalogues/en/ui.browser.media_access.json";
 import enUiBrowserMediaPermission from "./catalogues/en/ui.browser.media_permission.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
+import enUiCanvasProjects from "./catalogues/en/ui.canvas.projects.json";
 import enUiChatAnalytics from "./catalogues/en/ui.chat.analytics.json";
 import enUiChatApproval from "./catalogues/en/ui.chat.approval.json";
 import enUiChatAside from "./catalogues/en/ui.chat.aside.json";
@@ -159,6 +161,7 @@ import enUiProjects from "./catalogues/en/ui.projects.json";
 import enUiProviders from "./catalogues/en/ui.providers.json";
 import enUiSchedulesErrors from "./catalogues/en/ui.schedules.errors.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
+import enUiSchedulesMonitors from "./catalogues/en/ui.schedules.monitors.json";
 import enUiSettingsAccount from "./catalogues/en/ui.settings.account.json";
 import enUiSettingsAppearanceEditor from "./catalogues/en/ui.settings.appearance.editor.json";
 import enUiSettingsAppearance from "./catalogues/en/ui.settings.appearance.json";
@@ -211,6 +214,7 @@ import esUiAgentsSkills from "./catalogues/es/ui.agents.skills.json";
 import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
 import esUiAgentsTeams from "./catalogues/es/ui.agents.teams.json";
 import esUiAgentsUpload from "./catalogues/es/ui.agents.upload.json";
+import esUiBrowserAttention from "./catalogues/es/ui.browser.attention.json";
 import esUiBrowserChrome from "./catalogues/es/ui.browser.chrome.json";
 import esUiBrowserErrors from "./catalogues/es/ui.browser.errors.json";
 import esUiBrowserExtensions from "./catalogues/es/ui.browser.extensions.json";
@@ -218,6 +222,7 @@ import esUiBrowser from "./catalogues/es/ui.browser.json";
 import esUiBrowserMediaAccess from "./catalogues/es/ui.browser.media_access.json";
 import esUiBrowserMediaPermission from "./catalogues/es/ui.browser.media_permission.json";
 import esUiCanvas from "./catalogues/es/ui.canvas.json";
+import esUiCanvasProjects from "./catalogues/es/ui.canvas.projects.json";
 import esUiChatAnalytics from "./catalogues/es/ui.chat.analytics.json";
 import esUiChatApproval from "./catalogues/es/ui.chat.approval.json";
 import esUiChatAside from "./catalogues/es/ui.chat.aside.json";
@@ -326,6 +331,7 @@ import esUiProjects from "./catalogues/es/ui.projects.json";
 import esUiProviders from "./catalogues/es/ui.providers.json";
 import esUiSchedulesErrors from "./catalogues/es/ui.schedules.errors.json";
 import esUiSchedules from "./catalogues/es/ui.schedules.json";
+import esUiSchedulesMonitors from "./catalogues/es/ui.schedules.monitors.json";
 import esUiSettingsAccount from "./catalogues/es/ui.settings.account.json";
 import esUiSettingsAppearanceEditor from "./catalogues/es/ui.settings.appearance.editor.json";
 import esUiSettingsAppearance from "./catalogues/es/ui.settings.appearance.json";
@@ -378,6 +384,7 @@ import frUiAgentsSkills from "./catalogues/fr/ui.agents.skills.json";
 import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
 import frUiAgentsTeams from "./catalogues/fr/ui.agents.teams.json";
 import frUiAgentsUpload from "./catalogues/fr/ui.agents.upload.json";
+import frUiBrowserAttention from "./catalogues/fr/ui.browser.attention.json";
 import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
 import frUiBrowserErrors from "./catalogues/fr/ui.browser.errors.json";
 import frUiBrowserExtensions from "./catalogues/fr/ui.browser.extensions.json";
@@ -385,6 +392,7 @@ import frUiBrowser from "./catalogues/fr/ui.browser.json";
 import frUiBrowserMediaAccess from "./catalogues/fr/ui.browser.media_access.json";
 import frUiBrowserMediaPermission from "./catalogues/fr/ui.browser.media_permission.json";
 import frUiCanvas from "./catalogues/fr/ui.canvas.json";
+import frUiCanvasProjects from "./catalogues/fr/ui.canvas.projects.json";
 import frUiChatAnalytics from "./catalogues/fr/ui.chat.analytics.json";
 import frUiChatApproval from "./catalogues/fr/ui.chat.approval.json";
 import frUiChatAside from "./catalogues/fr/ui.chat.aside.json";
@@ -493,6 +501,7 @@ import frUiProjects from "./catalogues/fr/ui.projects.json";
 import frUiProviders from "./catalogues/fr/ui.providers.json";
 import frUiSchedulesErrors from "./catalogues/fr/ui.schedules.errors.json";
 import frUiSchedules from "./catalogues/fr/ui.schedules.json";
+import frUiSchedulesMonitors from "./catalogues/fr/ui.schedules.monitors.json";
 import frUiSettingsAccount from "./catalogues/fr/ui.settings.account.json";
 import frUiSettingsAppearanceEditor from "./catalogues/fr/ui.settings.appearance.editor.json";
 import frUiSettingsAppearance from "./catalogues/fr/ui.settings.appearance.json";
@@ -545,6 +554,7 @@ import hiUiAgentsSkills from "./catalogues/hi/ui.agents.skills.json";
 import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
 import hiUiAgentsTeams from "./catalogues/hi/ui.agents.teams.json";
 import hiUiAgentsUpload from "./catalogues/hi/ui.agents.upload.json";
+import hiUiBrowserAttention from "./catalogues/hi/ui.browser.attention.json";
 import hiUiBrowserChrome from "./catalogues/hi/ui.browser.chrome.json";
 import hiUiBrowserErrors from "./catalogues/hi/ui.browser.errors.json";
 import hiUiBrowserExtensions from "./catalogues/hi/ui.browser.extensions.json";
@@ -552,6 +562,7 @@ import hiUiBrowser from "./catalogues/hi/ui.browser.json";
 import hiUiBrowserMediaAccess from "./catalogues/hi/ui.browser.media_access.json";
 import hiUiBrowserMediaPermission from "./catalogues/hi/ui.browser.media_permission.json";
 import hiUiCanvas from "./catalogues/hi/ui.canvas.json";
+import hiUiCanvasProjects from "./catalogues/hi/ui.canvas.projects.json";
 import hiUiChatAnalytics from "./catalogues/hi/ui.chat.analytics.json";
 import hiUiChatApproval from "./catalogues/hi/ui.chat.approval.json";
 import hiUiChatAside from "./catalogues/hi/ui.chat.aside.json";
@@ -660,6 +671,7 @@ import hiUiProjects from "./catalogues/hi/ui.projects.json";
 import hiUiProviders from "./catalogues/hi/ui.providers.json";
 import hiUiSchedulesErrors from "./catalogues/hi/ui.schedules.errors.json";
 import hiUiSchedules from "./catalogues/hi/ui.schedules.json";
+import hiUiSchedulesMonitors from "./catalogues/hi/ui.schedules.monitors.json";
 import hiUiSettingsAccount from "./catalogues/hi/ui.settings.account.json";
 import hiUiSettingsAppearanceEditor from "./catalogues/hi/ui.settings.appearance.editor.json";
 import hiUiSettingsAppearance from "./catalogues/hi/ui.settings.appearance.json";
@@ -712,6 +724,7 @@ import ruUiAgentsSkills from "./catalogues/ru/ui.agents.skills.json";
 import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
 import ruUiAgentsTeams from "./catalogues/ru/ui.agents.teams.json";
 import ruUiAgentsUpload from "./catalogues/ru/ui.agents.upload.json";
+import ruUiBrowserAttention from "./catalogues/ru/ui.browser.attention.json";
 import ruUiBrowserChrome from "./catalogues/ru/ui.browser.chrome.json";
 import ruUiBrowserErrors from "./catalogues/ru/ui.browser.errors.json";
 import ruUiBrowserExtensions from "./catalogues/ru/ui.browser.extensions.json";
@@ -719,6 +732,7 @@ import ruUiBrowser from "./catalogues/ru/ui.browser.json";
 import ruUiBrowserMediaAccess from "./catalogues/ru/ui.browser.media_access.json";
 import ruUiBrowserMediaPermission from "./catalogues/ru/ui.browser.media_permission.json";
 import ruUiCanvas from "./catalogues/ru/ui.canvas.json";
+import ruUiCanvasProjects from "./catalogues/ru/ui.canvas.projects.json";
 import ruUiChatAnalytics from "./catalogues/ru/ui.chat.analytics.json";
 import ruUiChatApproval from "./catalogues/ru/ui.chat.approval.json";
 import ruUiChatAside from "./catalogues/ru/ui.chat.aside.json";
@@ -827,6 +841,7 @@ import ruUiProjects from "./catalogues/ru/ui.projects.json";
 import ruUiProviders from "./catalogues/ru/ui.providers.json";
 import ruUiSchedulesErrors from "./catalogues/ru/ui.schedules.errors.json";
 import ruUiSchedules from "./catalogues/ru/ui.schedules.json";
+import ruUiSchedulesMonitors from "./catalogues/ru/ui.schedules.monitors.json";
 import ruUiSettingsAccount from "./catalogues/ru/ui.settings.account.json";
 import ruUiSettingsAppearanceEditor from "./catalogues/ru/ui.settings.appearance.editor.json";
 import ruUiSettingsAppearance from "./catalogues/ru/ui.settings.appearance.json";
@@ -879,6 +894,7 @@ import urUiAgentsSkills from "./catalogues/ur/ui.agents.skills.json";
 import urUiAgentsStarters from "./catalogues/ur/ui.agents.starters.json";
 import urUiAgentsTeams from "./catalogues/ur/ui.agents.teams.json";
 import urUiAgentsUpload from "./catalogues/ur/ui.agents.upload.json";
+import urUiBrowserAttention from "./catalogues/ur/ui.browser.attention.json";
 import urUiBrowserChrome from "./catalogues/ur/ui.browser.chrome.json";
 import urUiBrowserErrors from "./catalogues/ur/ui.browser.errors.json";
 import urUiBrowserExtensions from "./catalogues/ur/ui.browser.extensions.json";
@@ -886,6 +902,7 @@ import urUiBrowser from "./catalogues/ur/ui.browser.json";
 import urUiBrowserMediaAccess from "./catalogues/ur/ui.browser.media_access.json";
 import urUiBrowserMediaPermission from "./catalogues/ur/ui.browser.media_permission.json";
 import urUiCanvas from "./catalogues/ur/ui.canvas.json";
+import urUiCanvasProjects from "./catalogues/ur/ui.canvas.projects.json";
 import urUiChatAnalytics from "./catalogues/ur/ui.chat.analytics.json";
 import urUiChatApproval from "./catalogues/ur/ui.chat.approval.json";
 import urUiChatAside from "./catalogues/ur/ui.chat.aside.json";
@@ -994,6 +1011,7 @@ import urUiProjects from "./catalogues/ur/ui.projects.json";
 import urUiProviders from "./catalogues/ur/ui.providers.json";
 import urUiSchedulesErrors from "./catalogues/ur/ui.schedules.errors.json";
 import urUiSchedules from "./catalogues/ur/ui.schedules.json";
+import urUiSchedulesMonitors from "./catalogues/ur/ui.schedules.monitors.json";
 import urUiSettingsAccount from "./catalogues/ur/ui.settings.account.json";
 import urUiSettingsAppearanceEditor from "./catalogues/ur/ui.settings.appearance.editor.json";
 import urUiSettingsAppearance from "./catalogues/ur/ui.settings.appearance.json";
@@ -1046,6 +1064,7 @@ import viUiAgentsSkills from "./catalogues/vi/ui.agents.skills.json";
 import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
 import viUiAgentsTeams from "./catalogues/vi/ui.agents.teams.json";
 import viUiAgentsUpload from "./catalogues/vi/ui.agents.upload.json";
+import viUiBrowserAttention from "./catalogues/vi/ui.browser.attention.json";
 import viUiBrowserChrome from "./catalogues/vi/ui.browser.chrome.json";
 import viUiBrowserErrors from "./catalogues/vi/ui.browser.errors.json";
 import viUiBrowserExtensions from "./catalogues/vi/ui.browser.extensions.json";
@@ -1053,6 +1072,7 @@ import viUiBrowser from "./catalogues/vi/ui.browser.json";
 import viUiBrowserMediaAccess from "./catalogues/vi/ui.browser.media_access.json";
 import viUiBrowserMediaPermission from "./catalogues/vi/ui.browser.media_permission.json";
 import viUiCanvas from "./catalogues/vi/ui.canvas.json";
+import viUiCanvasProjects from "./catalogues/vi/ui.canvas.projects.json";
 import viUiChatAnalytics from "./catalogues/vi/ui.chat.analytics.json";
 import viUiChatApproval from "./catalogues/vi/ui.chat.approval.json";
 import viUiChatAside from "./catalogues/vi/ui.chat.aside.json";
@@ -1161,6 +1181,7 @@ import viUiProjects from "./catalogues/vi/ui.projects.json";
 import viUiProviders from "./catalogues/vi/ui.providers.json";
 import viUiSchedulesErrors from "./catalogues/vi/ui.schedules.errors.json";
 import viUiSchedules from "./catalogues/vi/ui.schedules.json";
+import viUiSchedulesMonitors from "./catalogues/vi/ui.schedules.monitors.json";
 import viUiSettingsAccount from "./catalogues/vi/ui.settings.account.json";
 import viUiSettingsAppearanceEditor from "./catalogues/vi/ui.settings.appearance.editor.json";
 import viUiSettingsAppearance from "./catalogues/vi/ui.settings.appearance.json";
@@ -1213,6 +1234,7 @@ import zhCNUiAgentsSkills from "./catalogues/zh-CN/ui.agents.skills.json";
 import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
 import zhCNUiAgentsTeams from "./catalogues/zh-CN/ui.agents.teams.json";
 import zhCNUiAgentsUpload from "./catalogues/zh-CN/ui.agents.upload.json";
+import zhCNUiBrowserAttention from "./catalogues/zh-CN/ui.browser.attention.json";
 import zhCNUiBrowserChrome from "./catalogues/zh-CN/ui.browser.chrome.json";
 import zhCNUiBrowserErrors from "./catalogues/zh-CN/ui.browser.errors.json";
 import zhCNUiBrowserExtensions from "./catalogues/zh-CN/ui.browser.extensions.json";
@@ -1220,6 +1242,7 @@ import zhCNUiBrowser from "./catalogues/zh-CN/ui.browser.json";
 import zhCNUiBrowserMediaAccess from "./catalogues/zh-CN/ui.browser.media_access.json";
 import zhCNUiBrowserMediaPermission from "./catalogues/zh-CN/ui.browser.media_permission.json";
 import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
+import zhCNUiCanvasProjects from "./catalogues/zh-CN/ui.canvas.projects.json";
 import zhCNUiChatAnalytics from "./catalogues/zh-CN/ui.chat.analytics.json";
 import zhCNUiChatApproval from "./catalogues/zh-CN/ui.chat.approval.json";
 import zhCNUiChatAside from "./catalogues/zh-CN/ui.chat.aside.json";
@@ -1328,6 +1351,7 @@ import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
 import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
 import zhCNUiSchedulesErrors from "./catalogues/zh-CN/ui.schedules.errors.json";
 import zhCNUiSchedules from "./catalogues/zh-CN/ui.schedules.json";
+import zhCNUiSchedulesMonitors from "./catalogues/zh-CN/ui.schedules.monitors.json";
 import zhCNUiSettingsAccount from "./catalogues/zh-CN/ui.settings.account.json";
 import zhCNUiSettingsAppearanceEditor from "./catalogues/zh-CN/ui.settings.appearance.editor.json";
 import zhCNUiSettingsAppearance from "./catalogues/zh-CN/ui.settings.appearance.json";
@@ -1383,6 +1407,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsStarters,
 	...enUiAgentsTeams,
 	...enUiAgentsUpload,
+	...enUiBrowserAttention,
 	...enUiBrowserChrome,
 	...enUiBrowserErrors,
 	...enUiBrowserExtensions,
@@ -1390,6 +1415,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiBrowserMediaAccess,
 	...enUiBrowserMediaPermission,
 	...enUiCanvas,
+	...enUiCanvasProjects,
 	...enUiChatAnalytics,
 	...enUiChatApproval,
 	...enUiChatAside,
@@ -1498,6 +1524,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiProviders,
 	...enUiSchedulesErrors,
 	...enUiSchedules,
+	...enUiSchedulesMonitors,
 	...enUiSettingsAccount,
 	...enUiSettingsAppearanceEditor,
 	...enUiSettingsAppearance,
@@ -1558,6 +1585,7 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentsStarters,
 		...esUiAgentsTeams,
 		...esUiAgentsUpload,
+		...esUiBrowserAttention,
 		...esUiBrowserChrome,
 		...esUiBrowserErrors,
 		...esUiBrowserExtensions,
@@ -1565,6 +1593,7 @@ export const bundledCatalogues: Readonly<
 		...esUiBrowserMediaAccess,
 		...esUiBrowserMediaPermission,
 		...esUiCanvas,
+		...esUiCanvasProjects,
 		...esUiChatAnalytics,
 		...esUiChatApproval,
 		...esUiChatAside,
@@ -1673,6 +1702,7 @@ export const bundledCatalogues: Readonly<
 		...esUiProviders,
 		...esUiSchedulesErrors,
 		...esUiSchedules,
+		...esUiSchedulesMonitors,
 		...esUiSettingsAccount,
 		...esUiSettingsAppearanceEditor,
 		...esUiSettingsAppearance,
@@ -1727,6 +1757,7 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsStarters,
 		...frUiAgentsTeams,
 		...frUiAgentsUpload,
+		...frUiBrowserAttention,
 		...frUiBrowserChrome,
 		...frUiBrowserErrors,
 		...frUiBrowserExtensions,
@@ -1734,6 +1765,7 @@ export const bundledCatalogues: Readonly<
 		...frUiBrowserMediaAccess,
 		...frUiBrowserMediaPermission,
 		...frUiCanvas,
+		...frUiCanvasProjects,
 		...frUiChatAnalytics,
 		...frUiChatApproval,
 		...frUiChatAside,
@@ -1842,6 +1874,7 @@ export const bundledCatalogues: Readonly<
 		...frUiProviders,
 		...frUiSchedulesErrors,
 		...frUiSchedules,
+		...frUiSchedulesMonitors,
 		...frUiSettingsAccount,
 		...frUiSettingsAppearanceEditor,
 		...frUiSettingsAppearance,
@@ -1896,6 +1929,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentsStarters,
 		...hiUiAgentsTeams,
 		...hiUiAgentsUpload,
+		...hiUiBrowserAttention,
 		...hiUiBrowserChrome,
 		...hiUiBrowserErrors,
 		...hiUiBrowserExtensions,
@@ -1903,6 +1937,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiBrowserMediaAccess,
 		...hiUiBrowserMediaPermission,
 		...hiUiCanvas,
+		...hiUiCanvasProjects,
 		...hiUiChatAnalytics,
 		...hiUiChatApproval,
 		...hiUiChatAside,
@@ -2011,6 +2046,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiProviders,
 		...hiUiSchedulesErrors,
 		...hiUiSchedules,
+		...hiUiSchedulesMonitors,
 		...hiUiSettingsAccount,
 		...hiUiSettingsAppearanceEditor,
 		...hiUiSettingsAppearance,
@@ -2065,6 +2101,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsStarters,
 		...ruUiAgentsTeams,
 		...ruUiAgentsUpload,
+		...ruUiBrowserAttention,
 		...ruUiBrowserChrome,
 		...ruUiBrowserErrors,
 		...ruUiBrowserExtensions,
@@ -2072,6 +2109,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiBrowserMediaAccess,
 		...ruUiBrowserMediaPermission,
 		...ruUiCanvas,
+		...ruUiCanvasProjects,
 		...ruUiChatAnalytics,
 		...ruUiChatApproval,
 		...ruUiChatAside,
@@ -2180,6 +2218,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiProviders,
 		...ruUiSchedulesErrors,
 		...ruUiSchedules,
+		...ruUiSchedulesMonitors,
 		...ruUiSettingsAccount,
 		...ruUiSettingsAppearanceEditor,
 		...ruUiSettingsAppearance,
@@ -2234,6 +2273,7 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentsStarters,
 		...urUiAgentsTeams,
 		...urUiAgentsUpload,
+		...urUiBrowserAttention,
 		...urUiBrowserChrome,
 		...urUiBrowserErrors,
 		...urUiBrowserExtensions,
@@ -2241,6 +2281,7 @@ export const bundledCatalogues: Readonly<
 		...urUiBrowserMediaAccess,
 		...urUiBrowserMediaPermission,
 		...urUiCanvas,
+		...urUiCanvasProjects,
 		...urUiChatAnalytics,
 		...urUiChatApproval,
 		...urUiChatAside,
@@ -2349,6 +2390,7 @@ export const bundledCatalogues: Readonly<
 		...urUiProviders,
 		...urUiSchedulesErrors,
 		...urUiSchedules,
+		...urUiSchedulesMonitors,
 		...urUiSettingsAccount,
 		...urUiSettingsAppearanceEditor,
 		...urUiSettingsAppearance,
@@ -2403,6 +2445,7 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentsStarters,
 		...viUiAgentsTeams,
 		...viUiAgentsUpload,
+		...viUiBrowserAttention,
 		...viUiBrowserChrome,
 		...viUiBrowserErrors,
 		...viUiBrowserExtensions,
@@ -2410,6 +2453,7 @@ export const bundledCatalogues: Readonly<
 		...viUiBrowserMediaAccess,
 		...viUiBrowserMediaPermission,
 		...viUiCanvas,
+		...viUiCanvasProjects,
 		...viUiChatAnalytics,
 		...viUiChatApproval,
 		...viUiChatAside,
@@ -2518,6 +2562,7 @@ export const bundledCatalogues: Readonly<
 		...viUiProviders,
 		...viUiSchedulesErrors,
 		...viUiSchedules,
+		...viUiSchedulesMonitors,
 		...viUiSettingsAccount,
 		...viUiSettingsAppearanceEditor,
 		...viUiSettingsAppearance,
@@ -2572,6 +2617,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentsStarters,
 		...zhCNUiAgentsTeams,
 		...zhCNUiAgentsUpload,
+		...zhCNUiBrowserAttention,
 		...zhCNUiBrowserChrome,
 		...zhCNUiBrowserErrors,
 		...zhCNUiBrowserExtensions,
@@ -2579,6 +2625,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiBrowserMediaAccess,
 		...zhCNUiBrowserMediaPermission,
 		...zhCNUiCanvas,
+		...zhCNUiCanvasProjects,
 		...zhCNUiChatAnalytics,
 		...zhCNUiChatApproval,
 		...zhCNUiChatAside,
@@ -2687,6 +2734,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiProviders,
 		...zhCNUiSchedulesErrors,
 		...zhCNUiSchedules,
+		...zhCNUiSchedulesMonitors,
 		...zhCNUiSettingsAccount,
 		...zhCNUiSettingsAppearanceEditor,
 		...zhCNUiSettingsAppearance,
@@ -2827,6 +2875,12 @@ export type MessageParams = {
 	"ui.agentMessages.settings.refusal.rate_limited": undefined;
 	"ui.agentMessages.settings.refusal.sign_in": undefined;
 	"ui.agentMessages.settings.saving": undefined;
+	"ui.agentMessages.settings.screening.automatic": { model: string };
+	"ui.agentMessages.settings.screening.help": undefined;
+	"ui.agentMessages.settings.screening.route_provider": { provider: string };
+	"ui.agentMessages.settings.screening.route_radient": undefined;
+	"ui.agentMessages.settings.screening.title": undefined;
+	"ui.agentMessages.settings.screening.unavailable": undefined;
 	"ui.agentMessages.settings.section": undefined;
 	"ui.agentMessages.settings.session.help": undefined;
 	"ui.agentMessages.settings.session.none": undefined;
@@ -3638,6 +3692,32 @@ export type MessageParams = {
 	"ui.agents.upload.title.published_public": { name: string };
 	"ui.agents.upload.title.republished": { name: string };
 	"ui.agents.upload.title.update_listing": { name: string };
+	"ui.browser.attention.announce": {
+		session: string;
+		need: string;
+		site: string;
+	};
+	"ui.browser.attention.announce_paused": {
+		session: string;
+		need: string;
+		site: string;
+	};
+	"ui.browser.attention.heading": undefined;
+	"ui.browser.attention.more": { count: number; countText: string };
+	"ui.browser.attention.no_site": undefined;
+	"ui.browser.attention.open_label": {
+		need: string;
+		site: string;
+		session: string;
+	};
+	"ui.browser.attention.open_label_paused": {
+		need: string;
+		site: string;
+		session: string;
+	};
+	"ui.browser.attention.passkey": undefined;
+	"ui.browser.attention.popup": undefined;
+	"ui.browser.attention.site_access": undefined;
 	"ui.browser.chrome.accessible_tab": {
 		title: string;
 		loading: string;
@@ -3671,10 +3751,15 @@ export type MessageParams = {
 	"ui.browser.extensions.action_retry": undefined;
 	"ui.browser.extensions.action_review_update": undefined;
 	"ui.browser.extensions.action_view_in_store": undefined;
-	"ui.browser.extensions.blocked_desktop_apps": undefined;
-	"ui.browser.extensions.blocked_heading": undefined;
-	"ui.browser.extensions.blocked_notifications": undefined;
+	"ui.browser.extensions.desktop_apps_ask_again": undefined;
+	"ui.browser.extensions.desktop_apps_ask_again_label": { app: string };
+	"ui.browser.extensions.desktop_apps_none": undefined;
+	"ui.browser.extensions.desktop_apps_onepassword_hint": undefined;
+	"ui.browser.extensions.desktop_apps_refused": undefined;
+	"ui.browser.extensions.desktop_apps_revoke": undefined;
+	"ui.browser.extensions.desktop_apps_revoke_label": { app: string };
 	"ui.browser.extensions.details_description": undefined;
+	"ui.browser.extensions.details_desktop_apps": undefined;
 	"ui.browser.extensions.details_id": undefined;
 	"ui.browser.extensions.details_no_options": undefined;
 	"ui.browser.extensions.details_no_ui": undefined;
@@ -3715,6 +3800,13 @@ export type MessageParams = {
 	"ui.browser.extensions.menu_manage": undefined;
 	"ui.browser.extensions.menu_none": undefined;
 	"ui.browser.extensions.menu_store": undefined;
+	"ui.browser.extensions.native_confirm_allow": undefined;
+	"ui.browser.extensions.native_confirm_body": { name: string; app: string };
+	"ui.browser.extensions.native_confirm_deny": undefined;
+	"ui.browser.extensions.native_confirm_host": { host: string };
+	"ui.browser.extensions.native_confirm_note": undefined;
+	"ui.browser.extensions.native_confirm_program": { path: string };
+	"ui.browser.extensions.native_confirm_title": { name: string; app: string };
 	"ui.browser.extensions.page_title": undefined;
 	"ui.browser.extensions.passkey_open_extensions": undefined;
 	"ui.browser.extensions.passkey_recovery": undefined;
@@ -3730,11 +3822,13 @@ export type MessageParams = {
 	"ui.browser.extensions.permission_content_settings": undefined;
 	"ui.browser.extensions.permission_cookies": undefined;
 	"ui.browser.extensions.permission_debugger": undefined;
+	"ui.browser.extensions.permission_desktop_apps": undefined;
 	"ui.browser.extensions.permission_downloads": undefined;
 	"ui.browser.extensions.permission_email": undefined;
 	"ui.browser.extensions.permission_history": undefined;
 	"ui.browser.extensions.permission_location": undefined;
 	"ui.browser.extensions.permission_management": undefined;
+	"ui.browser.extensions.permission_notifications": undefined;
 	"ui.browser.extensions.permission_passkeys": undefined;
 	"ui.browser.extensions.permission_privacy": undefined;
 	"ui.browser.extensions.permission_proxy": undefined;
@@ -4467,6 +4561,26 @@ export type MessageParams = {
 	"ui.canvas.wysiwyg_markdown_editor.strikethrough": undefined;
 	"ui.canvas.wysiwyg_markdown_editor.undo": undefined;
 	"ui.canvas.wysiwyg_markdown_editor.undo_ctrl_z": undefined;
+	"ui.canvas.projects.back": undefined;
+	"ui.canvas.projects.draft_description": undefined;
+	"ui.canvas.projects.draft_title": undefined;
+	"ui.canvas.projects.empty_description": undefined;
+	"ui.canvas.projects.empty_title": undefined;
+	"ui.canvas.projects.error_title": undefined;
+	"ui.canvas.projects.heading": undefined;
+	"ui.canvas.projects.loading": undefined;
+	"ui.canvas.projects.open_project": { name: string };
+	"ui.canvas.projects.rail_aria": undefined;
+	"ui.canvas.projects.rail_aria_count": { count: number };
+	"ui.canvas.projects.rail_tooltip": { state: string };
+	"ui.canvas.projects.rail_tooltip_count": { state: string; count: number };
+	"ui.canvas.projects.segment": undefined;
+	"ui.canvas.projects.try_again": undefined;
+	"ui.canvas.projects.unavailable_description": undefined;
+	"ui.canvas.projects.unavailable_title": undefined;
+	"ui.canvas.projects.unpaired_description": undefined;
+	"ui.canvas.projects.unreachable_description": undefined;
+	"ui.canvas.projects.unreachable_title": undefined;
 	"ui.chat.analytics.filters.top_level_only": undefined;
 	"ui.chat.analytics.search.clear": undefined;
 	"ui.chat.analytics.search.sessions": undefined;
@@ -5053,6 +5167,33 @@ export type MessageParams = {
 	"ui.chat.canonical.tool_row.detail_section.error": undefined;
 	"ui.chat.canonical.tool_row.detail_section.interrupted": undefined;
 	"ui.chat.canonical.tool_row.detail_section.output": undefined;
+	"ui.chat.canonical.tool_row.diff.full.back": undefined;
+	"ui.chat.canonical.tool_row.diff.full.clipped": { count: number };
+	"ui.chat.canonical.tool_row.diff.full.clipped_row": undefined;
+	"ui.chat.canonical.tool_row.diff.full.continued": undefined;
+	"ui.chat.canonical.tool_row.diff.full.continues": undefined;
+	"ui.chat.canonical.tool_row.diff.full.empty": undefined;
+	"ui.chat.canonical.tool_row.diff.full.error": undefined;
+	"ui.chat.canonical.tool_row.diff.full.evicted": undefined;
+	"ui.chat.canonical.tool_row.diff.full.first": undefined;
+	"ui.chat.canonical.tool_row.diff.full.inline": undefined;
+	"ui.chat.canonical.tool_row.diff.full.last": undefined;
+	"ui.chat.canonical.tool_row.diff.full.loading": undefined;
+	"ui.chat.canonical.tool_row.diff.full.nav": undefined;
+	"ui.chat.canonical.tool_row.diff.full.next": undefined;
+	"ui.chat.canonical.tool_row.diff.full.not_found": undefined;
+	"ui.chat.canonical.tool_row.diff.full.not_recorded": undefined;
+	"ui.chat.canonical.tool_row.diff.full.oversized": undefined;
+	"ui.chat.canonical.tool_row.diff.full.prev": undefined;
+	"ui.chat.canonical.tool_row.diff.full.range": {
+		first: number;
+		last: number;
+		total: number;
+	};
+	"ui.chat.canonical.tool_row.diff.full.retry": undefined;
+	"ui.chat.canonical.tool_row.diff.full.unavailable": undefined;
+	"ui.chat.canonical.tool_row.diff.full.view": { count: number };
+	"ui.chat.canonical.tool_row.diff.full.withheld": undefined;
 	"ui.chat.canonical.tool_row.diff.more": { count: number };
 	"ui.chat.canonical.tool_row.diff.show_less": undefined;
 	"ui.chat.canonical.tool_row.diff.truncated": { count: number };
@@ -5548,6 +5689,7 @@ export type MessageParams = {
 	"ui.chat.header_menu.close_canvas": undefined;
 	"ui.chat.header_menu.close_code_review": undefined;
 	"ui.chat.header_menu.close_console": undefined;
+	"ui.chat.header_menu.close_linked_projects": undefined;
 	"ui.chat.header_menu.default_description": undefined;
 	"ui.chat.header_menu.keep_chat": undefined;
 	"ui.chat.header_menu.make_temporary": undefined;
@@ -5556,6 +5698,7 @@ export type MessageParams = {
 	"ui.chat.header_menu.open_canvas": undefined;
 	"ui.chat.header_menu.open_code_review": undefined;
 	"ui.chat.header_menu.open_console": undefined;
+	"ui.chat.header_menu.open_linked_projects": undefined;
 	"ui.chat.header_menu.rename_failed": undefined;
 	"ui.chat.interrupt.idle": undefined;
 	"ui.chat.interrupt.idle_disputed": undefined;
@@ -11352,6 +11495,19 @@ export type MessageParams = {
 	"ui.schedules.wake_conversation_row.edit_wake": undefined;
 	"ui.schedules.wake_conversation_row.open_conversation": undefined;
 	"ui.schedules.wake_conversation_row.show_fewer": undefined;
+	"ui.schedules.monitors.blind_health": undefined;
+	"ui.schedules.monitors.could_not_load_monitors": undefined;
+	"ui.schedules.monitors.could_not_read_monitors": undefined;
+	"ui.schedules.monitors.count_needs_attention": {
+		total: number;
+		total_display: string;
+		attention: number;
+		attention_display: string;
+	};
+	"ui.schedules.monitors.expired_state": undefined;
+	"ui.schedules.monitors.list_truncated": { shown: number; total: number };
+	"ui.schedules.monitors.parked_clause": undefined;
+	"ui.schedules.monitors.parked_state": undefined;
 	"ui.settings.account.radient_account_section.account_id": undefined;
 	"ui.settings.account.radient_account_section.connected": undefined;
 	"ui.settings.account.radient_account_section.created": undefined;
@@ -12548,6 +12704,7 @@ export type MessageParams = {
 	"ui.settings.shortcuts.action.open_canvas": undefined;
 	"ui.settings.shortcuts.action.open_code_review": undefined;
 	"ui.settings.shortcuts.action.open_console": undefined;
+	"ui.settings.shortcuts.action.open_linked_projects": undefined;
 	"ui.settings.shortcuts.action.open_run_details": undefined;
 	"ui.settings.shortcuts.capture.already_assigned": { label: string };
 	"ui.settings.shortcuts.capture.needs_modifier": undefined;
@@ -12618,6 +12775,7 @@ export type MessageParams = {
 	"ui.settings.shortcuts.row.code_review": undefined;
 	"ui.settings.shortcuts.row.console": undefined;
 	"ui.settings.shortcuts.row.execution": undefined;
+	"ui.settings.shortcuts.row.linked_projects": undefined;
 	"ui.settings.shortcuts.speech.primary": undefined;
 	"ui.settings.shortcuts.speech.push_to_talk_hint": undefined;
 	"ui.settings.shortcuts.speech.push_to_talk_hold": undefined;
@@ -12985,6 +13143,7 @@ export type MessageParams = {
 	"ui.teamBridge.delivery.info_held": undefined;
 	"ui.teamBridge.delivery.info_label": undefined;
 	"ui.teamBridge.delivery.info_refused": undefined;
+	"ui.teamBridge.delivery.not_delivered": { recipient: string };
 	"ui.teamBridge.delivery.pending": { recipient: string };
 	"ui.teamBridge.delivery.recipient_unnamed": { person: string };
 	"ui.teamBridge.delivery.refused": { recipient: string };

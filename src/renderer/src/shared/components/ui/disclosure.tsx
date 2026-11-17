@@ -641,6 +641,15 @@ export const Disclosure = ({
  * update. The inner min-height/overflow pair lets 0fr really collapse, including
  * its padding; the outer clip prevents a scrollbar during interpolation.
  *
+ * Both clips are `overflow-clip`, NOT `overflow-hidden` (PR #1829, design
+ * round 3 D1): `hidden` makes each box a SCROLL CONTAINER, so a `sticky`
+ * descendant — the full-diff pager's bar inside an open trace fold — pinned
+ * against a box that never scrolls and scrolled off with the rows (measured
+ * in the child reader: bar at y −2595 while the page's last row was on
+ * screen). `clip` paints the same and is not a scroll container, so sticky
+ * resolves against the transcript scroller (the `chat-content.tsx` pane-row
+ * and `diff-block.tsx` well rule).
+ *
  * This is a separate component so default-off callers subscribe to no media
  * query and acquire no lifecycle or wrapper changes. Only the exit retains
  * children, and both accessibility gates close immediately, not 180ms later.
@@ -694,7 +703,7 @@ const AnimatedDisclosureBody = ({
 			// React 18 forwards inert as a string attribute, not a boolean prop.
 			{...(!open ? { inert: "" } : {})}
 			className={cn(
-				"grid overflow-hidden transition-[grid-template-rows,opacity] duration-base ease-out-quart motion-reduce:transition-none",
+				"grid overflow-clip transition-[grid-template-rows,opacity] duration-base ease-out-quart motion-reduce:transition-none",
 				expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
 			)}
 			onTransitionEnd={(event) => {
@@ -708,7 +717,7 @@ const AnimatedDisclosureBody = ({
 				}
 			}}
 		>
-			<div className={cn("min-h-0 overflow-hidden")}>
+			<div className={cn("min-h-0 overflow-clip")}>
 				{(open || (retained && !reduceMotion)) && (
 					<div
 						className={cn(

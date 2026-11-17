@@ -48,6 +48,7 @@ const bundle = await build({
 			export { useKeymapShortcuts, keymapEventAction } from "./src/renderer/src/shared/keymap/use-keymap-shortcuts";
 			export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
+			export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store";
 		`,
 		resolveDir: ROOT,
 	},
@@ -86,6 +87,7 @@ writeFileSync(bundlePath, bundle.outputFiles[0].text);
 const {
 	keymapEventAction,
 	useCanonicalSessionsStore,
+	useCanvasStore,
 	useKeymapShortcuts,
 	useUiPreferencesStore,
 } = await import(pathToFileURL(bundlePath).href);
@@ -476,5 +478,56 @@ test("the panel.ask chord closes the slot the way the lit item does (#1079)", as
 			[],
 			"because the chord's close RETRACTS the entry (`memoryDismiss`) rather than projecting it: switching away and back shows no panel, which is #1079's request",
 		);
+	});
+});
+
+/*
+ * CANVAS-PROJECTS ROUND-1 U1: the chord passed no canvas key, so ⌘⇧C was a plain
+ * toggle - after the Projects door closed the pane it reopened ON Projects and
+ * the next press closed it, so the shipped canvas chord could never reach the
+ * canvas's own views. It now derives the key the chat page renders the pane
+ * under (`panelIdentityFor`: the session id here) and opens the last
+ * non-projects view, exactly as the rail's canvas door does.
+ */
+test("the canvas chord after Projects closed the pane opens the last canvas view", async () => {
+	await mount(async (api) => {
+		const child = api.$('[data-testid="child"]');
+		act(() => {
+			useCanvasStore.getState().setViewMode("session-1", "variables");
+			useCanvasStore.getState().setViewMode("session-1", "projects");
+			useUiPreferencesStore.setState({ isCanvasOpen: false });
+		});
+		api.dispatch(child, { key: "c", shiftKey: true });
+		const view = () =>
+			useCanvasStore.getState().conversations["session-1"]?.viewMode;
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, true);
+		assert.equal(view(), "variables", "not Projects");
+		api.dispatch(child, { key: "c", shiftKey: true });
+		assert.equal(
+			useUiPreferencesStore.getState().isCanvasOpen,
+			false,
+			"on a canvas view the chord is the plain toggle again",
+		);
+		assert.equal(view(), "variables");
+	});
+});
+
+test("panel.projects (unbound by default) acts once bound: opens and closes the canvas on Projects", async () => {
+	await mount(async (api) => {
+		const child = api.$('[data-testid="child"]');
+		act(() => {
+			useCanvasStore.getState().setViewMode("session-1", "files");
+			useUiPreferencesStore.setState({
+				isCanvasOpen: false,
+				shortcutBindings: { "panel.projects": "primary+u" },
+			});
+		});
+		const view = () =>
+			useCanvasStore.getState().conversations["session-1"]?.viewMode;
+		api.dispatch(child, { key: "u" });
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, true);
+		assert.equal(view(), "projects");
+		api.dispatch(child, { key: "u" });
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, false);
 	});
 });

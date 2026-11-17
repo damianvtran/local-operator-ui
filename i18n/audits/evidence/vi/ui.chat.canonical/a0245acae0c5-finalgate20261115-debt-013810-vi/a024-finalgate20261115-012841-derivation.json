@@ -1,0 +1,110 @@
+{
+  "kind": "pure frozen deriveReceiptAudit validation in memory; no assembler/checker invoked",
+  "results": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-ru-receipt.json",
+      "locale": "ru",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-finalgate20261115-ru-012841",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 1
+        },
+        "source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+        "target_sha256": "b5ef4ec3ad119e95fbd8ca236dcbd606af540d3ac3eec2269512abefea7bbe1f",
+        "receipt_sha256": "4d5136489a44942e581b92ec773f6fcbce3406fa5d73f82c5d0fccd20a315798"
+      },
+      "context_matches": true,
+      "counts_match": true,
+      "result_matches": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-ur-receipt.json",
+      "locale": "ur",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-finalgate20261115-ur-012841",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 1
+        },
+        "source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+        "target_sha256": "896a86c7db417e881756f2437b8f0f159b52405dbe2563feab456fae036bf903",
+        "receipt_sha256": "be93ae9ed1cbb6e7976c6a8b2cf20d5da7375548281bd5f426f48b07ff07be62"
+      },
+      "context_matches": true,
+      "counts_match": true,
+      "result_matches": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-vi-receipt.json",
+      "locale": "vi",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-finalgate20261115-vi-012841",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 1
+        },
+        "source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+        "target_sha256": "17192d9d959ed5fc5d9f6216b860c68441d21298bc909aff442956d54ec7e503",
+        "receipt_sha256": "98978d18e0bcc5c1ea7592298f834c69f0057a8daea4a95ef9e60aa0d60467c8"
+      },
+      "context_matches": true,
+      "counts_match": true,
+      "result_matches": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-zh-CN-receipt.json",
+      "locale": "zh-CN",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-finalgate20261115-zh-cn-012841",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 2
+        },
+        "source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+        "target_sha256": "ed4ba8b8a1e0b800ca7c6a856b96f582c684e52a33019e2b26aa4011d44756b8",
+        "receipt_sha256": "86a39e72817ec607fbd620b20619df5971145e52a7d364c2155e1c687d1f3616"
+      },
+      "context_matches": true,
+      "counts_match": true,
+      "result_matches": true
+    }
+  ],
+  "contract_hashes": {
+    "scripts/i18n/ledger-assemble.mjs": {
+      "path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/scripts/i18n/ledger-assemble.mjs",
+      "sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+      "frozen_index_exact": true
+    },
+    "scripts/i18n/ledger-rules.mjs": {
+      "path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/scripts/i18n/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+      "frozen_index_exact": true
+    },
+    "docs/I18N.md": {
+      "path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/docs/I18N.md",
+      "sha256": "d58ad473701f098b3c2c24343c3a7e7236f22db22cc871016c4cb75f25f41f5c",
+      "frozen_index_exact": true
+    }
+  }
+}

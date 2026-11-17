@@ -1,6 +1,6 @@
 import { useAidaMissedMessages } from "@features/aida/use-aida-missed-messages";
 import { useAidaTarget } from "@features/aida/use-aida-target";
-import { useAppWideApprovals } from "@features/browser/hooks/use-app-wide-approvals";
+import { useBrowserAttention } from "@features/browser/hooks/use-browser-attention";
 import {
 	useMeshApprovals,
 	waitingApprovalCount,
@@ -64,7 +64,9 @@ export function useOtherSurfacesAttention(): OtherSurfacesAttention {
 	);
 	const notificationsCount = useNotificationsCount(notificationsEnabled);
 
-	const browserApprovals = useAppWideApprovals();
+	// Approvals plus the passkey holds and held popups the sidebar lists
+	// (`useBrowserAttention`), the same count the Browser badge shows.
+	const browserApprovals = useBrowserAttention().count;
 	const proposalsEnabled = desktopFeatureEnabled(
 		capabilities.data,
 		"profile_proposals",

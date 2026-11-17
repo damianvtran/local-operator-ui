@@ -48,6 +48,8 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 	codeOpened = 0,
 	codeMentioned = 0,
 	codeAttention = null,
+	canvasConversationId = null,
+	linkedProjectCount = 0,
 }) => {
 	const setRightSlotRoute = useUiPreferencesStore((s) => s.setRightSlotRoute);
 	const hasSession = sessionId !== null;
@@ -86,6 +88,8 @@ export const PanelRailFrame: FC<Partial<PanelRailProps>> = ({
 				codeOpened={codeOpened}
 				codeMentioned={codeMentioned}
 				codeAttention={codeAttention}
+				canvasConversationId={canvasConversationId}
+				linkedProjectCount={linkedProjectCount}
 			/>
 			<PanelEdge side="start" />
 		</div>

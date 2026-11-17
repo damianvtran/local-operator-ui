@@ -281,7 +281,19 @@ export class DesktopStreamRelay {
 		 * `true` sets it; anything else leaves an older backend's request shape
 		 * untouched.
 		 */
-		if (args.openFrame === true) query.set("open_frame", "1");
+		/*
+		 * `diff_bindings=1` rides WITH the open frame and only with it: this build's
+		 * reducer paints nested write/edit diff bindings (`tool_call_diff_binding_v1`,
+		 * `diff-history-model.ts`), and the core serves them only inside the projected
+		 * frame, rebuilt from validated fields - so the flag is meaningless without
+		 * `open_frame=1`, and coupling them keeps every request identity and cache key
+		 * that already distinguishes the open frame distinguishing this too. An older
+		 * backend ignores the unknown parameter and keeps dropping the rows.
+		 */
+		if (args.openFrame === true) {
+			query.set("open_frame", "1");
+			query.set("diff_bindings", "1");
+		}
 		if (args.journalOrder === true) {
 			query.set("journal_order", "1");
 			/*

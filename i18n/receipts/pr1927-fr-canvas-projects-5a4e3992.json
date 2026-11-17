@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of all 17 keys of the new PR #1927 namespace ui.canvas.projects (chat canvas linked-projects view)",
+  "locale": "fr",
+  "namespace": "ui.canvas.projects",
+  "pr": 1927,
+  "date": "2026-11-15",
+  "head": "b23ea041b84e1fe947f35ae994432f37ed9c7179",
+  "instance": "pr1927-fr-canvas-projects-5a4e3992",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (team lopdev, reviewer role, UI i18n audit r1); not the translator (coder, anthropic/claude-opus-5-5, per the PR #1927 body)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 3f535aabaa26: a different session and agent from the translator (coder lane that authored 0c1eb01b89); same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1927-fr-canvas-projects-5a4e3992"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified at b23ea041b84e: target src/i18n/catalogues/fr/ui.canvas.projects.json (sha256 c5c14b140a7984d1557912b15ec67d3856eb291e78ae754f4d50ba7bb8ef4623); English src/i18n/catalogues/en/ui.canvas.projects.json (sha256 542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b); context sidecar sha256 b079d6897d45edb1175703d866f2be0073943f8dcc34f5896bfa216f57fec2d0. Reference: core glossary ~/local-operator i18n/glossary.md @ origin/main cb85fcb962 (sha256 5de3929198c3…); style guide i18n/style-guides/fr.md (sha256 5315e1ac10c2). Checks (python): key set equals English; ICU argument names (state, count, name) and select arms (open/other) preserved; plural arms = one/many/other per glossary §3; ::group-off number skeleton kept; values NFC; no Cf characters. vous register, ’ (U+2019) apostrophes, runtime kept English per fr guide, 'Sessions liées' matches ui.projects.project_links.linked_sessions, 'Réessayer' matches existing try_again, many arm uses 'de projets' (millions) as existing fr plurals do. Not done: rendered fit/pseudo-localization frames (no browser tool in this lane; PR evidence frames are English). Values: segment = \"Projets\" (7/8 chars) | heading = \"Projets liés\" (12/15 chars) | back = \"Projets liés\" (12/15 chars) | rail_tooltip = \"{state, select, open {Fermer les projets liés} other {Ouvrir les projets liés}}\" (79/74 chars) | rail_tooltip_count = \"{state, select, open {Fermer les projets liés} other {Ouvrir les projets liés}} — {count, plural, one {{count, number, ::group-off} projet} many {{count, number, ::group-off} de projets} other {{count, number, ::group-off} projets}}\" (232/182 chars) | rail_aria = \"Projets liés\" (12/15 chars) | rail_aria_count = \"Projets liés, {count, plural, one {{count, number, ::group-off} projet} many {{count, number, ::group-off} de projets} other {{count, number, ::group-off} projets}}\" (164/122 chars) | loading = \"Chargement des projets liés\" (27/23 chars) | empty_title = \"Aucun projet lié\" (16/18 chars) | empty_description = \"Les projets auxquels cette conversation est liée s’affichent ici. Liez-la depuis la section Sessions liées d’un projet, ou demandez à l’agent de le faire.\" (154/131 chars) | draft_title = \"Pas encore de conversation\" (26/19 chars) | draft_description = \"Envoyez un premier message, puis liez cette conversation à un projet pour le voir ici.\" (86/78 chars) | unavailable_title = \"Projets liés indisponibles\" (26/32 chars) | unavailable_description = \"Ce runtime ne peut pas lister les projets d’une conversation. Mettez à jour Local Operator pour les voir ici.\" (109/90 chars) | error_title = \"Impossible de charger les projets liés\" (38/35 chars) | try_again = \"Réessayer\" (9/9 chars) | open_project = \"Ouvrir {name}\" (13/11 chars)",
+  "scope": "ui.canvas.projects for fr: 17 PR #1927 keys at branch head b23ea041b84e",
+  "revisions": {
+    "head": "b23ea041b84e1fe947f35ae994432f37ed9c7179"
+  },
+  "en_sha256": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b",
+  "context_sha256": "b079d6897d45edb1175703d866f2be0073943f8dcc34f5896bfa216f57fec2d0",
+  "target_sha256": "c5c14b140a7984d1557912b15ec67d3856eb291e78ae754f4d50ba7bb8ef4623",
+  "sha256": {
+    "fr": "c5c14b140a7984d1557912b15ec67d3856eb291e78ae754f4d50ba7bb8ef4623",
+    "en": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b"
+  }
+}

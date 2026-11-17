@@ -6322,6 +6322,27 @@ export const STORIES = [
 			},
 		},
 	]),
+	/*
+	 * THE BROWSER'S WAITS AS SIDEBAR NOTIFICATION ROWS (operator report
+	 * 2026-11-15, "the browser is stealing the view"): a passkey hold, a held
+	 * sign-in popup and an approval listed under the destinations instead of
+	 * switching views, and the fold past three. Waits for the rows themselves.
+	 */
+	...[
+		["browser-waits", 3],
+		["browser-waits-folded", 3],
+	].map(([state, rows]) => [
+		`shell-sidebar-attention-badges--${state}`,
+		1024,
+		900,
+		{
+			expect: {
+				pollMs: 8000,
+				expression: `document.querySelectorAll('[data-browser-attention-row]').length === ${rows}`,
+				message: `the sidebar lists ${rows} browser notification rows`,
+			},
+		},
+	]),
 	["shell-app-shell--agents", 1280, 800],
 	["shell-app-shell--agents", 1000, 800],
 	["shell-app-shell--agents", 900, 800],
@@ -6476,29 +6497,32 @@ export const STORIES = [
 	 * run trigger's two dot inks, the browser badge at one and at the cap, the
 	 * console blip in both inks, the files dot, each item lit, and the draft route
 	 * where all six doors are present too (the always-visible rail, D1). The frames
-	 * are small on purpose (the rail is 44px wide) and 220 tall, the six-door
-	 * rail's height; the shell arms above carry the geometry.
+	 * are small on purpose (the rail is 44px wide) and 256 tall, the seven-door
+	 * rail's height (220 until the linked-projects door, 2026-11-15); the shell
+	 * arms above carry the geometry.
 	 */
-	["navigation-panel-rail--idle", 132, 220],
-	["navigation-panel-rail--run-attention", 132, 220],
-	["navigation-panel-rail--run-activity", 132, 220],
-	["navigation-panel-rail--browser-one", 132, 220],
-	["navigation-panel-rail--browser-at-cap", 132, 220],
-	["navigation-panel-rail--console-blip", 132, 220],
-	["navigation-panel-rail--console-blip-resting", 132, 220],
-	["navigation-panel-rail--canvas-files", 132, 220],
-	["navigation-panel-rail--run-open", 132, 220],
-	["navigation-panel-rail--browser-open", 132, 220],
-	["navigation-panel-rail--console-open", 132, 220],
-	["navigation-panel-rail--canvas-open", 132, 220],
-	["navigation-panel-rail--draft-route", 132, 220],
+	["navigation-panel-rail--idle", 132, 256],
+	["navigation-panel-rail--run-attention", 132, 256],
+	["navigation-panel-rail--run-activity", 132, 256],
+	["navigation-panel-rail--browser-one", 132, 256],
+	["navigation-panel-rail--browser-at-cap", 132, 256],
+	["navigation-panel-rail--console-blip", 132, 256],
+	["navigation-panel-rail--console-blip-resting", 132, 256],
+	["navigation-panel-rail--canvas-files", 132, 256],
+	["navigation-panel-rail--projects-linked", 132, 256],
+	["navigation-panel-rail--projects-open", 132, 256],
+	["navigation-panel-rail--run-open", 132, 256],
+	["navigation-panel-rail--browser-open", 132, 256],
+	["navigation-panel-rail--console-open", 132, 256],
+	["navigation-panel-rail--canvas-open", 132, 256],
+	["navigation-panel-rail--draft-route", 132, 256],
 	/* ROUND 1, design D2/D4 and the three frames design listed as missing: the
 	   focused LIT item (ring and bar together), the capped badge on the LIT item,
 	   and the console blip with its own pane open. The non-brand-palette proof (sage
 	   and iceberg) is these same stories captured with `--themes`. */
-	["navigation-panel-rail--browser-open-focused", 132, 220],
-	["navigation-panel-rail--browser-open-at-cap", 132, 220],
-	["navigation-panel-rail--console-open-blip", 132, 220],
+	["navigation-panel-rail--browser-open-focused", 132, 256],
+	["navigation-panel-rail--browser-open-at-cap", 132, 256],
+	["navigation-panel-rail--console-open-blip", 132, 256],
 	/*
 	 * THE BOUND CHORD IN THE TOOLTIP (#928), the pair: the console ships
 	 * `primary+j` and its tooltip prints it in both registers, while an action
@@ -6516,7 +6540,7 @@ export const STORIES = [
 	[
 		"navigation-panel-rail--console-chord-tooltip",
 		360,
-		220,
+		256,
 		{
 			hover: '[data-panel-rail-item="console"]',
 			hoverSettleMs: 500,
@@ -6539,7 +6563,7 @@ export const STORIES = [
 	[
 		"navigation-panel-rail--browser-no-chord",
 		360,
-		220,
+		256,
 		{
 			hover: '[data-panel-rail-item="browser"]',
 			hoverSettleMs: 500,
@@ -12535,9 +12559,9 @@ export const STORIES = [
 	["code-review-pane--narrow-could-not-refresh", 320, 600],
 	["code-review-pane--row-hover", 640, 390],
 	["code-review-pane--row-focus", 640, 390],
-	["navigation-panel-rail--code-item", 132, 220],
-	["navigation-panel-rail--code-attention", 132, 220],
-	["navigation-panel-rail--code-open", 132, 220],
+	["navigation-panel-rail--code-item", 132, 256],
+	["navigation-panel-rail--code-attention", 132, 256],
+	["navigation-panel-rail--code-open", 132, 256],
 	["chat-composer-status-row--code-requests-chip", 1000, 760],
 	["chat-composer-status-row--code-requests-chip-showing", 1000, 300],
 	/*

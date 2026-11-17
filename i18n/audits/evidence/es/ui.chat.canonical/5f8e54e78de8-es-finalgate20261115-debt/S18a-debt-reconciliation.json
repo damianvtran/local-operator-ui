@@ -1,0 +1,103 @@
+{
+  "locale": "es",
+  "namespace": "ui.chat.canonical",
+  "scope": "Existing S18a debt applicability/disposition only; zero new semantic keys",
+  "source_parent": {
+    "locale": "es",
+    "receipt_path": "i18n/receipts/4b865abbfc0e.json",
+    "receipt_sha256": "c0bf71d4c3416eb77aaf1539e5a1eaa91929a03c7388d671bfed485639f1658d",
+    "receipt_git_ref": "e6122214503b9fc52841e119c060eabb7650391b",
+    "audited_snapshot": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+    "audited_source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+    "audited_target_sha256": "38ec00e659d17a8d19ea765afedf99584c5e38dcec8f8e6a66056d80d7b4f8a1",
+    "agent": "i18n-auditor",
+    "model": "deepseek/deepseek-flash",
+    "instance": "4b865abbfc0e",
+    "counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 1,
+      "nit": 6
+    }
+  },
+  "decisions": [
+    {
+      "source_finding_ref": "i18n/receipts/4b865abbfc0e.json#/findings/0",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+      "same_current_snapshot_bytes": true,
+      "snapshot_current": "Id duplicado",
+      "current": "Id duplicado",
+      "decision": "Retained at original recorded severity, deferred; no independently assigned ID existed in source, so JSON-pointer provenance identifies it without fabricating an original finding ID."
+    },
+    {
+      "source_finding_ref": "i18n/receipts/4b865abbfc0e.json#/findings/1",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+      "same_current_snapshot_bytes": true,
+      "snapshot_current": "Bloqueo por política",
+      "current": "Bloqueo por política",
+      "decision": "Retained at original recorded severity, deferred; no independently assigned ID existed in source, so JSON-pointer provenance identifies it without fabricating an original finding ID."
+    },
+    {
+      "source_finding_ref": "i18n/receipts/4b865abbfc0e.json#/findings/2",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.unknown_tool",
+      "same_current_snapshot_bytes": true,
+      "snapshot_current": "Herramienta desconocida",
+      "current": "Herramienta desconocida",
+      "decision": "Retained at original recorded severity, deferred; no independently assigned ID existed in source, so JSON-pointer provenance identifies it without fabricating an original finding ID."
+    },
+    {
+      "source_finding_ref": "i18n/receipts/4b865abbfc0e.json#/findings/3",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error.audio_rate_limited",
+      "same_current_snapshot_bytes": true,
+      "snapshot_current": "La generación de audio está saturada ahora mismo. Espera un momento y vuelve a intentarlo.",
+      "current": "La generación de audio está saturada ahora mismo. Espera un momento y vuelve a intentarlo.",
+      "decision": "Retained at original recorded severity, deferred; no independently assigned ID existed in source, so JSON-pointer provenance identifies it without fabricating an original finding ID."
+    },
+    {
+      "source_finding_ref": "i18n/receipts/4b865abbfc0e.json#/findings/4",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.state.cancelled_batch",
+      "same_current_snapshot_bytes": true,
+      "snapshot_current": "{material, select, video {Se detuvo el lote de vídeos.} voiceover {Se detuvo el lote de locuciones.} sound_effect {Se detuvo el lote de efectos de sonido.} other {Se detuvo el lote de imágenes.}}",
+      "current": "{material, select, video {Se detuvo el lote de vídeos.} voiceover {Se detuvo el lote de locuciones.} sound_effect {Se detuvo el lote de efectos de sonido.} other {Se detuvo el lote de imágenes.}}",
+      "decision": "Retained at original recorded severity, deferred; no independently assigned ID existed in source, so JSON-pointer provenance identifies it without fabricating an original finding ID."
+    },
+    {
+      "source_finding_ref": "i18n/receipts/4b865abbfc0e.json#/findings/5",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.temporary_deleted.back",
+      "same_current_snapshot_bytes": true,
+      "snapshot_current": "Volver a los chats",
+      "current": "Volver a los chats",
+      "decision": "Retained at original recorded severity, deferred; no independently assigned ID existed in source, so JSON-pointer provenance identifies it without fabricating an original finding ID."
+    },
+    {
+      "source_finding_ref": "i18n/receipts/4b865abbfc0e.json#/findings/6",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "same_current_snapshot_bytes": true,
+      "snapshot_current": "Audio saturado",
+      "current": "Audio saturado",
+      "decision": "Retained at original recorded severity, deferred; no independently assigned ID existed in source, so JSON-pointer provenance identifies it without fabricating an original finding ID."
+    }
+  ],
+  "old_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 5,
+    "nit": 2
+  },
+  "amended_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 6,
+    "nit": 8
+  },
+  "fr_zero_findings_explicit": false,
+  "own_choice": "Carry genuine unremediated parent risks; deduplicate same Hindi NIT, do not equate no-change proposals with absence of findings. Latest S18b clean3-key delta never resolves earlier S18a debt.",
+  "no_other_auditor_verdict_read": true
+}

@@ -146,7 +146,13 @@ export function desktopProxyPlugin(): Plugin {
 					 * proxy that claimed it for a stale bundle would hand that bundle a
 					 * page shape it does not read.
 					 */
-					if (openFrame === "1") query.set("open_frame", "1");
+					// `diff_bindings` is forwarded only beside the open frame it rides
+					// with, never invented (`src/main/desktop-stream.ts`).
+					if (openFrame === "1") {
+						query.set("open_frame", "1");
+						if (requestUrl.searchParams.get("diff_bindings") === "1")
+							query.set("diff_bindings", "1");
+					}
 					if (journalOrder === "1") {
 						query.set("journal_order", "1");
 						/*

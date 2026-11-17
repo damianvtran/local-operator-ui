@@ -35,6 +35,7 @@ import {
 	CONTROL_REUSE_PARTS,
 	askScrollControlClaims,
 	assertControlPresent,
+	controlArchivePaths,
 	controlElectronPlan,
 	controlPredatesAskScrollFix,
 	controlPredatesFixFromEnv,
@@ -1523,6 +1524,21 @@ test("controlElectronPlan: a lockfile-differing control reuses the same-version 
 	assert.ok(
 		differ.describe.includes("44.3.0") && differ.describe.includes("45.1.0"),
 		differ.describe,
+	);
+});
+
+test("control archive ships patches/ only when the control revision has it", () => {
+	// A lock-changing PR installs the control from its own lockfile, and pnpm
+	// aborts on a patchedDependencies file missing from the archived tree.
+	const withPatches = controlArchivePaths((path) => path === "patches");
+	assert.ok(withPatches.includes("patches"));
+	assert.ok(withPatches.includes("pnpm-lock.yaml"));
+	// A revision predating patches/ must not pass it, or `git archive` fails.
+	const without = controlArchivePaths(() => false);
+	assert.ok(!without.includes("patches"));
+	assert.deepEqual(
+		withPatches.filter((path) => path !== "patches"),
+		without,
 	);
 });
 

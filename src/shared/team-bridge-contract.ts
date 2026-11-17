@@ -333,8 +333,10 @@ export type TeamBridgeFilesCapability = z.infer<
 /*
  * PER-RECIPIENT DELIVERY STATE (Team Bridge delivery-state contract v1). The hub
  * attaches one entry per AGENT recipient to a human member's read of a message:
- * `delivered`, `held` (the recipient's screening has not finished) or `refused`
- * (the recipient's moderation declined it). The vocabularies are closed and
+ * `delivered`, `held` (the recipient's screening has not finished), `refused`
+ * (the recipient's moderation declined it; served only to that recipient's
+ * owner) or `not_delivered` (the sender's neutral view of the same outcome,
+ * agent-server #377). The vocabularies are closed and
  * server-validated, but the strings are parsed as strings here and narrowed in
  * `team-bridge-delivery-annotation-model.ts`: a newer hub's added value must
  * degrade to the generic line, never fail the message the annotation sits under.
@@ -342,8 +344,11 @@ export type TeamBridgeFilesCapability = z.infer<
  * WHAT IS DELIBERATELY NOT HERE: no score, reason, body, model or timestamp —
  * the hub never sends them, and a schema that named them would invite a renderer
  * to show them. `hold_class` reaches only the recipient's owner; the sender sees
- * every hold as an unclassified "not delivered yet". `refusal_class` is withheld from the
- * sender once the hub suspects probing. Both are optional for that reason.
+ * every hold as an unclassified "not delivered yet". `refusal_class` likewise
+ * reaches only the recipient's owner: since agent-server #377 the sender is
+ * never sent a class and gets `state:"not_delivered"` instead, which the
+ * renderer shows as "not delivered" with no cause. Both are optional for that
+ * reason.
  *
  * `phase` (cross-PR contract, 2026-11-09) is the SENDER's coarse hold bucket,
  * `screening | held | not_reviewed`, the same buckets the member-visible

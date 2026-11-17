@@ -1256,42 +1256,14 @@ const api = {
 			trusted: boolean,
 		): Promise<unknown> =>
 			ipcRenderer.invoke("browser-passkey-custody-release", tabId, at, trusted),
-		onPasskeyCustodyAttention: (
-			callback: (payload: {
-				tabId: number;
-				at: number;
-				requesterSessionId: string | null;
-			}) => void,
-		): (() => void) => {
-			const handler = (
-				_event: unknown,
-				payload: {
-					tabId?: unknown;
-					at?: unknown;
-					requesterSessionId?: unknown;
-				},
-			) => {
-				if (typeof payload?.tabId !== "number") return;
-				if (typeof payload.at !== "number") return;
-				callback({
-					tabId: payload.tabId,
-					at: payload.at,
-					requesterSessionId:
-						typeof payload.requesterSessionId === "string"
-							? payload.requesterSessionId
-							: null,
-				});
-			};
-			ipcRenderer.on("browser-passkey-custody-attention", handler);
-			return () => {
-				ipcRenderer.removeListener(
-					"browser-passkey-custody-attention",
-					handler,
-				);
-			};
-		},
+		/** A sidebar notification row's click: bring the tab an agent is waiting
+		 * on the user in forward, with its held popups (`user-attention.ts`). The
+		 * ONLY path that does; `false` when the tab is gone. */
+		openUserAttention: (tabId: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-open-user-attention", tabId),
 		/** The hold `{tabId, at}` ended: the renderer may give the user back the
-		 * view it saved when that hold began (`passkey-custody-handoff.ts`). */
+		 * view it saved when they opened that hold from its notification
+		 * (`passkey-custody-handoff.ts`). */
 		onPasskeyCustodyEnded: (
 			callback: (payload: { tabId: number; at: number }) => void,
 		): (() => void) => {
@@ -1334,6 +1306,45 @@ const api = {
 		 * No argument: the host restarts the same window's browser, so there is
 		 * nothing for a caller to retarget. */
 		retry: (): Promise<unknown> => ipcRenderer.invoke("browser-retry"),
+		/** Live composite of an overlay-suppressed page (main's
+		 * `composite-bridge.ts`): a full BGRA frame, drawn then ACKed so main sends
+		 * the next. Display-only; never persisted or forwarded. */
+		onCompositeFrame: (
+			callback: (frame: {
+				generation: number;
+				tabId: number;
+				webContentsId: number;
+				documentEpoch: number;
+				frameSeq: number;
+				width: number;
+				height: number;
+				pixels: Uint8Array;
+			}) => void,
+		): (() => void) => {
+			const handler = (_event: unknown, frame: unknown) =>
+				callback(frame as Parameters<typeof callback>[0]);
+			ipcRenderer.on("browser-composite-frame", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-composite-frame", handler);
+			};
+		},
+		/** The composite's generation ended: drop what is drawn. */
+		onCompositeClear: (
+			callback: (clear: { generation: number; reason: string }) => void,
+		): (() => void) => {
+			const handler = (_event: unknown, clear: unknown) =>
+				callback(clear as Parameters<typeof callback>[0]);
+			ipcRenderer.on("browser-composite-clear", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-composite-clear", handler);
+			};
+		},
+		ackCompositeFrame: (ack: {
+			generation: number;
+			frameSeq: number;
+		}): Promise<boolean> => ipcRenderer.invoke("browser-composite-ack", ack),
+		setCompositeConsumer: (ready: boolean): Promise<void> =>
+			ipcRenderer.invoke("browser-composite-consumer", ready),
 		onStateChanged: (callback: () => void): (() => void) => {
 			const handler = () => callback();
 			ipcRenderer.on("browser-state-changed", handler);

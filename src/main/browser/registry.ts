@@ -51,6 +51,8 @@ export interface LayoutSnapshot {
 	activeTabId: number | null;
 	/** The active tab's own presentation bit after this pass. */
 	presented: boolean;
+	/** Browser chrome may be visible over an empty/start canvas without a page. */
+	chromeVisible: boolean;
 	contentRect: ContentRect | null;
 	/** Monotone per registry, so a consumer can tell "another pass" from "a pass
 	 * with the same values" without diffing objects. */
@@ -361,6 +363,12 @@ export class TabRegistry {
 			view: DriveableView,
 			presented: boolean,
 		) => void = () => {},
+		// Runs at the top of every layout pass, with the NEW state already set but
+		// before any view is hidden or detached. The live composite bridge
+		// (`composite-bridge.ts`) subscribes to the page's frames here so the
+		// compositor has a sink before presentation is withdrawn; an observer that
+		// ran after `onPresentation` would subscribe to an already-detached view.
+		private readonly onBeforeLayout: () => void = () => {},
 	) {}
 
 	/** Passkey custody (`extensions/passkey-custody.ts`), installed by the host
@@ -854,6 +862,14 @@ export class TabRegistry {
 		return this.contentRect !== null && !this.visible && !this.ownStateContent;
 	}
 
+	/** A copy of the renderer-reported content rect, or null (route torn down). */
+	get presentationContentRect(): ContentRect | null {
+		const rect = this.contentRect;
+		return rect
+			? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+			: null;
+	}
+
 	activate(tabId: number): void {
 		if (!this.tabs.has(tabId)) return;
 		this.activeTabId = tabId;
@@ -862,6 +878,11 @@ export class TabRegistry {
 	}
 
 	private applyLayout(): void {
+		try {
+			this.onBeforeLayout();
+		} catch {
+			// Same rule as `onLayout`: an observer must never interrupt page layout.
+		}
 		const active =
 			this.activeTabId === null ? null : this.tabs.get(this.activeTabId);
 		for (const record of this.tabs.values()) {
@@ -879,6 +900,7 @@ export class TabRegistry {
 			this.onLayout({
 				activeTabId: this.activeTabId,
 				presented: active?.presented === true,
+				chromeVisible: this.chromeVisible,
 				contentRect: rect
 					? {
 							x: rect.x,

@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of all 17 keys of the new PR #1927 namespace ui.canvas.projects (chat canvas linked-projects view)",
+  "locale": "zh-CN",
+  "namespace": "ui.canvas.projects",
+  "pr": 1927,
+  "date": "2026-11-15",
+  "head": "b23ea041b84e1fe947f35ae994432f37ed9c7179",
+  "instance": "pr1927-zh-cn-canvas-projects-40149c0a",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (team lopdev, reviewer role, UI i18n audit r1); not the translator (coder, anthropic/claude-opus-5-5, per the PR #1927 body)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 3f535aabaa26: a different session and agent from the translator (coder lane that authored 0c1eb01b89); same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1927-zh-cn-canvas-projects-40149c0a"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified at b23ea041b84e: target src/i18n/catalogues/zh-CN/ui.canvas.projects.json (sha256 6376d876171d4b2de4d40534108d176ee7ce74b02edd448cc42e97ffa69ae543); English src/i18n/catalogues/en/ui.canvas.projects.json (sha256 542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b); context sidecar sha256 b079d6897d45edb1175703d866f2be0073943f8dcc34f5896bfa216f57fec2d0. Reference: core glossary ~/local-operator i18n/glossary.md @ origin/main cb85fcb962 (sha256 5de3929198c3…); style guide i18n/style-guides/zh-CN.md (sha256 615a126a8dbf). Checks (python): key set equals English; ICU argument names (state, count, name) and select arms (open/other) preserved; plural arms = other per glossary §3; ::group-off number skeleton kept; values NFC; no Cf characters. 智能体 (glossary agent), 项目, 会话 in 关联会话 matches linked_sessions, 运行时 as in 26 existing zh-CN strings, other-only plural, 打开{name} matches ui.chat.attachments.open_named. Not done: rendered fit/pseudo-localization frames (no browser tool in this lane; PR evidence frames are English). Values: segment = \"项目\" (2/8 chars) | heading = \"关联项目\" (4/15 chars) | back = \"关联项目\" (4/15 chars) | rail_tooltip = \"{state, select, open {关闭关联项目} other {打开关联项目}}\" (45/74 chars) | rail_tooltip_count = \"{state, select, open {关闭关联项目} other {打开关联项目}} — {count, plural, other {{count, number, ::group-off}个项目}}\" (104/182 chars) | rail_aria = \"关联项目\" (4/15 chars) | rail_aria_count = \"关联项目，{count, plural, other {{count, number, ::group-off}个项目}}\" (61/122 chars) | loading = \"正在加载关联项目\" (8/23 chars) | empty_title = \"暂无关联项目\" (6/18 chars) | empty_description = \"此对话关联的项目会显示在这里。可在项目的“关联会话”部分关联此对话，或让智能体来关联。\" (43/131 chars) | draft_title = \"尚无对话\" (4/19 chars) | draft_description = \"先发送第一条消息，再将此对话关联到项目，即可在这里看到它。\" (29/78 chars) | unavailable_title = \"无法使用关联项目\" (8/32 chars) | unavailable_description = \"此运行时无法列出对话的项目。请更新 Local Operator 以在这里查看。\" (40/90 chars) | error_title = \"无法加载关联项目\" (8/35 chars) | try_again = \"重试\" (2/9 chars) | open_project = \"打开{name}\" (8/11 chars)",
+  "scope": "ui.canvas.projects for zh-CN: 17 PR #1927 keys at branch head b23ea041b84e",
+  "revisions": {
+    "head": "b23ea041b84e1fe947f35ae994432f37ed9c7179"
+  },
+  "en_sha256": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b",
+  "context_sha256": "b079d6897d45edb1175703d866f2be0073943f8dcc34f5896bfa216f57fec2d0",
+  "target_sha256": "6376d876171d4b2de4d40534108d176ee7ce74b02edd448cc42e97ffa69ae543",
+  "sha256": {
+    "zh-CN": "6376d876171d4b2de4d40534108d176ee7ce74b02edd448cc42e97ffa69ae543",
+    "en": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b"
+  }
+}

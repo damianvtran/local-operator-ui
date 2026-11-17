@@ -1,0 +1,898 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "6dfaec49abf0-es-finalgate20261115-debt",
+  "auditor_session": "6dfaec49abf0",
+  "model_selection": "parent",
+  "fallback": null,
+  "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+  "date": "2026-11-15T01:37:08.323270+00:00",
+  "locale": "es",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "sha256": {
+    "en": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+    "es": "6da85f1e33e98cef4c9da20e3296461db204e3242f78920ac9a55ea2cdb04db3",
+    "context": "d4e186611426232b8972f8f1d597c69269715e38503e1390068a6cd0d9e8e643"
+  },
+  "context_sha256": "d4e186611426232b8972f8f1d597c69269715e38503e1390068a6cd0d9e8e643",
+  "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+  "target_path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+  "context_path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+  "scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked;0 new semantic keys",
+  "same_original_lineage_not_another_independent_author": true,
+  "new_semantic_keys": 0,
+  "current_keys": 509,
+  "main_keys_retained": 486,
+  "pr_keys_retained": 23,
+  "findings": [
+    {
+      "id": "I-ES-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "current": "Diff completo retenido: no se pudo censurar de forma segura",
+      "proposed": "Diff completo retenido: no se pudieron ocultar los datos sensibles de forma segura",
+      "reason": "\"censurar\" (censor) for credential redaction is off-register; es catalogues use \"ocultar\" (20 hits) and \"censur\" appears only here.",
+      "disposition": "deferred — non-gating",
+      "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-es-r2.json",
+      "origin_receipt_sha256": "b48040f237a0a2da586d9df6068cfd428b54e85cb05bb6321757ebc3e92ad168",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true,
+      "rebinding_disposition": {
+        "choice": "Retain same finding/severity and original disposition",
+        "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+        "prior_instance": "6dfaec49abf0-es-final-policy-evidence-20261112"
+      },
+      "final_gate_disposition": {
+        "author_choice": "Carry unchanged actual finding, severity, aliases and deferred/accepted disposition",
+        "basis": "Current selected literal equals previous receipt literal; no new semantic judgement",
+        "previous_own_instance": "6dfaec49abf0-es-r-next-seam-20261114"
+      }
+    },
+    {
+      "id": "S16F-ES-A3-01",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.sound.batch.summary",
+      "current": "{completed, plural, one {{completed, number, ::group-off} completada} many {{completed, number, ::group-off} de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {{failed, number, ::group-off} de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · {cancelled, number, ::group-off} de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · {unknown, number, ::group-off} con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+      "proposed": "{completed, plural, one {{completed, number, ::group-off} completada} many {# de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {# de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · # de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · # con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+      "reason": "The 'many' arms are es-authored (English has no category arms here) and exist because es CLDR puts exact millions in 'many' ('un millón de completadas'). Each one reuses the sibling arms' '::group-off' skeleton, so the only number that can reach it prints ungrouped: rendering completed=1000000 gives \"1000000 de completadas\". Spanish always groups, and the es style guide's own exemplar for this category is many {# de sesiones}, illustrated as \"1.000.000 de sesiones\". Verified: many {# de completadas} renders \"1.000.000 de completadas\". Real but unreachable in practice (>=1,000,000 requests in one sound batch), and a one-commit fix, hence MINOR rather than MAJOR.",
+      "disposition": "reported; does not gate (no BLOCKER/MAJOR)",
+      "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+      "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true,
+      "rebinding_disposition": {
+        "choice": "Retain same finding/severity and original disposition",
+        "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+        "prior_instance": "6dfaec49abf0-es-final-policy-evidence-20261112"
+      },
+      "final_gate_disposition": {
+        "author_choice": "Carry unchanged actual finding, severity, aliases and deferred/accepted disposition",
+        "basis": "Current selected literal equals previous receipt literal; no new semantic judgement",
+        "previous_own_instance": "6dfaec49abf0-es-r-next-seam-20261114"
+      }
+    },
+    {
+      "id": "S16F-ES-A3-02",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.media.sound_label",
+      "current": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+      "proposed": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+      "reason": "This value is also the audio player's accessible name: media-label.ts documents it, and sound-player.tsx composes it into ui.chat.audio.play_label / pause_label / position_label, producing \"Reproducir Sonido 2\" — a capitalised common noun mid-sentence, an orthography error in Spanish. The visible tile/alt-text surface wants the capital ('Imagen' keeps it for the same reason); the composed accessible name wants lower case. Same trade-off the ru round-3 audit recorded as S16F-RU-R3-01.",
+      "disposition": "accepted, no change requested",
+      "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+      "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true,
+      "rebinding_disposition": {
+        "choice": "Retain same finding/severity and original disposition",
+        "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+        "prior_instance": "6dfaec49abf0-es-final-policy-evidence-20261112"
+      },
+      "final_gate_disposition": {
+        "author_choice": "Carry unchanged actual finding, severity, aliases and deferred/accepted disposition",
+        "basis": "Current selected literal equals previous receipt literal; no new semantic judgement",
+        "previous_own_instance": "6dfaec49abf0-es-r-next-seam-20261114"
+      }
+    },
+    {
+      "id": "S16F-ES-A3-03",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.sound.cost.no_charge",
+      "current": "Sin cargo.",
+      "proposed": "Sin cargo.",
+      "reason": "'Charge' has two renderings inside one card: 'cobro' in sound.cost.estimated_zero ('cobro final sin confirmar') and sound.stop.warning ('se cobrará … el cobro'), and 'cargo' here. Reviewed and downgraded from MINOR: the shipped es catalogue already names an unbilled amount 'sin cargo' (ui.chat.session_spend.plan_clause: '…equivalente a API, sin cargo'), so this follows product precedent rather than inventing a term. 'Sin coste.' would be the alternative if card-internal uniformity is ever wanted.",
+      "disposition": "accepted, no change requested",
+      "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+      "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true,
+      "rebinding_disposition": {
+        "choice": "Retain same finding/severity and original disposition",
+        "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+        "prior_instance": "6dfaec49abf0-es-final-policy-evidence-20261112"
+      },
+      "final_gate_disposition": {
+        "author_choice": "Carry unchanged actual finding, severity, aliases and deferred/accepted disposition",
+        "basis": "Current selected literal equals previous receipt literal; no new semantic judgement",
+        "previous_own_instance": "6dfaec49abf0-es-r-next-seam-20261114"
+      }
+    },
+    {
+      "id": "4b865abbfc0e-finding-1",
+      "stable_locator_not_original_id": true,
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+      "current": "Id duplicado",
+      "proposed": "ID duplicado",
+      "reason": "Glossary-form drift: 'Id duplicado' vs 23 es keys rendering the identifier token as 'ID' (only ui.hub.links.hub_id uses 'Id', pre-existing). Proposed 'ID duplicado'. Non-gating: meaning unaffected, consistency only.",
+      "origin_receipt": "i18n/receipts/4b865abbfc0e.json",
+      "origin_receipt_sha256": "c0bf71d4c3416eb77aaf1539e5a1eaa91929a03c7388d671bfed485639f1658d",
+      "original_parent_finding": {
+        "severity": "MINOR",
+        "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+        "note": "Glossary-form drift: 'Id duplicado' vs 23 es keys rendering the identifier token as 'ID' (only ui.hub.links.hub_id uses 'Id', pre-existing). Proposed 'ID duplicado'. Non-gating: meaning unaffected, consistency only."
+      },
+      "disposition": "Retained inherited non-gating debt; no remediation or translation edit authorized in this seam-only round.",
+      "proposed_equals_current": false,
+      "author_choice": "Preserve parent severity and no-change/accepted-exception status; not INFO reclassification, not a fresh semantic finding."
+    },
+    {
+      "id": "4b865abbfc0e-finding-2",
+      "stable_locator_not_original_id": true,
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+      "current": "Bloqueo por política",
+      "proposed": "Bloqueo por política",
+      "reason": "'Bloqueo por política' is 20 chars vs EN 'Gate failed' 11 (+82%), the widest of the six class labels; names the outcome rather than the gate failing, which matches the sidecar role and uses the established 'política'. Wraps in an unconstrained text-meta <p>; flagged for a rendered check at the narrowest card width, no change proposed.",
+      "origin_receipt": "i18n/receipts/4b865abbfc0e.json",
+      "origin_receipt_sha256": "c0bf71d4c3416eb77aaf1539e5a1eaa91929a03c7388d671bfed485639f1658d",
+      "original_parent_finding": {
+        "severity": "NIT",
+        "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+        "note": "'Bloqueo por política' is 20 chars vs EN 'Gate failed' 11 (+82%), the widest of the six class labels; names the outcome rather than the gate failing, which matches the sidecar role and uses the established 'política'. Wraps in an unconstrained text-meta <p>; flagged for a rendered check at the narrowest card width, no change proposed."
+      },
+      "disposition": "Retained inherited non-gating debt; no remediation or translation edit authorized in this seam-only round.",
+      "proposed_equals_current": true,
+      "author_choice": "Preserve parent severity and no-change/accepted-exception status; not INFO reclassification, not a fresh semantic finding."
+    },
+    {
+      "id": "4b865abbfc0e-finding-3",
+      "stable_locator_not_original_id": true,
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.unknown_tool",
+      "current": "Herramienta desconocida",
+      "proposed": "Herramienta desconocida",
+      "reason": "'Herramienta desconocida' 23 chars vs EN 12 (+92%); shortest faithful two-word label, no abbreviation licensed for user-facing copy. Wraps, no truncation, no change proposed.",
+      "origin_receipt": "i18n/receipts/4b865abbfc0e.json",
+      "origin_receipt_sha256": "c0bf71d4c3416eb77aaf1539e5a1eaa91929a03c7388d671bfed485639f1658d",
+      "original_parent_finding": {
+        "severity": "NIT",
+        "key": "ui.chat.canonical.image_gen.error_class.unknown_tool",
+        "note": "'Herramienta desconocida' 23 chars vs EN 12 (+92%); shortest faithful two-word label, no abbreviation licensed for user-facing copy. Wraps, no truncation, no change proposed."
+      },
+      "disposition": "Retained inherited non-gating debt; no remediation or translation edit authorized in this seam-only round.",
+      "proposed_equals_current": true,
+      "author_choice": "Preserve parent severity and no-change/accepted-exception status; not INFO reclassification, not a fresh semantic finding."
+    },
+    {
+      "id": "4b865abbfc0e-finding-4",
+      "stable_locator_not_original_id": true,
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error.audio_rate_limited",
+      "current": "La generación de audio está saturada ahora mismo. Espera un momento y vuelve a intentarlo.",
+      "proposed": "La generación de audio está saturada ahora mismo. Espera un momento y vuelve a intentarlo.",
+      "reason": "90 chars vs EN 64 (+41%); two sentences as the sidecar requires, rendered in the wrapping state line (min-w-0), so no truncation. Recorded for the width column, no change proposed.",
+      "origin_receipt": "i18n/receipts/4b865abbfc0e.json",
+      "origin_receipt_sha256": "c0bf71d4c3416eb77aaf1539e5a1eaa91929a03c7388d671bfed485639f1658d",
+      "original_parent_finding": {
+        "severity": "NIT",
+        "key": "ui.chat.canonical.image_gen.error.audio_rate_limited",
+        "note": "90 chars vs EN 64 (+41%); two sentences as the sidecar requires, rendered in the wrapping state line (min-w-0), so no truncation. Recorded for the width column, no change proposed."
+      },
+      "disposition": "Retained inherited non-gating debt; no remediation or translation edit authorized in this seam-only round.",
+      "proposed_equals_current": true,
+      "author_choice": "Preserve parent severity and no-change/accepted-exception status; not INFO reclassification, not a fresh semantic finding."
+    },
+    {
+      "id": "4b865abbfc0e-finding-5",
+      "stable_locator_not_original_id": true,
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.state.cancelled_batch",
+      "current": "{material, select, video {Se detuvo el lote de vídeos.} voiceover {Se detuvo el lote de locuciones.} sound_effect {Se detuvo el lote de efectos de sonido.} other {Se detuvo el lote de imágenes.}}",
+      "proposed": "{material, select, video {Se detuvo el lote de vídeos.} voiceover {Se detuvo el lote de locuciones.} sound_effect {Se detuvo el lote de efectos de sonido.} other {Se detuvo el lote de imágenes.}}",
+      "reason": "Branches are 6-8 words against the sidecar's 'Two to four words' (worst branch 39 chars vs EN 27, +44%). Accepted: the same note requires the line read as the family of state.failed_batch ('Falló el lote de vídeos.'), which Spanish needs the verb-initial form for; a 4-word fragment would break it. Recorded exception, no change proposed.",
+      "origin_receipt": "i18n/receipts/4b865abbfc0e.json",
+      "origin_receipt_sha256": "c0bf71d4c3416eb77aaf1539e5a1eaa91929a03c7388d671bfed485639f1658d",
+      "original_parent_finding": {
+        "severity": "NIT",
+        "key": "ui.chat.canonical.image_gen.state.cancelled_batch",
+        "note": "Branches are 6-8 words against the sidecar's 'Two to four words' (worst branch 39 chars vs EN 27, +44%). Accepted: the same note requires the line read as the family of state.failed_batch ('Falló el lote de vídeos.'), which Spanish needs the verb-initial form for; a 4-word fragment would break it. Recorded exception, no change proposed."
+      },
+      "disposition": "Retained inherited non-gating debt; no remediation or translation edit authorized in this seam-only round.",
+      "proposed_equals_current": true,
+      "author_choice": "Preserve parent severity and no-change/accepted-exception status; not INFO reclassification, not a fresh semantic finding."
+    },
+    {
+      "id": "4b865abbfc0e-finding-6",
+      "stable_locator_not_original_id": true,
+      "severity": "NIT",
+      "key": "ui.chat.canonical.temporary_deleted.back",
+      "current": "Volver a los chats",
+      "proposed": "Volver a los chats",
+      "reason": "'Volver a los chats' 18 chars vs EN 13 (+38%) on a button in a flex flex-wrap row (canonical-transcript.tsx:7848), which wraps rather than clips; infinitive form is the style guide's rule for action labels. No change proposed.",
+      "origin_receipt": "i18n/receipts/4b865abbfc0e.json",
+      "origin_receipt_sha256": "c0bf71d4c3416eb77aaf1539e5a1eaa91929a03c7388d671bfed485639f1658d",
+      "original_parent_finding": {
+        "severity": "NIT",
+        "key": "ui.chat.canonical.temporary_deleted.back",
+        "note": "'Volver a los chats' 18 chars vs EN 13 (+38%) on a button in a flex flex-wrap row (canonical-transcript.tsx:7848), which wraps rather than clips; infinitive form is the style guide's rule for action labels. No change proposed."
+      },
+      "disposition": "Retained inherited non-gating debt; no remediation or translation edit authorized in this seam-only round.",
+      "proposed_equals_current": true,
+      "author_choice": "Preserve parent severity and no-change/accepted-exception status; not INFO reclassification, not a fresh semantic finding."
+    },
+    {
+      "id": "4b865abbfc0e-finding-7",
+      "stable_locator_not_original_id": true,
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "current": "Audio saturado",
+      "proposed": "Audio saturado",
+      "reason": "'Audio saturado' folds EN's class label 'rate limited' into the same 'saturado' the paired sentence uses for 'busy'; internally consistent pair, but the 'you hit a limit' nuance reads as service saturation. No alternative es rendering exists in the catalogue to align with. No change proposed.",
+      "origin_receipt": "i18n/receipts/4b865abbfc0e.json",
+      "origin_receipt_sha256": "c0bf71d4c3416eb77aaf1539e5a1eaa91929a03c7388d671bfed485639f1658d",
+      "original_parent_finding": {
+        "severity": "NIT",
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+        "note": "'Audio saturado' folds EN's class label 'rate limited' into the same 'saturado' the paired sentence uses for 'busy'; internally consistent pair, but the 'you hit a limit' nuance reads as service saturation. No alternative es rendering exists in the catalogue to align with. No change proposed."
+      },
+      "disposition": "Retained inherited non-gating debt; no remediation or translation edit authorized in this seam-only round.",
+      "proposed_equals_current": true,
+      "author_choice": "Preserve parent severity and no-change/accepted-exception status; not INFO reclassification, not a fresh semantic finding."
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 3,
+    "nit": 8
+  },
+  "finding_alias_dispositions": [
+    {
+      "parent_id": "4d7a5444aa0b/S16F-ES-A3-01",
+      "counted_as": "S16F-ES-A3-01",
+      "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred",
+      "choice": "Same underlying finding, count once; preserve full parent ID as alias"
+    },
+    {
+      "parent_id": "4d7a5444aa0b/S16F-ES-A3-02",
+      "counted_as": "S16F-ES-A3-02",
+      "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred",
+      "choice": "Same underlying finding, count once; preserve full parent ID as alias"
+    },
+    {
+      "parent_id": "4d7a5444aa0b/S16F-ES-A3-03",
+      "counted_as": "S16F-ES-A3-03",
+      "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred",
+      "choice": "Same underlying finding, count once; preserve full parent ID as alias"
+    }
+  ],
+  "parent_receipts": [
+    {
+      "locale": "es",
+      "parent": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/5f8e54e78de8-es-rnext-rebind-20261114.json",
+      "sha256": "b054cc28eb36f3cfe4ef006270d40ad0df8f883c45966f5ba98a54332c4e773a",
+      "instance": "5f8e54e78de8-es-rnext-rebind-20261114",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "result": "clean-with-findings",
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "528df8fc526fee090ff593a5f1122cf5a832fb461e5a3c121f72040fe1278e1d",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+      "receipt_declared_scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "row_scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "declared_identity": "translation-auditor",
+      "findings": [
+        {
+          "id": "I-ES-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "current": "Diff completo retenido: no se pudo censurar de forma segura",
+          "proposed": "Diff completo retenido: no se pudieron ocultar los datos sensibles de forma segura",
+          "reason": "Credential redaction is rendered as censurar (censor), rather than ocultar datos sensibles; retain the parent terminology follow-up. ",
+          "disposition": "deferred — non-gating; retained from PR parent",
+          "retained_original_disposition": "deferred — non-gating; retained from PR parent",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment.",
+          "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding."
+        },
+        {
+          "id": "S16F-ES-A3-01",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.sound.batch.summary",
+          "current": "{completed, plural, one {{completed, number, ::group-off} completada} many {{completed, number, ::group-off} de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {{failed, number, ::group-off} de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · {cancelled, number, ::group-off} de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · {unknown, number, ::group-off} con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+          "proposed": "Use '#' in the four many arms: many {# de completadas}, many {# de fallidas}, many {# de detenidas}, many {# con estado desconocido}. Every other arm keeps the '::group-off' skeleton exactly as English.",
+          "reason": "The 'many' arms are es-authored (English has no category arms here) and exist because es CLDR puts exact millions in 'many' ('un millón de completadas'). Each one reuses the sibling arms' '::group-off' skeleton, so the only number that can reach it prints ungrouped: rendering completed=1000000 gives \"1000000 de completadas\". Spanish always groups, and the es style guide's own exemplar for this category is many {# de sesiones}, illustrated as \"1.000.000 de sesiones\". Verified: many {# de completadas} renders \"1.000.000 de completadas\". Real but unreachable in practice (>=1,000,000 requests in one sound batch), and a one-commit fix, hence MINOR rather than MAJOR.",
+          "disposition": "reported; does not gate (no BLOCKER/MAJOR)",
+          "historical_reason_verbatim": true,
+          "retained_original_disposition": "reported; does not gate (no BLOCKER/MAJOR)",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment.",
+          "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding.",
+          "parent_main_aliases": [
+            {
+              "id": "4d7a5444aa0b/S16F-ES-A3-01",
+              "origin": "i18n/receipts/4d7a5444aa0b.json",
+              "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred"
+            }
+          ]
+        },
+        {
+          "id": "S16F-ES-A3-02",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.media.sound_label",
+          "current": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+          "proposed": "No change requested now (screen-reader-only, invisible, and the sidecar's tone field asks for a capitalised bare noun). If a later wave decides, change 'Sonido'/'Imagen' together with the audio play/pause/position templates in one commit; never flip this key alone.",
+          "reason": "This value is also the audio player's accessible name: media-label.ts documents it, and sound-player.tsx composes it into ui.chat.audio.play_label / pause_label / position_label, producing \"Reproducir Sonido 2\" — a capitalised common noun mid-sentence, an orthography error in Spanish. The visible tile/alt-text surface wants the capital ('Imagen' keeps it for the same reason); the composed accessible name wants lower case. Same trade-off the ru round-3 audit recorded as S16F-RU-R3-01.",
+          "disposition": "accepted, no change requested",
+          "historical_reason_verbatim": true,
+          "retained_original_disposition": "accepted, no change requested",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment.",
+          "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding.",
+          "parent_main_aliases": [
+            {
+              "id": "4d7a5444aa0b/S16F-ES-A3-02",
+              "origin": "i18n/receipts/4d7a5444aa0b.json",
+              "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred"
+            }
+          ]
+        },
+        {
+          "id": "S16F-ES-A3-03",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.no_charge",
+          "current": "Sin cargo.",
+          "proposed": "No change recommended. Recorded so a later wave does not silently reverse a precedent-backed call, and so my own reversal (MINOR -> NIT on finding the plan_clause precedent) is visible rather than dropped.",
+          "reason": "'Charge' has two renderings inside one card: 'cobro' in sound.cost.estimated_zero ('cobro final sin confirmar') and sound.stop.warning ('se cobrará … el cobro'), and 'cargo' here. Reviewed and downgraded from MINOR: the shipped es catalogue already names an unbilled amount 'sin cargo' (ui.chat.session_spend.plan_clause: '…equivalente a API, sin cargo'), so this follows product precedent rather than inventing a term. 'Sin coste.' would be the alternative if card-internal uniformity is ever wanted.",
+          "disposition": "accepted, no change requested",
+          "historical_reason_verbatim": true,
+          "retained_original_disposition": "accepted, no change requested",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment.",
+          "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding.",
+          "parent_main_aliases": [
+            {
+              "id": "4d7a5444aa0b/S16F-ES-A3-03",
+              "origin": "i18n/receipts/4d7a5444aa0b.json",
+              "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred"
+            }
+          ]
+        },
+        {
+          "id": "CONV-ES-MANY-VIEW",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.view",
+          "current": "{count, plural, one {Ver diff completo · # línea} other {Ver diff completo · # líneas}}",
+          "proposed": "{count, plural, one {Ver diff completo · # línea} many {Ver diff completo · # de líneas} other {Ver diff completo · # líneas}}",
+          "reason": "The es/fr guide requires a many category for exact millions, but this message only has one/other and formats a million without the required de/d’; the clipped case is only a categorical-completeness follow-up because a page is bounded.",
+          "origin": "retained PR-parent wording; extremely large-count follow-up, not merge regression",
+          "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "retained_original_disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment.",
+          "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding."
+        },
+        {
+          "id": "CONV-ES-MANY-CLIPPED",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.clipped",
+          "current": "{count, plural, one {# línea larga de esta página está acortada} other {# líneas largas de esta página están acortadas}}",
+          "proposed": "{count, plural, one {# línea larga de esta página está acortada} many {# de líneas largas de esta página están acortadas} other {# líneas largas de esta página están acortadas}}",
+          "reason": "The es/fr guide requires a many category for exact millions, but this message only has one/other and formats a million without the required de/d’; the clipped case is only a categorical-completeness follow-up because a page is bounded.",
+          "origin": "retained PR-parent wording; extremely large-count follow-up, not merge regression",
+          "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "retained_original_disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment.",
+          "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding."
+        },
+        {
+          "id": "CONV-ES-FIT-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.back",
+          "current": "Volver a la vista previa",
+          "proposed": "Vista previa",
+          "reason": "At 24 code points versus English’s 15, this short button is 60% longer; keep the natural wording unless a rendered pager check requires the shorter context-dependent label.",
+          "disposition": "Rendered check required; source risk, not observed clipping",
+          "retained_original_disposition": "Rendered check required; source risk, not observed clipping",
+          "supplemental_evidence_disposition": "Bounded captured fit evidence now available; no obvious cutoff in viewed assigned-locale sample. Historical MINOR/NIT ID/severity retained; no new remediation cycle; no universal width/geometry claim.",
+          "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding."
+        }
+      ],
+      "unchanged_in_index": true,
+      "frozen_pure_contract_verified": true
+    },
+    {
+      "locale": "es",
+      "parent": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/6dfaec49abf0-es-r-next-seam-20261114.json",
+      "sha256": "a79bd14cb4ffd32fc9348b1bc12be9ab64e84afddffe76b9533c0b26a85309ea",
+      "instance": "6dfaec49abf0-es-r-next-seam-20261114",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "result": "clean-with-findings",
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "528df8fc526fee090ff593a5f1122cf5a832fb461e5a3c121f72040fe1278e1d",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+      "receipt_declared_scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "row_scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "declared_identity": "translation-auditor",
+      "findings": [
+        {
+          "id": "I-ES-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "current": "Diff completo retenido: no se pudo censurar de forma segura",
+          "proposed": "Diff completo retenido: no se pudieron ocultar los datos sensibles de forma segura",
+          "reason": "\"censurar\" (censor) for credential redaction is off-register; es catalogues use \"ocultar\" (20 hits) and \"censur\" appears only here.",
+          "disposition": "deferred — non-gating",
+          "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-es-r2.json",
+          "origin_receipt_sha256": "b48040f237a0a2da586d9df6068cfd428b54e85cb05bb6321757ebc3e92ad168",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true,
+          "rebinding_disposition": {
+            "choice": "Retain same finding/severity and original disposition",
+            "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+            "prior_instance": "6dfaec49abf0-es-final-policy-evidence-20261112"
+          }
+        },
+        {
+          "id": "S16F-ES-A3-01",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.sound.batch.summary",
+          "current": "{completed, plural, one {{completed, number, ::group-off} completada} many {{completed, number, ::group-off} de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {{failed, number, ::group-off} de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · {cancelled, number, ::group-off} de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · {unknown, number, ::group-off} con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+          "proposed": "{completed, plural, one {{completed, number, ::group-off} completada} many {# de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {# de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · # de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · # con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+          "reason": "The 'many' arms are es-authored (English has no category arms here) and exist because es CLDR puts exact millions in 'many' ('un millón de completadas'). Each one reuses the sibling arms' '::group-off' skeleton, so the only number that can reach it prints ungrouped: rendering completed=1000000 gives \"1000000 de completadas\". Spanish always groups, and the es style guide's own exemplar for this category is many {# de sesiones}, illustrated as \"1.000.000 de sesiones\". Verified: many {# de completadas} renders \"1.000.000 de completadas\". Real but unreachable in practice (>=1,000,000 requests in one sound batch), and a one-commit fix, hence MINOR rather than MAJOR.",
+          "disposition": "reported; does not gate (no BLOCKER/MAJOR)",
+          "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+          "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true,
+          "rebinding_disposition": {
+            "choice": "Retain same finding/severity and original disposition",
+            "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+            "prior_instance": "6dfaec49abf0-es-final-policy-evidence-20261112"
+          }
+        },
+        {
+          "id": "S16F-ES-A3-02",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.media.sound_label",
+          "current": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+          "proposed": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+          "reason": "This value is also the audio player's accessible name: media-label.ts documents it, and sound-player.tsx composes it into ui.chat.audio.play_label / pause_label / position_label, producing \"Reproducir Sonido 2\" — a capitalised common noun mid-sentence, an orthography error in Spanish. The visible tile/alt-text surface wants the capital ('Imagen' keeps it for the same reason); the composed accessible name wants lower case. Same trade-off the ru round-3 audit recorded as S16F-RU-R3-01.",
+          "disposition": "accepted, no change requested",
+          "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+          "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true,
+          "rebinding_disposition": {
+            "choice": "Retain same finding/severity and original disposition",
+            "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+            "prior_instance": "6dfaec49abf0-es-final-policy-evidence-20261112"
+          }
+        },
+        {
+          "id": "S16F-ES-A3-03",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.no_charge",
+          "current": "Sin cargo.",
+          "proposed": "Sin cargo.",
+          "reason": "'Charge' has two renderings inside one card: 'cobro' in sound.cost.estimated_zero ('cobro final sin confirmar') and sound.stop.warning ('se cobrará … el cobro'), and 'cargo' here. Reviewed and downgraded from MINOR: the shipped es catalogue already names an unbilled amount 'sin cargo' (ui.chat.session_spend.plan_clause: '…equivalente a API, sin cargo'), so this follows product precedent rather than inventing a term. 'Sin coste.' would be the alternative if card-internal uniformity is ever wanted.",
+          "disposition": "accepted, no change requested",
+          "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+          "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true,
+          "rebinding_disposition": {
+            "choice": "Retain same finding/severity and original disposition",
+            "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+            "prior_instance": "6dfaec49abf0-es-final-policy-evidence-20261112"
+          }
+        }
+      ],
+      "unchanged_in_index": true,
+      "frozen_pure_contract_verified": true
+    },
+    {
+      "locale": "es",
+      "parent": "e6122214503b9fc52841e119c060eabb7650391b",
+      "path": "i18n/receipts/s18b-es-canonical-8769431b.json",
+      "sha256": "12b3973838298d61523cc7b416e5602f21d2038daf92223c266e3b8706edec5a",
+      "instance": "s18b-es-canonical-8769431b",
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "result": "clean",
+      "source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+      "target_sha256": "59adc6ae654af21ffcab0662d2ff88ac27eb90100f1b2571d8aeba48ff5a9bde",
+      "context_sha256": "f589e147b11533c0587d412415eed1dcc6b360b9658484fde624116f020fdbff",
+      "receipt_declared_scope": "ui.chat.canonical for es: 3 S18b key(s) (ui.chat.canonical.tool_row.detail_section.error, ui.chat.canonical.tool_row.detail_section.interrupted, ui.chat.canonical.tool_row.detail_section.output) at branch head 3837df2f6cfe, read against English (source commit 6210ce4d17) and the sidecar",
+      "row_scope": "S18b approval/tool-detail paydown (9 keys)",
+      "declared_identity": {
+        "agent": "i18n-auditor",
+        "role": "independent translation auditor (team lopdev); not the translator (i18n-translator on anthropic/claude-sonnet-5-5), not the integrator",
+        "model": "anthropic/claude-opus-5-5",
+        "independence": "Session 097e801c9a50: a different session, agent and model from the translator. Served model anthropic/claude-opus-5-5, as stated by this session's harness system prompt; no fallback. Read-only in the worktree (git show/diff and python3 hashing/unicode/ICU scans only). My only repo writes are these untracked receipts in i18n/receipts/. Judgement derived here from English, the sidecar and the shipped corpus; no MT or translation service used.",
+        "instance": "s18b-es-canonical-8769431b"
+      },
+      "findings": [],
+      "unchanged_in_index": true,
+      "frozen_pure_contract_verified": true
+    },
+    {
+      "locale": "es",
+      "parent": "e6122214503b9fc52841e119c060eabb7650391b",
+      "source_snapshot": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+      "path": "i18n/receipts/4b865abbfc0e.json",
+      "sha256": "c0bf71d4c3416eb77aaf1539e5a1eaa91929a03c7388d671bfed485639f1658d",
+      "instance": "4b865abbfc0e",
+      "agent": "i18n-auditor",
+      "model": "deepseek/deepseek-flash",
+      "result": "clean-with-findings",
+      "source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+      "target_sha256": "38ec00e659d17a8d19ea765afedf99584c5e38dcec8f8e6a66056d80d7b4f8a1",
+      "role": "Applicable superseded S18a audit, not resolved by latest S18b three-key clean delta",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+          "note": "Glossary-form drift: 'Id duplicado' vs 23 es keys rendering the identifier token as 'ID' (only ui.hub.links.hub_id uses 'Id', pre-existing). Proposed 'ID duplicado'. Non-gating: meaning unaffected, consistency only."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+          "note": "'Bloqueo por política' is 20 chars vs EN 'Gate failed' 11 (+82%), the widest of the six class labels; names the outcome rather than the gate failing, which matches the sidecar role and uses the established 'política'. Wraps in an unconstrained text-meta <p>; flagged for a rendered check at the narrowest card width, no change proposed."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.unknown_tool",
+          "note": "'Herramienta desconocida' 23 chars vs EN 12 (+92%); shortest faithful two-word label, no abbreviation licensed for user-facing copy. Wraps, no truncation, no change proposed."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.error.audio_rate_limited",
+          "note": "90 chars vs EN 64 (+41%); two sentences as the sidecar requires, rendered in the wrapping state line (min-w-0), so no truncation. Recorded for the width column, no change proposed."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.state.cancelled_batch",
+          "note": "Branches are 6-8 words against the sidecar's 'Two to four words' (worst branch 39 chars vs EN 27, +44%). Accepted: the same note requires the line read as the family of state.failed_batch ('Falló el lote de vídeos.'), which Spanish needs the verb-initial form for; a 4-word fragment would break it. Recorded exception, no change proposed."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.temporary_deleted.back",
+          "note": "'Volver a los chats' 18 chars vs EN 13 (+38%) on a button in a flex flex-wrap row (canonical-transcript.tsx:7848), which wraps rather than clips; infinitive form is the style guide's rule for action labels. No change proposed."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+          "note": "'Audio saturado' folds EN's class label 'rate limited' into the same 'saturado' the paired sentence uses for 'busy'; internally consistent pair, but the 'you hit a limit' nuance reads as service saturation. No alternative es rendering exists in the catalogue to align with. No change proposed."
+        }
+      ],
+      "unchanged_in_index": true,
+      "frozen_pure_contract_verified": true
+    }
+  ],
+  "previous_own_lineage": {
+    "locale": "es",
+    "namespace": "ui.chat.canonical",
+    "result": "clean-with-findings",
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 2,
+      "nit": 2
+    },
+    "finding_ids": [
+      "I-ES-1",
+      "S16F-ES-A3-01",
+      "S16F-ES-A3-02",
+      "S16F-ES-A3-03"
+    ],
+    "session": "6dfaec49abf0",
+    "served_model": "openai/gpt-6.1-sol",
+    "instance": "6dfaec49abf0-es-r-next-seam-20261114",
+    "lineage": "Same original second independent audit author; rebinding only",
+    "current_bindings": {
+      "en": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "es": "528df8fc526fee090ff593a5f1122cf5a832fb461e5a3c121f72040fe1278e1d",
+      "context": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+    },
+    "current_tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+    "seam_verdict": "PASS: exact disjoint union, no collision/missing/duplicates or raw literal/token/ICU/placeholder change versus selected audited parents",
+    "record": {
+      "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-r-next-seam-20261114-record.json",
+      "sha256": "aeea91c47cf3f1629facf2790a77885b17ae3c9b311924227dd2d1dfe8f0eddf"
+    },
+    "receipt": {
+      "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-r-next-seam-20261114-receipt.json",
+      "sha256": "a79bd14cb4ffd32fc9348b1bc12be9ab64e84afddffe76b9533c0b26a85309ea"
+    },
+    "companions": [
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-seam-20261114-proof.json",
+        "sha256": "ca484b5acf0b37a6c04068968e8910ad257daebcbd194f4dd352c6c959117164"
+      }
+    ],
+    "lawful_bounded_consumability": true,
+    "canonical_record": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-r-next-seam-20261114/record.json",
+    "actual_frozen_pure_contract_derivation": {
+      "locale": "es",
+      "agent": "translation-auditor",
+      "instance": "6dfaec49abf0-es-r-next-seam-20261114",
+      "model": "openai/gpt-6.1-sol",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 2
+      },
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "528df8fc526fee090ff593a5f1122cf5a832fb461e5a3c121f72040fe1278e1d",
+      "receipt_sha256": "a79bd14cb4ffd32fc9348b1bc12be9ab64e84afddffe76b9533c0b26a85309ea"
+    }
+  },
+  "record": {
+    "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-finalgate20261115-debt-record.json",
+    "sha256": "8b2bb86ae252123c09f4a35e6f0e8b7d04b679885bd619f9fd87f780ee71510c",
+    "canonical": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-finalgate20261115-debt/record.json"
+  },
+  "companion": {
+    "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-debt-proof.json",
+    "sha256": "b10f6015b152fae70bc72c9a544fdd59a74de8c272dcacb48eeeae689d91b4c6"
+  },
+  "applicable_glossary_style": {
+    "inherited": {
+      "inherited": {
+        "i18n/glossary.md": {
+          "repository": "/home/ec2-user/local-operator",
+          "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+          "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+          "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+        },
+        "i18n/style-guides/es.md": {
+          "repository": "/home/ec2-user/local-operator",
+          "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+          "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+          "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+        },
+        "i18n/style-guides/fr.md": {
+          "repository": "/home/ec2-user/local-operator",
+          "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+          "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+          "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+        },
+        "i18n/style-guides/hi.md": {
+          "repository": "/home/ec2-user/local-operator",
+          "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+          "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+          "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+        }
+      },
+      "selected_main_reference": {
+        "glossary": "damianvtran/local-operator@2ba8127d9 i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+        "style_guide": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/es.md sha256:4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+      },
+      "checked_git_objects": {
+        "i18n/glossary.md": {
+          "git_ref": "2ba8127d9",
+          "available": true,
+          "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+          "recorded_reference_only_if_unavailable": false
+        },
+        "i18n/style-guides/es.md": {
+          "git_ref": "2ba8127d9",
+          "available": true,
+          "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+          "recorded_reference_only_if_unavailable": false
+        },
+        "i18n/style-guides/fr.md": {
+          "git_ref": "2ba8127d9",
+          "available": true,
+          "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+          "recorded_reference_only_if_unavailable": false
+        },
+        "i18n/style-guides/hi.md": {
+          "git_ref": "2ba8127d9",
+          "available": true,
+          "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+          "recorded_reference_only_if_unavailable": false
+        }
+      }
+    },
+    "checked_existing_git_objects": {
+      "i18n/glossary.md": {
+        "git_ref": "2ba8127d9",
+        "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+        "basis": "Existing immutable binding object hash checked; no new semantic guide audit."
+      },
+      "i18n/style-guides/es.md": {
+        "git_ref": "2ba8127d9",
+        "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+        "basis": "Existing immutable binding object hash checked; no new semantic guide audit."
+      },
+      "i18n/style-guides/fr.md": {
+        "git_ref": "2ba8127d9",
+        "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+        "basis": "Existing immutable binding object hash checked; no new semantic guide audit."
+      },
+      "i18n/style-guides/hi.md": {
+        "git_ref": "2ba8127d9",
+        "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+        "basis": "Existing immutable binding object hash checked; no new semantic guide audit."
+      }
+    }
+  },
+  "accepted_prior_evidence": {
+    "accepted_readback_json": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    },
+    "accepted_readback_markdown": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+      "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    },
+    "final_frame_manifest": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+      "sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    },
+    "browser_source_identity": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-source.json",
+      "sha256": "011d373b047026492d9ca73f7ec6747df1a90daeb7cb2c805aa9b4dade46ca34",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    }
+  },
+  "limitations": {
+    "semantic_keys_read_this_round": 0,
+    "mechanical_keys_verified": 509,
+    "fresh_509_semantic_audit": false,
+    "fresh_images_or_current_fit": false,
+    "native_geometry_font_fallback_global_rtl": "UNPROVEN; no new observation or approval",
+    "functional_interactions_counts": "No new runtime; interactions, count variants and all23-interactions PASS are not claimed. Prior exact evidence remains only in historical records.",
+    "pseudo": "Historical synthetic expanded English registered as en; not production pseudo or RTL pseudo",
+    "rendering": "Historical bounded23 capture proof retained; not a current capture, fullapp/native/global fit approval. Main stylesheet changed.",
+    "parent_scope": "S18b clean/[] is scoped to its three namespace keys; it does not erase pre-existing deferred findings.",
+    "parent_guide_metadata": "Selected S18b receipt lacks explicit glossary/style revision hash fields; applicable own existing pins verified, no new conformity or retrospective guide-version attestation.",
+    "history": "All old withholds, receipts, clarifications and candidates remain immutable. Actual-locale CLDR interpretation already authorized remains applicable; no literal English-selector hold reinstated.",
+    "release": "No merge/release/activation approval"
+  },
+  "retention": {
+    "canonical_record": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-finalgate20261115-debt/record.json",
+    "canonical_companions": [
+      "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-finalgate20261115-debt/union-seam-proof.json",
+      "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-finalgate20261115-debt/inherited-debt-proof.json"
+    ],
+    "mandatory_receipt": "i18n/receipts/6dfaec49abf0-es-finalgate20261115-debt.json",
+    "copy_by_writer_later_only": true
+  },
+  "lawful_bounded_consumability": {
+    "permitted": true,
+    "why": "New same-author scope-specific binding to independently verified selected parent union, supported actual parent receipts and preserved inherited findings; actual frozen pure derivation required. No extra independent lineage/global approval.",
+    "frozen_assembler_sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+    "frozen_rules_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+    "assembler_invoked": false,
+    "ledger_checker_invoked": false,
+    "suggested_note": "Exact486+23 seam only;0 new semantic keys; no new pixels/native. Record: i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-finalgate20261115/record.json",
+    "suggested_note_characters": 160
+  },
+  "s18a_explicit_dispositions": [
+    {
+      "stable_locator": "4b865abbfc0e-finding-1",
+      "choice": "retain",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+      "proposed_equals_current": false,
+      "original": {
+        "severity": "MINOR",
+        "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+        "note": "Glossary-form drift: 'Id duplicado' vs 23 es keys rendering the identifier token as 'ID' (only ui.hub.links.hub_id uses 'Id', pre-existing). Proposed 'ID duplicado'. Non-gating: meaning unaffected, consistency only."
+      },
+      "unchanged_snapshot": true
+    },
+    {
+      "stable_locator": "4b865abbfc0e-finding-2",
+      "choice": "retain",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+      "proposed_equals_current": true,
+      "original": {
+        "severity": "NIT",
+        "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+        "note": "'Bloqueo por política' is 20 chars vs EN 'Gate failed' 11 (+82%), the widest of the six class labels; names the outcome rather than the gate failing, which matches the sidecar role and uses the established 'política'. Wraps in an unconstrained text-meta <p>; flagged for a rendered check at the narrowest card width, no change proposed."
+      },
+      "unchanged_snapshot": true
+    },
+    {
+      "stable_locator": "4b865abbfc0e-finding-3",
+      "choice": "retain",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.unknown_tool",
+      "proposed_equals_current": true,
+      "original": {
+        "severity": "NIT",
+        "key": "ui.chat.canonical.image_gen.error_class.unknown_tool",
+        "note": "'Herramienta desconocida' 23 chars vs EN 12 (+92%); shortest faithful two-word label, no abbreviation licensed for user-facing copy. Wraps, no truncation, no change proposed."
+      },
+      "unchanged_snapshot": true
+    },
+    {
+      "stable_locator": "4b865abbfc0e-finding-4",
+      "choice": "retain",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error.audio_rate_limited",
+      "proposed_equals_current": true,
+      "original": {
+        "severity": "NIT",
+        "key": "ui.chat.canonical.image_gen.error.audio_rate_limited",
+        "note": "90 chars vs EN 64 (+41%); two sentences as the sidecar requires, rendered in the wrapping state line (min-w-0), so no truncation. Recorded for the width column, no change proposed."
+      },
+      "unchanged_snapshot": true
+    },
+    {
+      "stable_locator": "4b865abbfc0e-finding-5",
+      "choice": "retain",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.state.cancelled_batch",
+      "proposed_equals_current": true,
+      "original": {
+        "severity": "NIT",
+        "key": "ui.chat.canonical.image_gen.state.cancelled_batch",
+        "note": "Branches are 6-8 words against the sidecar's 'Two to four words' (worst branch 39 chars vs EN 27, +44%). Accepted: the same note requires the line read as the family of state.failed_batch ('Falló el lote de vídeos.'), which Spanish needs the verb-initial form for; a 4-word fragment would break it. Recorded exception, no change proposed."
+      },
+      "unchanged_snapshot": true
+    },
+    {
+      "stable_locator": "4b865abbfc0e-finding-6",
+      "choice": "retain",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.temporary_deleted.back",
+      "proposed_equals_current": true,
+      "original": {
+        "severity": "NIT",
+        "key": "ui.chat.canonical.temporary_deleted.back",
+        "note": "'Volver a los chats' 18 chars vs EN 13 (+38%) on a button in a flex flex-wrap row (canonical-transcript.tsx:7848), which wraps rather than clips; infinitive form is the style guide's rule for action labels. No change proposed."
+      },
+      "unchanged_snapshot": true
+    },
+    {
+      "stable_locator": "4b865abbfc0e-finding-7",
+      "choice": "retain",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "proposed_equals_current": true,
+      "original": {
+        "severity": "NIT",
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+        "note": "'Audio saturado' folds EN's class label 'rate limited' into the same 'saturado' the paired sentence uses for 'busy'; internally consistent pair, but the 'you hit a limit' nuance reads as service saturation. No alternative es rendering exists in the catalogue to align with. No change proposed."
+      },
+      "unchanged_snapshot": true
+    }
+  ],
+  "same_round_historical_candidate_receipt": {
+    "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-finalgate20261115-receipt.json",
+    "sha256": "fd47868c9ee81faa5792d04c2755f6702b96d2025547283ba73c94d7e99c74a5"
+  },
+  "necessary_companions": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-proof.json",
+      "sha256": "c34f8b9abec5442486d26ab1a5359f71251ca73aaed06df99f850fcbb31c014b",
+      "size_bytes": 669523
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-debt-proof.json",
+      "sha256": "b10f6015b152fae70bc72c9a544fdd59a74de8c272dcacb48eeeae689d91b4c6"
+    }
+  ]
+}

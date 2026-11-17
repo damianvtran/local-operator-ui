@@ -1,0 +1,619 @@
+{
+  "kind": "AUTHORITATIVE AMENDED-FINAL same-round inherited-S18a-debt allowlist",
+  "not_a_ledger_receipt": true,
+  "date": "2026-11-15T01:37:28.243Z",
+  "auditor": "translation-auditor",
+  "session": "5f8e54e78de8",
+  "actual_served_model": "openai/gpt-6.1-sol",
+  "model_selection": "parent; inherited,no override",
+  "fallback": null,
+  "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+  "scope": "receipt rebinding/exact486-main+23-PR union seam only;509mechanically checked per locale,0newsemantics",
+  "HEAD": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+  "MERGE_HEAD": "e6122214503b9fc52841e119c060eabb7650391b",
+  "staged_tree": "e822d6068f049dfb8fad4ba41e9f8ca22409fc6a",
+  "raw_index_sha256": "b12fb56d069dc27ea1b9d547aa5b71768f04148d3b043828cbd24d341dec93a9",
+  "overall_verdict": "terminal clean-with-findings for same509-key exact-union seam-only rebinding,with explicit cumulative S18a debt carry-forward;0newsemantic keys",
+  "per_namespace_verdicts": {
+    "es/ui.chat.canonical": {
+      "result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 6,
+        "nit": 8
+      },
+      "instance": "5f8e54e78de8-es-finalgate20261115-debt",
+      "seam_verdict": "Exact disjoint raw-literal union; zero collision/duplicate/missing/extra/rewrite or ICU/placeholder seam change. No new semantic defect inferred."
+    },
+    "fr/ui.chat.canonical": {
+      "result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 4,
+        "nit": 3
+      },
+      "instance": "5f8e54e78de8-fr-finalgate20261115-debt",
+      "seam_verdict": "Exact disjoint raw-literal union; zero collision/duplicate/missing/extra/rewrite or ICU/placeholder seam change. No new semantic defect inferred."
+    },
+    "hi/ui.chat.canonical": {
+      "result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 3,
+        "nit": 1
+      },
+      "instance": "5f8e54e78de8-hi-finalgate20261115-debt",
+      "seam_verdict": "Exact disjoint raw-literal union; zero collision/duplicate/missing/extra/rewrite or ICU/placeholder seam change. No new semantic defect inferred."
+    }
+  },
+  "new_semantic_keys_read": 0,
+  "mechanical_target_key_literals_verified": 1527,
+  "parent_receipt_refs_hashes_identities": [
+    {
+      "locale": "es",
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/5f8e54e78de8-es-rnext-rebind-20261114.json",
+      "sha256": "b054cc28eb36f3cfe4ef006270d40ad0df8f883c45966f5ba98a54332c4e773a",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-es-rnext-rebind-20261114",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 5,
+        "nit": 2
+      },
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "528df8fc526fee090ff593a5f1122cf5a832fb461e5a3c121f72040fe1278e1d",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+    },
+    {
+      "locale": "es",
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/6dfaec49abf0-es-r-next-seam-20261114.json",
+      "sha256": "a79bd14cb4ffd32fc9348b1bc12be9ab64e84afddffe76b9533c0b26a85309ea",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-es-r-next-seam-20261114",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 2
+      },
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "528df8fc526fee090ff593a5f1122cf5a832fb461e5a3c121f72040fe1278e1d",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+    },
+    {
+      "locale": "es",
+      "ref": "e6122214503b9fc52841e119c060eabb7650391b",
+      "path": "i18n/receipts/s18b-es-canonical-8769431b.json",
+      "sha256": "12b3973838298d61523cc7b416e5602f21d2038daf92223c266e3b8706edec5a",
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "instance": "s18b-es-canonical-8769431b",
+      "result": "clean",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+      "target_sha256": "59adc6ae654af21ffcab0662d2ff88ac27eb90100f1b2571d8aeba48ff5a9bde",
+      "context_sha256": "f589e147b11533c0587d412415eed1dcc6b360b9658484fde624116f020fdbff"
+    },
+    {
+      "locale": "fr",
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/5f8e54e78de8-fr-rnext-rebind-20261114.json",
+      "sha256": "16186f00614c8b35657b535a6059a8f97b5f2e08e8cec31d851fe6cd9a209f38",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-fr-rnext-rebind-20261114",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 4,
+        "nit": 3
+      },
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "060c7967167434f91d79d3c3093642690ed8c7d95b3f9b9a36be9b4d6b17099a",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+    },
+    {
+      "locale": "fr",
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/6dfaec49abf0-fr-r-next-seam-20261114.json",
+      "sha256": "47214d7481b722b7cb24813ddfa7bf67f9379b602b55a47a77d8ac5931aae99f",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-fr-r-next-seam-20261114",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 3
+      },
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "060c7967167434f91d79d3c3093642690ed8c7d95b3f9b9a36be9b4d6b17099a",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+    },
+    {
+      "locale": "fr",
+      "ref": "e6122214503b9fc52841e119c060eabb7650391b",
+      "path": "i18n/receipts/s18b-fr-canonical-da7ee1dc.json",
+      "sha256": "11e74e23e48ca90328acfb2baa3d235cac275aac31e38a8871818ae5b51d7bd6",
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "instance": "s18b-fr-canonical-da7ee1dc",
+      "result": "clean",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+      "target_sha256": "dde9d059a389565f7a92aab1c5c548f95744cd394fe6f292bce1103918e9cde0",
+      "context_sha256": "f589e147b11533c0587d412415eed1dcc6b360b9658484fde624116f020fdbff"
+    },
+    {
+      "locale": "hi",
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/5f8e54e78de8-hi-rnext-rebind-20261114.json",
+      "sha256": "ad7a764b5f158ef639a65d9195fe305afc4c68be7816a4d1bf12001d730540be",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-hi-rnext-rebind-20261114",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 1
+      },
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+    },
+    {
+      "locale": "hi",
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/6dfaec49abf0-hi-r-next-seam-20261114.json",
+      "sha256": "f6a7bfdda5c14ee4b84e55ac0ff091781eb57f37b581e5ccaa6e8be8120a6ab6",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-hi-r-next-seam-20261114",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+    },
+    {
+      "locale": "hi",
+      "ref": "e6122214503b9fc52841e119c060eabb7650391b",
+      "path": "i18n/receipts/s18b-hi-canonical-5e4b1db4.json",
+      "sha256": "a7270a0d893fe742c13a88b18c1a3e4cecb978fb8e05c4a62f5fcfe2541a3e00",
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "instance": "s18b-hi-canonical-5e4b1db4",
+      "result": "clean",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+      "target_sha256": "f5edc06e73c1f5facbdc4b004e52b1420a87df77cb1affa3bd029c7944e8cebf",
+      "context_sha256": "f589e147b11533c0587d412415eed1dcc6b360b9658484fde624116f020fdbff"
+    }
+  ],
+  "own_prior_lineages": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/es/5f8e54e78de8-es-rnext-rebind-20261114/receipt.json",
+      "sha256": "b054cc28eb36f3cfe4ef006270d40ad0df8f883c45966f5ba98a54332c4e773a",
+      "git_ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "git_path": "i18n/receipts/5f8e54e78de8-es-rnext-rebind-20261114.json",
+      "same_original_author": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/fr/5f8e54e78de8-fr-rnext-rebind-20261114/receipt.json",
+      "sha256": "16186f00614c8b35657b535a6059a8f97b5f2e08e8cec31d851fe6cd9a209f38",
+      "git_ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "git_path": "i18n/receipts/5f8e54e78de8-fr-rnext-rebind-20261114.json",
+      "same_original_author": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/hi/5f8e54e78de8-hi-rnext-rebind-20261114/receipt.json",
+      "sha256": "ad7a764b5f158ef639a65d9195fe305afc4c68be7816a4d1bf12001d730540be",
+      "git_ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "git_path": "i18n/receipts/5f8e54e78de8-hi-rnext-rebind-20261114.json",
+      "same_original_author": true
+    }
+  ],
+  "style_glossary_pins": [
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/es.md",
+      "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/es.md sha256:4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/fr.md",
+      "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/fr.md sha256:5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/hi.md sha256:82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  ],
+  "seam_proof": {
+    "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/seam-proof.json",
+    "sha256": "0e9240672de408d82a8343e157dedd415428031a431f52092fcbf95fe09046d4"
+  },
+  "historicalpreservationcheck": {
+    "checked_files": 58,
+    "all_hashes_unchanged": true
+  },
+  "old_preservation": {
+    "checked_files": 58,
+    "all_hashes_unchanged": true
+  },
+  "validation": {
+    "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/final-validation.json",
+    "sha256": "4313e019067ad112e1a1c68715d8b0787c9f818d7b8acc7f9b718f5d3c5dfbc5"
+  },
+  "receipts_records_companions": {
+    "es": {
+      "locale": "es",
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 6,
+        "nit": 8
+      },
+      "instance": "5f8e54e78de8-es-finalgate20261115-debt",
+      "actual_session": "5f8e54e78de8",
+      "actual_served_model": "openai/gpt-6.1-sol",
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/es/5f8e54e78de8-es-finalgate20261115-debt/record.json",
+        "sha256": "505aba028534d61ecac5b82916a7c71bece839131b25f4884e0f3251385d7e0f"
+      },
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/es/5f8e54e78de8-es-finalgate20261115-debt/receipt.json",
+        "sha256": "6dd07989c34facc1ace7f817ccade297167f96da06b680d5121e15662c2a22e2"
+      },
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/es/5f8e54e78de8-es-finalgate20261115-debt/S18a-debt-reconciliation.json",
+          "sha256": "2d79dc0b4bb13d7d1252569f601a11b217e1def1219829029c2839e75662618d"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/es/5f8e54e78de8-es-finalgate20261115/parents-and-dispositions.json",
+          "sha256": "a65e5521c35b1bb2d42622adb610073f46e8e69212604299a0a3854b7cbd72fd"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/seam-proof.json",
+          "sha256": "0e9240672de408d82a8343e157dedd415428031a431f52092fcbf95fe09046d4"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/parent-contract-validation.json",
+          "sha256": "b1327352d94ef73d984d7918aaaf2d57fb004d63780ff8bd8368371dec6eea6b"
+        }
+      ],
+      "current_bindings": {
+        "en": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+        "es": "6da85f1e33e98cef4c9da20e3296461db204e3242f78920ac9a55ea2cdb04db3",
+        "context": "d4e186611426232b8972f8f1d597c69269715e38503e1390068a6cd0d9e8e643"
+      },
+      "seam_verdict": "Exact disjoint raw-literal union; zero collision/duplicate/missing/extra/rewrite or ICU/placeholder seam change. No new semantic defect inferred.",
+      "canonical_retention_root": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-finalgate20261115-debt",
+      "canonical_record_destination": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-finalgate20261115-debt/record.json",
+      "scope": {
+        "kind": "receipt rebinding/exact486-main+23-PR union seam only",
+        "new_semantic_keys_read": 0,
+        "namespace_keys_mechanically_checked": 509,
+        "selected_main_keys": 486,
+        "selected_PR_keys": 23,
+        "source_and_context_mechanically_checked": true,
+        "selection": "PR contributes ONLY tool_row.diff.full.*23; other486 exclusively exact incoming main, not other471PR values.",
+        "old_findings_carry_forward": "Explicit author choice retains genuine MINOR/NIT including HI-C1/aliases. No new linguistic defect or new finding count invented."
+      },
+      "lawful_bounded_consumability": true,
+      "S18a_disposition_companion": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/es/5f8e54e78de8-es-finalgate20261115-debt/S18a-debt-reconciliation.json",
+        "sha256": "2d79dc0b4bb13d7d1252569f601a11b217e1def1219829029c2839e75662618d"
+      }
+    },
+    "fr": {
+      "locale": "fr",
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 4,
+        "nit": 3
+      },
+      "instance": "5f8e54e78de8-fr-finalgate20261115-debt",
+      "actual_session": "5f8e54e78de8",
+      "actual_served_model": "openai/gpt-6.1-sol",
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/fr/5f8e54e78de8-fr-finalgate20261115-debt/record.json",
+        "sha256": "f9175df94f0de1990bd3067c3627525731cf794de746012096d9058f40908e20"
+      },
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/fr/5f8e54e78de8-fr-finalgate20261115-debt/receipt.json",
+        "sha256": "8bcf23472ecd1b806346848b9022a727bebb3e81a2a4055e68c8231914241edd"
+      },
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/fr/5f8e54e78de8-fr-finalgate20261115-debt/S18a-debt-reconciliation.json",
+          "sha256": "a4e13c5ec2e3e7a5345dd37f3300f59ca10f2e30950639258e0266c935f11d98"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/fr/5f8e54e78de8-fr-finalgate20261115/parents-and-dispositions.json",
+          "sha256": "b0c3c76a17553cb578d2aa8c9ccb1c5b8076229b4b4d4b0dfd5b9e1a550e8212"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/seam-proof.json",
+          "sha256": "0e9240672de408d82a8343e157dedd415428031a431f52092fcbf95fe09046d4"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/parent-contract-validation.json",
+          "sha256": "b1327352d94ef73d984d7918aaaf2d57fb004d63780ff8bd8368371dec6eea6b"
+        }
+      ],
+      "current_bindings": {
+        "en": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+        "fr": "282351444e6470f58b94e00b4dc69c1e2dadf3d543c48b250365855e512cb830",
+        "context": "d4e186611426232b8972f8f1d597c69269715e38503e1390068a6cd0d9e8e643"
+      },
+      "seam_verdict": "Exact disjoint raw-literal union; zero collision/duplicate/missing/extra/rewrite or ICU/placeholder seam change. No new semantic defect inferred.",
+      "canonical_retention_root": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-finalgate20261115-debt",
+      "canonical_record_destination": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-finalgate20261115-debt/record.json",
+      "scope": {
+        "kind": "receipt rebinding/exact486-main+23-PR union seam only",
+        "new_semantic_keys_read": 0,
+        "namespace_keys_mechanically_checked": 509,
+        "selected_main_keys": 486,
+        "selected_PR_keys": 23,
+        "source_and_context_mechanically_checked": true,
+        "selection": "PR contributes ONLY tool_row.diff.full.*23; other486 exclusively exact incoming main, not other471PR values.",
+        "old_findings_carry_forward": "Explicit author choice retains genuine MINOR/NIT including HI-C1/aliases. No new linguistic defect or new finding count invented."
+      },
+      "lawful_bounded_consumability": true,
+      "S18a_disposition_companion": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/fr/5f8e54e78de8-fr-finalgate20261115-debt/S18a-debt-reconciliation.json",
+        "sha256": "a4e13c5ec2e3e7a5345dd37f3300f59ca10f2e30950639258e0266c935f11d98"
+      }
+    },
+    "hi": {
+      "locale": "hi",
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 3,
+        "nit": 1
+      },
+      "instance": "5f8e54e78de8-hi-finalgate20261115-debt",
+      "actual_session": "5f8e54e78de8",
+      "actual_served_model": "openai/gpt-6.1-sol",
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/hi/5f8e54e78de8-hi-finalgate20261115-debt/record.json",
+        "sha256": "280da04b85302ef5f4836781780c4560bf505564d03181cb0c299a489ca5b471"
+      },
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/hi/5f8e54e78de8-hi-finalgate20261115-debt/receipt.json",
+        "sha256": "6c60f198fb11a685e2f1c2c195ab0e4401e8f8d408337d4ed07c433557707317"
+      },
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/hi/5f8e54e78de8-hi-finalgate20261115-debt/S18a-debt-reconciliation.json",
+          "sha256": "8c06f9c9127a2ccb742b4440e0f89995f6d2b7238753f88fa72c5b05ae398baf"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/hi/5f8e54e78de8-hi-finalgate20261115/parents-and-dispositions.json",
+          "sha256": "3b7a8155b47346ac293c2a328f3f4669bbd7f174d90c50a59dfc065b8d45002b"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/seam-proof.json",
+          "sha256": "0e9240672de408d82a8343e157dedd415428031a431f52092fcbf95fe09046d4"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/parent-contract-validation.json",
+          "sha256": "b1327352d94ef73d984d7918aaaf2d57fb004d63780ff8bd8368371dec6eea6b"
+        }
+      ],
+      "current_bindings": {
+        "en": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+        "hi": "3cfbea811e2a3911d31f4c50903a4e32da7929abbf8f45084b9ec92fa04e04c6",
+        "context": "d4e186611426232b8972f8f1d597c69269715e38503e1390068a6cd0d9e8e643"
+      },
+      "seam_verdict": "Exact disjoint raw-literal union; zero collision/duplicate/missing/extra/rewrite or ICU/placeholder seam change. No new semantic defect inferred.",
+      "canonical_retention_root": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-finalgate20261115-debt",
+      "canonical_record_destination": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-finalgate20261115-debt/record.json",
+      "scope": {
+        "kind": "receipt rebinding/exact486-main+23-PR union seam only",
+        "new_semantic_keys_read": 0,
+        "namespace_keys_mechanically_checked": 509,
+        "selected_main_keys": 486,
+        "selected_PR_keys": 23,
+        "source_and_context_mechanically_checked": true,
+        "selection": "PR contributes ONLY tool_row.diff.full.*23; other486 exclusively exact incoming main, not other471PR values.",
+        "old_findings_carry_forward": "Explicit author choice retains genuine MINOR/NIT including HI-C1/aliases. No new linguistic defect or new finding count invented."
+      },
+      "lawful_bounded_consumability": true,
+      "S18a_disposition_companion": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/hi/5f8e54e78de8-hi-finalgate20261115-debt/S18a-debt-reconciliation.json",
+        "sha256": "8c06f9c9127a2ccb742b4440e0f89995f6d2b7238753f88fa72c5b05ae398baf"
+      }
+    }
+  },
+  "only_final_allowlisted_receipts": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/es/5f8e54e78de8-es-finalgate20261115-debt/receipt.json",
+      "sha256": "6dd07989c34facc1ace7f817ccade297167f96da06b680d5121e15662c2a22e2"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/fr/5f8e54e78de8-fr-finalgate20261115-debt/receipt.json",
+      "sha256": "8bcf23472ecd1b806346848b9022a727bebb3e81a2a4055e68c8231914241edd"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/hi/5f8e54e78de8-hi-finalgate20261115-debt/receipt.json",
+      "sha256": "6c60f198fb11a685e2f1c2c195ab0e4401e8f8d408337d4ed07c433557707317"
+    }
+  ],
+  "current_bindings": {
+    "es": {
+      "en": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+      "es": "6da85f1e33e98cef4c9da20e3296461db204e3242f78920ac9a55ea2cdb04db3",
+      "context": "d4e186611426232b8972f8f1d597c69269715e38503e1390068a6cd0d9e8e643"
+    },
+    "fr": {
+      "en": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+      "fr": "282351444e6470f58b94e00b4dc69c1e2dadf3d543c48b250365855e512cb830",
+      "context": "d4e186611426232b8972f8f1d597c69269715e38503e1390068a6cd0d9e8e643"
+    },
+    "hi": {
+      "en": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+      "hi": "3cfbea811e2a3911d31f4c50903a4e32da7929abbf8f45084b9ec92fa04e04c6",
+      "context": "d4e186611426232b8972f8f1d597c69269715e38503e1390068a6cd0d9e8e643"
+    }
+  },
+  "lawful_bounded_consumability": {
+    "permitted": true,
+    "pure_frozen_contract_derivation_passed": true,
+    "scope_must_remain_explicit": true,
+    "canonical_records_and_companions_required": true,
+    "assembler_invoked": false,
+    "ledger_checker_invoked": false,
+    "coordinator_signed_nothing": true,
+    "only_coder331_later_applies_allowlist": true,
+    "same_original_author_lineage_not_another_independent_author": true
+  },
+  "unresolved_debts": "es6MINOR8NIT;fr4MINOR3NIT;hi3MINOR1NIT retained,deferred/non-gating. Proposed=current is not silently treated as INFO when source explicitly records genuine width/terminology/accepted-risk debt without requesting a current-key edit. S18b clean3-key delta is not cumulative resolution. Prior sealed records remain historical candidates,not application allowlist. No new translation/render/runtime/native/global proof.",
+  "parent_S18a_receipts_hashes_identities": [
+    {
+      "locale": "es",
+      "receipt_path": "i18n/receipts/4b865abbfc0e.json",
+      "receipt_sha256": "c0bf71d4c3416eb77aaf1539e5a1eaa91929a03c7388d671bfed485639f1658d",
+      "receipt_git_ref": "e6122214503b9fc52841e119c060eabb7650391b",
+      "audited_snapshot": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+      "audited_source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+      "audited_target_sha256": "38ec00e659d17a8d19ea765afedf99584c5e38dcec8f8e6a66056d80d7b4f8a1",
+      "agent": "i18n-auditor",
+      "model": "deepseek/deepseek-flash",
+      "instance": "4b865abbfc0e",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 6
+      }
+    },
+    {
+      "locale": "fr",
+      "receipt_path": "i18n/receipts/0eddeb61023f.json",
+      "receipt_sha256": "907d4a5d79c709133e93c155edc20caa9aeb1d0f81b6094426de4accb390ddc8",
+      "receipt_git_ref": "e6122214503b9fc52841e119c060eabb7650391b",
+      "audited_snapshot": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+      "audited_source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+      "audited_target_sha256": "17e5718061f737cb466fb767fa7b4970aeaad0571c1d797fb21dfe0f3d0624c0",
+      "agent": "i18n-auditor",
+      "model": "deepseek/deepseek-flash",
+      "instance": "0eddeb61023f",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    {
+      "locale": "hi",
+      "receipt_path": "i18n/receipts/2d5628992cf1.json",
+      "receipt_sha256": "a97247db95c065e502d788dad7abb7f1dbea84b19bdfb55fe80d68b805cd2efe",
+      "receipt_git_ref": "e6122214503b9fc52841e119c060eabb7650391b",
+      "audited_snapshot": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+      "audited_source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+      "audited_target_sha256": "f403a8b1941e366197ddb17393e068847d47ba5ef42f670eb3c6bf26f704943c",
+      "agent": "i18n-auditor",
+      "model": "deepseek/deepseek-flash",
+      "instance": "2d5628992cf1",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      }
+    }
+  ],
+  "old_candidate_manifest_retained": {
+    "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/FINAL-MANIFEST-5f8e54e78de8-finalgate20261115.json",
+    "sha256": "f8cf9f6cd5f60f86917920ab3ba51a5a0411dbf0c5b83e35a62bc04b4a56ffea"
+  },
+  "per_locale_S18a_dispositions": {
+    "es": "All7findings on exact unchanged snapshot/current wording retained at recorded1MINOR+6NIT. No source IDs existed; exact receipt JSON-pointer refs identify provenance without fabricating original IDs.",
+    "fr": "Actual S18a receipt has explicit findings[];adds0. Prior4MINOR+3NITremain.",
+    "hi": "Retain1MINOR cross-namespace rate-limit terminology debt,no edit to this key requested. S18a NIT aliases existing HI-C1 same chat-list-destination ambiguity; preserve note/alternative proposal, count once."
+  }
+}

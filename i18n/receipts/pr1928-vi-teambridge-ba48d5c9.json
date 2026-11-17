@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of the 2 PR #1928 keys added in this namespace (scope: ui.teamBridge.delivery.not_delivered, ui.teamBridge.delivery.info_not_delivered; pre-existing keys byte-identical to merge-base 8dd26ed8b1 and out of scope)",
+  "locale": "vi",
+  "namespace": "ui.teamBridge",
+  "pr": 1928,
+  "date": "2026-11-15",
+  "head": "b083a717ea3b5b70f9c2331a9e935c3312328d58",
+  "instance": "pr1928-vi-teambridge-ba48d5c9",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team radientdev, task role); not the translator (coder job abe41ec364b7 (manager session 2c6111e02b16) on anthropic/claude-opus-5-5, no fallback)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 5bbe5f24d420: a different session and agent from the translator (coder job abe41ec364b7); same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. Judgement derived from English, the context sidecar and the shipped corpus (ui.teamBridge.delivery.*, ui.chat.pickers.failovers_panel.*); no MT or translation service used. Disclosure: the remediation lines of fixed findings (commit b083a717ea) were written by this auditor, so they are auditor-authored and re-bound here, not independently re-reviewed.",
+    "instance": "pr1928-vi-teambridge-ba48d5c9"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "id": "I1",
+      "severity": "MINOR",
+      "key": "ui.teamBridge.delivery.not_delivered",
+      "issue": "'Không được chuyển tới {recipient}.' admits the prohibition reading of preverbal 'không được' ('must not be forwarded to'), which hints at a block on the sender's deliberately neutral line.",
+      "disposition": "fixed in b083a717ea ('Không chuyển được tới {recipient}.': postverbal 'được' means only 'could not', no permission sense)"
+    },
+    {
+      "id": "I2",
+      "severity": "MINOR",
+      "key": "ui.teamBridge.delivery.info_not_delivered",
+      "issue": "'chưa nhận được' means 'has not yet received', implying later delivery; the corpus reserves 'chưa' for the held (not yet) lines.",
+      "disposition": "fixed in b083a717ea ('Người nhận này không nhận được tin nhắn.')"
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.delivery.not_delivered",
+      "note": "Neutrality verified: the line is the first sentence of the shipped ui.teamBridge.delivery.refused value in this locale minus the reason sentence; no word for refused, blocked, moderated or screened, and no rephrase/retry advice, in either new key."
+    }
+  ],
+  "binding": "Verified at b083a717ea3b: target src/i18n/catalogues/vi/ui.teamBridge.json (sha256 8ba5763356115c6d8704a92d2d4a5f666eec4015665d305fe6821e48c419d7d5); English src/i18n/catalogues/en/ui.teamBridge.json (sha256 b152eb09f41f5764b52a278581c1888f8643c00b65837850673cd8b6d3655aa9); context sidecar sha256 1c93d373e182ecfe8148f3904a99fbf998456f1d682b1b2b13158ebc818f5239. Key set equals English. Checks (python): JSON valid, ICU argument names identical to English for every audited key ({recipient}/{model} intact and untranslated), values NFC, no Cf characters. not_delivered = 'Không chuyển được tới {recipient}.' (34/29 chars) | info_not_delivered = 'Người nhận này không nhận được tin nhắn.' (40/42 chars)",
+  "scope": "ui.teamBridge for vi: 2 PR #1928 round-1 keys at branch head b083a717ea3b",
+  "revisions": {
+    "head": "b083a717ea3b5b70f9c2331a9e935c3312328d58"
+  },
+  "en_sha256": "b152eb09f41f5764b52a278581c1888f8643c00b65837850673cd8b6d3655aa9",
+  "context_sha256": "1c93d373e182ecfe8148f3904a99fbf998456f1d682b1b2b13158ebc818f5239",
+  "target_sha256": "8ba5763356115c6d8704a92d2d4a5f666eec4015665d305fe6821e48c419d7d5",
+  "sha256": {
+    "vi": "8ba5763356115c6d8704a92d2d4a5f666eec4015665d305fe6821e48c419d7d5",
+    "en": "b152eb09f41f5764b52a278581c1888f8643c00b65837850673cd8b6d3655aa9"
+  }
+}

@@ -74,6 +74,7 @@ import type {
 	ReusableTeam,
 	TeamEffective,
 } from "@shared/api/local-operator/profile-hooks";
+import type { ConfigResponse } from "@shared/api/local-operator/types";
 import type {
 	DesktopWakeEntry,
 	DesktopWakeSupervisor,
@@ -710,6 +711,47 @@ const installWorldBridge = () => {
 						session_interrupt: 1,
 					},
 				});
+			// These legacy callers consume CRUD envelopes, unlike the catalogue
+			// reads below. Answer them in the world, not with a product fallback;
+			// the avatar probe must see the same roster as the schedules fixture.
+			case "config.get":
+				return {
+					status: 200,
+					body: {
+						status: 200,
+						message: "ok",
+						result: {
+							version: "1",
+							metadata: {
+								created_at: new Date(NOW).toISOString(),
+								last_modified: new Date(NOW).toISOString(),
+								description: "Docs library world",
+							},
+							values: {
+								conversation_length: 100,
+								detail_length: 20,
+								max_learnings_history: 50,
+								hosting: "openai",
+								model_name: "gpt-5",
+								auto_save_conversation: true,
+							},
+						} satisfies ConfigResponse,
+					},
+				};
+			case "legacy.agents.list":
+				return {
+					status: 200,
+					body: {
+						status: 200,
+						message: "ok",
+						result: {
+							agents: LEGACY_AGENTS,
+							total: LEGACY_AGENTS.length,
+							page: request.page ?? 1,
+							per_page: request.perPage ?? 50,
+						},
+					},
+				};
 			case "sessions.list":
 				return ok({ sessions: rows, truncated: false });
 			case "sessions.search": {
@@ -811,6 +853,17 @@ const installWorldBridge = () => {
 					total: WAKES.length,
 					truncated: false,
 					supervisor: SUPERVISOR,
+					read_error: false,
+				});
+			/* The Schedules page's Monitors section reads this beside the wakes
+			   (#1898); this world has no standing watches, so the section is
+			   absent rather than a refused-op error strip. */
+			case "monitors.list":
+				return ok({
+					entries: [],
+					generated_at: SCHEDULES_NOW_MS,
+					total: 0,
+					truncated: false,
 					read_error: false,
 				});
 			case "notifications.list":

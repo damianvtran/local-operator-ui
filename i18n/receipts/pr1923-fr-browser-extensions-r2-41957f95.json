@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 2, of the 11 PR #1923 keys changed or added in a13d83ce2d in this namespace (scope: ui.browser.extensions.install_compat_note, ui.browser.extensions.details_desktop_apps, ui.browser.extensions.desktop_apps_none, ui.browser.extensions.native_confirm_body, ui.browser.extensions.native_confirm_host, ui.browser.extensions.native_confirm_note, ui.browser.extensions.native_confirm_deny, ui.browser.extensions.desktop_apps_refused, ui.browser.extensions.desktop_apps_ask_again, ui.browser.extensions.desktop_apps_ask_again_label, ui.browser.extensions.desktop_apps_onepassword_hint); unchanged keys audited in round 1 retained, out of scope",
+  "locale": "fr",
+  "namespace": "ui.browser.extensions",
+  "pr": 1923,
+  "date": "2026-11-14",
+  "head": "f59e7ef91429cc852d37c5baf29cbd8ad3bc251e",
+  "instance": "pr1923-fr-browser-extensions-r2-41957f95",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev, task role); not the translator (coder subagent 4da329ae5783 on anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session b991792b78a2: a different session and agent from the round-2 translator (coder 4da329ae5783) and from the round-1 auditor; same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. No MT used. Disclosure: the I6 remediation line (f59e7ef914) was written by this auditor and is re-bound here, not independently re-reviewed.",
+    "instance": "pr1923-fr-browser-extensions-r2-41957f95"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "id": "I6",
+      "severity": "MINOR",
+      "key": "ui.browser.extensions.desktop_apps_onepassword_hint",
+      "issue": "Settings rendered 'Paramètres'; 1Password's fr UI labels its Settings menu/pane 'Réglages' (verified in the installed app's string table), and the context note says to mirror 1Password's labels so users can follow the path.",
+      "disposition": "fixed in f59e7ef914 (Paramètres -> Réglages)"
+    }
+  ],
+  "binding": "Verified at f59e7ef91429: target src/i18n/catalogues/fr/ui.browser.extensions.json (sha256 7d6baa7734306b128697bd67614e70da7c98e086f623ad90eff18e6f312c41f1); English src/i18n/catalogues/en/ui.browser.extensions.json (sha256 a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d); context sidecar sha256 7ae7fff463c0091b607fe47e728b1d60268843c40d40f7779e36d2bafd3f8df5. Checks (python): key set equals English, ICU argument names identical to English for all 11 keys (incl. new {app} in native_confirm_body and desktop_apps_ask_again_label), values NFC, no Cf characters. 1Password menu labels checked against 1Password's own UI strings read from the installed app (/Applications/1Password.app/Contents/Frameworks/index.node; 1Password ships fr, es, ru, zh-CN but not vi, hi, ur per its App Store language list). Add Browser = 'Ajouter un navigateur', Browser tab = 'Navigateur', Settings menu = 'Réglages…' in 1Password fr -> I6 fixed; U+202F inside « » (body) and before ':' (host) verified; 'Non autorisée' agrees with application (f.). Values: install_compat_note = 'Certaines fonctionnalités des extensions Chrome peuvent ne pas fonctionner dans ce navigateur.' (94/60 chars, 1.57x) | details_desktop_apps = 'Applications de bureau autorisées' (33/20 chars, 1.65x) | desktop_apps_none = 'Aucune pour l’instant. Votre autorisation vous sera demandée la première fois que l’extension aura besoin d’une application de bureau.' (134/75 chars, 1.79x) | native_confirm_body = '«\\u202f{name}\\u202f» souhaite échanger des messages avec {app}, un programme installé sur cet ordinateur.' (95/85 chars, 1.12x) | native_confirm_host = 'Hôte\\u202f: {host}' (13/12 chars, 1.08x) | native_confirm_note = 'N’autorisez que les applications de confiance. Vous pourrez modifier votre réponse plus tard sur la page de détails de l’extension.' (131/92 chars, 1.42x) | native_confirm_deny = 'Ne pas autoriser' (16/11 chars, 1.45x) | desktop_apps_refused = 'Non autorisée' (13/11 chars, 1.18x) | desktop_apps_ask_again = 'Redemander' (10/9 chars, 1.11x) | desktop_apps_ask_again_label = 'Redemander avant que {app} puisse se connecter' (46/34 chars, 1.35x) | desktop_apps_onepassword_hint = 'Si 1Password ne parvient toujours pas à joindre l’application de bureau, ouvrez 1Password, allez dans Réglages → Navigateur → Ajouter un navigateur, puis choisissez Local Operator.' (180/134 chars, 1.34x)",
+  "scope": "ui.browser.extensions for fr: 11 PR #1923 round-2 keys at branch head f59e7ef91429",
+  "revisions": {
+    "head": "f59e7ef91429cc852d37c5baf29cbd8ad3bc251e"
+  },
+  "en_sha256": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d",
+  "context_sha256": "7ae7fff463c0091b607fe47e728b1d60268843c40d40f7779e36d2bafd3f8df5",
+  "target_sha256": "7d6baa7734306b128697bd67614e70da7c98e086f623ad90eff18e6f312c41f1",
+  "sha256": {
+    "fr": "7d6baa7734306b128697bd67614e70da7c98e086f623ad90eff18e6f312c41f1",
+    "en": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d"
+  }
+}

@@ -77,7 +77,10 @@ import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
 const TS = 1_760_000_000_000;
 
 /** A settled, complete agent answer with no stop reason - the ordinary case. */
-const answer = (id: string, text: string): TranscriptRecord => ({
+const answer = (
+	id: string,
+	text: string,
+): Extract<TranscriptRecord, { kind: "assistant" }> => ({
 	kind: "assistant",
 	id,
 	ts: TS + 1_000,
@@ -310,6 +313,183 @@ const meta: Meta = {
 export default meta;
 
 type Story = StoryObj;
+
+/** Model output fixtures: the exact payload can also be checked at the base ref.
+ * Code-literal control is deliberately adjacent to parsed HTML in one cell.
+ */
+const HTML_BREAKS = [
+	"| Item | Notes |",
+	"| --- | --- |",
+	"| Break variants | • first<br>• second<br/>• third<BR />• fourth |",
+	"| Inline markup | <strong>bold</strong> <em>italic</em> <del>old</del> <code>token</code> &amp; &nbsp; |",
+	"| Literal control | `<br/>` and &lt;strong&gt; stay literal |",
+	'| Link actions | <a href="https://example.com/docs">docs</a><br/>[report](file:///tmp/table-html.pdf) |',
+].join("\n");
+
+export const HtmlBreaks: Story = {
+	render: () => <Frame records={[answer("html-breaks", HTML_BREAKS)]} />,
+};
+export const HtmlBreaksNarrow: Story = {
+	render: () => (
+		<div style={{ width: 320 }}>
+			<Frame records={[answer("html-narrow", HTML_BREAKS)]} />
+		</div>
+	),
+};
+export const StructuralHtml: Story = {
+	render: () => (
+		<Frame
+			records={[
+				answer(
+					"html-table",
+					'<table><caption>Model table</caption><colgroup span="2"></colgroup><thead><tr><th scope="col">Item</th><th scope="col">Notes</th></tr></thead><tbody><tr><td rowspan="2">First</td><td>one<br/>two <strong>bold</strong></td></tr><tr><td><p>separate paragraph</p><ul><li>one</li><li>two</li></ul></td></tr><tr><td colspan="2">spanning both columns</td></tr></tbody></table>',
+				),
+			]}
+		/>
+	),
+};
+/** Review R1: the second table shares the node containing the first close. */
+export const HtmlJoinedTables: Story = {
+	render: () => (
+		<Frame
+			records={[
+				answer(
+					"html-joined-tables",
+					"<table>\n\n<tr><td>one</td></tr>\n</table>\n<table><tr><td>TWO</td></tr></table>",
+				),
+			]}
+		/>
+	),
+};
+
+const BLANK_SEPARATED_HTML =
+	"<table>\n\n<tr><td>one</td></tr>\n\n<tr><td>two</td></tr>\n\n</table>";
+
+/** Review R2: real transcript streaming rows at reproducible arrival boundaries. */
+export const HtmlBlankSeparatedStreaming: Story = {
+	render: () => (
+		<Frame
+			records={[
+				{
+					...answer(
+						"html-first-row",
+						"<table>\n\n<tr><td>one</td></tr>\n\n<tr",
+					),
+					streaming: true,
+					complete: false,
+				},
+				{
+					...answer(
+						"html-open-table",
+						BLANK_SEPARATED_HTML.slice(
+							0,
+							BLANK_SEPARATED_HTML.indexOf("</table>"),
+						),
+					),
+					streaming: true,
+					complete: false,
+				},
+				{
+					...answer("html-closed-table", BLANK_SEPARATED_HTML),
+					streaming: true,
+					complete: false,
+				},
+			]}
+		/>
+	),
+};
+export const HtmlBlankSeparatedSettled: Story = {
+	render: () => (
+		<Frame records={[answer("html-blank-separated", BLANK_SEPARATED_HTML)]} />
+	),
+};
+
+/** R2/Q2: no blank separator before the table, in the real transcript path. */
+export const HtmlInterruptingStreaming: Story = {
+	render: () => (
+		<Frame
+			records={["Intro", "# Heading"].map((prefix, index) => ({
+				...answer(
+					`html-interrupting-${index}`,
+					`${prefix}\n${BLANK_SEPARATED_HTML}`,
+				),
+				streaming: true,
+				complete: false,
+			}))}
+		/>
+	),
+};
+export const HtmlInterruptingSettled: Story = {
+	render: () => (
+		<Frame
+			records={["Intro", "# Heading"].map((prefix, index) =>
+				answer(
+					`html-interrupting-${index}`,
+					`${prefix}\n${BLANK_SEPARATED_HTML}`,
+				),
+			)}
+		/>
+	),
+};
+
+/** Review R3: mdast owns container prefixes, not the reconstructed HTML. */
+export const HtmlContainerTables: Story = {
+	render: () => (
+		<Frame
+			records={[
+				answer(
+					"html-quoted-table",
+					"> <table>\n>\n> <tr><td>one</td></tr>\n>\n> <tr><td>two</td></tr>\n>\n> </table>\n>\n> AFTER",
+				),
+				answer(
+					"html-list-table",
+					"- <table>\n\n  <tr><td>one</td></tr>\n\n  <tr><td>two</td></tr>\n\n  </table>\n\n  AFTER",
+				),
+			]}
+		/>
+	),
+};
+
+export const HtmlStreaming: Story = {
+	render: () => (
+		<Frame
+			records={[
+				{
+					...answer(
+						"html-streaming",
+						`${HTML_BREAKS}\n| Streaming | first<br/>second <strong>open`,
+					),
+					streaming: true,
+					complete: false,
+				},
+			]}
+		/>
+	),
+};
+export const HtmlEmptyAndMalformed: Story = {
+	render: () => (
+		<Frame
+			records={[
+				answer(
+					"html-empty",
+					"| Empty | Partial |\n| --- | --- |\n| | first<br/>second <strong>open |\n| | unfinished<br |",
+				),
+			]}
+		/>
+	),
+};
+export const HtmlSecurity: Story = {
+	render: () => (
+		<Frame
+			records={[
+				answer(
+					"html-security",
+					'| Input | Result |\n| --- | --- |\n| Safe formatting | <strong onclick="alert(1)">safe</strong><br/>second |\n| Active elements | <script>alert(2)</script><img src=x onerror="alert(3)"><svg onload="alert(4)"></svg> |\n| Unsafe link | <a href="javascript:alert(5)">inert</a> |\n| Code control | `<img src=x onerror=alert(6)>` |',
+				),
+			]}
+		/>
+	),
+};
 
 /** The reported shape: two short columns beside one long prose column. */
 export const OperatorShape: Story = {

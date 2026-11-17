@@ -328,6 +328,7 @@
 	"ui.teamBridge.delivery.refused_abusive": "Non remis à {recipient} : refusé par sa modération (ressemblait à un contenu abusif)",
 	"ui.teamBridge.delivery.refused_unsafe_content": "Non remis à {recipient} : refusé par sa modération (ressemblait à un contenu ou des liens à risque)",
 	"ui.teamBridge.delivery.refused_out_of_scope": "Non remis à {recipient} : refusé par sa modération (ressemblait à une demande hors du périmètre de cet agent)",
+	"ui.teamBridge.delivery.not_delivered": "Non remis à {recipient}.",
 	"ui.teamBridge.delivery.held": "Pas encore remis à {recipient}…",
 	"ui.teamBridge.delivery.held_screening": "Pas encore remis à {recipient}. Vérification en cours.",
 	"ui.teamBridge.delivery.held_screening_unavailable": "Pas encore remis à {recipient}. La vérification n’a pas pu avoir lieu ; nouvelle tentative automatique.",

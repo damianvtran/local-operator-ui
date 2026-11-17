@@ -18,6 +18,7 @@ import { DESKTOP_MESSAGE_MAX_FILES } from "./attachment-upload";
 // against, so the request schema below and the renderer's pure model cannot
 // disagree about what an id is.
 import { SIDEBAR_DESTINATION_IDS } from "./desktop-control-contract";
+import { DESKTOP_DIFF_PAGE_MAX_ROWS } from "./desktop-diff-page";
 // The feed's frame family lives beside the session stream's, so the two cannot
 // drift into disagreeing about the envelope they deliberately share.
 import type { DesktopFeedFrame } from "./desktop-session-contract";
@@ -37,11 +38,33 @@ const DOT_ONLY_VARIABLE_KEY = /^\.+$/;
 const PUBLICATION_FORMAT_POINT = /\p{Cf}/u;
 const PUBLICATION_PATH_SEPARATOR = /[/\\:]/;
 
+/**
+ * The full-diff page cap lives in a leaf module so the condense parity bundle
+ * (which reaches it through the transcript reducer) does not pull this whole
+ * contract in; see `desktop-diff-page.ts`. Re-exported so importers of the
+ * contract keep one name.
+ */
+export { DESKTOP_DIFF_PAGE_MAX_ROWS } from "./desktop-diff-page";
+
 const id = z
 	.string()
 	.min(1)
 	.max(128)
 	.regex(/^[a-zA-Z0-9_-]+$/);
+/**
+ * A full-diff route's call id: a provider tool-call id (`id`'s alphabet), or a
+ * NESTED `write`/`edit` id the eval bridge mints as `<outer id>:<suffix>`
+ * (`harness/loop.py`, `f"{call.id}:{uuid4().hex}"`). Without the one colon a
+ * nested call's archive - the only way a subagent's eval-made edits are ever
+ * seen again on replay - was refused here before the request left the app.
+ * Exactly one separator, both halves in `id`'s alphabet: still never a path.
+ * 256 = two `id` halves plus the separator's headroom.
+ */
+const diffCallId = z
+	.string()
+	.min(1)
+	.max(256)
+	.regex(/^[a-zA-Z0-9_-]+(?::[a-zA-Z0-9_-]+)?$/);
 /**
  * A stored login's reference, as a provider block publishes it.
  *
@@ -2330,6 +2353,55 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			limit: z.number().int().min(1).max(500).optional(),
 		})
 		.strict(),
+	/*
+	 * One page of a write/edit call's FULL historical diff: the redacted,
+	 * immutable artifact the core archived when the call ran, beyond the 200-row
+	 * inline preview its transcript row carries.
+	 *
+	 * The request names the CALL, never the artifact: there is deliberately no
+	 * digest/ref field. The route proves membership itself (the transcript of
+	 * THIS session — or of THIS child, contained by the parent's roster — holds a
+	 * tool result with this id whose descriptor names the artifact), so a
+	 * renderer that learned a ref some other way still cannot read it. The child
+	 * twin mirrors `subagents.attachment`/`subagents.transcript`: a child is not a
+	 * user session, so the parent route refuses it.
+	 *
+	 * `callId` is a provider tool-call id (`toolu_…`, `call_…`), not a path:
+	 * `id`'s charset, so no `/`, `.` or `%` ever reaches the URL. `start` is an
+	 * artifact ROW index (rows never move: the artifact is immutable), and
+	 * `limit` is capped at the route's 200 — the route may still return fewer
+	 * under its byte budget and says where to resume (`next_start`).
+	 *
+	 * `offset` (v1 extension, review round 2): a row longer than one page's byte
+	 * budget is CONTINUED, never clipped, so the resume point is the PAIR
+	 * (`next_start`, `next_offset`). `offset` is the server-issued position
+	 * inside row `start`'s body, counted in Unicode code points by the core —
+	 * the renderer treats it as an opaque integer it echoes back and never
+	 * slices JS text by. Optional (default 0) so a row-aligned request stays
+	 * the frozen v1 shape; always sent on the wire for the same reason
+	 * `start`/`limit` are.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.diff"),
+			sessionId,
+			callId: diffCallId,
+			start: z.number().int().min(0).max(1_000_000),
+			offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+			limit: z.number().int().min(1).max(DESKTOP_DIFF_PAGE_MAX_ROWS),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("subagents.diff"),
+			sessionId,
+			childId: sessionId,
+			callId: diffCallId,
+			start: z.number().int().min(0).max(1_000_000),
+			offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+			limit: z.number().int().min(1).max(DESKTOP_DIFF_PAGE_MAX_ROWS),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.message"),
@@ -3516,14 +3588,34 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z.object({ op: z.literal("wakes.remove"), sessionId, wakeId }).strict(),
 	/*
-	 * The monitor surface's one write that has a UI: cancelling a standing watch
-	 * (`DELETE /v1/desktop/monitors/{session_id}/{monitor_id}`). The sibling
-	 * routes - the machine-wide listing and the arm - are deliberately not
-	 * mirrored yet: the pane and the composer's chip read the SESSION's own
-	 * `frontend.monitors` field (the design's §12 row states the desktop contract
-	 * as "the `monitors` field + command routes"), so a listing op would have no
-	 * reader, and the arm op waits for the form that will use it.
+	 * The monitor surface: the Schedules page's machine-wide read, and the cancel
+	 * both that page and the run pane draw.
+	 *
+	 * `monitors.list` (`GET /v1/desktop/monitors`) is the listing the TUI's wake
+	 * band and the phone's Schedules view already read; it was left unmirrored
+	 * while its only would-be reader was the run pane, which reads the SESSION's
+	 * own `frontend.monitors` field instead. The Schedules page is the reader that
+	 * premise lacked (local-operator-ui #1898): "every standing watch on this
+	 * machine" cannot be answered per session, for `wakes.list`'s reason - the
+	 * session list is paginated by recency, while the monitor index is one small
+	 * file per monitor-carrying session and complete at any store size.
+	 *
+	 * The bounds are the route's own (`MONITOR_LIST_LIMIT_MAX = 500`,
+	 * `include_dormant` defaulting true in `routes/desktop_monitors.py`), so a
+	 * value this schema admits is one the backend accepts rather than a 422. The
+	 * arm op stays unmirrored: it waits for the form that will use it, and this
+	 * surface is read-and-cancel only.
 	 */
+	z
+		.object({
+			op: z.literal("monitors.list"),
+			limit: z.number().int().min(1).max(500).optional(),
+			/* Dormant rows are a STOPPED session's watches: still armed, not
+			   ticking. Shown rather than hidden, the wake listing's rule - a page
+			   that dropped them would report a parked watch as gone. */
+			includeDormant: z.boolean().optional(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("monitors.cancel"),
@@ -4245,6 +4337,23 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			share_typing: z.boolean(),
 		})
 		.strict(),
+	/*
+	 * The Screening model preference (local-operator #3632, state-less write
+	 * from local-operator #4066). Sent WITHOUT `state`, exactly like
+	 * share_typing: the runtime writes it as a machine-local preference with no
+	 * hub call. Carrying it on a `state` write instead ran the explicit-enable
+	 * commit hook, which could enroll a non-owner machine or resume an endpoint
+	 * paused elsewhere (#1928 round 1, R1/S-2/S-3), so it is its own op and the
+	 * settings put no longer accepts the field at all. "" clears it back to
+	 * Automatic, so no min length; 192 is the runtime's own cap.
+	 */
+	z
+		.object({
+			op: z.literal("agent_messages.settings.screening_model"),
+			expected_account_id: id,
+			screening_model: z.string().max(192),
+		})
+		.strict(),
 	/* Reactions have no receipt-less legacy caller: the captured account and
 	 * target tenant are required before main may dispatch either verb. */
 	z
@@ -4931,6 +5040,23 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("projects.request_update"),
 			key: projectKey,
+		})
+		.strict(),
+	/*
+	 * THE PROJECTS ONE CONVERSATION IS LINKED TO
+	 * (`GET /v1/desktop/sessions/{session_id}/projects`), the chat canvas's
+	 * Projects view. APPENDED like its siblings and gated by its OWN capability
+	 * key (`features.projects_by_session`), not a `projects` version bump: the
+	 * Projects tab works on a daemon that predates this route, and a bump would
+	 * hide that working surface behind an update it does not need. The rows are
+	 * the listing's own shape (`DesktopProject`), so the canvas reuses every
+	 * formatter the board uses. An unknown or unlinked session is a 200 with an
+	 * empty list - "this conversation has no projects" is an answer, not a fault.
+	 */
+	z
+		.object({
+			op: z.literal("projects.for_session"),
+			sessionId,
 		})
 		.strict(),
 	/*
@@ -6632,6 +6758,72 @@ export type DesktopWakeCreateResponse = {
 };
 
 /**
+ * One standing watch, as `monitors.list` sends it
+ * (`server/models/desktop_monitors.py::MonitorRow`).
+ *
+ * Only the fields a reader here draws or a test pins are typed; the model is
+ * `extra="allow"` and carries more (`arguments`, `ignore`, `suppressed`, ...),
+ * which is why the row is ALSO a `Record<string, unknown>`: the Schedules page
+ * hands it to the run pane's `deriveMonitors` unchanged, the same deriver the
+ * pane feeds `frontend.monitors`, so the two surfaces cannot spell one watch two
+ * ways. Instants are epoch MILLISECONDS, like the wake listing's.
+ */
+export type DesktopMonitorListingRow = Record<string, unknown> & {
+	id: string;
+	name: string;
+	description?: string;
+	tool?: string;
+	every_ms: number | null;
+	next_due_at: number | null;
+	/** `0` before the first check: the route's "absent", not a 1970 stamp. */
+	last_check_at: number;
+	checks: number;
+	consecutive_failures: number;
+	disabled: boolean;
+	disabled_reason: string;
+	/** `armed | dormant | disabled | expired | blind`, the CLI's precedence. */
+	state: string;
+	/** The shared §D6 health sentence, or `null` when there is nothing to say. */
+	health?: string | null;
+};
+
+/**
+ * One monitor-carrying conversation, with its watches beneath it - the wake
+ * entry's twin (`DesktopWakeEntry`), one per SESSION because the session is
+ * what a user opens and what a cancel targets.
+ */
+export type DesktopMonitorEntry = {
+	session_id: string;
+	/** Never empty: the route floors a nameless session to its id and cwd. */
+	name: string;
+	cwd: string;
+	origin: string;
+	updated_at: number;
+	/** The session was STOPPED: its watches stay armed but do not tick. */
+	dormant: boolean;
+	/** The index has an entry and the transcript is gone: nothing can tick. */
+	ghost: boolean;
+	next_due_at: number | null;
+	monitors: DesktopMonitorListingRow[];
+};
+
+/**
+ * `monitors.list`'s answer: every monitor-carrying session on this machine.
+ *
+ * No `supervisor` field, unlike the wake listing: a monitor ticks inside its
+ * own session, not under the wake supervisor, so there is no separate process
+ * whose health decides whether it runs. `read_error` is carried for the wake
+ * listing's reason - "the index could not be read" is not "nothing is watched".
+ */
+export type DesktopMonitorsListResponse = {
+	entries: DesktopMonitorEntry[];
+	generated_at: number;
+	total: number;
+	truncated: boolean;
+	read_error: boolean;
+};
+
+/**
  * The outcome of cancelling (or arming) one monitor, as the route's
  * `MonitorWriteReceipt` sends it (`routes/desktop_monitors.py::_receipt`).
  *
@@ -7689,6 +7881,9 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"sessions.variables.list",
 	"skills.list",
 	"subagents.transcript",
+	// The full-diff pages: reads of an immutable archived artifact.
+	"sessions.diff",
+	"subagents.diff",
 	"teams.effective",
 	"teams.get",
 	"teams.list",
@@ -9695,6 +9890,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// This build renders supplements; declare it for each cold page,
 				// never infer HTTP intent from a different SSE subscriber.
 				query.set("supplements", "1");
+				/*
+				 * `diff_bindings=1` rides WITH the open frame and only with it: this build's
+				 * reducer paints nested write/edit diff bindings (`tool_call_diff_binding_v1`,
+				 * `diff-history-model.ts`), and the core serves them only inside the projected
+				 * frame, rebuilt from validated fields - so the flag is meaningless without
+				 * `open_frame=1`, and coupling them keeps every request identity and cache key
+				 * that already distinguishes the open frame distinguishing this too. An older
+				 * backend ignores the unknown parameter and keeps dropping the rows.
+				 */
+				query.set("diff_bindings", "1");
 			}
 			if (request.journalOrder) {
 				query.set("journal_order", "1");
@@ -9784,6 +9989,26 @@ export function desktopEndpoint(request: DesktopRequest): {
 			if (request.entryId) query.set("entry_id", request.entryId);
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/children/${request.childId}/transcript?${query}`,
+				method: "GET",
+			};
+		}
+		case "sessions.diff":
+		case "subagents.diff": {
+			// `start` and `limit` are ALWAYS sent, like `subagents.transcript`'s
+			// limit: the route's defaults are a second authority, and the page's
+			// `next_start` is a fact about the range the caller actually asked for.
+			const query = new URLSearchParams({
+				start: String(request.start),
+				offset: String(request.offset ?? 0),
+				limit: String(request.limit),
+			});
+			const call = encodeURIComponent(request.callId);
+			const owner =
+				request.op === "subagents.diff"
+					? `${request.sessionId}/children/${request.childId}`
+					: request.sessionId;
+			return {
+				path: `/v1/desktop/sessions/${owner}/tool-calls/${call}/diff?${query}`,
 				method: "GET",
 			};
 		}
@@ -10268,6 +10493,23 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 * hand-built request must not be able to turn a handle into a path
 		 * fragment (the mesh writes' own rule).
 		 */
+		case "monitors.list": {
+			/* `wakes.list`'s mapping, one family over: snake_case on the wire,
+			   and an absent bound is an absent parameter (the route's default)
+			   rather than a guessed one. */
+			const query = new URLSearchParams();
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			if (request.includeDormant !== undefined)
+				query.set("include_dormant", String(request.includeDormant));
+			return {
+				path:
+					query.size > 0
+						? `/v1/desktop/monitors?${query}`
+						: "/v1/desktop/monitors",
+				method: "GET",
+			};
+		}
 		case "monitors.cancel":
 			return {
 				path: `/v1/desktop/monitors/${encodeURIComponent(request.sessionId)}/${encodeURIComponent(request.monitorId)}`,
@@ -11002,6 +11244,15 @@ export function desktopEndpoint(request: DesktopRequest): {
 					share_typing: request.share_typing,
 				},
 			};
+		case "agent_messages.settings.screening_model":
+			return {
+				path: "/v1/desktop/team-bridge/settings",
+				method: "PUT",
+				body: {
+					expected_account_id: request.expected_account_id,
+					screening_model: request.screening_model,
+				},
+			};
 		case "team_bridge.reactions.toggle": {
 			const path = `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/reactions/${encodeURIComponent(request.emoji)}`;
 			return request.active
@@ -11452,6 +11703,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/request-update`,
 				method: "POST",
+			};
+		case "projects.for_session":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/projects`,
+				method: "GET",
 			};
 		case "projects.search": {
 			/*

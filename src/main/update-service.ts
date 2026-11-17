@@ -2640,6 +2640,9 @@ export class UpdateService {
 	 */
 	private fleetDrainSpentMs = 0;
 
+	/** S3: why this launch skips app-initiated update work; null for product launches. */
+	private readonly quietReason: string | null;
+
 	/**
 	 * Initialize the update service
 	 * @param mainWindow - The main application window
@@ -2648,9 +2651,20 @@ export class UpdateService {
 	constructor(
 		mainWindow: BrowserWindow,
 		backendService?: BackendServiceManager,
+		/**
+		 * S3 (mac proof capture): when set, this launch is a rig's armed boot
+		 * (`devDriverQuietUpdatesReason` in `./dev-driver`) and the service skips
+		 * the start-up seal repair, the periodic and post-wake checks, and the
+		 * renderer's app-initiated (non-manual) check. Why: an agent run of the
+		 * SHIPPED bundle must not delete files inside the bundle the operator is
+		 * running, and an update card must not enter an evidence frame. Omitted
+		 * (every product launch) leaves the service exactly as it was.
+		 */
+		options?: { quietReason?: string | null },
 	) {
 		this.mainWindow = mainWindow;
 		this.backendService = backendService || null;
+		this.quietReason = options?.quietReason ?? null;
 
 		// Determine if we're in dev mode
 		this.isDevMode =
@@ -2699,6 +2713,17 @@ export class UpdateService {
 		// A marker left behind by a previous run means that run's install never
 		// completed. Recover it before anything else can offer the update again.
 		this.recoverPendingInstall();
+
+		if (this.quietReason) {
+			// S3: stop here - no seal repair, no schedule, no wake check. The IPC
+			// handlers are still registered by the caller, so a MANUAL check still
+			// works and nothing in the renderer meets a missing channel.
+			logger.info(
+				`Update service is quiet for this launch: ${this.quietReason}`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return;
+		}
 
 		/*
 		 * Then repair this bundle's seal, if an earlier run broke it.
@@ -5326,6 +5351,16 @@ export class UpdateService {
 		ipcMain.handle(
 			"check-for-updates",
 			async (_event, options?: { manual?: boolean }) => {
+				// S3: the renderer's mount check is app-initiated (no `manual`); a
+				// quiet (rig) launch answers it with the same `null` a skipped feed
+				// check returns, so no update card can enter an evidence frame.
+				if (this.quietReason && options?.manual !== true) {
+					logger.info(
+						`Skipped the app-initiated UI update check: ${this.quietReason}`,
+						LogFileType.UPDATE_SERVICE,
+					);
+					return null;
+				}
 				logger.info("Checking for UI updates...", LogFileType.UPDATE_SERVICE);
 				this.onCheckRequested(options);
 				/*

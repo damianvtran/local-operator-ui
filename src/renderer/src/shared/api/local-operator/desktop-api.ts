@@ -1349,7 +1349,12 @@ function openStreamTransport(
 	 * for the same reason: this proxy must not claim on a renderer's behalf that
 	 * a page counted in paintable rows will be understood.
 	 */
-	if (args.openFrame === true) query.set("open_frame", "1");
+	// `diff_bindings=1` rides with the open frame, as main's relay sends it
+	// (`desktop-stream.ts` carries the reasoning).
+	if (args.openFrame === true) {
+		query.set("open_frame", "1");
+		query.set("diff_bindings", "1");
+	}
 	// Browser development must negotiate the same source facts as main's relay;
 	// otherwise a real cold quiet correction is silently filtered out here.
 	if (args.journalOrder === true) {

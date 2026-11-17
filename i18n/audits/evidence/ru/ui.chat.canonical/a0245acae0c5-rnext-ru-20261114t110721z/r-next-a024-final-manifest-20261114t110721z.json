@@ -1,0 +1,723 @@
+{
+  "schema": 1,
+  "kind": "final-allowlisted-exact-union-rebinding-manifest",
+  "created_at": "2026-11-14T11:09:01.300352+00:00",
+  "auditor": "translation-auditor",
+  "session": "a0245acae0c5",
+  "served_model": "openai/gpt-6.1-sol",
+  "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+  "model_selection": "inherited parent; no override",
+  "fallback": "No in-session fallback observed; coordinator-only fallback authorization is not claimed",
+  "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+  "frozen": {
+    "HEAD": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+    "MERGE_HEAD": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+    "tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+    "raw_index_sha256": "b6ef50943c49fc1f252bbdf8d477688a0f96bb2f0d0b040aab59b3a40a89d505",
+    "all_index_entries_match_tree": true,
+    "index_paths": 13783
+  },
+  "new_semantic_keys": 0,
+  "mechanical_target_keys": 1976,
+  "overall_verdict": "clean-with-findings for exact union seam rebinding only; all four assigned locales exact",
+  "allowlist": {
+    "ru": {
+      "locale": "ru",
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "status": "passed",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "finding_ids": [
+        {
+          "id": null,
+          "ids": [
+            "I-RU-1",
+            "RU-1"
+          ],
+          "additional_inherited_ids": [],
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.back"
+        },
+        {
+          "id": null,
+          "ids": [
+            "I-RU-2"
+          ],
+          "additional_inherited_ids": [],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.tool_row.diff.full.prev"
+        }
+      ],
+      "session": "a0245acae0c5",
+      "served_model": "openai/gpt-6.1-sol",
+      "instance": "a0245acae0c5-rnext-ru-20261114t110721z",
+      "seam_verdict": "exact selected-parent union; no merge seam defect found",
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "6b82f62d6909a97c60e2c3de23503b68776c97f4b885da3badbe69eb78311a8b",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-ru-receipt-20261114t110721z.json",
+        "sha256": "790ba4aa4bf40220e8ad85c70c84944625caf0881124cbdf6007cc16c67a809a"
+      },
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-ru-record-20261114t110721z.json",
+        "sha256": "2e033a5d832d53bad2ddc3b381d984fc1733e27422f4094fce8af3ebacff61d8",
+        "canonical_destination": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-rnext-ru-20261114t110721z/record.json"
+      },
+      "parent_receipts": [
+        {
+          "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+          "role": "PR",
+          "path": "i18n/receipts/a0245acae0c5-1829-final-ru-20261112t234806z-issued.json",
+          "sha256": "ffe4cdaada97aa732cac6a16168b7bc9cc2cba480efe1f4532bba5c1734939b9",
+          "instance": "a0245acae0c5-1829-final-ru-20261112t234806z-issued",
+          "agent": "translation-auditor",
+          "model": "openai/gpt-6.1-sol",
+          "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+          "target_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+          "retained_exact_in_index": true
+        },
+        {
+          "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+          "role": "PR",
+          "path": "i18n/receipts/0e471bff3c0f-1829-final-evidence-ru.json",
+          "sha256": "ab27262aab91ede71d9564ab1e2e7bfeac3394a01e3810f73abbbdfd0b3fce5f",
+          "instance": "0e471bff3c0f-1829-final-evidence-ru",
+          "agent": "translation-auditor",
+          "model": "openai/gpt-6.1-sol",
+          "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+          "target_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+          "retained_exact_in_index": true
+        },
+        {
+          "parent": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+          "role": "incoming main",
+          "path": "i18n/receipts/94f6e325484c-canon3-ru.json",
+          "sha256": "fbefaf0396d96634c6272fa93d0f4b0272a4b7e0fb9db985670cb2f2edf0c53a",
+          "instance": "94f6e325484c-canon3-ru",
+          "agent": "reviewer",
+          "model": "anthropic/claude-opus-5-5",
+          "source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+          "target_sha256": "595666fd8f34ab80ccfc4e51d6ed0dbdca606760fb50fe21c11473eedc4a1737",
+          "retained_exact_in_index": true
+        }
+      ],
+      "parent_contexts": {
+        "main_context_receipt_form": {
+          "en": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf"
+        },
+        "main_context_actual_sha256": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf",
+        "PR_context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+        "all_bindings_valid": true
+      },
+      "own_prior_lineage": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ru-receipt-20261112T234806Z.json",
+        "sha256": "ffe4cdaada97aa732cac6a16168b7bc9cc2cba480efe1f4532bba5c1734939b9",
+        "instance": "a0245acae0c5-1829-final-ru-20261112t234806z-issued",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 1
+        },
+        "target_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+        "record": {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ru-record-20261112T234806Z.json",
+          "sha256": "83829a305cac008499ca389ac0d972cb3158186ebeee735efc8e1e45a46b021d",
+          "canonical_destination": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-1829-final-ru-20261112t234806z-issued/record.json"
+        }
+      },
+      "assembler_consumability": {
+        "lawful_for_bounded_scope": true,
+        "pure_derivation_passed": true,
+        "assembler_not_invoked": true,
+        "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+        "conditions": "Apply only this final allowlisted receipt per locale; retain record and companions, exact scope and findings. Do not count prior/new same-session instances as another independent lineage. Do not imply new rendering,494 semantic,all-actions,native/global approval."
+      }
+    },
+    "ur": {
+      "locale": "ur",
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "status": "passed",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 1
+      },
+      "finding_ids": [
+        {
+          "id": null,
+          "ids": [
+            "I-UR-1",
+            "UR-1"
+          ],
+          "additional_inherited_ids": [],
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld"
+        },
+        {
+          "id": null,
+          "ids": [
+            "NIT-1"
+          ],
+          "additional_inherited_ids": [
+            "1d764576d0aa-s16f-au3-ur/NIT-1"
+          ],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.estimated_zero"
+        },
+        {
+          "id": "A024-UR-BIDI-1",
+          "ids": [],
+          "additional_inherited_ids": [],
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.continued"
+        }
+      ],
+      "session": "a0245acae0c5",
+      "served_model": "openai/gpt-6.1-sol",
+      "instance": "a0245acae0c5-rnext-ur-20261114t110721z",
+      "seam_verdict": "exact selected-parent union; no merge seam defect found",
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "f312b2ef48de99ca833e89b0d6f81c4044311cb07ac49ee5785c35f815fe93a9",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-ur-receipt-20261114t110721z.json",
+        "sha256": "977fc11a078f2d98da31adc56b042c58ea69c7526e6fac1796a69fecbed7c0ea"
+      },
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-ur-record-20261114t110721z.json",
+        "sha256": "3ffaa2bab1bdc94ec0b915d56470aa521f2104d91b54ec01589057648d1d9f22",
+        "canonical_destination": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-rnext-ur-20261114t110721z/record.json"
+      },
+      "parent_receipts": [
+        {
+          "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+          "role": "PR",
+          "path": "i18n/receipts/a0245acae0c5-1829-final-ur-20261112t234806z-issued.json",
+          "sha256": "90dc7d28af80385f6e6b7ebf05c6c4fbefb49fe126683d36fe6104a1379cc33e",
+          "instance": "a0245acae0c5-1829-final-ur-20261112t234806z-issued",
+          "agent": "translation-auditor",
+          "model": "openai/gpt-6.1-sol",
+          "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+          "target_sha256": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+          "retained_exact_in_index": true
+        },
+        {
+          "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+          "role": "PR",
+          "path": "i18n/receipts/0e471bff3c0f-1829-final-evidence-ur.json",
+          "sha256": "b0d3da25151c5c82878072195d10cea1f83b6d883c4b73720e2fedde9c2e2a4d",
+          "instance": "0e471bff3c0f-1829-final-evidence-ur",
+          "agent": "translation-auditor",
+          "model": "openai/gpt-6.1-sol",
+          "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+          "target_sha256": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+          "retained_exact_in_index": true
+        },
+        {
+          "parent": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+          "role": "incoming main",
+          "path": "i18n/receipts/94f6e325484c-canon3-ur.json",
+          "sha256": "279d7638f124ed450d916cfabf79c9f86496963742be9d1467fed0a4a4748df2",
+          "instance": "94f6e325484c-canon3-ur",
+          "agent": "reviewer",
+          "model": "anthropic/claude-opus-5-5",
+          "source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+          "target_sha256": "11a1ee69f9df72062e42ac8b2ab5a6993af3b68e1675bbaae5d0b9e5363019a5",
+          "retained_exact_in_index": true
+        }
+      ],
+      "parent_contexts": {
+        "main_context_receipt_form": {
+          "en": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf"
+        },
+        "main_context_actual_sha256": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf",
+        "PR_context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+        "all_bindings_valid": true
+      },
+      "own_prior_lineage": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ur-receipt-20261112T234806Z.json",
+        "sha256": "90dc7d28af80385f6e6b7ebf05c6c4fbefb49fe126683d36fe6104a1379cc33e",
+        "instance": "a0245acae0c5-1829-final-ur-20261112t234806z-issued",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 1
+        },
+        "target_sha256": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+        "record": {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ur-record-20261112T234806Z.json",
+          "sha256": "676a55b06e713435524a3bf852156e1b946b26e9f815045c96f245ef98af6764",
+          "canonical_destination": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-1829-final-ur-20261112t234806z-issued/record.json"
+        }
+      },
+      "assembler_consumability": {
+        "lawful_for_bounded_scope": true,
+        "pure_derivation_passed": true,
+        "assembler_not_invoked": true,
+        "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+        "conditions": "Apply only this final allowlisted receipt per locale; retain record and companions, exact scope and findings. Do not count prior/new same-session instances as another independent lineage. Do not imply new rendering,494 semantic,all-actions,native/global approval."
+      }
+    },
+    "vi": {
+      "locale": "vi",
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "status": "passed",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "finding_ids": [
+        {
+          "id": "VI-C1",
+          "ids": [],
+          "additional_inherited_ids": [],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.temporary_deleted.detail"
+        }
+      ],
+      "session": "a0245acae0c5",
+      "served_model": "openai/gpt-6.1-sol",
+      "instance": "a0245acae0c5-rnext-vi-20261114t110721z",
+      "seam_verdict": "exact selected-parent union; no merge seam defect found",
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "8eb5a837b784cfcfed19ba24e7e3dde219354cd3f39a35be36d26d049a0f7779",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-vi-receipt-20261114t110721z.json",
+        "sha256": "fbccc2a2a131adc454e30b91f1f32891959ce948136fbc71e7e0d681ad6b8f72"
+      },
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-vi-record-20261114t110721z.json",
+        "sha256": "84075eac4f6ad6bf76cee035695955884eb279ceb020776f34a030df39c589f0",
+        "canonical_destination": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-rnext-vi-20261114t110721z/record.json"
+      },
+      "parent_receipts": [
+        {
+          "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+          "role": "PR",
+          "path": "i18n/receipts/a0245acae0c5-1829-final-vi-20261112t234806z-issued.json",
+          "sha256": "bffc8b06c8c5b7b1eb5c26a4b31e97071b7c574deab6d6368c4c69853bd6e5a1",
+          "instance": "a0245acae0c5-1829-final-vi-20261112t234806z-issued",
+          "agent": "translation-auditor",
+          "model": "openai/gpt-6.1-sol",
+          "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+          "target_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+          "retained_exact_in_index": true
+        },
+        {
+          "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+          "role": "PR",
+          "path": "i18n/receipts/0e471bff3c0f-1829-final-evidence-vi.json",
+          "sha256": "0eaa29282ea974559c613226a7742b308dc69beafeeef98ff93c83df0e307bc1",
+          "instance": "0e471bff3c0f-1829-final-evidence-vi",
+          "agent": "translation-auditor",
+          "model": "openai/gpt-6.1-sol",
+          "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+          "target_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+          "retained_exact_in_index": true
+        },
+        {
+          "parent": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+          "role": "incoming main",
+          "path": "i18n/receipts/94f6e325484c-canon3-vi.json",
+          "sha256": "2384ddaa3fdcc687c8a1391e24d39eceb2aff1bd0201d9ab2f07b92fb190ff3e",
+          "instance": "94f6e325484c-canon3-vi",
+          "agent": "reviewer",
+          "model": "anthropic/claude-opus-5-5",
+          "source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+          "target_sha256": "ad2bc4870aefc08190576e588d493ae99b5ff0bdd043afbdfb8f873edfa111a2",
+          "retained_exact_in_index": true
+        }
+      ],
+      "parent_contexts": {
+        "main_context_receipt_form": {
+          "en": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf"
+        },
+        "main_context_actual_sha256": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf",
+        "PR_context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+        "all_bindings_valid": true
+      },
+      "own_prior_lineage": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-vi-receipt-20261112T234806Z.json",
+        "sha256": "bffc8b06c8c5b7b1eb5c26a4b31e97071b7c574deab6d6368c4c69853bd6e5a1",
+        "instance": "a0245acae0c5-1829-final-vi-20261112t234806z-issued",
+        "result": "clean",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "target_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+        "record": {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-vi-record-20261112T234806Z.json",
+          "sha256": "9272dc5a132e4e7be7c5956d08cc26193f5dbb8b9c2a980c8cdf9a61edb02000",
+          "canonical_destination": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-1829-final-vi-20261112t234806z-issued/record.json"
+        }
+      },
+      "assembler_consumability": {
+        "lawful_for_bounded_scope": true,
+        "pure_derivation_passed": true,
+        "assembler_not_invoked": true,
+        "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+        "conditions": "Apply only this final allowlisted receipt per locale; retain record and companions, exact scope and findings. Do not count prior/new same-session instances as another independent lineage. Do not imply new rendering,494 semantic,all-actions,native/global approval."
+      }
+    },
+    "zh-CN": {
+      "locale": "zh-CN",
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "status": "passed",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 2
+      },
+      "finding_ids": [
+        {
+          "id": null,
+          "ids": [
+            "ZH-1"
+          ],
+          "additional_inherited_ids": [],
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.loading"
+        },
+        {
+          "id": null,
+          "ids": [
+            "N1"
+          ],
+          "additional_inherited_ids": [
+            "2a10c1127838-zhcn-s16f-au3/N1"
+          ],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.batch.latest_update"
+        },
+        {
+          "id": null,
+          "ids": [
+            "N2"
+          ],
+          "additional_inherited_ids": [
+            "2a10c1127838-zhcn-s16f-au3/N2"
+          ],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.estimated_zero"
+        }
+      ],
+      "session": "a0245acae0c5",
+      "served_model": "openai/gpt-6.1-sol",
+      "instance": "a0245acae0c5-rnext-zh-cn-20261114t110721z",
+      "seam_verdict": "exact selected-parent union; no merge seam defect found",
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "c69feefe7cbb568ed80f498cfb13dc8d15e1abf33ad0ea59908f6c5ce470d5cc",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-zh-CN-receipt-20261114t110721z.json",
+        "sha256": "1f4b7454f09a6bf8b48f2a6b85d733a844da0234497c6e0a7dd96d358af722a0"
+      },
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-zh-CN-record-20261114t110721z.json",
+        "sha256": "7f44492d58008ece80332be0e49e923d888168321299d9394b488448a9fa76ad",
+        "canonical_destination": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-rnext-zh-cn-20261114t110721z/record.json"
+      },
+      "parent_receipts": [
+        {
+          "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+          "role": "PR",
+          "path": "i18n/receipts/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued.json",
+          "sha256": "b0fea61e9063e03486d2a8f2babf1379c5819f0e2d8a845194be6b8ccf3a2230",
+          "instance": "a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued",
+          "agent": "translation-auditor",
+          "model": "openai/gpt-6.1-sol",
+          "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+          "target_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+          "retained_exact_in_index": true
+        },
+        {
+          "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+          "role": "PR",
+          "path": "i18n/receipts/0e471bff3c0f-1829-final-evidence-zh-cn.json",
+          "sha256": "a101269b47ccfaf75ca9c0e70e90e7a4113b487758eaebbb11a0041796c6d3b9",
+          "instance": "0e471bff3c0f-1829-final-evidence-zh-cn",
+          "agent": "translation-auditor",
+          "model": "openai/gpt-6.1-sol",
+          "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+          "target_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+          "retained_exact_in_index": true
+        },
+        {
+          "parent": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+          "role": "incoming main",
+          "path": "i18n/receipts/94f6e325484c-canon3-zh-cn.json",
+          "sha256": "6c3ac51fa4351feb4bcab3a02b182f68b5e2f4ac15a32efb87b8ae7ca2a9fd56",
+          "instance": "94f6e325484c-canon3-zh-cn",
+          "agent": "reviewer",
+          "model": "anthropic/claude-opus-5-5",
+          "source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+          "target_sha256": "5401f32fb9890ae192945f8b8c76ace2c7a723da00b4148acaf707a0f84ac12c",
+          "retained_exact_in_index": true
+        }
+      ],
+      "parent_contexts": {
+        "main_context_receipt_form": {
+          "en": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf"
+        },
+        "main_context_actual_sha256": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf",
+        "PR_context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+        "all_bindings_valid": true
+      },
+      "own_prior_lineage": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-zh-CN-receipt-20261112T234806Z.json",
+        "sha256": "b0fea61e9063e03486d2a8f2babf1379c5819f0e2d8a845194be6b8ccf3a2230",
+        "instance": "a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 2
+        },
+        "target_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+        "record": {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-zh-CN-record-20261112T234806Z.json",
+          "sha256": "c67e6290cbc3981c2046a90f141095869e177fdb43dd8725ca9aae73a5e41fe6",
+          "canonical_destination": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued/record.json"
+        }
+      },
+      "assembler_consumability": {
+        "lawful_for_bounded_scope": true,
+        "pure_derivation_passed": true,
+        "assembler_not_invoked": true,
+        "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+        "conditions": "Apply only this final allowlisted receipt per locale; retain record and companions, exact scope and findings. Do not count prior/new same-session instances as another independent lineage. Do not imply new rendering,494 semantic,all-actions,native/global approval."
+      }
+    }
+  },
+  "necessary_companions": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-seam-proof-20261114t110721z.json",
+      "sha256": "a0f961f87c0e89c28a6dcc9733363c6bcecbb99e4473aa509e06e4b4d49cc1ee",
+      "kind": "independent exact raw-member source/target/context union seam and parent/ICU proof"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-derivation-20261114t110721z.json",
+      "sha256": "289dd88943ac693c0a62389e8069a20a160ca3755745fd6454b9624655e305b0",
+      "kind": "pure in-memory final deriveReceiptAudit results; no assembler invoked"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+      "kind": "accepted PRIOR bounded23 evidence; not new current render"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+      "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac",
+      "kind": "accepted PRIOR evidence narrative"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-artifacts-20261112T234806Z.json",
+      "sha256": "b44e242108588557721aad0d2d9a6487155b76f989b41042a1926d0b6ecdf0b9",
+      "kind": "same original author prior issued lineage"
+    }
+  ],
+  "contract_files": {
+    "scripts/i18n/ledger-assemble.mjs": {
+      "path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/scripts/i18n/ledger-assemble.mjs",
+      "sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+      "matches_frozen_index": true
+    },
+    "scripts/i18n/ledger-rules.mjs": {
+      "path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/scripts/i18n/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+      "matches_frozen_index": true
+    },
+    "docs/I18N.md": {
+      "path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/docs/I18N.md",
+      "sha256": "d58ad473701f098b3c2c24343c3a7e7236f22db22cc871016c4cb75f25f41f5c",
+      "matches_frozen_index": true
+    }
+  },
+  "glossary_style_bindings": {
+    "ru": {
+      "glossary": {
+        "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+        "original_binding": {
+          "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+          "original_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+          "current_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+          "same_bytes": true
+        },
+        "current_local_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+        "unchanged_from_prior_read": true
+      },
+      "style_guide": {
+        "path": "/home/ec2-user/local-operator/i18n/style-guides/ru.md",
+        "original_binding": {
+          "path": "/home/ec2-user/local-operator/i18n/style-guides/ru.md",
+          "original_sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465",
+          "current_sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465",
+          "same_bytes": true
+        },
+        "current_local_sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465",
+        "unchanged_from_prior_read": true
+      }
+    },
+    "ur": {
+      "glossary": {
+        "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+        "original_binding": {
+          "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+          "original_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+          "current_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+          "same_bytes": true
+        },
+        "current_local_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+        "unchanged_from_prior_read": true
+      },
+      "style_guide": {
+        "path": "/home/ec2-user/local-operator/i18n/style-guides/ur.md",
+        "original_binding": {
+          "path": "/home/ec2-user/local-operator/i18n/style-guides/ur.md",
+          "original_sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c",
+          "current_sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c",
+          "same_bytes": true
+        },
+        "current_local_sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c",
+        "unchanged_from_prior_read": true
+      }
+    },
+    "vi": {
+      "glossary": {
+        "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+        "original_binding": {
+          "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+          "original_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+          "current_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+          "same_bytes": true
+        },
+        "current_local_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+        "unchanged_from_prior_read": true
+      },
+      "style_guide": {
+        "path": "/home/ec2-user/local-operator/i18n/style-guides/vi.md",
+        "original_binding": {
+          "path": "/home/ec2-user/local-operator/i18n/style-guides/vi.md",
+          "original_sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+          "current_sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+          "same_bytes": true
+        },
+        "current_local_sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+        "unchanged_from_prior_read": true
+      }
+    },
+    "zh-CN": {
+      "glossary": {
+        "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+        "original_binding": {
+          "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+          "original_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+          "current_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+          "same_bytes": true
+        },
+        "current_local_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+        "unchanged_from_prior_read": true
+      },
+      "style_guide": {
+        "path": "/home/ec2-user/local-operator/i18n/style-guides/zh-CN.md",
+        "original_binding": {
+          "path": "/home/ec2-user/local-operator/i18n/style-guides/zh-CN.md",
+          "original_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+          "current_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+          "same_bytes": true
+        },
+        "current_local_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+        "unchanged_from_prior_read": true
+      }
+    }
+  },
+  "prior_vs_current_rendering_limits": {
+    "semantic": "Receipt rebinding/exact471-main+23-PR union seam only; zero new semantic keys. 494 keys are mechanically compared/parsed, not freshly read for semantics. PR other467 members are NOT selected basis for the main partition.",
+    "prior_audits": "Only this same original independent auditor lineage; unique new instance is immutable artifact identity, not a second independent auditor. Existing high-visibility second audit remains a separate lineage.",
+    "prior_rendering": "Accepted prior23-key capture (22 visible+navAX) remains historical bounded evidence. No new images viewed/captured or new combined-tree fit/global RTL/native claim. Legacy clipped fixture, count1 aggregate and count598 offer limitations persist.",
+    "runtime": "All previously unproven First/Last/Prev/Back/Retry outcomes, all-count rendered coverage, DOM geometry, font fallback, native/fullapp/global RTL and shipped pseudo support remain unproven. No tests/build/install/browser/native operation in this round.",
+    "bidi": "Urdu A024-UR-BIDI-1 stays deferred MINOR from earlier component/fixture evidence; no new runtime reproduction or copy fix. Physical RTL198–1 alone remains not a translation defect.",
+    "styles": "Existing own glossary/style bindings and incoming main auditor binding hashes retained separately. No fresh stylistic review or silent swapping of historical guide revisions.",
+    "old_records": "No prior record, candidate, receipt, changes_requested or withhold is altered or erased. This is a new narrowly scoped current-hash receipt, not retroactive approval."
+  },
+  "preserve_old_hashcheck": {
+    "old_own_files_checked": 41,
+    "all_unchanged": true,
+    "before_sha256": {
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-independent-provenance.json": "5dc88629e7163a62b95edaebda77d0e23f0a702ad3479253cc441b802d91df4b",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/parent-audits-read.json": "3200de5ccdb08894749ceb5db7051e59420ff071681efe118636abb1f699affa",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/check-convergence-readonly.mjs": "d9c77fd0a2bda21ed4c13907c18f327553e01c11786d6a3636ea5bf5cdb4774f",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-mechanical-and-parent-bindings.json": "80a3b8582e735bb055b066457a1d6fecc9e92a1c054416ae4691fce16c18dde4",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/context-proof.json": "2fd182ac01c7cc5f7f9e3585e253deb3c8011e977318332de9df9a48e42d0b33",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-summary-evidence.json": "a7e9f2e10bcf1f7584fc7d0031152af893e2acfda9ea285ccc4d044e56978252",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-ru-blocked-report.json": "3e89210dab27f1615f7f21e7ca927977c187a2eb7d2afa867316180d8967ac94",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-ur-blocked-report.json": "7813d43a8ef748f1ffdf78ff1436c7f0a6e7b9a4403d1d17337d2766e53d8a8a",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-vi-blocked-report.json": "0648300830020de3ac43bf3f8b9e264a40c4fff178ec55d246be5022b1c050ea",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-zh-CN-blocked-report.json": "25f1cf90dedf3f5a9807b0dd8b5d5087ae974cbe6fd6ac2991c6b8a703c0cde9",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-final-readback.json": "da8fd591c3f67df7b4eff4035b7baa5a130a7f64f90db0042e679f7425391cad",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-primary-ru-ur-vi-zh-report.md": "0f302c63b3f9650a1772a2253033d4ef9a55c0be17c4492007f158a463adde5f",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-report-artifacts.sha256.json": "affebd4395e049c8bf9b8175eb7579bba53202d3dbc4a7a7aa58a3dd201921b3",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/readback-crop-ur-page-360.png": "9040072ea5c3d0301d35f137cc8708be277ee4818d9b337a5563d432cda9cbf0",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/readback-crop-ur-split-360.png": "300563bd3e378273a2b760419eddcfc5c7394d0cb540270e46acbd72cb0541cb",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/readback-crop-ur-split-next-360.png": "9bebfd347855f81edc3d9d2161774bbd51c7e05942798d70d10e518ab29d0848",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/readback-crop-ur-error-360.png": "7eea570024c7356de3d6e7eafbeaa758e7e114bb6f0511caae582133f5f5a6af",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/readback-crop-zh-CN-clipped-360.png": "b199b271e0dd7d6a4da88d9a5672f6788c381e147011c1a6b41a38dfad70b087",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/readback-crop-pseudo-split-next-360.png": "d4e3530b70854ed9d39d4fd28c3b1afcc851645206fc7a88c230466533fdaa4c",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.sha256.json": "da40621e43f662df4da0574edebf8246a7254ebb804362a96e37ff3805a549bd",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-final-ru-supplement-20261112T234806Z.json": "e623966c7cfd606649fff560e6f425d31838a06718a5cf2cbef43e6bfc5eda14",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-final-ru-receipt-20261112T234806Z.json": "4937169a5f168f6385575e66a702d1fe911e989d1ef60f03852dc0b1af570059",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-final-ur-supplement-20261112T234806Z.json": "c2c7a0987d5ff0c0c8b28b0ee5cba31eda7b2c81c788a1a5e18ab286c1e7ac9b",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-final-ur-receipt-20261112T234806Z.json": "1c7535811ff248e653154adaa778bfb5c260eba7c33cd6f7aa884a5ca87c09f1",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-final-vi-supplement-20261112T234806Z.json": "ad03f436b632c31d21c147b76f78165121f6b07bb30ceba8b6a038159cd386a3",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-final-vi-receipt-20261112T234806Z.json": "62392dfbc3c5361a338f70d9e1981debefadc3b7d9e2466cbe4077e7fc5b03c4",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-final-zh-CN-supplement-20261112T234806Z.json": "b18541e025a55ef59cca306b17f6e119e57f879ec04a7f4945b7f96f3dd0bfc3",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-final-zh-CN-receipt-20261112T234806Z.json": "d58d05314982b6eaec92fab80f8f3b697a5ebe898ce0d697562ff32d5748b400",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-final-receipt-derivation-20261112T234806Z.json": "099c3d9859a4e5783b2b2c2f80c8f56260009313449dc253c8d7efe932bda6a3",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ru-record-20261112T234806Z.json": "83829a305cac008499ca389ac0d972cb3158186ebeee735efc8e1e45a46b021d",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ru-receipt-20261112T234806Z.json": "ffe4cdaada97aa732cac6a16168b7bc9cc2cba480efe1f4532bba5c1734939b9",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ur-record-20261112T234806Z.json": "676a55b06e713435524a3bf852156e1b946b26e9f815045c96f245ef98af6764",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ur-receipt-20261112T234806Z.json": "90dc7d28af80385f6e6b7ebf05c6c4fbefb49fe126683d36fe6104a1379cc33e",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-vi-record-20261112T234806Z.json": "9272dc5a132e4e7be7c5956d08cc26193f5dbb8b9c2a980c8cdf9a61edb02000",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-vi-receipt-20261112T234806Z.json": "bffc8b06c8c5b7b1eb5c26a4b31e97071b7c574deab6d6368c4c69853bd6e5a1",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-zh-CN-record-20261112T234806Z.json": "c67e6290cbc3981c2046a90f141095869e177fdb43dd8725ca9aae73a5e41fe6",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-zh-CN-receipt-20261112T234806Z.json": "b0fea61e9063e03486d2a8f2babf1379c5819f0e2d8a845194be6b8ccf3a2230",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-receipt-derivation-20261112T234806Z.json": "82fe722100e5e80ec8f555708e94405a690fcdbee0a72ba1cc12b1bc0d190aba",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-artifacts-20261112T234806Z.json": "b44e242108588557721aad0d2d9a6487155b76f989b41042a1926d0b6ecdf0b9"
+    },
+    "all12_actual_parent_receipts_retained_exact_in_index": true,
+    "no_old_withhold_or_receipt_rewritten": true
+  },
+  "unresolved_debts": [
+    "Russian preview terminology drift and distinct pager labels remain deferred",
+    "Urdu redaction wording, prior currency RTL check and A024-UR-BIDI-1 design debt remain deferred; no current runtime reproduction claimed",
+    "Vietnamese VI-C1 incoming-main deferred NIT is carried, not zeroed out",
+    "Chinese ZH-1 and parent-qualified N1/N2 remain deferred",
+    "Prior unproven interaction/count-variant/geometry/font/native/global RTL/shipped-pseudo evidence remains unproven"
+  ],
+  "execution_boundary": "Only own scratch NEW records,receipts,companions and this manifest written. No assembler,ledger-check,test,build,install,browser/native,worktree,index,catalogue,ledger,remote PR or Git write invoked. Pure deriveReceiptAudit and read-only Git object/index operations only.",
+  "elapsed_seconds": 416.018569
+}

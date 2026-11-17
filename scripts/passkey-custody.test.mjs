@@ -112,7 +112,7 @@ test("the measured 1Password prompt documents are the only admitted ones", () =>
 	assert.equal(passkeyPromptProvider("not a url"), null);
 });
 
-test("admit puts the hold in place before it answers yes, and brings the tab forward", () => {
+test("admit puts the hold in place before it answers yes, then tells the host it began", () => {
 	const seen = [];
 	const { custody: instance } = custody({
 		onBegin: (view) => seen.push(["begin", view.tabId, instance.isHeld(10)]),

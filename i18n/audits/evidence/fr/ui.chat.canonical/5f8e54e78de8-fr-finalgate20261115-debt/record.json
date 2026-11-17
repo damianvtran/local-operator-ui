@@ -1,0 +1,387 @@
+{
+  "auditor": "translation-auditor",
+  "session": "5f8e54e78de8",
+  "model": "openai/gpt-6.1-sol",
+  "model_selection": "parent; inherited,no override",
+  "fallback": null,
+  "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+  "date": "2026-11-15T01:36:44.872789+00:00",
+  "locale": "fr",
+  "namespace": "ui.chat.canonical",
+  "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+  "context_path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+  "target_path": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+  "sha256": {
+    "en": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+    "fr": "282351444e6470f58b94e00b4dc69c1e2dadf3d543c48b250365855e512cb830",
+    "context": "d4e186611426232b8972f8f1d597c69269715e38503e1390068a6cd0d9e8e643"
+  },
+  "context_sha256": "d4e186611426232b8972f8f1d597c69269715e38503e1390068a6cd0d9e8e643",
+  "scope": {
+    "kind": "receipt rebinding/exact486-main+23-PR union seam only",
+    "new_semantic_keys_read": 0,
+    "namespace_keys_mechanically_checked": 509,
+    "selected_main_keys": 486,
+    "selected_PR_keys": 23,
+    "source_and_context_mechanically_checked": true,
+    "selection": "PR contributes ONLY tool_row.diff.full.*23; other486 exclusively exact incoming main, not other471PR values.",
+    "old_findings_carry_forward": "Explicit author choice retains genuine MINOR/NIT including HI-C1/aliases. No new linguistic defect or new finding count invented."
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "id": "I-FR-2",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.tool_row.diff.full.evicted",
+      "current": "Diff complet plus conservé — les anciens diffs sont supprimés pour libérer de l’espace",
+      "proposed": "Le diff complet n’est plus conservé — les anciens diffs sont supprimés pour libérer de l’espace",
+      "reason": "The telegraphic plus conservé drops n’est and can briefly read ambiguously; the parent deferred wording nit still applies.",
+      "disposition": "deferred — retained; non-gating",
+      "retained_original_disposition": "deferred — retained; non-gating",
+      "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment.",
+      "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding.",
+      "finalgate_disposition": "Author explicitly retains genuine prior finding/risk and its existing deferred/bounded disposition on unchanged selected-parent wording. No semantic rereview; not newly discovered; not erased by main’s clean3-key delta."
+    },
+    {
+      "id": "I-FR-3",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.tool_row.diff.full.not_recorded",
+      "current": "Diff complet absent — modification antérieure à l’enregistrement des diffs",
+      "proposed": "Diff complet absent — modification antérieure à l’archivage des diffs",
+      "reason": "The current 74-code-point wrapping status is materially longer than English’s 41; preserve the parent fit follow-up and require a rendered check.",
+      "disposition": "deferred — non-gating; no rendered fit proven",
+      "retained_original_disposition": "deferred — non-gating; no rendered fit proven",
+      "supplemental_evidence_disposition": "Bounded captured fit evidence now available; no obvious cutoff in viewed assigned-locale sample. Historical MINOR/NIT ID/severity retained; no new remediation cycle; no universal width/geometry claim.",
+      "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding.",
+      "finalgate_disposition": "Author explicitly retains genuine prior finding/risk and its existing deferred/bounded disposition on unchanged selected-parent wording. No semantic rereview; not newly discovered; not erased by main’s clean3-key delta."
+    },
+    {
+      "id": "M1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.sound.cost.estimated_zero",
+      "current": "Coût estimé à 0 $ ; frais finaux non confirmés.",
+      "proposed": "Coût estimé à 0 $US ; frais finaux non confirmés.",
+      "reason": "Bare `$` is the only MONEY rendering in the shipped fr corpus (the three other fr values that contain a `$` are JavaScript template/code tokens — `${name}`, `$'{'NAME'}'` — not amounts; counted in audit.log). The corpus writes the currency as the ISO code after the amount (`ui.common.account.low_credits_dialog.detail` « {detail} USD », `ui.providers.phone.action.activate` « Activer pour {amount} USD par mois », `ui.providers.phone.consent` « … à {amount} USD par mois … »), and the runtime's own fr money formatter renders USD as `0,00 $US` (Intl.NumberFormat('fr', {style:'currency', currency:'USD'}).format(0) = \"0,00\\u00a0$US\"). An unqualified `$` is read as CAD in a Canadian reading, while this is a USD billing sentence. Not MAJOR: the amount is zero, so no charge can be misread, and the sentence's real claim (estimate, not a confirmed bill) survives.",
+      "disposition": "retained, non-gating; no new remediation authorization",
+      "historical_reason_verbatim": true,
+      "retained_original_disposition": "retained, non-gating; no new remediation authorization",
+      "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment.",
+      "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding.",
+      "parent_main_aliases": [
+        {
+          "id": "3316c580ef05/M1",
+          "origin": "i18n/receipts/3316c580ef05.json",
+          "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred"
+        }
+      ],
+      "finalgate_disposition": "Author explicitly retains genuine prior finding/risk and its existing deferred/bounded disposition on unchanged selected-parent wording. No semantic rereview; not newly discovered; not erased by main’s clean3-key delta."
+    },
+    {
+      "id": "N1",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.media.sound_label",
+      "current": "{count, plural, =1 {Son} other {Son {position, number, ::group-off}}}",
+      "proposed": "{count, plural, =1 {Audio} other {Audio {position, number, ::group-off}}}",
+      "reason": "`Son` is correct French and matches the namespace's prose (« Impossible de lire ce son », « Son généré »), but as a standalone label it is homographic with the possessive determiner `son`, and it is always read after a verb: `ui.chat.audio.play_label` is « Lire {label} », so the accessible names become « Lire Son » / « Lire Son 2 ». The namespace's own noun for the media type in a name position is `audio` (« Pièce jointe audio indisponible », « … sera facturée si elle produit un audio »). « Audio » is unambiguous there and costs no width (5 characters, shorter than English's « Sound »).",
+      "disposition": "retained, non-gating; no new remediation authorization",
+      "historical_reason_verbatim": true,
+      "retained_original_disposition": "retained, non-gating; no new remediation authorization",
+      "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment.",
+      "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding.",
+      "parent_main_aliases": [
+        {
+          "id": "3316c580ef05/N1",
+          "origin": "i18n/receipts/3316c580ef05.json",
+          "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred"
+        }
+      ],
+      "finalgate_disposition": "Author explicitly retains genuine prior finding/risk and its existing deferred/bounded disposition on unchanged selected-parent wording. No semantic rereview; not newly discovered; not erased by main’s clean3-key delta."
+    },
+    {
+      "id": "CONV-FR-MANY-VIEW",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.view",
+      "current": "{count, plural, one {Voir le diff complet · # ligne} other {Voir le diff complet · # lignes}}",
+      "proposed": "{count, plural, one {Voir le diff complet · # ligne} many {Voir le diff complet · # de lignes} other {Voir le diff complet · # lignes}}",
+      "reason": "The es/fr guide requires a many category for exact millions, but this message only has one/other and formats a million without the required de/d’; the clipped case is only a categorical-completeness follow-up because a page is bounded.",
+      "origin": "retained PR-parent wording; extremely large-count follow-up, not merge regression",
+      "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+      "retained_original_disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+      "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment.",
+      "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding.",
+      "finalgate_disposition": "Author explicitly retains genuine prior finding/risk and its existing deferred/bounded disposition on unchanged selected-parent wording. No semantic rereview; not newly discovered; not erased by main’s clean3-key delta."
+    },
+    {
+      "id": "CONV-FR-MANY-CLIPPED",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.clipped",
+      "current": "{count, plural, one {# ligne longue de cette page est raccourcie} other {# lignes longues de cette page sont raccourcies}}",
+      "proposed": "{count, plural, one {# ligne longue de cette page est raccourcie} many {# de lignes longues de cette page sont raccourcies} other {# lignes longues de cette page sont raccourcies}}",
+      "reason": "The es/fr guide requires a many category for exact millions, but this message only has one/other and formats a million without the required de/d’; the clipped case is only a categorical-completeness follow-up because a page is bounded.",
+      "origin": "retained PR-parent wording; extremely large-count follow-up, not merge regression",
+      "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+      "retained_original_disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+      "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment.",
+      "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding.",
+      "finalgate_disposition": "Author explicitly retains genuine prior finding/risk and its existing deferred/bounded disposition on unchanged selected-parent wording. No semantic rereview; not newly discovered; not erased by main’s clean3-key delta."
+    },
+    {
+      "id": "CONV-FR-FIT-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.unavailable",
+      "current": "Le diff complet n’a pas pu être enregistré pour cette modification",
+      "proposed": "Diff complet non enregistré pour cette modification",
+      "reason": "At 66 code points versus English’s 38, this status materially expands; check wrapping with the new pager before claiming fit.",
+      "disposition": "Rendered check required; source risk, not observed clipping",
+      "related_risk": {
+        "key": "ui.chat.canonical.tool_row.diff.full.empty",
+        "current": "Cette modification ne contient aucune ligne de diff",
+        "proposed": "Ce changement n’a aucune ligne de diff",
+        "source_code_points": 29,
+        "target_code_points": 51,
+        "reason": "Same wrapping-status fit check; keep ordinary context and no trailing stop."
+      },
+      "retained_original_disposition": "Rendered check required; source risk, not observed clipping",
+      "supplemental_evidence_disposition": "Bounded captured fit evidence now available; no obvious cutoff in viewed assigned-locale sample. Historical MINOR/NIT ID/severity retained; no new remediation cycle; no universal width/geometry claim.",
+      "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding.",
+      "finalgate_disposition": "Author explicitly retains genuine prior finding/risk and its existing deferred/bounded disposition on unchanged selected-parent wording. No semantic rereview; not newly discovered; not erased by main’s clean3-key delta."
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 4,
+    "nit": 3
+  },
+  "seam_verdict": "Exact disjoint raw-literal union; zero collision/duplicate/missing/extra/rewrite or ICU/placeholder seam change. No new semantic defect inferred.",
+  "terminal_verdict": "clean-with-findings for final-gate union seam-only rebinding; no semantic509/native/global release approval.",
+  "frozen": {
+    "HEAD": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+    "MERGE_HEAD": "e6122214503b9fc52841e119c060eabb7650391b",
+    "staged_tree": "e822d6068f049dfb8fad4ba41e9f8ca22409fc6a",
+    "raw_index_sha256": "b12fb56d069dc27ea1b9d547aa5b71768f04148d3b043828cbd24d341dec93a9"
+  },
+  "parent_receipt_refs": [
+    {
+      "locale": "fr",
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/5f8e54e78de8-fr-rnext-rebind-20261114.json",
+      "sha256": "16186f00614c8b35657b535a6059a8f97b5f2e08e8cec31d851fe6cd9a209f38",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-fr-rnext-rebind-20261114",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 4,
+        "nit": 3
+      },
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "060c7967167434f91d79d3c3093642690ed8c7d95b3f9b9a36be9b4d6b17099a",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+    },
+    {
+      "locale": "fr",
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/6dfaec49abf0-fr-r-next-seam-20261114.json",
+      "sha256": "47214d7481b722b7cb24813ddfa7bf67f9379b602b55a47a77d8ac5931aae99f",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-fr-r-next-seam-20261114",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 3
+      },
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "060c7967167434f91d79d3c3093642690ed8c7d95b3f9b9a36be9b4d6b17099a",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+    },
+    {
+      "locale": "fr",
+      "ref": "e6122214503b9fc52841e119c060eabb7650391b",
+      "path": "i18n/receipts/s18b-fr-canonical-da7ee1dc.json",
+      "sha256": "11e74e23e48ca90328acfb2baa3d235cac275aac31e38a8871818ae5b51d7bd6",
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "instance": "s18b-fr-canonical-da7ee1dc",
+      "result": "clean",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+      "target_sha256": "dde9d059a389565f7a92aab1c5c548f95744cd394fe6f292bce1103918e9cde0",
+      "context_sha256": "f589e147b11533c0587d412415eed1dcc6b360b9658484fde624116f020fdbff"
+    }
+  ],
+  "own_prior_lineage": {
+    "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/fr/5f8e54e78de8-fr-rnext-rebind-20261114/receipt.json",
+    "sha256": "16186f00614c8b35657b535a6059a8f97b5f2e08e8cec31d851fe6cd9a209f38",
+    "git_ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+    "git_path": "i18n/receipts/5f8e54e78de8-fr-rnext-rebind-20261114.json",
+    "same_original_author": true
+  },
+  "seam_proof": {
+    "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/seam-proof.json",
+    "sha256": "0e9240672de408d82a8343e157dedd415428031a431f52092fcbf95fe09046d4"
+  },
+  "parent_receipt_validation": {
+    "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/parent-contract-validation.json",
+    "sha256": "b1327352d94ef73d984d7918aaaf2d57fb004d63780ff8bd8368371dec6eea6b"
+  },
+  "historical_bounded_evidence": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+      "role": "prior bounded historical evidence; no new capture/current approval"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+      "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac",
+      "role": "prior bounded historical evidence; no new capture/current approval"
+    }
+  ],
+  "inherited_style_glossary_bindings": [
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/es.md",
+      "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/es.md sha256:4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/fr.md",
+      "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/fr.md sha256:5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/hi.md sha256:82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  ],
+  "limitations": {
+    "audit_scope": "ZERO new semantic keys. Exactly509target keys mechanically compared per locale,23PR+486main, also English/context. No fresh490/509-key semantic review. Same original primary auditor lineage, not a second independent author.",
+    "placeholders_and_cldr": "All selected raw key/value literals are byte-identical to their audited parent, therefore no seam-added/dropped/renamed argument, skeleton, tag or ICU arm. Target-locale categories retained; do not substitute literal English-selector matching. Existing plural/categorical follow-ups remain as recorded; no new all-count grammar matrix.",
+    "historical_rendering": "Accepted prior23-key evidence remains historical/bounded22visible+navAX, not current captured pixels. No new images personally viewed in this round. Prior round’s personal-viewing statement belongs to that earlier date/scope.",
+    "unproven": "No current fit/native/globalRTL, geometry/fontfallback, all-interaction/countvariant or productionpseudo proof; no new capture/browser/runtime/build/install/test. No fresh proof of current CSS equivalence to old capture.",
+    "authority": "Direct final merge-gate user authorization for original-author exact-union rebinding, not permission to fabricate semantic/render approval. Prior withholds and policy clarifications remain immutable; no retroactive verdict rewrite.",
+    "independence": "Only parent audited evidence/metadata read. No other current auditor’s final-gate output consulted or verdict coordinated. Parent mirror receipt metadata validated as required, not adopted as this author’s new judgment."
+  },
+  "global_release_approval": false,
+  "lawful_bounded_consumability": true,
+  "consumption_condition": "Only new final allowlisted receipt, explicit seam scope and all companion/parent history retained. Pure machine validity is not broader semantic/native/global approval. No writer/checker invoked.",
+  "retention": {
+    "record": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-finalgate20261115-debt/record.json",
+    "receipt": "i18n/receipts/5f8e54e78de8-fr-finalgate20261115-debt.json",
+    "necessary_companions": [
+      "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-finalgate20261115-debt/S18a-debt-reconciliation.json",
+      "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-finalgate20261115-debt/parents-and-dispositions.json",
+      "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-finalgate20261115-debt/seam-proof.json",
+      "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-finalgate20261115-debt/parent-contract-validation.json"
+    ]
+  },
+  "kind": "amended-final immutable same-round inherited-debt record",
+  "companions": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/fr/5f8e54e78de8-fr-finalgate20261115-debt/S18a-debt-reconciliation.json",
+      "sha256": "a4e13c5ec2e3e7a5345dd37f3300f59ca10f2e30950639258e0266c935f11d98"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/fr/5f8e54e78de8-fr-finalgate20261115/parents-and-dispositions.json",
+      "sha256": "b0c3c76a17553cb578d2aa8c9ccb1c5b8076229b4b4d4b0dfd5b9e1a550e8212"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/seam-proof.json",
+      "sha256": "0e9240672de408d82a8343e157dedd415428031a431f52092fcbf95fe09046d4"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/parent-contract-validation.json",
+      "sha256": "b1327352d94ef73d984d7918aaaf2d57fb004d63780ff8bd8368371dec6eea6b"
+    }
+  ],
+  "parent_S18a_receipt": {
+    "locale": "fr",
+    "receipt_path": "i18n/receipts/0eddeb61023f.json",
+    "receipt_sha256": "907d4a5d79c709133e93c155edc20caa9aeb1d0f81b6094426de4accb390ddc8",
+    "receipt_git_ref": "e6122214503b9fc52841e119c060eabb7650391b",
+    "audited_snapshot": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+    "audited_source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+    "audited_target_sha256": "17e5718061f737cb466fb767fa7b4970aeaad0571c1d797fb21dfe0f3d0624c0",
+    "agent": "i18n-auditor",
+    "model": "deepseek/deepseek-flash",
+    "instance": "0eddeb61023f",
+    "counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+    }
+  },
+  "same_round_debt_reconciliation": {
+    "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/fr/5f8e54e78de8-fr-finalgate20261115-debt/S18a-debt-reconciliation.json",
+    "sha256": "a4e13c5ec2e3e7a5345dd37f3300f59ca10f2e30950639258e0266c935f11d98"
+  },
+  "amends_historical_candidate": {
+    "receipt": {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/fr/5f8e54e78de8-fr-finalgate20261115/receipt.json",
+      "sha256": "5ff0c2b4ad55187fc131bd963e408db6bc4ed2f718fba6fa82560010d35a904f"
+    },
+    "record": {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/fr/5f8e54e78de8-fr-finalgate20261115/record.json",
+      "sha256": "fb5cb235d52a166ef3a6969d1bb924ccbdacab22834e343b2543b5178e0faf95"
+    },
+    "manifest": {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/FINAL-MANIFEST-5f8e54e78de8-finalgate20261115.json",
+      "sha256": "f8cf9f6cd5f60f86917920ab3ba51a5a0411dbf0c5b83e35a62bc04b4a56ffea"
+    }
+  },
+  "not_a_ledger_receipt": true,
+  "same_original_author": true,
+  "old_preservation": {
+    "checked_files": 58,
+    "all_unchanged": true
+  }
+}

@@ -63,14 +63,10 @@
 
 import { BrowserHostError } from "../errors";
 
-/** Main → renderer: a hold began; bring this tab's conversation and browser
- * pane forward (the renderer half of the raise, like `browser-consent-attention`). */
-export const PASSKEY_CUSTODY_ATTENTION_CHANNEL =
-	"browser-passkey-custody-attention";
-
 /** Main → renderer: the hold `{tabId, at}` ended (returned, or the tab closed).
- * The renderer gives the user back the view it saved for that hold, if they are
- * still where the handoff put them (`passkey-custody-handoff.ts`). */
+ * The renderer gives the user back the view it saved for that hold (only when
+ * they opened it from its sidebar notification), if they are still where the
+ * handoff put them (`passkey-custody-handoff.ts`). */
 export const PASSKEY_CUSTODY_ENDED_CHANNEL = "browser-passkey-custody-ended";
 
 /** Chrome Web Store id → the prompt documents (path, query and hash ignored)
@@ -263,6 +259,12 @@ export class PasskeyCustody {
 			if (hold.tabId === tabId) return viewOf(hold);
 		}
 		return null;
+	}
+
+	/** Every hold, for the sidebar's "waiting on you" rows (`user-attention.ts`):
+	 * a hold on a tab the user is not looking at is exactly the one to list. */
+	views(): CustodyView[] {
+		return [...this.holds.values()].map(viewOf);
 	}
 
 	/**

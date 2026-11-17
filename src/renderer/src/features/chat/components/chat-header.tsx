@@ -10,6 +10,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { useProfiles } from "@shared/api/local-operator/profile-hooks";
 import { Spinner } from "@shared/components/common/spinner";
+import { togglePanelRailItem } from "@shared/components/navigation/panel-rail-actions";
 import {
 	Badge,
 	Button,
@@ -29,7 +30,11 @@ import { useHomeDirectory } from "@shared/hooks";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { useCanvasStore } from "@shared/store/canvas-store";
+import {
+	resolveDrawnRightSlotPane,
+	useUiPreferencesStore,
+} from "@shared/store/ui-preferences-store";
 import { formatDirectory, middleTruncatePath } from "@shared/utils/path-utils";
 import { showErrorToast, showWarningToast } from "@shared/utils/toast-manager";
 import {
@@ -38,6 +43,7 @@ import {
 	Check,
 	Copy,
 	FileText,
+	FolderKanban,
 	GitPullRequest,
 	Globe,
 	Info,
@@ -208,6 +214,15 @@ type ChatHeaderProps = {
 	 */
 	sessionId?: string;
 	onOpenOptions?: () => void;
+	/**
+	 * The canvas store's key for this conversation (the chat's `agentId`).
+	 * The canvas and linked-projects rows read it the way the rail's two canvas
+	 * doors do: which door is "lit" is the canvas's VIEW, and both presses go
+	 * through `togglePanelRailItem` so the menu and the rail cannot drift
+	 * (canvas-projects round-1 U1/U2). Absent: the canvas row stays a plain
+	 * toggle and the projects row is not drawn.
+	 */
+	canvasConversationId?: string;
 	/**
 	 * Whether THIS header is the element the OS's caption buttons sit over, and so
 	 * must reserve their width at its trailing end.
@@ -567,6 +582,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	renameSlotReserved = false,
 	sessionId,
 	onOpenOptions,
+	canvasConversationId,
 	reserveTrailingChrome = false,
 	onToggleBrowser,
 	archived = false,
@@ -632,8 +648,20 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		temporaryInfoShown,
 	);
 	const moveRequestedRef = useRef(false);
-	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
-	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+	/*
+	 * THE CANVAS SLOT'S TWO DOORS, read as the rail reads them (`panel-rail.tsx`):
+	 * Projects is "open" while the canvas is drawn on its Projects view, Canvas
+	 * while it is drawn on any other view, so each row's verb matches what its
+	 * press will do.
+	 */
+	const drawnPane = useUiPreferencesStore(resolveDrawnRightSlotPane);
+	const canvasOnProjects = useCanvasStore((state) =>
+		canvasConversationId
+			? state.conversations[canvasConversationId]?.viewMode === "projects"
+			: false,
+	);
+	const canvasRowOpen = drawnPane === "canvas" && !canvasOnProjects;
+	const projectsRowOpen = drawnPane === "canvas" && canvasOnProjects;
 	/*
 	 * The code review pane's bound, read for the `...` menu's entry (N1): the
 	 * label flips with the SAME store field `onOpenCodeReview` toggles, so the
@@ -1924,10 +1952,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								 * (and for the chord's listener above); the press is the same
 								 * store write the rail's canvas item and the chord make.
 								 */
-								<DropdownMenuItem onSelect={() => setCanvasOpen(!isCanvasOpen)}>
+								<DropdownMenuItem
+									onSelect={() =>
+										togglePanelRailItem("canvas", { canvasConversationId })
+									}
+								>
 									<FileText aria-hidden="true" />
 									<span>
-										{isCanvasOpen
+										{canvasRowOpen
 											? t("ui.chat.header_menu.close_canvas")
 											: t("ui.chat.header_menu.open_canvas")}
 									</span>
@@ -1945,6 +1977,25 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 										{isCodeReviewPaneOpen
 											? t("ui.chat.header_menu.close_code_review")
 											: t("ui.chat.header_menu.open_code_review")}
+									</span>
+								</DropdownMenuItem>
+							)}
+							{onOpenOptions && canvasConversationId && (
+								/*
+								 * THE LINKED-PROJECTS ROW (round-1 U2), last as the rail's door
+								 * is: every rail door has a row here, and this one is offered
+								 * wherever the canvas row is, because it opens the same pane.
+								 */
+								<DropdownMenuItem
+									onSelect={() =>
+										togglePanelRailItem("projects", { canvasConversationId })
+									}
+								>
+									<FolderKanban aria-hidden="true" />
+									<span>
+										{projectsRowOpen
+											? t("ui.chat.header_menu.close_linked_projects")
+											: t("ui.chat.header_menu.open_linked_projects")}
 									</span>
 								</DropdownMenuItem>
 							)}

@@ -1,0 +1,226 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "session": "a0245acae0c5",
+  "instance": "a0245acae0c5-rnext-zh-cn-20261114t110721z",
+  "date": "2026-11-14T11:07:21.760728+00:00",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "sha256": {
+    "en": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+    "zh-CN": "c69feefe7cbb568ed80f498cfb13dc8d15e1abf33ad0ea59908f6c5ce470d5cc"
+  },
+  "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+  "source_path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/src/i18n/catalogues/en/ui.chat.canonical.json",
+  "target_path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+  "context_path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/src/i18n/catalogues/en/ui.chat.canonical.context.json",
+  "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+  "key_counts": {
+    "current_keys": 494,
+    "selected_main_keys": 471,
+    "selected_PR_keys": 23,
+    "new_semantic_keys_read": 0,
+    "target_keys_mechanically_checked": 494
+  },
+  "findings": [
+    {
+      "ids": [
+        "ZH-1"
+      ],
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.loading",
+      "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+      "current": "正在加载完整diff…",
+      "proposed": "正在加载完整diff……",
+      "reason": "The current single ellipsis «…» differs from the locale guide’s required Chinese ellipsis «……».",
+      "disposition": "Retained, deferred, non-gating in parent; unchanged and still applicable in this source-only review.",
+      "introduced_by_convergence": false,
+      "previous_location_line": 258,
+      "line": 258,
+      "rebinding_disposition": "Author retains deferred finding on exact parent bytes; no new semantic review or rendering observation."
+    },
+    {
+      "ids": [
+        "N1"
+      ],
+      "severity": "NIT",
+      "key": "ui.chat.canonical.sound.batch.latest_update",
+      "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+      "current": "最近更新：{name}（第{item, number, ::group-off}项，共{total, number, ::group-off}项）。",
+      "proposed": "最新动态：{name}（第{item, number, ::group-off}项，共{total, number, ::group-off}项）。",
+      "reason": "The contextual message names the most recently reporting request; «最近更新» can read as a modification-time label rather than the latest activity.",
+      "disposition": "Retained, deferred, non-gating in parent; unchanged and still applicable in this source-only review.",
+      "introduced_by_convergence": false,
+      "previous_location_line": 485,
+      "line": 489,
+      "rebinding_disposition": "Author retains deferred finding on exact parent bytes; no new semantic review or rendering observation.",
+      "additional_inherited_ids": [
+        "2a10c1127838-zhcn-s16f-au3/N1"
+      ]
+    },
+    {
+      "ids": [
+        "N2"
+      ],
+      "severity": "NIT",
+      "key": "ui.chat.canonical.sound.cost.estimated_zero",
+      "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+      "current": "估算费用为$0；最终计费尚未确认。",
+      "proposed": "估算费用为$0；最终收费尚未确认。",
+      "reason": "«最终计费» can denote the billing action, whereas the source describes the unconfirmed final charge; «最终收费» keeps that distinction.",
+      "disposition": "Retained, deferred, non-gating in parent; unchanged and still applicable in this source-only review.",
+      "introduced_by_convergence": false,
+      "previous_location_line": 488,
+      "line": 492,
+      "rebinding_disposition": "Author retains deferred finding on exact parent bytes; no new semantic review or rendering observation.",
+      "additional_inherited_ids": [
+        "2a10c1127838-zhcn-s16f-au3/N2"
+      ]
+    }
+  ],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 2
+  },
+  "independence": "Same original a0245acae0c5 independent auditor; not translator/coder and not a new second lineage. Actual inherited openai/gpt-6.1-sol; no fallback claim.",
+  "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+  "supplemental_record": {
+    "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-zh-CN-record-20261114t110721z.json",
+    "sha256": "7f44492d58008ece80332be0e49e923d888168321299d9394b488448a9fa76ad",
+    "canonical_destination": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-rnext-zh-cn-20261114t110721z/record.json"
+  },
+  "seam_proof": {
+    "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-seam-proof-20261114t110721z.json",
+    "sha256": "a0f961f87c0e89c28a6dcc9733363c6bcecbb99e4473aa509e06e4b4d49cc1ee"
+  },
+  "parent_receipts": [
+    {
+      "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+      "role": "PR",
+      "path": "i18n/receipts/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued.json",
+      "sha256": "b0fea61e9063e03486d2a8f2babf1379c5819f0e2d8a845194be6b8ccf3a2230",
+      "instance": "a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+      "target_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+      "retained_exact_in_index": true
+    },
+    {
+      "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+      "role": "PR",
+      "path": "i18n/receipts/0e471bff3c0f-1829-final-evidence-zh-cn.json",
+      "sha256": "a101269b47ccfaf75ca9c0e70e90e7a4113b487758eaebbb11a0041796c6d3b9",
+      "instance": "0e471bff3c0f-1829-final-evidence-zh-cn",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+      "target_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+      "retained_exact_in_index": true
+    },
+    {
+      "parent": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+      "role": "incoming main",
+      "path": "i18n/receipts/94f6e325484c-canon3-zh-cn.json",
+      "sha256": "6c3ac51fa4351feb4bcab3a02b182f68b5e2f4ac15a32efb87b8ae7ca2a9fd56",
+      "instance": "94f6e325484c-canon3-zh-cn",
+      "agent": "reviewer",
+      "model": "anthropic/claude-opus-5-5",
+      "source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+      "target_sha256": "5401f32fb9890ae192945f8b8c76ace2c7a723da00b4148acaf707a0f84ac12c",
+      "retained_exact_in_index": true
+    }
+  ],
+  "parent_contexts": {
+    "main_context_receipt_form": {
+      "en": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf"
+    },
+    "main_context_actual_sha256": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf",
+    "PR_context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+    "all_bindings_valid": true
+  },
+  "own_prior_lineage": {
+    "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-zh-CN-receipt-20261112T234806Z.json",
+    "sha256": "b0fea61e9063e03486d2a8f2babf1379c5819f0e2d8a845194be6b8ccf3a2230",
+    "instance": "a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued",
+    "result": "clean-with-findings",
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 1,
+      "nit": 2
+    },
+    "target_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+    "record": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-zh-CN-record-20261112T234806Z.json",
+      "sha256": "c67e6290cbc3981c2046a90f141095869e177fdb43dd8725ca9aae73a5e41fe6",
+      "canonical_destination": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued/record.json"
+    }
+  },
+  "glossary_style_bindings": {
+    "own_prior_unchanged": {
+      "glossary": {
+        "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+        "original_binding": {
+          "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+          "original_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+          "current_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+          "same_bytes": true
+        },
+        "current_local_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+        "unchanged_from_prior_read": true
+      },
+      "style_guide": {
+        "path": "/home/ec2-user/local-operator/i18n/style-guides/zh-CN.md",
+        "original_binding": {
+          "path": "/home/ec2-user/local-operator/i18n/style-guides/zh-CN.md",
+          "original_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+          "current_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+          "same_bytes": true
+        },
+        "current_local_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+        "unchanged_from_prior_read": true
+      }
+    },
+    "incoming_auditor_recorded_refs": {
+      "glossary": "damianvtran/local-operator@2ba8127d9 i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style_guide": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/zh-CN.md sha256:8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "scope_note": "Preserved actual parent binding revisions; not a new style audit."
+  },
+  "accepted_prior_bounded_evidence": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+      "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+    }
+  ],
+  "limitations": {
+    "semantic": "Receipt rebinding/exact471-main+23-PR union seam only; zero new semantic keys. 494 keys are mechanically compared/parsed, not freshly read for semantics. PR other467 members are NOT selected basis for the main partition.",
+    "prior_audits": "Only this same original independent auditor lineage; unique new instance is immutable artifact identity, not a second independent auditor. Existing high-visibility second audit remains a separate lineage.",
+    "prior_rendering": "Accepted prior23-key capture (22 visible+navAX) remains historical bounded evidence. No new images viewed/captured or new combined-tree fit/global RTL/native claim. Legacy clipped fixture, count1 aggregate and count598 offer limitations persist.",
+    "runtime": "All previously unproven First/Last/Prev/Back/Retry outcomes, all-count rendered coverage, DOM geometry, font fallback, native/fullapp/global RTL and shipped pseudo support remain unproven. No tests/build/install/browser/native operation in this round.",
+    "bidi": "Urdu A024-UR-BIDI-1 stays deferred MINOR from earlier component/fixture evidence; no new runtime reproduction or copy fix. Physical RTL198–1 alone remains not a translation defect.",
+    "styles": "Existing own glossary/style bindings and incoming main auditor binding hashes retained separately. No fresh stylistic review or silent swapping of historical guide revisions.",
+    "old_records": "No prior record, candidate, receipt, changes_requested or withhold is altered or erased. This is a new narrowly scoped current-hash receipt, not retroactive approval."
+  },
+  "frozen": {
+    "HEAD": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+    "MERGE_HEAD": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+    "tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+    "raw_index_sha256": "b6ef50943c49fc1f252bbdf8d477688a0f96bb2f0d0b040aab59b3a40a89d505",
+    "all_index_entries_match_tree": true,
+    "index_paths": 13783
+  },
+  "not_global_or_fresh_semantic_approval": true,
+  "assembler_consumable_only_for_stated_scope": true
+}
