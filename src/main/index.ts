@@ -240,6 +240,7 @@ import {
 	reportSkippedWhileQuitting,
 } from "./window-raise";
 import { attachWindowSurface } from "./window-surface";
+import { installTypeOfServiceGuard } from "./net-tos-guard";
 
 /*
  * THE RELEASE GATE'S LAUNCH PROBE, FIRST, before any statement of this module
@@ -254,6 +255,19 @@ import { attachWindowSurface } from "./window-surface";
  * launch, and the probe cannot reach the operator's running instance.
  */
 runLaunchProbeIfRequested(app);
+
+/*
+ * Before the first socket this process opens: a reset connection must reject its
+ * `fetch`, not reach the `uncaughtException` handler below, which stops the
+ * owned backend and exits the app. Cause, numbers and removal condition are in
+ * `./net-tos-guard.ts`.
+ */
+installTypeOfServiceGuard((error) => {
+	logger.warn(
+		`Absorbed a socket type-of-service failure (nodejs/undici#6075): ${String(error)}`,
+		LogFileType.BACKEND,
+	);
+});
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
 
