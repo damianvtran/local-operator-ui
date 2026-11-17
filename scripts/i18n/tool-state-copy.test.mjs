@@ -1515,6 +1515,89 @@ for (const loc of ["fr", "es", "ru", "hi", "zh-CN", "ur", "vi"]) {
 	});
 }
 
+/*
+ * THE DEFECT THIS PINS, ON THE SHIPPED BYTES. The per-item media label (the
+ * `<img alt>` and the broken-media subject spliced into
+ * `{name} could not be played`) once reused `image_gen.state.done`, the card's
+ * STATUS message. In ru/vi/hi that message is a finished CLAUSE (`Видео создано`,
+ * `Đã tạo video`, `वीडियो बन गया`), so the broken-media sentence read as a clause
+ * inside a clause. `result_label` is now a bare noun phrase. The synthetic-locale
+ * test above proves the wiring; this one reads the REAL catalogues, because only
+ * they can regress by someone re-translating the label as a status again.
+ *
+ * Forbidden finite-clause forms are per locale, matched on whole words only: ru
+ * `Созданное видео` (an attributive participle, a legitimate noun phrase) must
+ * pass while the predicate `создано`/`создан`/`создана` must not.
+ */
+const CLAUSE_FORMS = {
+	hi: /गया|गई/u,
+	ru: /(?<!\p{L})создан[оа]?(?!\p{L})/iu,
+	vi: /Đã tạo/iu,
+};
+
+for (const loc of Object.keys(CLAUSE_FORMS)) {
+	test(`${loc}: the real item label is a noun phrase, never the finished-state clause`, () => {
+		withReal(loc, () => {
+			const clause = CLAUSE_FORMS[loc];
+			let checked = 0;
+			for (const material of ["image", "video", "voiceover", "sound-effect"]) {
+				const status = mod.t("ui.chat.canonical.image_gen.state.done", {
+					material: tokenOf(material),
+				});
+				// Guard the guard: the status message really is the clause this
+				// locale's label must not be.
+				assert.match(status, clause, `${loc} ${material} status is a clause`);
+				// One item: the bare-noun branch; two: the numbered branch.
+				for (const count of [1, 2]) {
+					// The card resolves the label with exactly these arguments (see the
+					// source guard above); only the picture path paints an `<img alt>` in
+					// static markup, so video/audio are read from the same message.
+					const labels = Array.from({ length: count }, (_, i) =>
+						plain(
+							mod.t(RESULT_LABEL_KEY, {
+								material: tokenOf(material),
+								position: i + 1,
+								count,
+							}),
+						),
+					);
+					if (material === "image") {
+						// The rendered path must agree with the message it is derived from.
+						const painted = labelsOf({
+							state: "done",
+							durationS: null,
+							receipt: "generated",
+							material,
+							images: Array.from({ length: count }, (_, i) =>
+								IMAGE(`i${i}`, "image"),
+							),
+						});
+						assert.deepEqual(painted, labels, `${loc} rendered image alt`);
+					}
+					for (const label of labels) {
+						assert.ok(
+							label.trim().length > 0,
+							`${loc} ${material} label empty`,
+						);
+						assert.ok(
+							!label.includes(status),
+							`${loc} ${material}: label ${JSON.stringify(label)} contains the status message ${JSON.stringify(status)}`,
+						);
+						assert.doesNotMatch(
+							label,
+							clause,
+							`${loc} ${material}: label ${JSON.stringify(label)} is a finite clause`,
+						);
+						checked += 1;
+					}
+				}
+			}
+			// 4 materials x (1 + 2) labels: a vacuous loop cannot pass.
+			assert.equal(checked, 12);
+		});
+	});
+}
+
 /* -------------------------------------------------------------------------- */
 /* D1 (design review round 1): the summary column's direction                 */
 /* -------------------------------------------------------------------------- */
