@@ -29,6 +29,8 @@
 	"ui.chat.sidebar.pins.drag_title": "Faites glisser pour réorganiser · Échap annule",
 	"ui.chat.sidebar.pins.failure": "{action, select, pin {Impossible d’épingler « {title} ».} unpin {Impossible de désépingler « {title} ».} other {Impossible de mettre à jour « {title} ».}}",
 	"ui.chat.sidebar.row.archived_suffix": ", archivée",
+	"ui.chat.sidebar.row.archive_label": "Archiver « {title} »",
+	"ui.chat.sidebar.row.unarchive_label": "Désarchiver « {title} »",
 	"ui.chat.sidebar.row.in_conversation": "dans la conversation",
 	"ui.chat.sidebar.row.matched_in_conversation": ", correspondance dans la conversation",
 	"ui.chat.sidebar.row.not_sent": "Pas encore envoyé",

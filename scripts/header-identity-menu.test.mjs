@@ -25,6 +25,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -45,6 +46,9 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/components/chat-header-identity-menu-model";',
+			/* The i18n door, from the SAME bundle as the model, so a catalogue
+			 * registered here is the one the model's `t()` reads. */
+			'export { registerCatalogue, setLocale } from "./src/renderer/src/shared/i18n";',
 			'export { pushProfileRecent, PROFILE_RECENTS_LIMIT, useUiPreferencesStore as store, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -87,6 +91,8 @@ const {
 	identityMenuSeedActive,
 	identityMenuShowsList,
 	pushProfileRecent,
+	registerCatalogue,
+	setLocale,
 	store,
 	persistedUiPreferences,
 } = await import(
@@ -539,6 +545,75 @@ test("the headings are one rule per menu, so the two panels read alike", () => {
 		recents: "Recent teams",
 		all: "All teams",
 	});
+});
+
+test("every band heading is catalogue copy resolved per call, not a captured English literal", () => {
+	/*
+	 * SENTINEL CATALOGUE, NOT A TRANSLATION. `fr` is registered with marker text
+	 * so the assertion proves WHICH SOURCE the heading came from; the real French
+	 * is the audited catalogue's to carry. `en` is deliberately not registered, so
+	 * the closing assertion proves the store returns to the shipped English
+	 * rather than to a sentinel laid over it.
+	 */
+	registerCatalogue("fr", {
+		"ui.chat.header_identity.band_recent_agents": "FR recent agents",
+		"ui.chat.header_identity.band_all_agents": "FR all agents",
+		"ui.chat.header_identity.band_recent_teams": "FR recent teams",
+		"ui.chat.header_identity.band_all_teams": "FR all teams",
+	});
+	try {
+		// The SAME function, asked again after the locale moved: a heading
+		// captured at module load would still answer in English here.
+		setLocale("fr");
+		assert.deepEqual(identityMenuHeadings("agent"), {
+			recents: "FR recent agents",
+			all: "FR all agents",
+		});
+		assert.deepEqual(identityMenuHeadings("team"), {
+			recents: "FR recent teams",
+			all: "FR all teams",
+		});
+		// And it reaches the rendered bands, not only the helper.
+		const view = identityMenuBands({
+			rows: ROWS,
+			matches: ROWS,
+			recents: ["coder"],
+			kind: "team",
+			query: "",
+		});
+		assert.deepEqual(
+			view.bands.map((band) => band.heading),
+			["FR recent teams", "FR all teams"],
+		);
+	} finally {
+		setLocale("en");
+	}
+	assert.deepEqual(identityMenuHeadings("agent"), {
+		recents: "Recent agents",
+		all: "All agents",
+	});
+});
+
+test("the menu recomputes its bands when the locale changes (source pin, not a render)", () => {
+	/*
+	 * The headings are resolved when `identityMenuBands` RUNS, so a `view` memo
+	 * whose inputs omit the locale would keep serving the previous language until
+	 * something else changed. A mount would be the stronger proof and is the
+	 * rendered pass's to give (not run here); this pins the one line the defect
+	 * would live on.
+	 */
+	const source = readFileSync(
+		join(
+			process.cwd(),
+			"src/renderer/src/features/chat/components/chat-header-identity-menu.tsx",
+		),
+		"utf8",
+	);
+	assert.match(source, /const locale = useI18nLocale\(\);/);
+	assert.match(
+		source,
+		/identityMenuBands\(\{[^}]*\}\),\s*\[[^\]]*\blocale\b[^\]]*\]/,
+	);
 });
 
 test("the bound is a ceiling the panel can only shrink to fit", () => {

@@ -4,9 +4,8 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type FC, useEffect, useRef } from "react";
 import {
-	ARCHIVE_CONFIRM_MESSAGE,
-	ARCHIVE_CONFIRM_UNNAMED,
-	ARCHIVE_CONFIRM_VERB,
+	archiveConfirmMessage,
+	archiveConfirmTitleParts,
 	archiveRowBox,
 	focusRowAfterRemoval,
 } from "../archive-confirm";
@@ -151,6 +150,9 @@ export const ArchiveConversationDialog: FC = () => {
 		sessions.find((row) => row.session_id === candidate?.sessionId)?.title ||
 		candidate?.title ||
 		null;
+	// Resolved on every render, under the `useI18nLocale()` subscription above, so
+	// the question follows a language change while the dialog is open.
+	const titleParts = archiveConfirmTitleParts(candidateTitle);
 	return (
 		<ConfirmationModal
 			open={candidate !== null}
@@ -172,18 +174,34 @@ export const ArchiveConversationDialog: FC = () => {
 			 */
 			title={
 				<span className="flex min-w-0 items-center">
-					<span className="shrink-0">
-						{`${ARCHIVE_CONFIRM_VERB}\u00a0${candidateTitle === null ? "" : "\u201c"}`}
-					</span>
-					<span className="min-w-0 truncate">
-						{candidateTitle === null ? ARCHIVE_CONFIRM_UNNAMED : candidateTitle}
-					</span>
-					<span className="shrink-0">
-						{candidateTitle === null ? "?" : "\u201d?"}
-					</span>
+					{/*
+					 * The three parts come from ONE catalogue sentence cut at the name
+					 * (`archiveConfirmTitleParts`), so a language may order the verb, the
+					 * quotes and the name as it needs. `whitespace-pre` because a cut can
+					 * leave a space at the edge of a part ("」 を…"), and a flex item would
+					 * collapse it. The unnamed case has no `name` and draws its whole
+					 * sentence in the one truncating box.
+					 */}
+					{titleParts.name === null ? (
+						<span className="min-w-0 truncate">{titleParts.before}</span>
+					) : (
+						<>
+							{titleParts.before !== "" && (
+								<span className="shrink-0 whitespace-pre">
+									{titleParts.before}
+								</span>
+							)}
+							<span className="min-w-0 truncate">{titleParts.name}</span>
+							{titleParts.after !== "" && (
+								<span className="shrink-0 whitespace-pre">
+									{titleParts.after}
+								</span>
+							)}
+						</>
+					)}
 				</span>
 			}
-			message={<p>{ARCHIVE_CONFIRM_MESSAGE}</p>}
+			message={<p>{archiveConfirmMessage()}</p>}
 			confirmText={t("ui.chat.dialogs.archive_action")}
 			cancelText={t("ui.chat.dialogs.cancel")}
 			/*

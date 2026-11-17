@@ -29,6 +29,8 @@
 	"ui.chat.sidebar.pins.drag_title": "Kéo để sắp xếp lại · nhấn Esc để hủy",
 	"ui.chat.sidebar.pins.failure": "{action, select, pin {Không ghim được “{title}”.} unpin {Không bỏ ghim được “{title}”.} other {Không cập nhật được “{title}”.}}",
 	"ui.chat.sidebar.row.archived_suffix": ", đã lưu trữ",
+	"ui.chat.sidebar.row.archive_label": "Lưu trữ “{title}”",
+	"ui.chat.sidebar.row.unarchive_label": "Khôi phục “{title}”",
 	"ui.chat.sidebar.row.in_conversation": "trong cuộc trò chuyện",
 	"ui.chat.sidebar.row.matched_in_conversation": ", có kết quả trong cuộc trò chuyện",
 	"ui.chat.sidebar.row.not_sent": "Chưa gửi",

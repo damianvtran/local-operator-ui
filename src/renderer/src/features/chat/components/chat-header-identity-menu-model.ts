@@ -35,6 +35,7 @@
  * below the fold.
  */
 
+import { t } from "@shared/i18n";
 import type { ProfileRecencyKind } from "../../../shared/store/ui-preferences-store";
 import type { PickerOption } from "../pickers/picker-host";
 
@@ -100,14 +101,36 @@ export type IdentityMenuView = {
  * The two headings, per menu, in sentence case and plural - the rosters they
  * name are plurally titled in the app's own pickers ("No teams are registered",
  * "No profiles found").
+ *
+ * THE COPY IS RESOLVED PER CALL, NEVER CAPTURED. Each heading is a catalogue
+ * key (`ui.chat.header_identity.band_*`) read through `t()` at the moment the
+ * function runs, so the answer is the ACTIVE locale's - a module-level constant
+ * would freeze whichever locale was live at import and keep the headings in
+ * English after the backend `language` setting changed. The one consequence for
+ * a caller is that it must RE-ASK when the locale changes: the menu component
+ * does, by listing the locale among its `view` memo's inputs. A plain function
+ * on purpose (not a hook), so `scripts/header-identity-menu.test.mjs` pins it
+ * without a DOM.
+ *
+ * Four keys rather than one `{kind, select}` message: the two bands name
+ * different things ("what you switch between" / "what exists"), and a language
+ * may word "recent" differently for agents and for teams, so each heading is a
+ * whole phrase a translator can inflect freely instead of an arm of a shared
+ * sentence.
  */
 export function identityMenuHeadings(kind: ProfileRecencyKind): {
 	recents: string;
 	all: string;
 } {
 	return kind === "team"
-		? { recents: "Recent teams", all: "All teams" }
-		: { recents: "Recent agents", all: "All agents" };
+		? {
+				recents: t("ui.chat.header_identity.band_recent_teams"),
+				all: t("ui.chat.header_identity.band_all_teams"),
+			}
+		: {
+				recents: t("ui.chat.header_identity.band_recent_agents"),
+				all: t("ui.chat.header_identity.band_all_agents"),
+			};
 }
 
 /**

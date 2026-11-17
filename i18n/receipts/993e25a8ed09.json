@@ -1,0 +1,31 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "model_fallback": "anthropic/claude-opus-5-5 (provider timeout fallback; wrote this receipt after the audit reads and checks ran on claude-sonnet-5-5)",
+  "instance": "993e25a8ed09",
+  "session": "e17e34713e94",
+  "independent_from_translator_session": true,
+  "status": "passed",
+  "locale": "fr",
+  "namespace": "ui.chat.dialogs",
+  "commit": "934572308bcfb5bbb46f358b88a6131cbaffeade",
+  "scope": "Remediation delta 7cdf6c27b4..934572308b (ui.chat.dialogs.archive_message); programme keys archive_title_named, archive_title_unnamed, archive_message",
+  "sha256": {
+    "fr": "b0b2bc38fd97af8139b15a91d0b1ca561d45320331776098c7ce38b03ef97d55",
+    "en": "17a1d110fa72efd3a1853e81ff5ed7baad3cfcc796a0b2f92729b6acb7312221"
+  },
+  "prior_findings_verified": [
+    {"finding": "MINOR 'Elle disparaît de vos listes' too strong", "result": "fixed: 'Elle quitte vos listes'"},
+    {"finding": "NIT control name unquoted", "result": "fixed: 'cliquez sur « Désarchiver »', U+202F inside both guillemets"}
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "MINOR",
+      "key": "ui.chat.dialogs.archive_message",
+      "current": "lancez une recherche au-dessus de vos conversations",
+      "problem": "the location attaches to the act of searching rather than to the search field; loose but understandable",
+      "suggested": "utilisez la recherche au-dessus de vos conversations"
+    }
+  ]
+}

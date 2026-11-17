@@ -24,6 +24,8 @@
 	"ui.chat.sidebar.pins.drag_title": "Перетащите, чтобы изменить порядок · Esc — отмена",
 	"ui.chat.sidebar.pins.failure": "{action, select, pin {Не удалось закрепить «{title}».} unpin {Не удалось открепить «{title}».} other {Не удалось обновить «{title}».}}",
 	"ui.chat.sidebar.row.archived_suffix": ", в архиве",
+	"ui.chat.sidebar.row.archive_label": "Архивировать «{title}»",
+	"ui.chat.sidebar.row.unarchive_label": "Восстановить «{title}»",
 	"ui.chat.sidebar.row.in_conversation": "в разговоре",
 	"ui.chat.sidebar.row.matched_in_conversation": ", совпадение в разговоре",
 	"ui.chat.sidebar.row.not_sent": "Ещё не отправлено",

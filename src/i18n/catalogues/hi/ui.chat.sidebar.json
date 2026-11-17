@@ -29,6 +29,8 @@
 	"ui.chat.sidebar.pins.drag_title": "क्रम बदलने के लिए खींचें · Esc से रद्द करें",
 	"ui.chat.sidebar.pins.failure": "{action, select, pin {“{title}” पिन नहीं की जा सकी।} unpin {“{title}” अनपिन नहीं की जा सकी।} other {“{title}” अपडेट नहीं की जा सकी।}}",
 	"ui.chat.sidebar.row.archived_suffix": ", संग्रहित",
+	"ui.chat.sidebar.row.archive_label": "“{title}” संग्रहित करें",
+	"ui.chat.sidebar.row.unarchive_label": "“{title}” बहाल करें",
 	"ui.chat.sidebar.row.in_conversation": "बातचीत में",
 	"ui.chat.sidebar.row.matched_in_conversation": ", बातचीत में मिला",
 	"ui.chat.sidebar.row.not_sent": "अभी नहीं भेजा गया",

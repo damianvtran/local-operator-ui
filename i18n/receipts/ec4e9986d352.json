@@ -1,0 +1,52 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "ec4e9986d352",
+ "status": "passed",
+ "locale": "ur",
+ "commit": "7cdf6c27b4",
+ "scope": "9 keys added a31ce7e9ea..7cdf6c27b4 (ur): header_identity.band_{recent,all}_{agents,teams}; dialogs.archive_title_named/unnamed/message; sidebar.row.archive_label/unarchive_label",
+ "namespaces": {
+  "ui.chat": {
+   "status": "passed",
+   "sha256": {
+    "ur": "89095f2c5fcfba5ee801840a599c9f70eea643adb1aca9fc58c20fa95d8f6e86",
+    "en": "22a6b7e59c047a453e38571fffd3f0b11d9ac929d8c377f2a38f0a90a6f641db"
+   },
+   "findings": []
+  },
+  "ui.chat.dialogs": {
+   "status": "passed",
+   "sha256": {
+    "ur": "6f3eaaed177f1fc7eb4bbf785d890f77c18992de0ea7b6e60aa00fd1045316fb",
+    "en": "17a1d110fa72efd3a1853e81ff5ed7baad3cfcc796a0b2f92729b6acb7312221"
+   },
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.chat.dialogs.archive_message",
+     "note": "“آپ … تک اسے واپس کر سکتے ہیں” — ‘واپس کرنا’ alone can read as ‘give back/return’; it is only recognisable as Undo via the shipped toast label «واپس کریں». Suggest «آپ {seconds, plural, one {# سیکنڈ} other {# سیکنڈ}} تک اس عمل کو واپس کر سکتے ہیں»."
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.chat.dialogs.archive_message",
+     "note": "“چیٹس کے اوپر تلاش کریں” is a literal calque of ‘search above your chats’; reads as ‘search on top of the chats’. Suggest «چیٹس کے اوپر والے تلاش کے خانے میں تلاش کریں» (تلاش کا خانہ is shipped in ui.settings.configuration)."
+    }
+   ]
+  },
+  "ui.chat.sidebar": {
+   "status": "passed",
+   "sha256": {
+    "ur": "6811601faff12d7d8f1eae1f071bb452ccbaaaa87a9905744490e8bdac1e1837",
+    "en": "b8c1dc4d3d1b2c567f13f383ad7ed5d0cf3e25ef2d8bb6ae0c5e7f69da5a6ee9"
+   },
+   "findings": [
+    {
+     "severity": "NIT",
+     "key": "ui.chat.sidebar.row.archive_label",
+     "note": "Uses «کو» (“{title}” کو آرکائیو کریں) while sibling pin_label/unpin_label and row_menu keys omit it; both grammatical, differing only in sibling style. No change required."
+    }
+   ]
+  }
+ }
+}

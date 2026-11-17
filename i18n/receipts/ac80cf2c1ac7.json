@@ -1,0 +1,20 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "ac80cf2c1ac7",
+  "status": "passed",
+  "namespace": "ui.chat.dialogs",
+  "locale": "ur",
+  "scope": "Remediation round: 7cdf6c27b4..934572308b changes only ui.chat.dialogs.archive_message; namespace re-checked for the 3 programme keys (archive_title_named, archive_title_unnamed, archive_message).",
+  "sha256": {
+    "ur": "55ac927c7798551b472ede8f2a71108b95471982719d3ee473c4acdf40e6e810",
+    "en": "17a1d110fa72efd3a1853e81ff5ed7baad3cfcc796a0b2f92729b6acb7312221"
+  },
+  "prior_findings_verified": [
+    {"finding": "MINOR 'واپس کر سکتے ہیں' can read as give back", "result": "fixed: 'اس عمل کو واپس کر سکتے ہیں' names the action as object, and matches the shipped Undo toast label 'واپس کریں' (ui.notifications.toast.undo, ui.notices.chat.undo)"},
+    {"finding": "MINOR search wording word-for-word", "result": "fixed: now names the search field above the chats ('چیٹس کے اوپر والے تلاش کے خانے میں'); see new MINOR R2-1 on the repeated verb"}
+  ],
+  "findings": [
+    {"id": "R2-1", "severity": "MINOR", "key": "ui.chat.dialogs.archive_message", "current": "چیٹس کے اوپر والے تلاش کے خانے میں تلاش کریں", "problem": "Repeats تلاش (noun then verb) with no object, so it reads as 'search in the search box' and does not say what to look for.", "suggested": "چیٹس کے اوپر والے تلاش کے خانے میں اسے ڈھونڈیں"}
+  ]
+}
