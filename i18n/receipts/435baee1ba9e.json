@@ -1,0 +1,27 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "435baee1ba9e",
+  "locale": "ru",
+  "audit_date": "2026-11-17",
+  "independent_from_translator_session": "prA-tr-ru (openai/gpt-6.1-sol)",
+  "actual_model_source": "session system prompt Model line; no fallback observed",
+  "status": "passed",
+  "scope_note": "Five new keys (edit.error_generic, tools.error_grammar, tools.error_duplicate, ask_change_prefill, install.error_generic) plus context-widened create.error_instructions_required and ui.hub.teams.kind.specialist (value audited in place; ui.hub.teams.json unchanged vs HEAD, sha256 90494f6a40cad0406bf8d2a0b13527645f4b85e82f6f02c05fc4f6493b514f1f). English source commit f430d4fd43fbf0cbc0b15e9b5595dc080e8b7c13 + uncommitted translator edits.",
+  "namespaces": {
+    "ui.agents.detail": {
+      "status": "passed",
+      "source_sha256": "6c57644117286a0662933b9354f9a8307a0091fe7ff0b12cb703f9505abcf5f8",
+      "target_sha256": "9ec549c4fba387a2c1c12e23e2927dd3f8e41aa10113be82be1c749dd645c1a1",
+      "context_sha256": "0db35f5de90c7c19c359fa33e6c596b5652bdfa7d6f21bdd1399ef16adf556e9",
+      "findings": []
+    },
+    "ui.agents.detail.install": {
+      "status": "passed",
+      "source_sha256": "7dd4c6301ada0b2c94a4970508a073150a8bb7f7fdc304834bdca3ca1cc81cd3",
+      "target_sha256": "665889719a710865838819a6b2e1e9ccdc9e9181295b3d5d6461e6221d086a7b",
+      "context_sha256": "250562e403e1a04fc2e2d1c131647c2fe45ccb2d9c3f363dcfe20da48ae2f52b",
+      "findings": []
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "actual_model_source": "harness system prompt 'Model:' line of session 5071ff1aeef7; no fallback observed",
+  "instance": "5071ff1aeef7",
+  "locale": "ur",
+  "audit_date": "2026-11-17",
+  "translator": {"agent": "i18n-translator", "model": "openai/gpt-6.1-sol", "session_label": "prA-tr-ur"},
+  "independent_from_translator_session": true,
+  "english_source_commit": "f430d4fd43fbf0cbc0b15e9b5595dc080e8b7c13",
+  "scope": "ur: 5 new keys (edit.error_generic, tools.error_grammar, tools.error_duplicate, ask_change_prefill, install.error_generic) + context-widened create.error_instructions_required and ui.hub.teams.kind.specialist (value only, file untouched); rest of both files byte-identical to HEAD",
+  "status": "passed",
+  "namespaces": {
+    "ui.agents.detail": {
+      "status": "passed",
+      "sha256": {
+        "ur": "3c6d644292c4ce8176bece773cc827ed87941c03515c6019caa03685eb162c39",
+        "en": "6c57644117286a0662933b9354f9a8307a0091fe7ff0b12cb703f9505abcf5f8"
+      },
+      "context_sha256": "0db35f5de90c7c19c359fa33e6c596b5652bdfa7d6f21bdd1399ef16adf556e9",
+      "findings": [
+        {
+          "id": "UR-N1",
+          "severity": "NIT",
+          "key": "ui.agents.detail.tools.error_grammar",
+          "current": "ٹول کے نام میں صرف حروف، ہندسے، نقطہ (.)، انڈر اسکور (_)، ہائفن (-) یا کولن (:) ہو سکتے ہیں۔",
+          "problem": "92 chars vs en 63 (1.46x); longest existing ur validation line under a narrow input in this file is 35 (create.error_name_grammar). Context permits wrapping, so not an overflow defect; expect ~3 Nastaliq lines.",
+          "suggestion": "Optional, keep as is unless the rendered pane shows crowding; any shortening must keep all six characters with their literal glyphs."
+        }
+      ]
+    },
+    "ui.agents.detail.install": {
+      "status": "passed",
+      "sha256": {
+        "ur": "a4f8887efb1134d55e2972ad74ed6cab82e3325bb6c2c04a86f705117efecb28",
+        "en": "7dd4c6301ada0b2c94a4970508a073150a8bb7f7fdc304834bdca3ca1cc81cd3"
+      },
+      "context_sha256": "250562e403e1a04fc2e2d1c131647c2fe45ccb2d9c3f363dcfe20da48ae2f52b",
+      "findings": []
+    }
+  },
+  "audit_notes_not_execution_log": "Context-widened ui.hub.teams.kind.specialist='ماہر' audited in place (consistent with ui.agents.routing.aida 'کسی ماہر'); no finding. Not rendered; no native-speaker review."
+}
