@@ -48,6 +48,11 @@ type Counts = {
 	browser: number;
 	mesh: number;
 	teamBridge: number;
+	/**
+	 * Team Bridge approval requests waiting. Non-zero TAKES OVER the row's one
+	 * badge from the unread total (approvals decision (a), design D1).
+	 */
+	teamBridgeRequests?: number;
 	/** Draw a passkey hold and a held popup beside the approvals. */
 	waits?: boolean;
 };
@@ -144,6 +149,14 @@ const route =
 							eligible: true,
 						},
 					],
+				});
+			case "team_bridge.requests.list":
+				return ok({
+					tenant_id: "tnt_story",
+					items: [],
+					pending_count: counts.teamBridgeRequests ?? 0,
+					next_cursor: null,
+					has_more: false,
 				});
 			case "sidebar_layout.get":
 				return ok({ layout: null });
@@ -334,6 +347,21 @@ export const BrowserWaitsFolded: Story = {
     itself draws none - its sum summarises what is HIDDEN (design D2). */
 export const MoreOpen: Story = {
 	render: () => <Scene counts={SMALL} collapsed={false} moreOpen />,
+};
+
+/**
+ * The Team Bridge row once approval requests wait (design D1): the badge
+ * counts the 2 requests instead of the 3 unread, and the row's accessible name
+ * says "2 requests waiting". Compare `MoreOpen`, the same rail before.
+ */
+export const MoreOpenRequestsWaiting: Story = {
+	render: () => (
+		<Scene
+			counts={{ ...SMALL, teamBridgeRequests: 2 }}
+			collapsed={false}
+			moreOpen
+		/>
+	),
 };
 
 /** The cap: two- and three-digit counts read `99+`, never clipped. */

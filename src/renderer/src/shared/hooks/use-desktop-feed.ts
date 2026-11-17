@@ -41,6 +41,10 @@
  * The line the sidebar renders from this is the cheapest honest answer.
  */
 
+import {
+	applyAuthorizeFrame,
+	clearAuthorizeNotices,
+} from "@features/team-bridge/team-bridge-approvals-model";
 import { applyAgentAvatarFrame } from "@shared/agent-avatar/agent-avatar";
 import {
 	desktopFeatureEnabled,
@@ -289,6 +293,12 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			 * outage never leaves a lock the record cannot vouch for.
 			 */
 			if (!nextConnected) hostPublishRecord.reset();
+			/*
+			 * The prompt notice is live-only: a frame lost in the outage could be the
+			 * one that closes it, so a dropped feed clears every standing notice
+			 * rather than leave one up for a prompt that has already ended.
+			 */
+			if (!nextConnected) clearAuthorizeNotices();
 			wasConnected.current = nextConnected;
 			setReported(true);
 			setConnected(nextConnected);
@@ -419,6 +429,15 @@ export function useDesktopFeed(): DesktopFeedConnection {
 					lastAvatarFrameKey = key;
 					applyAgentAvatarFrame(frame.payload);
 				}
+				return;
+			}
+			/*
+			 * A Team Bridge Touch ID prompt moved (local-operator #4099, S-6).
+			 * Applied to the approvals module's notice store, keyed by `epoch:seq`
+			 * so the one delivery per mounted feed hook lands once.
+			 */
+			if (frame.type === "team_bridge_authorize") {
+				applyAuthorizeFrame(frame.payload, `${frame.epoch}:${frame.seq}`);
 				return;
 			}
 			/*

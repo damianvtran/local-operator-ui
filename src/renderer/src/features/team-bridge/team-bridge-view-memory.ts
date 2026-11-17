@@ -54,7 +54,8 @@ export type TeamBridgeQuickView =
 	| "drafts"
 	| "scheduled"
 	| "invitations"
-	| "archived";
+	| "archived"
+	| "requests";
 
 /**
  * The timeline's reading position: the first visible message and its offset
@@ -89,6 +90,7 @@ const QUICK_VIEWS: readonly string[] = [
 	"scheduled",
 	"invitations",
 	"archived",
+	"requests",
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {

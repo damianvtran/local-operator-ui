@@ -115520,6 +115520,223 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.teamBridge.approvals",
+			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+			"target_sha256": "75052d23272271b39d73b0bb026969c0b6f77a28ae9ad8a05754ffd6da0197f3",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean",
+					"instance": "pr1954-r1-fr-tbapprovals-4541a0ae",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1954-r1-fr-tbapprovals-4541a0ae.json",
+					"receipt_sha256": "1fb23f76838824728a0722e96a3a66563f7a2bee1037bb2ccc4d178d70f961c5",
+					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.teamBridge.approvals",
+			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+			"target_sha256": "76fbf37d7cb153c0adf9db5a3164b656d64b83654e0e4977cc6739e266a26850",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean",
+					"instance": "pr1954-r1-es-tbapprovals-f1b52917",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1954-r1-es-tbapprovals-f1b52917.json",
+					"receipt_sha256": "37533fb87f2cd445f2a51a4e943305aa790787af06fc028b0b3597cbdc334a64",
+					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.teamBridge.approvals",
+			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+			"target_sha256": "c0aa9fab0a51db2d399f485c3e3a575af03a919264892b09cc9cfecdcdc2db8c",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean",
+					"instance": "pr1954-r1-zh-cn-tbapprovals-1549da42",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1954-r1-zh-cn-tbapprovals-1549da42.json",
+					"receipt_sha256": "9a418db6b6a0340b7d38788123d343e7870b5e95582b4078a827dbfbcb569fe0",
+					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.teamBridge.approvals",
+			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+			"target_sha256": "327258359307aeff0a6ab165689802385df3e60ba9a03a91871ea089e85b088a",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean",
+					"instance": "pr1954-r1-ru-tbapprovals-6414c665",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1954-r1-ru-tbapprovals-6414c665.json",
+					"receipt_sha256": "f51e5eb07c2fa48e211709e08726d707e6163b19ca8d29440b98eb8afc53427c",
+					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.teamBridge.approvals",
+			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+			"target_sha256": "db92666f593af914d3d35390aa359f8b4318e3475190799fdf5405881cfba1d7",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean",
+					"instance": "pr1954-r1-vi-tbapprovals-f631a6db",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1954-r1-vi-tbapprovals-f631a6db.json",
+					"receipt_sha256": "46154d31e552c2252acf8e695bce7e261b46cb5b37634582203c5a575882af93",
+					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.teamBridge.approvals",
+			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+			"target_sha256": "aa94aa9e75383a90b5e6439ae530f3a04963f404dbe2e6466e31eda34588c53f",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "pr1954-r1-ur-tbapprovals-3b72526a",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1954-r1-ur-tbapprovals-3b72526a.json",
+					"receipt_sha256": "f1600e18f4566ac3e16b738537638d3a6b361acbfde723dee21016f63cc98147",
+					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.teamBridge.approvals",
+			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+			"target_sha256": "15298cf967a808a2aad10d1788eb725fa448a5c4461c76f19e24f9a28a7e7936",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "pr1954-r1-hi-tbapprovals-5e87fe58",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/pr1954-r1-hi-tbapprovals-5e87fe58.json",
+					"receipt_sha256": "dcfbce2fbf3849a3606a5b94fe3e154980b7bec28b75c08ae0a5ed239fd14b1e",
+					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

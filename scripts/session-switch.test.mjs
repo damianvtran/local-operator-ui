@@ -1224,7 +1224,18 @@ const ENTRANCE_FILES = {
 	"use-aida-target.ts": "src/renderer/src/features/aida/use-aida-target.ts",
 	"slash-dispatch.ts":
 		"src/renderer/src/features/chat/components/slash-dispatch.ts",
+	/*
+	 * TEAM BRIDGE REQUESTS' "OPEN IN CHAT" IS AN ENTRANCE (ui#1954, code review
+	 * round 5, M2). A request row opens the conversation its ask card sits in, and
+	 * it once did so as "open the session, then route on the answer" - the
+	 * deferred write this table exists to catch. The row's button reaches the rule
+	 * through the file's one `useOpenCard` hook, so the file is named here.
+	 */
+	"team-bridge-approvals.tsx":
+		"src/renderer/src/features/team-bridge/team-bridge-approvals.tsx",
 };
+const OPEN_CARD_HOOK = /const openCard = useOpenCard\(\);/;
+const OPEN_CARD_WIRED = /onOpenCard=\{openCard\}/;
 const readSource = (path) =>
 	readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -1319,6 +1330,17 @@ test("every entrance writes the switch's URL with the commit, through one rule",
 		1,
 		"the composer's `/aida` is the other entrance, and it is this file's one call of the rule",
 	);
+	assert.equal(
+		readSource(ENTRANCE_FILES["team-bridge-approvals.tsx"]).split(
+			"openConversation(",
+		).length - 1,
+		1,
+		'the Requests rows\' "Open in chat" reaches the rule through `useOpenCard` alone; a second call here is a second write rule',
+	);
+	/* ...and the container hands that hook to the rows' button, so the button is what calls it. */
+	const requests = readSource(ENTRANCE_FILES["team-bridge-approvals.tsx"]);
+	assert.match(requests, OPEN_CARD_HOOK);
+	assert.match(requests, OPEN_CARD_WIRED);
 });
 
 test("U5: a pane reached by the session's own route resolves the staged draft's row", () => {

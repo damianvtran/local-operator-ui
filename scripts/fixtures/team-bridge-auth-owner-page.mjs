@@ -837,6 +837,16 @@ async function mount({
 					   the shape `connectivity-banner-notice.test.mjs` stubs. */
 					case "config.get":
 						return reply({ values: { hosting: "local" } });
+					/* APPROVALS (ui#1954). A suite installs `fixture.approvals` (keyed by
+					   op) to answer the requests routes; without it these fall to the
+					   catch-all exactly as before, so no other suite's shapes move. */
+					case "team_bridge.requests.list":
+					case "team_bridge.decisions.list":
+					case "team_bridge.requests.authorize":
+					case "team_bridge.requests.decide":
+						if (fixture.approvals?.[request.op])
+							return fixture.approvals[request.op](request);
+						return reply({});
 					default:
 						return reply({});
 				}

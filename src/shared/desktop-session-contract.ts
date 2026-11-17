@@ -2263,6 +2263,21 @@ export type DesktopSessionFrame =
 	| Receipt<"aside_delta", { aside_id: string; delta: string }>
 	| { session_id: CanonicalSessionId; type: "heartbeat" | "gap" };
 
+/** The `team_bridge_authorize` frame's payload, as the daemon publishes it
+ * (local-operator #4099). The renderer parses it at the feed boundary
+ * (`parseAuthorizeFrame`) rather than trusting this shape. */
+export type TeamBridgeAuthorizeFramePayload = {
+	authorize_id: string;
+	client_ref: string | null;
+	state: "prompting" | "signed" | "dismissed" | "refused";
+	items: Array<{
+		message_id: string;
+		word: "approve" | "deny";
+		sender: string | null;
+		excerpt: string | null;
+	}>;
+};
+
 /**
  * The machine-wide feed's frame family (`GET /v1/desktop/events`).
  *
@@ -2516,6 +2531,20 @@ export type DesktopFeedFrame =
 			payload: { agent_id: string; sha256: string | null };
 	  }
 	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }
+	/**
+	 * A Team Bridge batch Touch ID prompt moved (local-operator #4099, security
+	 * S-6). Machine-wide and live-only: the OS sheet cannot say what it is for and
+	 * any local bearer holder can ask the daemon to raise it, so the daemon
+	 * publishes what each prompt would sign - whoever started it - and the
+	 * desktop shows it. `sender`/`excerpt` are resolved by the daemon from the
+	 * local ask card, `null` for an item with no local ask; never a body.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "team_bridge_authorize";
+			payload: TeamBridgeAuthorizeFramePayload;
+	  }
 	/**
 	 * ONE SESSION's settings-intent slot moved (`features.settings_intents`).
 	 *

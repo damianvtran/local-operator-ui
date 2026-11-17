@@ -183,6 +183,7 @@ import enUiSharedUnifiedDiff from "./catalogues/en/ui.shared.unified_diff.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellMenubar from "./catalogues/en/ui.shell.menubar.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
+import enUiTeamBridgeApprovals from "./catalogues/en/ui.teamBridge.approvals.json";
 import enUiTeamBridgeArchive from "./catalogues/en/ui.teamBridge.archive.json";
 import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import enUiTeamBridgeLeave from "./catalogues/en/ui.teamBridge.leave.json";
@@ -353,6 +354,7 @@ import esUiSharedUnifiedDiff from "./catalogues/es/ui.shared.unified_diff.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
 import esUiShellMenubar from "./catalogues/es/ui.shell.menubar.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
+import esUiTeamBridgeApprovals from "./catalogues/es/ui.teamBridge.approvals.json";
 import esUiTeamBridgeArchive from "./catalogues/es/ui.teamBridge.archive.json";
 import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
 import esUiTeamBridgeLeave from "./catalogues/es/ui.teamBridge.leave.json";
@@ -523,6 +525,7 @@ import frUiSharedUnifiedDiff from "./catalogues/fr/ui.shared.unified_diff.json";
 import frUiShell from "./catalogues/fr/ui.shell.json";
 import frUiShellMenubar from "./catalogues/fr/ui.shell.menubar.json";
 import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
+import frUiTeamBridgeApprovals from "./catalogues/fr/ui.teamBridge.approvals.json";
 import frUiTeamBridgeArchive from "./catalogues/fr/ui.teamBridge.archive.json";
 import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
 import frUiTeamBridgeLeave from "./catalogues/fr/ui.teamBridge.leave.json";
@@ -693,6 +696,7 @@ import hiUiSharedUnifiedDiff from "./catalogues/hi/ui.shared.unified_diff.json";
 import hiUiShell from "./catalogues/hi/ui.shell.json";
 import hiUiShellMenubar from "./catalogues/hi/ui.shell.menubar.json";
 import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
+import hiUiTeamBridgeApprovals from "./catalogues/hi/ui.teamBridge.approvals.json";
 import hiUiTeamBridgeArchive from "./catalogues/hi/ui.teamBridge.archive.json";
 import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
 import hiUiTeamBridgeLeave from "./catalogues/hi/ui.teamBridge.leave.json";
@@ -863,6 +867,7 @@ import ruUiSharedUnifiedDiff from "./catalogues/ru/ui.shared.unified_diff.json";
 import ruUiShell from "./catalogues/ru/ui.shell.json";
 import ruUiShellMenubar from "./catalogues/ru/ui.shell.menubar.json";
 import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
+import ruUiTeamBridgeApprovals from "./catalogues/ru/ui.teamBridge.approvals.json";
 import ruUiTeamBridgeArchive from "./catalogues/ru/ui.teamBridge.archive.json";
 import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
 import ruUiTeamBridgeLeave from "./catalogues/ru/ui.teamBridge.leave.json";
@@ -1033,6 +1038,7 @@ import urUiSharedUnifiedDiff from "./catalogues/ur/ui.shared.unified_diff.json";
 import urUiShell from "./catalogues/ur/ui.shell.json";
 import urUiShellMenubar from "./catalogues/ur/ui.shell.menubar.json";
 import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
+import urUiTeamBridgeApprovals from "./catalogues/ur/ui.teamBridge.approvals.json";
 import urUiTeamBridgeArchive from "./catalogues/ur/ui.teamBridge.archive.json";
 import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
 import urUiTeamBridgeLeave from "./catalogues/ur/ui.teamBridge.leave.json";
@@ -1203,6 +1209,7 @@ import viUiSharedUnifiedDiff from "./catalogues/vi/ui.shared.unified_diff.json";
 import viUiShell from "./catalogues/vi/ui.shell.json";
 import viUiShellMenubar from "./catalogues/vi/ui.shell.menubar.json";
 import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
+import viUiTeamBridgeApprovals from "./catalogues/vi/ui.teamBridge.approvals.json";
 import viUiTeamBridgeArchive from "./catalogues/vi/ui.teamBridge.archive.json";
 import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
 import viUiTeamBridgeLeave from "./catalogues/vi/ui.teamBridge.leave.json";
@@ -1373,6 +1380,7 @@ import zhCNUiSharedUnifiedDiff from "./catalogues/zh-CN/ui.shared.unified_diff.j
 import zhCNUiShell from "./catalogues/zh-CN/ui.shell.json";
 import zhCNUiShellMenubar from "./catalogues/zh-CN/ui.shell.menubar.json";
 import zhCNUiShellRail from "./catalogues/zh-CN/ui.shell.rail.json";
+import zhCNUiTeamBridgeApprovals from "./catalogues/zh-CN/ui.teamBridge.approvals.json";
 import zhCNUiTeamBridgeArchive from "./catalogues/zh-CN/ui.teamBridge.archive.json";
 import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
 import zhCNUiTeamBridgeLeave from "./catalogues/zh-CN/ui.teamBridge.leave.json";
@@ -1546,6 +1554,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiShell,
 	...enUiShellMenubar,
 	...enUiShellRail,
+	...enUiTeamBridgeApprovals,
 	...enUiTeamBridgeArchive,
 	...enUiTeamBridge,
 	...enUiTeamBridgeLeave,
@@ -1724,6 +1733,7 @@ export const bundledCatalogues: Readonly<
 		...esUiShell,
 		...esUiShellMenubar,
 		...esUiShellRail,
+		...esUiTeamBridgeApprovals,
 		...esUiTeamBridgeArchive,
 		...esUiTeamBridge,
 		...esUiTeamBridgeLeave,
@@ -1896,6 +1906,7 @@ export const bundledCatalogues: Readonly<
 		...frUiShell,
 		...frUiShellMenubar,
 		...frUiShellRail,
+		...frUiTeamBridgeApprovals,
 		...frUiTeamBridgeArchive,
 		...frUiTeamBridge,
 		...frUiTeamBridgeLeave,
@@ -2068,6 +2079,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiShell,
 		...hiUiShellMenubar,
 		...hiUiShellRail,
+		...hiUiTeamBridgeApprovals,
 		...hiUiTeamBridgeArchive,
 		...hiUiTeamBridge,
 		...hiUiTeamBridgeLeave,
@@ -2240,6 +2252,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiShell,
 		...ruUiShellMenubar,
 		...ruUiShellRail,
+		...ruUiTeamBridgeApprovals,
 		...ruUiTeamBridgeArchive,
 		...ruUiTeamBridge,
 		...ruUiTeamBridgeLeave,
@@ -2412,6 +2425,7 @@ export const bundledCatalogues: Readonly<
 		...urUiShell,
 		...urUiShellMenubar,
 		...urUiShellRail,
+		...urUiTeamBridgeApprovals,
 		...urUiTeamBridgeArchive,
 		...urUiTeamBridge,
 		...urUiTeamBridgeLeave,
@@ -2584,6 +2598,7 @@ export const bundledCatalogues: Readonly<
 		...viUiShell,
 		...viUiShellMenubar,
 		...viUiShellRail,
+		...viUiTeamBridgeApprovals,
 		...viUiTeamBridgeArchive,
 		...viUiTeamBridge,
 		...viUiTeamBridgeLeave,
@@ -2756,6 +2771,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiShell,
 		...zhCNUiShellMenubar,
 		...zhCNUiShellRail,
+		...zhCNUiTeamBridgeApprovals,
 		...zhCNUiTeamBridgeArchive,
 		...zhCNUiTeamBridge,
 		...zhCNUiTeamBridgeLeave,
@@ -13042,6 +13058,93 @@ export type MessageParams = {
 		count: number;
 		countText: string;
 	};
+	"ui.teamBridge.approvals.approve": undefined;
+	"ui.teamBridge.approvals.approve_locked": undefined;
+	"ui.teamBridge.approvals.approve_selected": undefined;
+	"ui.teamBridge.approvals.approve_selected_partial": {
+		send: number;
+		total: number;
+	};
+	"ui.teamBridge.approvals.authorizing": undefined;
+	"ui.teamBridge.approvals.cap_reached": { max: number };
+	"ui.teamBridge.approvals.deciding": undefined;
+	"ui.teamBridge.approvals.deny": undefined;
+	"ui.teamBridge.approvals.deny_locked": undefined;
+	"ui.teamBridge.approvals.deny_selected": undefined;
+	"ui.teamBridge.approvals.deny_selected_partial": {
+		send: number;
+		total: number;
+	};
+	"ui.teamBridge.approvals.empty": undefined;
+	"ui.teamBridge.approvals.excluded": { count: number };
+	"ui.teamBridge.approvals.expires": { time: string };
+	"ui.teamBridge.approvals.history.approved": undefined;
+	"ui.teamBridge.approvals.history.denied": undefined;
+	"ui.teamBridge.approvals.history.empty": undefined;
+	"ui.teamBridge.approvals.history.load_failed": undefined;
+	"ui.teamBridge.approvals.history.loading": undefined;
+	"ui.teamBridge.approvals.history.other": undefined;
+	"ui.teamBridge.approvals.history.requested_by": { name: string };
+	"ui.teamBridge.approvals.intro": undefined;
+	"ui.teamBridge.approvals.load_failed": undefined;
+	"ui.teamBridge.approvals.loading": undefined;
+	"ui.teamBridge.approvals.locked_note": undefined;
+	"ui.teamBridge.approvals.nav_name": { label: string };
+	"ui.teamBridge.approvals.notice.foreign": undefined;
+	"ui.teamBridge.approvals.notice.foreign_help": undefined;
+	"ui.teamBridge.approvals.notice.item_approve": { sender: string };
+	"ui.teamBridge.approvals.notice.item_approve_unlisted": undefined;
+	"ui.teamBridge.approvals.notice.item_deny": { sender: string };
+	"ui.teamBridge.approvals.notice.item_deny_unlisted": undefined;
+	"ui.teamBridge.approvals.notice.item_unrecognised": undefined;
+	"ui.teamBridge.approvals.notice.label": undefined;
+	"ui.teamBridge.approvals.notice.title": { count: number };
+	"ui.teamBridge.approvals.open_card": undefined;
+	"ui.teamBridge.approvals.open_card_named": { sender: string };
+	"ui.teamBridge.approvals.reason_no_card": undefined;
+	"ui.teamBridge.approvals.reason_not_open": undefined;
+	"ui.teamBridge.approvals.received": { time: string };
+	"ui.teamBridge.approvals.refusal.challenge_limit": undefined;
+	"ui.teamBridge.approvals.refusal.cooldown": { seconds: number };
+	"ui.teamBridge.approvals.refusal.dismissed": undefined;
+	"ui.teamBridge.approvals.refusal.expired": undefined;
+	"ui.teamBridge.approvals.refusal.in_flight": undefined;
+	"ui.teamBridge.approvals.refusal.locked": undefined;
+	"ui.teamBridge.approvals.refusal.locked_named": {
+		count: number;
+		names: string;
+	};
+	"ui.teamBridge.approvals.refusal.other": undefined;
+	"ui.teamBridge.approvals.refusal.presence_required": undefined;
+	"ui.teamBridge.approvals.refusal.unconfirmed": undefined;
+	"ui.teamBridge.approvals.result.already_answered": undefined;
+	"ui.teamBridge.approvals.result.approved": undefined;
+	"ui.teamBridge.approvals.result.consent_revoked": undefined;
+	"ui.teamBridge.approvals.result.denied": undefined;
+	"ui.teamBridge.approvals.result.feature_off": undefined;
+	"ui.teamBridge.approvals.result.item": {
+		sender: string;
+		word: string;
+		outcome: string;
+	};
+	"ui.teamBridge.approvals.result.locked": undefined;
+	"ui.teamBridge.approvals.result.no_card": undefined;
+	"ui.teamBridge.approvals.result.not_designated": undefined;
+	"ui.teamBridge.approvals.result.not_sent": undefined;
+	"ui.teamBridge.approvals.result.owner_changed": undefined;
+	"ui.teamBridge.approvals.result.unconfirmed": undefined;
+	"ui.teamBridge.approvals.results_title": { done: number; notSent: number };
+	"ui.teamBridge.approvals.select_all": undefined;
+	"ui.teamBridge.approvals.select_row": { sender: string };
+	"ui.teamBridge.approvals.selected_count": { count: number };
+	"ui.teamBridge.approvals.tab_history": undefined;
+	"ui.teamBridge.approvals.tab_waiting": undefined;
+	"ui.teamBridge.approvals.title": undefined;
+	"ui.teamBridge.approvals.trace.dismissed": { count: number; time: string };
+	"ui.teamBridge.approvals.trace.refused": { count: number; time: string };
+	"ui.teamBridge.approvals.trace.signed": { count: number; time: string };
+	"ui.teamBridge.approvals.unknown_sender": undefined;
+	"ui.teamBridge.approvals.waiting": { count: number };
 	"ui.teamBridge.archive.banner.by_on": { name: string; date: string };
 	"ui.teamBridge.archive.banner.delete": undefined;
 	"ui.teamBridge.archive.banner.on": { date: string };

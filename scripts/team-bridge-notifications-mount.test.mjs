@@ -198,7 +198,20 @@ const notifyRow = (conversationId, latestSeq) => ({
 	muted: false,
 });
 
-const mount = async ({ Extra = null, url = "http://localhost/" } = {}) => {
+/*
+ * `seed` writes cache entries BEFORE the first render. A test whose premise is
+ * "this conversation is already cached when the watcher first looks" must seed
+ * here, not after `mount()` returns: the watcher's background warm plans from
+ * the first conversation-list answer, and on a slow runner that answer can
+ * land inside `mount()`'s render, so a post-mount seed loses the race and the
+ * warm reads the row as cold (merge gate run 44082920112; reproduced on main
+ * by delaying `mount()`'s return by 100 ms).
+ */
+const mount = async ({
+	Extra = null,
+	url = "http://localhost/",
+	seed = null,
+} = {}) => {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		pretendToBeVisual: true,
 		url,
@@ -279,6 +292,7 @@ const mount = async ({ Extra = null, url = "http://localhost/" } = {}) => {
 	client.setQueryData(["desktop", "settings"], {
 		settings: [{ key: "display.notifications", value: true }],
 	});
+	seed?.(client);
 	let enabled = true;
 	const Probe = () => {
 		api.useTeamBridgeNotifications(enabled);
@@ -1724,10 +1738,13 @@ test("an unmounted, previously visited conversation is refreshed when latest_seq
 			notifyRow("bcv_never", 1),
 		],
 	};
-	const mounted = await mount();
 	const key = api.teamBridgeKeys.messages("bcv_u", "tnt_u", "acct_alice");
-	mounted.client.setQueryData(key, {
-		messages: [message("bcmsg_1", "bcv_u", 1)],
+	// Cached before the watcher's first look (see `mount`'s `seed`).
+	const mounted = await mount({
+		seed: (client) =>
+			client.setQueryData(key, {
+				messages: [message("bcmsg_1", "bcv_u", 1)],
+			}),
 	});
 	try {
 		await until(
