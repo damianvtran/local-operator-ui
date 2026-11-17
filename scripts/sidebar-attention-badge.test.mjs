@@ -181,8 +181,8 @@ const HOSTS = {
 	"src/renderer/src/features/team-bridge/team-bridge-rail.tsx": 1,
 	// all-organizations total unread, per-organization unread
 	"src/renderer/src/features/team-bridge/team-bridge-org-switcher.tsx": 2,
-	// pending invitations
-	"src/renderer/src/features/team-bridge/team-bridge-page.tsx": 1,
+	// Approvals requests waiting on the reader, pending invitations
+	"src/renderer/src/features/team-bridge/team-bridge-page.tsx": 2,
 };
 
 for (const [path, sites] of Object.entries(HOSTS)) {

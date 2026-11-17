@@ -35,3 +35,12 @@ These were re-captured the same way: the harness browser against a Storybook boo
 | `load-error-*` | Q2 | The Requests error panel, with "Requests could not be loaded." and "Try again". The panel is presentational, so these are byte-identical to round 1. The Q2 fix sits in the container, and the live rig plus `scripts/team-bridge-approvals-page.test.mjs` prove it |
 
 D9 has no visual change. The cooldown line now holds a static `sr-only` sentence for the live region, and the ticking sentence is `aria-hidden`.
+
+## Merge gate remediation — round 1 (O-7 / O-8)
+
+The Touch ID prompt notice now carries `data-glass-overlay` and `data-lo-floating`. Off glass nothing changes (no border before or after). On window glass it does: before, the notice painted opaque over the material (computed `background-color: rgb(47, 42, 31)`, dark). After, it takes the overlay fill and the meaning-colour rebind (`color(srgb 0.184 0.165 0.122 / 0.75)`, `border-top-width: 0px`). The foreign variant still opens with its warning-wash "Not started in this window" strip (D2). Captured with the harness browser against one Storybook (`scripts/with-storybook.mjs --port 6954`, reaped by process group) at 2560×1440, story args `theme:<id>;glass:on`.
+
+| Frames | What it shows |
+|---|---|
+| `gate-notice-own-glass-before-*`, `gate-notice-own-glass-after-*` | The own notice on glass before and after, dark and light |
+| `gate-notice-foreign-glass-before-*`, `gate-notice-foreign-glass-after-*` | The foreign notice on glass before and after. The warning-wash strip leads in both |

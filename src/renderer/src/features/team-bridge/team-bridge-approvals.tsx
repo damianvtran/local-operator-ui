@@ -14,6 +14,7 @@
  * the sender, the ask card's already-screened `excerpt` and the time; a
  * refusal shows fixed copy, never the daemon's sentence.
  */
+import { openConversation } from "@features/chat/open-conversation";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { Checkbox } from "@shared/components/ui/checkbox";
@@ -26,7 +27,6 @@ import {
 import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useQueryClient } from "@tanstack/react-query";
 import { Fingerprint, Info, ShieldAlert } from "lucide-react";
 import {
@@ -91,19 +91,19 @@ function secondsLeft(until: number): number {
 
 /*
  * One open-the-card door for every row (UX review U3): the ask card lives in a
- * chat session on this machine (`ask.session_id`), so this is the same
- * "open the session, then route to it" the project and schedule pages use.
+ * chat session on this machine (`ask.session_id`). It goes through the shared
+ * switch rule, `openConversation`, rather than "open the session, then route on
+ * true": the rule writes `/chat/<id>` WITH the store commit, so the address bar
+ * never names a conversation the view has already left, and it repairs the
+ * route on a refused read only while its own write is still current - the
+ * deferred-write race `session-switch.test.mjs` exists for. Settings, Library and
+ * Projects open a conversation from a non-chat page the same way.
  */
 function useOpenCard(): (sessionId: string) => void {
 	const navigate = useNavigate();
 	return useCallback(
 		(sessionId: string) => {
-			void useCanonicalSessionsStore
-				.getState()
-				.openSession(sessionId)
-				.then((opened) => {
-					if (opened) navigate(`/chat/${sessionId}`);
-				});
+			void openConversation(navigate, sessionId);
 		},
 		[navigate],
 	);
@@ -940,6 +940,14 @@ export function TeamBridgeAuthorizeNoticeView({
 	return (
 		<div
 			aria-label={t("ui.teamBridge.approvals.notice.label")}
+			/* The floating layer's markers: the notice leaves the flow over whatever
+			   page is open, so on window glass it takes the overlay fill and the
+			   meaning-colour rebind (the foreign strip's warning wash and ink stay
+			   legible), and it gets the forced-colors edge and focus exclusion the
+			   floating vocabulary keys on - separation comes from the shadow alone,
+			   never a border (glass-overlay O-7, floating-surface-no-border O-8). */
+			data-glass-overlay=""
+			data-lo-floating=""
 			className="pointer-events-auto flex max-h-[60vh] w-[min(28rem,calc(100vw-2rem))] flex-col gap-3 overflow-auto rounded-lg bg-elevated p-4 text-ink shadow-overlay"
 		>
 			{notices.map((notice) => {
