@@ -1,3 +1,4 @@
+import { trackProductEvent } from "@shared/analytics/product-events";
 import { currentLocale, t, textDirectionFor } from "@shared/i18n";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Step, StepOptions, Tour } from "shepherd.js";
@@ -318,6 +319,51 @@ export const syncStepSevenShapeOnShow = (event: { step?: Step }): void => {
 };
 
 /**
+ * Steps whose spotlight is not on screen are SKIPPED, never shown unattached.
+ *
+ * WHY (PostHog D5: Shepherd's "The element for this Shepherd step was not
+ * found" in ~15 sessions). The tour used to point at three targets the app no
+ * longer renders - `agent-list-panel`, `agent-list-item-button-0` and
+ * `settings-integrations-section`, left behind when the agents list moved off
+ * the chat page and integrations left Settings - and Shepherd answers a missing
+ * target with a console error and a centred panel whose arrow points at
+ * nothing; the select-agent step's Next then clicked nothing. Those steps are
+ * removed above. This guard is the rule for the next one: any step whose
+ * selector matches nothing when it is reached is passed over in the direction
+ * of travel (`showOn`, which Shepherd evaluates at show time and which
+ * completes the tour if the skipped step was the last), and the skip is
+ * reported as `onboarding_tour_step{outcome: "skipped_missing_target"}` so a
+ * stale step shows up in data rather than in replays.
+ *
+ * Step 7 is exempt: its palette anchor is opened BY the tour a moment before
+ * and its own handler already re-shapes the step when the palette is absent
+ * (`syncStepSevenShapeOnShow`).
+ */
+export const guardTourTargets = (
+	steps: StepOptions[],
+	present: (selector: string) => boolean = (selector) =>
+		typeof document !== "undefined" &&
+		document.querySelector(selector) !== null,
+): StepOptions[] =>
+	steps.map((step) => {
+		const element = step.attachTo?.element;
+		if (typeof element !== "string" || step.id === STEP_SEVEN_ID) return step;
+		const previous = step.showOn;
+		return {
+			...step,
+			showOn: () => {
+				if (previous && !previous()) return false;
+				if (present(element)) return true;
+				trackProductEvent("onboarding_tour_step", {
+					step: step.id ?? "unknown",
+					outcome: "skipped_missing_target",
+				});
+				return false;
+			},
+		};
+	});
+
+/**
  * Step 7, in the shape this window can hold.
  *
  * Above the breakpoint the panel is pinned to the palette's right edge, so the
@@ -380,7 +426,10 @@ const commandPaletteStep = (): StepOptions => {
  * The copy and body structure live in `./tour-copy`; this module owns the
  * mechanics — spotlights, navigation, and the action each step's buttons run.
  */
-export const createTourSteps = (): StepOptions[] => [
+export const createTourSteps = (): StepOptions[] =>
+	guardTourTargets(buildTourSteps());
+
+const buildTourSteps = (): StepOptions[] => [
 	{
 		id: "welcome",
 		title: tourLabel("ui.onboarding.tour.welcome.title"),
@@ -391,66 +440,6 @@ export const createTourSteps = (): StepOptions[] => [
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
-				},
-			},
-		],
-	},
-	{
-		id: "agent-list",
-		attachTo: {
-			element: '[data-tour-tag="agent-list-panel"]',
-			on: attachSide("right"),
-		},
-		title: tourLabel("ui.onboarding.tour.agent_list.title"),
-		text: renderTourBody(TOUR_BODIES.agent_list),
-		buttons: [
-			{
-				text: tourLabel("ui.onboarding.tour.action.back"),
-				classes: "shepherd-button-secondary",
-				action: function () {
-					this.back();
-				},
-			},
-			{
-				text: tourLabel("ui.onboarding.tour.action.next"),
-				classes: "shepherd-button-primary",
-				action: function () {
-					this.next();
-				},
-			},
-		],
-	},
-	{
-		id: "select-agent",
-		// Targets the first AgentListItemButton within the AgentsList using the new data-tour-tag
-		attachTo: {
-			element: '[data-tour-tag="agent-list-item-button-0"]',
-			on: attachSide("right"),
-		},
-		title: tourLabel("ui.onboarding.tour.select_agent.title"),
-		text: renderTourBody(TOUR_BODIES.select_agent),
-		buttons: [
-			{
-				text: tourLabel("ui.onboarding.tour.action.back"),
-				classes: "shepherd-button-secondary",
-				action: function () {
-					this.back();
-				},
-			},
-			{
-				text: tourLabel("ui.onboarding.tour.action.next"),
-				classes: "shepherd-button-primary",
-				action: function () {
-					const button = document.querySelector(
-						'[data-tour-tag="agent-list-item-button-0"]',
-					);
-					if (button) {
-						(button as HTMLButtonElement).click();
-					}
-					// Wait for the navigation to complete before clicking the next button
-					setTimeout(() => {
-						this.next();
-					}, 500);
 				},
 			},
 		],
@@ -1505,31 +1494,6 @@ export const createTourSteps = (): StepOptions[] => [
 		},
 		title: tourLabel("ui.onboarding.tour.radient_account_settings.title"),
 		text: renderTourBody(TOUR_BODIES.radient_account_settings),
-		buttons: [
-			{
-				text: tourLabel("ui.onboarding.tour.action.back"),
-				classes: "shepherd-button-secondary",
-				action: function () {
-					this.back();
-				},
-			},
-			{
-				text: tourLabel("ui.onboarding.tour.action.next"),
-				classes: "shepherd-button-primary",
-				action: function () {
-					this.next();
-				},
-			},
-		],
-	},
-	{
-		id: "integrations-settings",
-		attachTo: {
-			element: '[data-tour-tag="settings-integrations-section"]',
-			on: attachSide("right"),
-		},
-		title: tourLabel("ui.onboarding.tour.integrations_settings.title"),
-		text: renderTourBody(TOUR_BODIES.integrations_settings),
 		buttons: [
 			{
 				text: tourLabel("ui.onboarding.tour.action.back"),

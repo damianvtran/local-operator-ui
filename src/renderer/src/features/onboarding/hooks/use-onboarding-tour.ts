@@ -1,10 +1,11 @@
+import { trackProductEvent } from "@shared/analytics/product-events";
 import { currentLocale } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useOnboardingStore } from "@shared/store/onboarding-store";
 import { useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShepherdJourneyContext } from "react-shepherd";
-import type { StepOptions, Tour } from "shepherd.js";
+import type { Step, StepOptions, Tour } from "shepherd.js";
 import {
 	applyTourLocale,
 	createTourSteps,
@@ -29,6 +30,45 @@ const paletteReleaseHandlerFor = (tour: Tour): (() => void) => {
 	const handler = () => releaseTourCommandPalette(tour);
 	paletteReleaseByTour.set(tour, handler);
 	return handler;
+};
+
+/**
+ * `onboarding_tour_step` for shown, completed and cancelled steps (skips are
+ * reported by `guardTourTargets`). Module-scope and memoised per tour for the
+ * same reason as the palette release above: Shepherd matches listeners by
+ * identity, and a fresh arrow per `startTour` would stack.
+ */
+const tourTelemetryByTour = new WeakMap<
+	Tour,
+	{
+		show: (event: { step?: Step }) => void;
+		complete: () => void;
+		cancel: () => void;
+	}
+>();
+const tourTelemetryFor = (tour: Tour) => {
+	const existing = tourTelemetryByTour.get(tour);
+	if (existing) return existing;
+	const current = () => tour.getCurrentStep()?.id ?? "unknown";
+	const handlers = {
+		show: (event: { step?: Step }) =>
+			trackProductEvent("onboarding_tour_step", {
+				step: event?.step?.id ?? "unknown",
+				outcome: "shown",
+			}),
+		complete: () =>
+			trackProductEvent("onboarding_tour_step", {
+				step: current(),
+				outcome: "completed",
+			}),
+		cancel: () =>
+			trackProductEvent("onboarding_tour_step", {
+				step: current(),
+				outcome: "cancelled",
+			}),
+	};
+	tourTelemetryByTour.set(tour, handlers);
+	return handlers;
 };
 
 export const useOnboardingTour = () => {
@@ -161,6 +201,11 @@ export const useOnboardingTour = () => {
 		 */
 		tourInstance.off("show", syncStepSevenShapeOnShow);
 		tourInstance.on("show", syncStepSevenShapeOnShow);
+		const telemetry = tourTelemetryFor(tourInstance);
+		for (const name of ["show", "complete", "cancel"] as const) {
+			tourInstance.off(name, telemetry[name]);
+			tourInstance.on(name, telemetry[name]);
+		}
 
 		// Resolve the copy in the language active at start (see ./tour/tour-steps).
 		const tourSteps = createTourSteps();
