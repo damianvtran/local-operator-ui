@@ -7931,7 +7931,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * hydrating while its box still takes a press (measured here - the away send
 				 * posts normally), and that path is left exactly as it was. Only a press this
 				 * composer would have refused BECAUSE the transcript has not painted yet is
-				 * re-worded.
+				 * re-worded - which is why `noProvider` is asked separately below: it is a
+				 * blocker of its own, and "that chat is still opening" would name a wait
+				 * that is not what refused the press (agent review round 2's MINOR).
 				 *
 				 * WAITING FOR THE READY DELIVERER INSTEAD WAS REJECTED rather than overlooked:
 				 * the closure is re-registered every render, so the wait would have to be
@@ -7940,8 +7942,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * transcript hostage to a pane the reader may never finish opening. The truthful
 				 * sentence is the smaller, safer answer.
 				 */
-				if (isInputDisabled || noProvider)
-					return isHydrating ? "not-ready" : "unavailable";
+				if (isInputDisabled) return isHydrating ? "not-ready" : "unavailable";
+				if (noProvider) return "unavailable";
 				if (noModel || draftModelUnresolved) return "no-model";
 				if (planForDraft(text, text.length).kind !== "send") return "command";
 				if (awaitingAnswer && dictatedWouldAnswerGate(text)) return "gate";
@@ -7986,7 +7988,17 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					{ dictatedAway: true, inputMode: options.inputMode },
 				);
 				sendEnded = true;
-				if (accepted === false) return "unavailable";
+				/*
+				 * THE SAME TERM ON THE ARM THE BUILT APP ACTUALLY TAKES (round-2 F2). A
+				 * hydrating pane whose box still takes a press is not refused by this closure's
+				 * gates at all: the press goes through `onSubmit` and comes back refused by the
+				 * admission side, so answering `unavailable` here told the reader their chat
+				 * "could not take a message" about a chat that was still opening. `isHydrating`
+				 * is this render's copy of the pane's live hold, and the deliverer is
+				 * re-registered on every render, so the value is the one in force at the press.
+				 */
+				if (accepted === false)
+					return isHydrating ? "not-ready" : "unavailable";
 				const box = useConversationInputStore.getState();
 				/*
 				 * AND THE CLEAR AN ACCEPTED AWAY SEND OWES ITS BOX IS THIS WRITE.

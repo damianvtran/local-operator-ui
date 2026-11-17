@@ -3926,3 +3926,550 @@ test("a return to a chat that is still opening is refused as still opening, not 
 	transcription.restore();
 	mic.next = null;
 });
+
+/*
+ * ROUND 2: THE ORIGIN IS MOUNTED WHEN ITS SEND LANDS.
+ *
+ * Round 1 closed the fully-away shape (cases 14-15). The built app then showed the
+ * other half (UX round 2 U1 = QA round 2 Q1): a reader who comes BACK before the
+ * send settles gets one POST and one bubble, but the remounted box keeps the words
+ * that were sent, and Enter posts them again. The row ends empty with nothing in
+ * flight, so the defect is the BOX's, not the record's - the mount seeds the box
+ * from the row, the echo's own clear empties the row and bumps `textRevision` in
+ * that same commit, and the mount read swallows the bump. Cases 17-19 are that
+ * shape; case 19 is the control that a newer typed draft is never wiped.
+ */
+function originRowOf(id) {
+	const row = useConversationInputStore.getState().inputByConversation[id];
+	return {
+		text: row?.currentInput ?? "",
+		inFlight: row?.inFlight?.text ?? null,
+	};
+}
+
+/**
+ * A mount shaped like the app's: the transcript's echo registration is a PASSIVE
+ * effect of an ANCESTOR, so a retained paint drains AFTER the composer's own mount
+ * effects - the ordering the round-2 defect lives in, and the one a target
+ * registered by hand after `mountAt` cannot reproduce.
+ */
+function paneMount(identity) {
+	return function Pane(props) {
+		React.useEffect(() => __registerEchoTarget(identity, () => {}), [identity]);
+		return h(MessageInput, props);
+	};
+}
+
+/**
+ * The page's send with its OWN clock: the echo paints at admission (as the page
+ * does), and the settle is held until the case releases it - the "POST still
+ * pending" window both QA (B2c) and UX measured.
+ */
+function gatedPageSend({ origin, posts, echoes }) {
+	let release = () => {};
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const send = async (content, _attachments, onEchoPainted) => {
+		posts.push(content);
+		paintPendingSend(origin, {
+			id: crypto.randomUUID(),
+			text: content,
+			images: [],
+			onPainted: () => {
+				echoes.push(content);
+				onEchoPainted?.();
+			},
+		});
+		await gate;
+		useCanonicalSessionsStore
+			.getState()
+			.finishDraft(
+				paneDraftKey(null, origin, useCanonicalSessionsStore.getState().drafts),
+				origin,
+			);
+		return true;
+	};
+	return { send, release: () => release() };
+}
+
+const RECORDING_PROBE = {
+	canUseRadientSpeech: true,
+	speechBlock: "could-not-check",
+};
+const BASE_PROPS = {
+	dictatedAwayDelivery: true,
+	recordingProbe: RECORDING_PROBE,
+};
+
+test("a return to the origin before its dictated send settles leaves the remounted box empty (case 17)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	discardPendingSends(A);
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const posts = [];
+	const echoes = [];
+	const { send, release: releasePost } = gatedPageSend({
+		origin: A,
+		posts,
+		echoes,
+	});
+	const props = { ...BASE_PROPS, onSendMessage: send };
+	transcription.install([OK_TRANSCRIPT("hello there")]);
+	const releaseTake = transcription.hold();
+
+	const first = await mountAt(A, props);
+	await startTake(first);
+	await sendRecording(first);
+	/* THE SWITCH: the origin's panel is gone, so its echo has no target. */
+	await first.unmount();
+	const second = await mountAt(B, {
+		...BASE_PROPS,
+		onSendMessage: async () => undefined,
+	});
+	await act(async () => {
+		releaseTake();
+	});
+	await settle();
+	assert.equal(posts.length, 1, "the away send went out");
+	assert.deepEqual(
+		echoes,
+		[],
+		"and nothing painted: no transcript for the origin was mounted",
+	);
+	assert.deepEqual(
+		originRowOf(A),
+		{ text: "hello there", inFlight: null },
+		"the words wait in the origin's row while the POST is out",
+	);
+
+	/*
+	 * BACK BEFORE THE SETTLE, which is the shape the round-2 findings measured: the
+	 * pane mounts, seeds its box from the row and drains the retained paint - and
+	 * then the POST lands on a box that is on screen.
+	 */
+	const back = await mountAt(A, { ...props, component: paneMount(A) });
+	await act(async () => {
+		releasePost();
+	});
+	await settle();
+
+	assert.equal(posts.length, 1, "the send settled exactly once");
+	assert.equal(
+		back.textarea().value,
+		"",
+		"the remounted box is empty: its words were sent",
+	);
+	assert.deepEqual(
+		originRowOf(A),
+		{ text: "", inFlight: null },
+		"and the row is empty with nothing in flight",
+	);
+	await act(async () => {
+		back.textarea().dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				key: "Enter",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	await settle();
+	assert.equal(posts.length, 1, "Enter over the emptied box posts nothing");
+	await back.unmount();
+	await second.unmount();
+	transcription.restore();
+	mic.next = null;
+});
+
+test("a return while the transcription is still landing leaves the remounted box empty (case 18)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	discardPendingSends(A);
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const posts = [];
+	const echoes = [];
+	const { send, release: releasePost } = gatedPageSend({
+		origin: A,
+		posts,
+		echoes,
+	});
+	const props = { ...BASE_PROPS, onSendMessage: send };
+	transcription.install([OK_TRANSCRIPT("hello there")]);
+	const releaseTake = transcription.hold();
+
+	const first = await mountAt(A, props);
+	await startTake(first);
+	await sendRecording(first);
+	await first.unmount();
+	const second = await mountAt(B, {
+		...BASE_PROPS,
+		onSendMessage: async () => undefined,
+	});
+	/* BACK WHILE THE TAKE IS STILL BEING WRITTEN DOWN, then the transcript lands. */
+	const back = await mountAt(A, { ...props, component: paneMount(A) });
+	await act(async () => {
+		releaseTake();
+	});
+	await settle();
+
+	assert.equal(posts.length, 1, "one POST for the dictation");
+	assert.equal(
+		back.textarea().value,
+		"",
+		"the box that was on screen when it landed is empty",
+	);
+	assert.deepEqual(
+		originRowOf(A),
+		{ text: "", inFlight: "hello there" },
+		"the row is empty and the paint is on screen while the POST is out",
+	);
+	await act(async () => {
+		releasePost();
+	});
+	await settle();
+	assert.deepEqual(
+		originRowOf(A),
+		{ text: "", inFlight: null },
+		"the settle leaves nothing in flight",
+	);
+	await act(async () => {
+		back.textarea().dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				key: "Enter",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	await settle();
+	assert.equal(posts.length, 1, "and Enter posts nothing");
+	await back.unmount();
+	await second.unmount();
+	transcription.restore();
+	mic.next = null;
+});
+
+test("a draft typed in the origin after the return survives the accepted send (case 19)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	discardPendingSends(A);
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const posts = [];
+	const echoes = [];
+	const { send, release: releasePost } = gatedPageSend({
+		origin: A,
+		posts,
+		echoes,
+	});
+	const props = { ...BASE_PROPS, onSendMessage: send };
+	transcription.install([OK_TRANSCRIPT("hello there")]);
+	const releaseTake = transcription.hold();
+
+	const first = await mountAt(A, props);
+	await startTake(first);
+	await sendRecording(first);
+	await first.unmount();
+	const second = await mountAt(B, {
+		...BASE_PROPS,
+		onSendMessage: async () => undefined,
+	});
+	await act(async () => {
+		releaseTake();
+	});
+	await settle();
+	const back = await mountAt(A, { ...props, component: paneMount(A) });
+
+	/* THE USER TYPES OVER THE BOX WHILE THE POST IS STILL OUT. */
+	const valueSetter = Object.getOwnPropertyDescriptor(
+		window.HTMLTextAreaElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		valueSetter.call(back.textarea(), "a follow-up");
+		back.textarea().dispatchEvent(new window.Event("input", { bubbles: true }));
+	});
+	await settle();
+	await act(async () => {
+		releasePost();
+	});
+	await settle();
+
+	assert.equal(posts.length, 1, "the away send itself did not repeat");
+	assert.equal(
+		back.textarea().value,
+		"a follow-up",
+		"the typed draft is still in the box",
+	);
+	assert.deepEqual(
+		originRowOf(A),
+		{ text: "a follow-up", inFlight: null },
+		"and in the row, with nothing in flight over it",
+	);
+	await back.unmount();
+	await second.unmount();
+	transcription.restore();
+	mic.next = null;
+});
+
+test("a hydrating origin whose box still takes a press is refused as still opening (case 20)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	discardPendingSends(A);
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const posts = [];
+	transcription.install([OK_TRANSCRIPT("hello there")]);
+	const release = transcription.hold();
+
+	const first = await mountAt(A, {
+		...BASE_PROPS,
+		onSendMessage: async (content) => {
+			posts.push(content);
+			return true;
+		},
+	});
+	await startTake(first);
+	await sendRecording(first);
+	await first.unmount();
+
+	/*
+	 * A PANE THAT IS STILL OPENING, WHOSE BOX STILL TAKES A PRESS (QA round 2, F2).
+	 * `isHydrating` alone closes nothing, so the delivery reaches the page's own
+	 * admission and comes back refused - and the reason must be the pane's state,
+	 * not "that chat could not take a message".
+	 */
+	const back = await mountAt(A, {
+		...BASE_PROPS,
+		isHydrating: true,
+		onSendMessage: async (content) => {
+			posts.push(content);
+			return false;
+		},
+	});
+	await act(async () => {
+		release();
+	});
+	await settle();
+
+	assert.deepEqual(
+		posts,
+		["hello there"],
+		"the press reached the page and was refused there, not posted",
+	);
+	assert.equal(
+		useDictatedSendStore.getState().refused[A]?.reason,
+		"not-ready",
+		"the reason is the pane's state - still opening - not an unreachable chat",
+	);
+	assert.equal(
+		useConversationInputStore.getState().getCurrentInput(A),
+		"hello there",
+		"and the words stay in that chat's draft",
+	);
+	await back.unmount();
+	transcription.restore();
+	mic.next = null;
+});
+
+test("a hydrating origin with no provider keeps the provider's own refusal (case 21)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	discardPendingSends(A);
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const posts = [];
+	transcription.install([OK_TRANSCRIPT("hello there")]);
+	const release = transcription.hold();
+
+	const first = await mountAt(A, {
+		...BASE_PROPS,
+		onSendMessage: async (content) => {
+			posts.push(content);
+			return true;
+		},
+	});
+	await startTake(first);
+	await sendRecording(first);
+	await first.unmount();
+
+	/*
+	 * THE BLOCKER IS THE PROVIDER (agent review round 2's MINOR): a box that is also
+	 * hydrating must not have its refusal re-worded to a wait that is not what
+	 * stopped the press.
+	 */
+	const back = await mountAt(A, {
+		...BASE_PROPS,
+		isHydrating: true,
+		noProvider: true,
+		onSendMessage: async (content) => {
+			posts.push(content);
+			return true;
+		},
+	});
+	await act(async () => {
+		release();
+	});
+	await settle();
+
+	assert.deepEqual(
+		posts,
+		[],
+		"the press was refused before the page could post it",
+	);
+	assert.equal(
+		useDictatedSendStore.getState().refused[A]?.reason,
+		"unavailable",
+		"no provider is its own refusal, not 'still opening'",
+	);
+	await back.unmount();
+	transcription.restore();
+	mic.next = null;
+});
+
+test("a refused away send with a retained paint keeps the words in the row and posts nothing on the drain (case 22)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	discardPendingSends(A);
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const posts = [];
+	const echoes = [];
+	const props = {
+		...BASE_PROPS,
+		onSendMessage: async (content, _attachments, onEchoPainted) => {
+			posts.push(content);
+			/* THE PAINT IS RETAINED: the origin's panes are all gone. */
+			paintPendingSend(A, {
+				id: crypto.randomUUID(),
+				text: content,
+				images: [],
+				onPainted: () => {
+					echoes.push(content);
+					onEchoPainted?.();
+				},
+			});
+			return false;
+		},
+	};
+	transcription.install([OK_TRANSCRIPT("hello there")]);
+	const release = transcription.hold();
+
+	const first = await mountAt(A, props);
+	await startTake(first);
+	await sendRecording(first);
+	await first.unmount();
+	const second = await mountAt(B, {
+		...BASE_PROPS,
+		onSendMessage: async () => undefined,
+	});
+	await act(async () => {
+		release();
+	});
+	await settle();
+
+	assert.equal(posts.length, 1, "one attempt was made");
+	assert.deepEqual(echoes, [], "and its paint was retained");
+	assert.deepEqual(
+		originRowOf(A),
+		{ text: "hello there", inFlight: null },
+		"the refused words are in the origin's row, with nothing recorded as sent",
+	);
+	assert.equal(
+		useDictatedSendStore.getState().refused[A]?.reason,
+		"unavailable",
+	);
+
+	/* THE RETURN DRAINS THE RETAINED PAINT: a row, never a second POST. */
+	const back = await mountAt(A, { ...props, component: paneMount(A) });
+	await settle();
+	assert.deepEqual(echoes, ["hello there"], "the drain ran on the return");
+	assert.equal(posts.length, 1, "and posting the drain is not its job");
+	assert.equal(
+		back.textarea().value,
+		"hello there",
+		"the refused words are recoverable in the box, once",
+	);
+	assert.deepEqual(originRowOf(A), { text: "hello there", inFlight: null });
+
+	/* THE RETRY IS THE USER'S: one press, one message, the words once. */
+	await act(async () => {
+		back.textarea().dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				key: "Enter",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	await settle();
+	assert.equal(
+		posts.length,
+		2,
+		"the press is the retry, and it is a single one",
+	);
+	assert.equal(
+		posts[1],
+		"hello there",
+		"and it carries the words exactly once",
+	);
+	await back.unmount();
+	await second.unmount();
+	transcription.restore();
+	mic.next = null;
+});
+
+test("a hydrating pane whose box takes a press still posts normally (case 23)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	discardPendingSends(A);
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const posts = [];
+	const echoes = [];
+	const { send } = gatedPageSend({ origin: A, posts, echoes });
+	const props = { ...BASE_PROPS, onSendMessage: send };
+	transcription.install([OK_TRANSCRIPT("hello there")]);
+	const release = transcription.hold();
+
+	const first = await mountAt(A, props);
+	await startTake(first);
+	await sendRecording(first);
+	await first.unmount();
+
+	/*
+	 * THE CONTROL FOR THE REWORD (QA round 2, F2): hydration is not a refusal on its
+	 * own. A pane that is hydrating while its box takes a press sends, and the only
+	 * thing this change may have touched is the ANSWER a refusal carries.
+	 */
+	const back = await mountAt(A, {
+		...props,
+		isHydrating: true,
+		component: paneMount(A),
+	});
+	await act(async () => {
+		release();
+	});
+	await settle();
+
+	assert.deepEqual(posts, ["hello there"], "the away send posted normally");
+	assert.equal(back.textarea().value, "", "and the box is empty");
+	assert.equal(
+		useDictatedSendStore.getState().refused[A],
+		undefined,
+		"nothing was refused",
+	);
+	await back.unmount();
+	transcription.restore();
+	mic.next = null;
+});
