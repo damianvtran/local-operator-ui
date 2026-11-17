@@ -117,6 +117,23 @@
 		},
 		"plural_guidance": "English one/other is source grammar; use the target locale's native CLDR categories."
 	},
+	"ui.chat.trace.reasoning.label": {
+		"role": "label of an agent-reasoning row in the chat transcript, the quietest row of the trace hierarchy",
+		"tone": "single noun, sentence case, no trailing punctuation",
+		"length": "One word in English; keep it to one or two words, it is a row label.",
+		"note": "Names the agent's private thinking when the row carries no duration. A caller may pass its own label (an answer's thinking field reads `Thinking`); this is the default when it passes none. Not a control label: the row is a disclosure whose chevron says how it opens.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.reasoning.with_duration": {
+		"role": "label of an agent-reasoning row that reports how long the thinking took",
+		"tone": "plain statement, sentence case",
+		"length": "Three to five words plus the duration token.",
+		"note": "Joins the row's label to the elapsed time, e.g. 'Reasoning for 12s'. The grammar of the join is the language's own, so this is one message rather than the label plus a preposition built in code. The duration is a compact machine token (12s, 1m30s, 2h5m) and stays as it is.",
+		"placeholders": {
+			"label": "the row's label (Reasoning, Thinking); a message id's own value, never translated separately here",
+			"duration": "compact elapsed-time token such as 12s or 1m30s; do not translate the unit letters"
+		}
+	},
 	"ui.chat.trace.send.delivery.failed.note": {
 		"role": "wrapping explanation in the expanded sent-message row",
 		"tone": "Plain, calm, factual.",

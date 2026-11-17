@@ -18,6 +18,8 @@
 	"ui.chat.trace.action.write.running": "正在写入",
 	"ui.chat.trace.action.write.settled": "已写入",
 	"ui.chat.trace.object.file_count": "{count, plural, other {{count, number, ::group-off}个文件}}",
+	"ui.chat.trace.reasoning.label": "推理",
+	"ui.chat.trace.reasoning.with_duration": "{label}，用时{duration}",
 	"ui.chat.trace.send.delivery.failed.note": "没有任何内容送达。修复下方所述的原因，或重新发送。",
 	"ui.chat.trace.send.delivery.failed.verb": "尝试发送",
 	"ui.chat.trace.send.delivery.failed.word": "未送达",

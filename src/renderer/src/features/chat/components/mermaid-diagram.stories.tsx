@@ -8,6 +8,11 @@ import { MermaidDiagram } from "./mermaid-diagram";
  * Mermaid's categorical fills, which are the one surface in the app where a
  * SECOND decorative hue buys something functional rather than aesthetic.
  *
+ * Pele is the default diagram engine and has no section-fill variable, so this
+ * ramp is what the app paints only when the `diagramEngine` flag selects
+ * Mermaid; the story renders `MermaidDiagram` directly and is unaffected by the
+ * default.
+ *
  * ## What this story is for
  *
  * `fillType0..7` is mermaid's own categorical ramp (`mermaid-diagram.tsx`'s

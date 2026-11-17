@@ -24,10 +24,14 @@
 import type { AgentExecutionRecord } from "@shared/api/local-operator";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import {
-	previewFailureReason,
+	// Its RETURN TYPE is what `UnavailableMedia`'s prop is; the function itself is
+	// no longer called at this site, so the import is a type one (biome's
+	// `useImportType`, which the plain value import tripped once the sentence
+	// moved into the catalogue).
+	type previewFailureReason,
 	useFileBlobUrl,
 } from "@shared/hooks/use-file-blob-url";
-import { t } from "@shared/i18n";
+import { isolateLtr, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
@@ -198,7 +202,17 @@ const UnavailableMedia: FC<{
 	return (
 		<InvalidAttachment
 			file={file}
-			reason={`is ${previewFailureReason(code)?.toLowerCase()}`}
+			/*
+			 * ONE message, name included. This used to be `is ${reason.toLowerCase()}`
+			 * glued to the name by the card: `toLowerCase()` is an English-only
+			 * assumption and the copula is the language's business, so the sentence is
+			 * a catalogue message with the name as its placeholder instead (S18d).
+			 * The name is isolated HERE, where it is interpolated (the card does the
+			 * same for its tooltip), so a neutral-edged name stays in its own run.
+			 */
+			reason={t("ui.chat.attachments.not_viewable_too_large", {
+				name: isolateLtr(getFileName(file)),
+			})}
 			onOpen={() => {
 				void window.api.openFile(normalizedPath);
 			}}

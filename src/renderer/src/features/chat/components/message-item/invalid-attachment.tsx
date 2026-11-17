@@ -8,9 +8,12 @@ import type { FC } from "react";
 export type InvalidAttachmentProps = {
 	file: string;
 	/**
-	 * The specific reason, when the caller knows one ("is too large to preview").
-	 * The default sentence guesses at three causes (incomplete, deleted, moved),
-	 * which is wrong for a file that is fine and merely over the preview cap.
+	 * The specific reason, when the caller knows one ("clip.mp4 is too large to
+	 * preview"). The default sentence guesses at three causes (incomplete,
+	 * deleted, moved), which is wrong for a file that is fine and merely over the
+	 * preview cap. It is the WHOLE sentence, name included, and that is
+	 * deliberate: the sentence used to be assembled here from the name plus a
+	 * fragment the caller had lowercased, which only works in English (S18d).
 	 */
 	reason?: string;
 	/** Hands the file to the OS; offered when a preview is impossible but the file is fine. */
@@ -59,11 +62,13 @@ export const InvalidAttachment: FC<InvalidAttachmentProps> = ({
 			 * reason at every locale; `break-words` lets a long unbroken name wrap
 			 * instead of clipping without an ellipsis, which line-clamp cannot draw
 			 * inline.
+			 *
+			 * `reason` is printed VERBATIM: it arrives as one formatted catalogue
+			 * message (name included), because gluing a name to an English fragment
+			 * here is what left this card half-English in every other language (S18d).
 			 */}
 			<span className="line-clamp-2 max-w-full break-words text-body-sm">
-				{reason
-					? `${name} ${reason}`
-					: t("ui.chat.attachments.not_viewable_detail", { name })}
+				{reason ?? t("ui.chat.attachments.not_viewable_detail", { name })}
 			</span>
 			{onOpen ? (
 				<button

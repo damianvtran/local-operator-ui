@@ -67,5 +67,12 @@
 	"ui.agents.detail.action.creating": "Creating…",
 	"ui.agents.detail.action.discard_new_agent": "Discard this new agent?",
 	"ui.agents.detail.create.description_duplicate": "A copy of {name}. It is a separate agent: changing it does not change the original.",
-	"ui.agents.detail.create.description_new": "Reusable instructions shared by agent commands, subagents and teams. Chats stay separate."
+	"ui.agents.detail.create.description_new": "Reusable instructions shared by agent commands, subagents and teams. Chats stay separate.",
+	"ui.agents.detail.create.error_generic": "The agent could not be created.",
+	"ui.agents.detail.create.error_instructions_required": "Give the agent instructions.",
+	"ui.agents.detail.create.error_name_grammar": "Names cannot contain spaces or slashes.",
+	"ui.agents.detail.create.error_name_required": "Give the agent a name.",
+	"ui.agents.detail.create.error_name_taken": "An agent called “{name}” already exists. Choose another name, or open the existing one to change it.",
+	"ui.agents.detail.create.title_duplicate": "Duplicate as a new agent",
+	"ui.agents.detail.create.title_new": "New agent"
 }

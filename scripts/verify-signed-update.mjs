@@ -62,6 +62,7 @@ import {
 	bundledBytecodeCheck,
 	bundledPythonCheck,
 	electronFusesCheck,
+	partitionCandidateChecks,
 	profileAuthorizationCheck,
 	readEmbeddedProfileEntitlements,
 	relaunchProbeVerdict,
@@ -491,16 +492,20 @@ try {
 					row.output,
 				);
 		// What the build assembled must be right: those failures are the candidate's.
-		const assembly = results.filter((row) => !SIGNATURE_CHECK_IDS.has(row.id));
+		const { assembly, brokenSignatures } = partitionCandidateChecks(
+			results,
+			SIGNATURE_CHECK_IDS,
+		);
 		assert.ok(
 			assembly.every((row) => row.passed),
 			JSON.stringify(assembly),
 		);
 		// Whether it is signed is the host's capability question, not the candidate's.
-		await blockedUnsignedCandidate(
-			path,
-			results.filter((row) => SIGNATURE_CHECK_IDS.has(row.id) && !row.passed),
-		);
+		// Only a candidate with a failing signature row is BLOCKED: a signed one must
+		// fall through to the update swap, which is the whole point of this harness
+		// (QA Q3 on #1948 - the unguarded call stopped every run here with "()").
+		if (brokenSignatures.length > 0)
+			await blockedUnsignedCandidate(path, brokenSignatures);
 	}
 	record(
 		"Delivered candidate ZIP/DMG",

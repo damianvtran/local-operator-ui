@@ -1575,7 +1575,7 @@ export function AgentCreate({
 		event?.preventDefault();
 		if (pending) return;
 		if (!name.trim()) {
-			setError("Give the agent a name.");
+			setError(t("ui.agents.detail.create.error_name_required"));
 			setErrorField("name");
 			nameRef.current?.focus();
 			return;
@@ -1590,21 +1590,21 @@ export function AgentCreate({
 		 * failure on this form, and the only one with no field marked (Q3/U4/D5).
 		 */
 		if (/[\\/\s]/.test(name.trim())) {
-			setError("Names cannot contain spaces or slashes.");
+			setError(t("ui.agents.detail.create.error_name_grammar"));
 			setErrorField("name");
 			nameRef.current?.focus();
 			return;
 		}
 		if (takenNames.includes(name.trim())) {
 			setError(
-				`An agent called “${name.trim()}” already exists. Choose another name, or open the existing one to change it.`,
+				t("ui.agents.detail.create.error_name_taken", { name: name.trim() }),
 			);
 			setErrorField("name");
 			nameRef.current?.focus();
 			return;
 		}
 		if (!draft.instructions.trim()) {
-			setError("Give the agent instructions.");
+			setError(t("ui.agents.detail.create.error_instructions_required"));
 			setErrorField("instructions");
 			instructionsRef.current?.focus();
 			return;
@@ -1643,7 +1643,7 @@ export function AgentCreate({
 			const copy = refusalCopy(
 				caught instanceof Error
 					? caught.message
-					: "The agent could not be created.",
+					: t("ui.agents.detail.create.error_generic"),
 			);
 			setError(copy.message);
 			setErrorField(copy.field);
@@ -1652,7 +1652,13 @@ export function AgentCreate({
 		}
 	};
 
-	const title = initial ? "Duplicate as a new agent" : "New agent";
+	/*
+	 * The heading is a catalogue message now (S18d): it was the last English on
+	 * this form in every language, sitting directly above translated copy.
+	 */
+	const title = initial
+		? t("ui.agents.detail.create.title_duplicate")
+		: t("ui.agents.detail.create.title_new");
 
 	return (
 		<div className="space-y-8">
