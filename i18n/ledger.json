@@ -3038,8 +3038,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
-			"target_sha256": "d4806f279b50d5fbda542ffbf0fc88de6d8cfb47f06321237707ed8f7b49dbec",
+			"source_sha256": "c86dd0552dad4fd582ef9f663cd4fff803ffa2b8b72ac27096d768c222d38cb9",
+			"target_sha256": "5dacb462b9df2bea816ae6bc2b08371b3d9672cc7920fa7958548fbe2a887522",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -3052,16 +3052,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
 					"result": "clean-with-findings",
-					"instance": "4367cc1e2696",
+					"instance": "24ebbeae4829",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/4367cc1e2696.json",
-					"receipt_sha256": "4ec76efe31b0db53e6ccbc3b5091f373680606cb9ebafd34002eccd77101a51c",
-					"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
+					"receipt": "i18n/receipts/24ebbeae4829.json",
+					"receipt_sha256": "d99d8aca3a2a628614869900021f4c58e9e24d3ae65bc1fd96fd276372964083",
+					"scope": "ui.chat.canonical (merged bytes): independent re-audit at the integrated head"
 				}
 			],
 			"status": "audited",
@@ -3951,6 +3951,29 @@
 							"receipt": "i18n/receipts/96a6ba82125a.json",
 							"receipt_sha256": "4b42c02647598c994b6515961d25cb654cc461a86070abc8b87684e8c5ec4649",
 							"scope": "ui.chat.canonical es: the 21 keys added for the canonical transcript working line, link actions and broken attachments (24 across both namespaces), audited at the committed bytes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
+					"target_sha256": "d4806f279b50d5fbda542ffbf0fc88de6d8cfb47f06321237707ed8f7b49dbec",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "4367cc1e2696",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/4367cc1e2696.json",
+							"receipt_sha256": "4ec76efe31b0db53e6ccbc3b5091f373680606cb9ebafd34002eccd77101a51c",
+							"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
 						}
 					],
 					"status": "audited"
@@ -16134,8 +16157,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
-			"target_sha256": "96aa4f6eba3e8b4ff8be1160d9f1f299dd9610c793763db2c1d2fd3ac6b29ac1",
+			"source_sha256": "c86dd0552dad4fd582ef9f663cd4fff803ffa2b8b72ac27096d768c222d38cb9",
+			"target_sha256": "669afaffb6b8e71b22dc247e47ed7113871efb9adbe42535e3a45825e15ed1ac",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -16148,16 +16171,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
 					"result": "clean-with-findings",
-					"instance": "47daad122982",
+					"instance": "8bb3da73e53b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 0
+						"minor": 0,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/47daad122982.json",
-					"receipt_sha256": "3173c57f566349e7007404546f3f86c8f0823effcc21081d4c3d183ad1790d4a",
-					"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
+					"receipt": "i18n/receipts/8bb3da73e53b.json",
+					"receipt_sha256": "cf51f4c2f09209c99b523f2b26c6fb3aa1a4faad7c0962217f41f301a180d303",
+					"scope": "ui.chat.canonical (merged bytes): independent re-audit at the integrated head"
 				}
 			],
 			"status": "audited",
@@ -17086,6 +17109,29 @@
 							"receipt_sha256": "ef68c4d70cd0071bd56c147887c39b3abcddd4654488e6c3f519ba49dc3b45f2",
 							"scope": "Round 2 re-audit of the 24 new keys on final bytes",
 							"note": "Remediation pass applied independent findings (); the re-audit is the bound receipt. Re-issued under a distinct instance: ledger-assemble rejects a second receipt under a recorded instance."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
+					"target_sha256": "96aa4f6eba3e8b4ff8be1160d9f1f299dd9610c793763db2c1d2fd3ac6b29ac1",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "47daad122982",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/47daad122982.json",
+							"receipt_sha256": "3173c57f566349e7007404546f3f86c8f0823effcc21081d4c3d183ad1790d4a",
+							"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
 						}
 					],
 					"status": "audited"
@@ -29750,8 +29796,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
-			"target_sha256": "108dfccc8b3c6077b7e0eba4ccc7d91d9f7c3bb618770b693d2a392d2464d1d8",
+			"source_sha256": "c86dd0552dad4fd582ef9f663cd4fff803ffa2b8b72ac27096d768c222d38cb9",
+			"target_sha256": "0ec5087087e845b196ef1be1bf5fdab4fc080dc9946e43f4dbce7b340b6e8707",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -29764,16 +29810,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
 					"result": "clean-with-findings",
-					"instance": "e356214353f0",
+					"instance": "can-au-hi-665714e3642b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/e356214353f0.json",
-					"receipt_sha256": "56fb99dbb61d32764f314f2117e29c15ca72fd1a2c0d7bcf7aa906a689cc5d32",
-					"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
+					"receipt": "i18n/receipts/can-au-hi-665714e3642b.json",
+					"receipt_sha256": "0464aa715ba7459fe3dfd9dd718af5fff6be1df5ed52e15f3f5e1ae86fcd5488",
+					"scope": "ui.chat.canonical (merged bytes): independent re-audit at the integrated head"
 				}
 			],
 			"status": "audited",
@@ -30690,6 +30736,29 @@
 							"receipt_sha256": "5b2a199b0baba616c093a50c08e646440666fd232fd4ffc140e7d1cc6746c6bf",
 							"scope": "Round 3 on final bytes",
 							"note": "Remediation pass applied independent findings (hi: design D2); the re-audit is the bound receipt. Re-issued under a distinct instance: ledger-assemble rejects a second receipt under a recorded instance."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
+					"target_sha256": "108dfccc8b3c6077b7e0eba4ccc7d91d9f7c3bb618770b693d2a392d2464d1d8",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "e356214353f0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/e356214353f0.json",
+							"receipt_sha256": "56fb99dbb61d32764f314f2117e29c15ca72fd1a2c0d7bcf7aa906a689cc5d32",
+							"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
 						}
 					],
 					"status": "audited"
@@ -42913,8 +42982,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
-			"target_sha256": "4e1c1326f13880e09344331974849ebc6c2ac4a1887163bea1a017da2b0a745f",
+			"source_sha256": "c86dd0552dad4fd582ef9f663cd4fff803ffa2b8b72ac27096d768c222d38cb9",
+			"target_sha256": "edb2b5a93a465b42dbbdd35a7c5ad99dc9f075030b5f624ef8e5c77fa1ecfc3e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -42927,16 +42996,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
 					"result": "clean-with-findings",
-					"instance": "d4a6e6933490",
+					"instance": "0529d9b2b438",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/d4a6e6933490.json",
-					"receipt_sha256": "20cdfe958ff558fc6a1283546899a362fd382b0c739a5c03df77bd2797a4a878",
-					"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
+					"receipt": "i18n/receipts/0529d9b2b438.json",
+					"receipt_sha256": "110df058b1867d03bbf6c2b498926101c1bcca4b8438a5e808fa9dbcd90318a0",
+					"scope": "ui.chat.canonical (merged bytes): independent re-audit at the integrated head"
 				}
 			],
 			"status": "audited",
@@ -43829,6 +43898,29 @@
 							"receipt": "i18n/receipts/8f98158cffe3.json",
 							"receipt_sha256": "a5962135effb1f5cc66baffe68a7a4d628a583922ad5a84275fe7c19bff03ff1",
 							"scope": "ui.chat.canonical ru: the 21 keys added for the canonical transcript working line, link actions and broken attachments (24 across both namespaces), audited at the committed bytes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
+					"target_sha256": "4e1c1326f13880e09344331974849ebc6c2ac4a1887163bea1a017da2b0a745f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "d4a6e6933490",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d4a6e6933490.json",
+							"receipt_sha256": "20cdfe958ff558fc6a1283546899a362fd382b0c739a5c03df77bd2797a4a878",
+							"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
 						}
 					],
 					"status": "audited"
@@ -56117,8 +56209,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
-			"target_sha256": "7472fabf851ce6177064776af4ccc9c8f0fc78fdceb3e309513ab91b308152cb",
+			"source_sha256": "c86dd0552dad4fd582ef9f663cd4fff803ffa2b8b72ac27096d768c222d38cb9",
+			"target_sha256": "2f064477ca9ee1964fa4de820216968a31476df2fbb4aabbcea51ebd32d2290e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -56130,17 +56222,17 @@
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
-					"result": "clean",
-					"instance": "4cd4d544ea5d",
+					"result": "clean-with-findings",
+					"instance": "06b5ee9dab3f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/4cd4d544ea5d.json",
-					"receipt_sha256": "645c2c15189f3a6d3d501e9469526e4eda9225dcd95d4cf112ef2f778969500a",
-					"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
+					"receipt": "i18n/receipts/06b5ee9dab3f.json",
+					"receipt_sha256": "b87eaa715bd2aa793ce166c42dccc1d8a6f405254c8fbe7d9b617e3ca2fe9154",
+					"scope": "ui.chat.canonical (merged bytes): independent re-audit at the integrated head"
 				}
 			],
 			"status": "audited",
@@ -57101,6 +57193,29 @@
 							"receipt_sha256": "5d9df69845f9ac089c159966d5df59630b3a5581b75ed1e98465a5d4b71dd74f",
 							"scope": "Round 2 on final bytes",
 							"note": "Remediation pass applied independent findings (ur: UR-1..3 + design D2/D4); the re-audit is the bound receipt. Re-issued under a distinct instance: ledger-assemble rejects a second receipt under a recorded instance."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
+					"target_sha256": "7472fabf851ce6177064776af4ccc9c8f0fc78fdceb3e309513ab91b308152cb",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "4cd4d544ea5d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4cd4d544ea5d.json",
+							"receipt_sha256": "645c2c15189f3a6d3d501e9469526e4eda9225dcd95d4cf112ef2f778969500a",
+							"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
 						}
 					],
 					"status": "audited"
@@ -69209,8 +69324,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
-			"target_sha256": "3fb9b283d973b6b094d14c43152276f0fd6eefb24601d3ed1377714e87b4b37d",
+			"source_sha256": "c86dd0552dad4fd582ef9f663cd4fff803ffa2b8b72ac27096d768c222d38cb9",
+			"target_sha256": "15684b59de21275c08f0e6c06df8767e333e4067a4a378494202bec23ae11756",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -69223,16 +69338,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
 					"result": "clean-with-findings",
-					"instance": "a6e4a531bfcc",
+					"instance": "f9c9843d598d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/a6e4a531bfcc.json",
-					"receipt_sha256": "2d6895e9d32b54615abfcebe53bc1e23b420829406b20b9276421c01edf94d86",
-					"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
+					"receipt": "i18n/receipts/f9c9843d598d.json",
+					"receipt_sha256": "46092295e455f8e17704755ebfe8363b77f7b44302b5e553c2b87b323590fb8a",
+					"scope": "ui.chat.canonical (merged bytes): independent re-audit at the integrated head"
 				}
 			],
 			"status": "audited",
@@ -70161,6 +70276,29 @@
 							"receipt": "i18n/receipts/6c1c943d8edd.json",
 							"receipt_sha256": "ca6cb29908fd995cd9bb6c3df700509712e276f70ed3177be57c6e9176dd4657",
 							"scope": "ui.chat.canonical vi: the 21 keys added for the canonical transcript working line, link actions and broken attachments (24 across both namespaces), audited at the committed bytes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
+					"target_sha256": "3fb9b283d973b6b094d14c43152276f0fd6eefb24601d3ed1377714e87b4b37d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "a6e4a531bfcc",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a6e4a531bfcc.json",
+							"receipt_sha256": "2d6895e9d32b54615abfcebe53bc1e23b420829406b20b9276421c01edf94d86",
+							"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
 						}
 					],
 					"status": "audited"
@@ -83085,8 +83223,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
-			"target_sha256": "fb68452e8c11f97911031ce72fa8e400946b9cced3d00ce5a400b14dc677e2ad",
+			"source_sha256": "c86dd0552dad4fd582ef9f663cd4fff803ffa2b8b72ac27096d768c222d38cb9",
+			"target_sha256": "21d81f06c8d270f09bcaabb9518bb0e37fe7fb4435bb2aa3db6ef08e42cb9345",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -83099,16 +83237,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "fb584695d015",
+					"instance": "e3c5033362b9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/fb584695d015.json",
-					"receipt_sha256": "f9529c50a8e389bba8b5e4785533e896c057cb434f0a9edca7a37a5a8d1bc1cb",
-					"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
+					"receipt": "i18n/receipts/e3c5033362b9.json",
+					"receipt_sha256": "8ed277a15eca4bf1e4139c7f7216d2ccdaab33e67364324f6e2ab2c0c96b52b3",
+					"scope": "ui.chat.canonical (merged bytes): independent re-audit at the integrated head"
 				}
 			],
 			"status": "audited",
@@ -84013,6 +84151,29 @@
 							"receipt": "i18n/receipts/59085d2faf5a.json",
 							"receipt_sha256": "70dd7d875f4e4483e6b812f622d95ab4e64a818062a94e684bf233c20c529ccb",
 							"scope": "ui.chat.canonical zh-CN: the 21 keys added for the canonical transcript working line, link actions and broken attachments (24 across both namespaces), audited at the committed bytes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
+					"target_sha256": "fb68452e8c11f97911031ce72fa8e400946b9cced3d00ce5a400b14dc677e2ad",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "fb584695d015",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fb584695d015.json",
+							"receipt_sha256": "f9529c50a8e389bba8b5e4785533e896c057cb434f0a9edca7a37a5a8d1bc1cb",
+							"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
 						}
 					],
 					"status": "audited"

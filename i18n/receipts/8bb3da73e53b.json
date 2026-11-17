@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation re-audit of merged namespace bytes (PR #1957 result_label + PR #1959 took_duration, merged)",
+  "batch": "canonical-merged-reaudit",
+  "pr": null,
+  "head": "412fcf2cd4484cb3d6806eb711a13e097d4e0056",
+  "base": "ccc99372",
+  "locale": "fr",
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "session": "c0ead535ed5b",
+  "instance": "8bb3da73e53b",
+  "date": "2026-11-17",
+  "status": "passed",
+  "independence": "Fresh i18n-auditor instance (session c0ead535ed5b, team lopdev); did not translate these strings and did not audit the #1957/#1959 deltas; read no translator report. Verdict formed from en values, en context sidecar, consuming code, fr neighbours, glossary and fr style guide. No catalogue edited, no MT service used.",
+  "actual_model_source": "Session system prompt names anthropic/claude-opus-5-5 as the served model; no fallback observed during this run.",
+  "llm_audit_not_native_review": true,
+  "source_dir": "src/i18n/catalogues/en",
+  "target_dir": "src/i18n/catalogues/fr",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style_guide_sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+  "method": "In depth: image_gen.result_label (#1957) and transcript.took_duration (#1959) plus neighbours state.running/running_batch/done/done_batch/worked_for. Whole namespace: key parity 532/532; @formatjs parser argument/select/plural parity all keys (0 issues); fr plural categories; typography (U+2019, U+202F, ellipsis); English-left scan; 30-value sample read; rendered result_label x4 materials x3 counts and running_batch at 1/2/1000000 with intl-messageformat.",
+  "keys_audited": 532,
+  "namespaces": {
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "keys_audited": 532,
+      "sha256": {
+        "en": "c86dd0552dad4fd582ef9f663cd4fff803ffa2b8b72ac27096d768c222d38cb9",
+        "fr": "669afaffb6b8e71b22dc247e47ed7113871efb9adbe42535e3a45825e15ed1ac"
+      },
+      "context_sha256": "e0c89c912238de89a22ebdbdc28c2462201c6b2bbd28fc3c52a1f0ad8787a04a",
+      "findings_counts": { "blocker": 0, "major": 0, "minor": 0, "nit": 1 },
+      "findings": [
+        {
+          "id": "LOC-CAN-1",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.transcript.took_duration",
+          "current": "a pris {duration}",
+          "proposed": "a duré {duration}",
+          "reason": "Grammatical and per brief (lowercase clause, no full stop), but 'a duré' is the standard verb for how long an event lasted; 'a pris' reads slightly colloquial without 'du temps'."
+        },
+        {
+          "id": "LOC-CAN-OBS-1",
+          "severity": "observation",
+          "key": "ui.chat.canonical.image_gen.result_label",
+          "note": "Noun phrases correct, genders agree (vidéo/voix off/image f., effet sonore m.); no clause reuse. Spliced mid-sentence into fr ui.chat.attachments.broken_media_unavailable it reads 'Impossible de lire Vidéo générée 2.' (capital as a name); acceptable, other namespace could quote {name}."
+        },
+        {
+          "id": "LOC-CAN-OBS-2",
+          "severity": "observation",
+          "key": "ui.chat.canonical.tool_row.diff.full.clipped",
+          "note": "Pre-existing (2026-11-09): tool_row.diff.full.clipped/full.view/more/truncated carry one/other without fr 'many'; runtime falls to other ('1 000 000 lignes' vs 'de lignes'). Not gating."
+        },
+        {
+          "id": "LOC-CAN-OBS-3",
+          "severity": "observation",
+          "key": "ui.chat.canonical.transcript.took_duration",
+          "note": "Outside catalogue: condenseSentence() in canonical-transcript.tsx hard-codes 'Turn condensed' and 'at least ', and formatDuration emits 2m4s/100d+, so the fr announcement around this clause still carries English."
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation re-audit of the MERGED namespace bytes (PR #1957 result_label + PR #1959 took_duration merged at 412fcf2cd4)",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.canonical",
+  "date": "2026-11-17",
+  "head": "412fcf2cd4484cb3d6806eb711a13e097d4e0056 (.worktrees/i18n-identity-footer, clean)",
+  "instance": "e3c5033362b9",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "model": "anthropic/claude-opus-5-5",
+    "instance": "e3c5033362b9",
+    "role": "independent i18n auditor (team lopdev); fresh instance, did not translate or previously audit these bytes",
+    "independence": "Session 93ae001cbba6; instance = first 12 hex of sha256('93ae001cbba6'+'zh-CN'). Served model anthropic/claude-opus-5-5 per this session's harness system prompt; no fallback observed. No MT/translation service used. LLM audit, not a native-speaker review."
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "style_guide": {
+    "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+    "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "glossary": {
+    "path": "~/local-operator/i18n/glossary.md",
+    "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "context_sha256": "e0c89c912238de89a22ebdbdc28c2462201c6b2bbd28fc3c52a1f0ad8787a04a",
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "result": "clean",
+      "en_sha256": "c86dd0552dad4fd582ef9f663cd4fff803ffa2b8b72ac27096d768c222d38cb9",
+      "target_sha256": "21d81f06c8d270f09bcaabb9518bb0e37fe7fb4435bb2aa3db6ef08e42cb9345",
+      "key_count": 532,
+      "findings": [
+        {
+          "severity": "INFO",
+          "key": "ui.chat.canonical.transcript.took_duration",
+          "note": "耗时{duration}: one clause, no full stop, duration slot kept, consistent with worked_for 工作耗时{duration}. Rendered 耗时2m4s."
+        },
+        {
+          "severity": "INFO",
+          "key": "ui.chat.canonical.image_gen.result_label",
+          "note": "Bare noun phrases for all 4 material arms x {=1, other}: 生成的视频/生成的第2个视频, 生成的旁白/第2段旁白, 生成的音效/第2个音效, 生成的图像/第2张图像; classifiers match running_batch; 图像 matches image_gen.*; position ::group-off kept (10234 ungrouped); splices grammatically into 无法播放{name}。/无法显示{name}。 =1 is an exact selector required by source semantics, not a CLDR one-arm."
+        },
+        {
+          "severity": "INFO",
+          "key": "(namespace-wide)",
+          "note": "532/532 keys, none missing/extra; 0 ICU parse errors; 0 argument/type/select-arm/backtick mismatches; plural arms other-only (+ exact =N); no bidi controls, no '...', no 您. Latin left: Local Operator, Team Bridge, Python, Finder, Canvas, HTML, ID, Enter, diff, shell, seq — names/identifiers/kept dev terms."
+        },
+        {
+          "severity": "INFO",
+          "key": "(out of namespace)",
+          "note": "Not counted, not fixable in these bytes: canonical-transcript.tsx:552 hard-codes English lead 'Turn condensed' and ASCII ': ' ', ' '.' joins around took_duration in the spoken/copied summary; formatDuration emits Latin unit suffixes (2m4s)."
+        }
+      ]
+    }
+  },
+  "audited_values": {
+    "ui.chat.canonical.transcript.took_duration": "耗时{duration}",
+    "ui.chat.canonical.image_gen.result_label": "{material, select, video {{count, plural, =1 {生成的视频} other {生成的第{position, number, ::group-off}个视频}}} voiceover {{count, plural, =1 {生成的旁白} other {生成的第{position, number, ::group-off}段旁白}}} sound_effect {{count, plural, =1 {生成的音效} other {生成的第{position, number, ::group-off}个音效}}} other {{count, plural, =1 {生成的图像} other {生成的第{position, number, ::group-off}张图像}}}}"
+  },
+  "supersedes_scope_of": [
+    "i18n/receipts/fb584695d015.json (delta-only, result_label)"
+  ],
+  "audit_notes_not_execution_log": true
+}

@@ -1,0 +1,67 @@
+{
+ "schema": 1,
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "All reads, scripts and verdicts ran on anthropic/claude-opus-5-5 (session header of session b44e76971914); no fallback occurred.",
+ "fallback": "none",
+ "independence": "Fresh i18n-auditor instance (lopdev team, session b44e76971914, task can-au-ru); not the translator of these ru values, not an auditor of PR #1957 or #1959 deltas, not the English author. LLM audit, not a native-speaker review. No MT service used.",
+ "instance": "0529d9b2b438",
+ "session": "b44e76971914",
+ "locale": "ru",
+ "branch": "feat/i18n-identity-footer",
+ "head": "412fcf2cd4484cb3d6806eb711a13e097d4e0056",
+ "head_note": "Re-audit of the MERGED ui.chat.canonical bytes at HEAD (clean worktree, git status empty); hashes are of on-disk files at this HEAD.",
+ "date": "2026-11-17",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "In depth: ui.chat.canonical.transcript.took_duration (#1959) and ui.chat.canonical.image_gen.result_label (#1957, the only key #1957 added to this namespace per git diff ccc99372..578fbee4bc). Whole namespace: key-set parity, ICU/argument parity, English-left scan, 35-value sample (BLOCKER/MAJOR only).",
+ "inputs_sha256": {
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/ru.md)": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+  "splice host (src/i18n/catalogues/ru/ui.chat.attachments.json)": "ed91cd38b87dbdf73710e70850b767a774a4f2aaca00b2a6f921abbe07ede489"
+ },
+ "verified": [
+  "key sets equal: en 532, ru 532, missing 0, extra 0",
+  "@formatjs/icu-messageformat-parser parses all 532 ru values; argument names/types/number skeletons and tags identical to en for all 532; backtick spans identical",
+  "plural arms: every ru plural carries one/few/many/other except result_label count, which mirrors en =1/other exactly; arms do not vary with grammatical number (count never printed) and count=21 correctly falls to other (rendered)",
+  "rendered result_label for video/voiceover/sound_effect/image/unknown x count/position (1,1),(2,2),(21,21),(5,1234): bare noun phrases, accusative=nominative so splice into 'Не удалось воспроизвести {name}' / 'Развернуть {name}' stays grammatical; digits ungrouped",
+  "took_duration renders 'потребовалось 2m4s': impersonal past clause, lowercase, no full stop, fits the comma list beside fold.count.actions",
+  "English-left: only kept tokens Local Operator, Team Bridge, Canvas, Finder, Enter, HTML, ID, Diff/diff, Python/python, shell, endpoint, seq, and select keys (failed, cancelled, yes); 4 values identical to en are pure placeholder templates",
+  "check-duplicates exit 0; context-parity exit 0; generation-card-labels.test.mjs 27/27 pass; ledger-check exit 1 with ru/ui.chat.canonical stale source/target hashes (what this receipt rebinds) plus other locales' rows"
+ ],
+ "namespaces": {
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "sha256": {
+    "ru": "edb2b5a93a465b42dbbdd35a7c5ad99dc9f075030b5f624ef8e5c77fa1ecfc3e",
+    "en": "c86dd0552dad4fd582ef9f663cd4fff803ffa2b8b72ac27096d768c222d38cb9"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+    "context_sha256": "e0c89c912238de89a22ebdbdc28c2462201c6b2bbd28fc3c52a1f0ad8787a04a"
+   },
+   "key_count": 532,
+   "findings": [
+    {
+     "id": "LOC-CAN-1",
+     "severity": "minor",
+     "key": "ui.chat.canonical.image_gen.result_label",
+     "summary": "Sentence-case label lands mid-sentence in ru splice hosts, which put {name} last: broken tile reads 'Не удалось воспроизвести Созданное видео 2. Сохранённая копия здесь недоступна.'; expand title 'Нажмите, чтобы развернуть Созданное изображение 2'. Capital С mid-sentence breaks ru orthography; grammar (case) is correct.",
+     "suggestion": "Fix on the host side (ui.chat.attachments, out of this namespace): 'Не удалось воспроизвести: {name}. Сохранённая копия здесь недоступна.' (colon makes a capitalised label read as a heading) — or keep result_label lowercase only if alt/aria tolerate it."
+    },
+    {
+     "id": "LOC-CAN-2",
+     "severity": "nit",
+     "key": "ui.chat.canonical.image_gen.result_label",
+     "summary": "voiceover arm 'Созданный файл озвучки' while every neighbour on the same card says 'озвучка' (state.done 'Озвучка создана', failed 'создать озвучку', done_batch 'Набор озвучек').",
+     "suggestion": "'Созданная озвучка' / 'Созданная озвучка {position}' — or keep as is; 'файл озвучки' is defensible as a player name."
+    }
+   ]
+  }
+ }
+}
