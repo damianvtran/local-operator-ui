@@ -427,5 +427,7 @@
 	"ui.teamBridge.typing.one": "{first} печатает",
 	"ui.teamBridge.typing.two": "{first} и {second} печатают",
 	"ui.teamBridge.typing.three": "{first}, {second} и {third} печатают",
-	"ui.teamBridge.typing.several": "Несколько человек печатают"
+	"ui.teamBridge.typing.several": "Несколько человек печатают",
+	"ui.teamBridge.rate_limited.title": "Снижаем частоту запросов",
+	"ui.teamBridge.rate_limited.reason": "Сейчас слишком много запросов. Повторим автоматически."
 }

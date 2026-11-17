@@ -83,8 +83,11 @@ import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeScope,
 	agentNotifyLevel,
+	holdReadyThroughThrottle,
 	isNotAMemberRefusal,
 	ownActiveAgent,
+	teamBridgeRateLimit,
+	teamBridgeRateLimitRetryMs,
 	withAppendedPage,
 	withConversationStatus,
 	withNotificationPreference,
@@ -528,7 +531,14 @@ function ownedStatusRead(client: QueryClient, accountId?: string) {
 		const status = await TeamBridgeApi.status("surface_open");
 		if (status.state === "ready" && status.account_id !== accountId)
 			throw new Error("Team Bridge status owner changed");
-		return status;
+		// A throttled read keeps the READY answer this account already has (see
+		// `holdReadyThroughThrottle`), so the page keeps its conversations.
+		return holdReadyThroughThrottle(
+			client.getQueryData<AgentMessagesStatus>(
+				teamBridgeKeys.statusFor(accountId),
+			),
+			status,
+		);
 	});
 }
 
@@ -694,7 +704,20 @@ export function useTeamBridgeStatus(
 		enabled: enabled && Boolean(accountId),
 		staleTime: 60_000,
 		refetchOnWindowFocus: true,
-		retry: 1,
+		/*
+		 * A THROTTLE RETRIES ON ITS OWN, AFTER ITS WAIT (incident 2026-11-17).
+		 * Rate-limited (in the answer or as the read's own 429), the read comes
+		 * back after the named wait plus jitter — the "retrying" state the page
+		 * shows is true — and is never retried at once: an immediate retry is
+		 * exactly what kept the edge's per-address block alive. Anything else
+		 * keeps the one quick retry and no interval.
+		 */
+		refetchInterval: (query) => {
+			const limit = teamBridgeRateLimit(query.state.data, query.state.error);
+			return limit ? teamBridgeRateLimitRetryMs(limit.retryAfterMs) : false;
+		},
+		retry: (failures, error) =>
+			teamBridgeRateLimit(null, error) === null && failures < 1,
 	});
 }
 

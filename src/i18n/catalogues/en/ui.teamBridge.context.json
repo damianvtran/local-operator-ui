@@ -3260,5 +3260,19 @@
 		"length": "Two short sentences",
 		"placeholders": {},
 		"note": "Shown to the sender when the summary counts messages not reviewed within a day that the list above cannot name. Explains the outcome (arrives only if the recipient's owner releases it) and the next step. No count, no names."
+	},
+	"ui.teamBridge.rate_limited.title": {
+		"role": "eligibility panel heading when Radient is rate-limiting this network before the page has loaded",
+		"tone": "calm, factual",
+		"length": "2-4 words.",
+		"placeholders": {},
+		"note": "A temporary pause, not an outage or an account problem. Do not say \"unavailable\" or \"error\"."
+	},
+	"ui.teamBridge.rate_limited.reason": {
+		"role": "eligibility panel body and in-page notice band while requests are being rate-limited",
+		"tone": "calm, factual",
+		"length": "One short sentence plus \"retrying automatically\".",
+		"placeholders": {},
+		"note": "The page retries on its own; there is no button. Must not tell the reader to try again."
 	}
 }

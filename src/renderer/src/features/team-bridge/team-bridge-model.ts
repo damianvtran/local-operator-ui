@@ -998,6 +998,7 @@ export function visibleConversationRows(
 export type TeamBridgeEligibility =
 	| "signed_out"
 	| "update_required"
+	| "rate_limited"
 	| "unavailable"
 	| "plan_required"
 	| "off"
@@ -1010,6 +1011,7 @@ export function teamBridgeEligibility(
 				"state" | "surface_state" | "update_required"
 		  > & {
 				local?: Pick<AgentMessagesStatus["local"], "enabled">;
+				error?: { code?: unknown } | null;
 		  })
 		| null
 		| undefined,
@@ -1019,6 +1021,16 @@ export function teamBridgeEligibility(
 	if (status.state === "update_required" || status.update_required) {
 		return "update_required";
 	}
+	/*
+	 * A THROTTLE IS NOT AN OUTAGE (incident 2026-11-17). The edge's per-address
+	 * rate rule answered 429 to every client on one network for 300 s, and this
+	 * page told the reader the service was down. The runtime keeps the state
+	 * `unavailable` (no READY answer to show yet) and names the cause in
+	 * `error.code`; the page shows a "slowing down, retrying" panel that retries
+	 * on its own instead of the hard unavailable screen.
+	 */
+	if (status.state === "unavailable" && isRateLimitedCode(status.error?.code))
+		return "rate_limited";
 	if (status.state === "unavailable") return "unavailable";
 	if (status.surface_state === "A") return "plan_required";
 	/*
@@ -2152,4 +2164,136 @@ export async function sendFirstMessage(args: {
 	});
 	args.remembered.delete(args.draftKey);
 	return created;
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * Rate limits (incident 2026-11-17)
+ *
+ * WHY THIS EXISTS. AWS WAF in front of api.radienthq.com blocks a whole client
+ * ADDRESS for up to 300 s once it passes 2000 requests per 5 minutes, and the
+ * hub's own buckets answer 429 `rate_limited` too. Desktop, phone and agents on
+ * one network share that address, so one runaway client blocked everyone, and
+ * this page answered every throttle with "Team Bridge is unavailable". The
+ * helpers below let the page tell a throttle from an outage, keep what it had
+ * already loaded, and come back on its own after the named wait — with jitter,
+ * so every client released together does not return in the same second and
+ * trip the rule again.
+ * ---------------------------------------------------------------------------
+ */
+
+/** The wait used when a throttle names none (no header, no body field). */
+export const TEAM_BRIDGE_RATE_LIMIT_DEFAULT_MS = 60_000;
+/**
+ * The longest wait honoured. The edge's longest block is 300 s; a broken or
+ * hostile value must not park the page for longer than that.
+ */
+export const TEAM_BRIDGE_RATE_LIMIT_MAX_MS = 300_000;
+/** The upper bound on the jitter added on top of the named wait. */
+export const TEAM_BRIDGE_RATE_LIMIT_JITTER_MAX_MS = 30_000;
+
+function isRateLimitedCode(code: unknown): boolean {
+	return code === "rate_limited";
+}
+
+function boundedWaitMs(ms: unknown): number | null {
+	if (typeof ms !== "number" || !Number.isFinite(ms) || ms < 0) return null;
+	return Math.min(ms, TEAM_BRIDGE_RATE_LIMIT_MAX_MS);
+}
+
+/**
+ * The throttle the status answer (or its failed read) reports, as the wait it
+ * named in ms, or null when the answer is not a throttle.
+ *
+ * Two sources, because a throttle reaches the renderer two ways: the runtime's
+ * status payload carries the hub/edge refusal in `error` (`code`,
+ * `retry_after_seconds`), and a read the runtime itself refused arrives as a
+ * failed query whose error carries `status: 429` / `code: "rate_limited"` and,
+ * from `desktopResult`, `retryAfterMs` or `detail.retry_after_seconds`.
+ */
+export function teamBridgeRateLimit(
+	status:
+		| {
+				error?: {
+					code?: unknown;
+					retry_after_seconds?: unknown;
+				} | null;
+		  }
+		| null
+		| undefined,
+	queryError?: unknown,
+): { retryAfterMs: number } | null {
+	const refusal = status?.error;
+	if (refusal && isRateLimitedCode(refusal.code)) {
+		const seconds = refusal.retry_after_seconds;
+		return {
+			retryAfterMs:
+				boundedWaitMs(typeof seconds === "number" ? seconds * 1_000 : null) ??
+				TEAM_BRIDGE_RATE_LIMIT_DEFAULT_MS,
+		};
+	}
+	const failure = queryError as {
+		status?: unknown;
+		code?: unknown;
+		retryAfterMs?: unknown;
+		detail?: { retry_after_seconds?: unknown } | null;
+	} | null;
+	if (
+		!failure ||
+		typeof failure !== "object" ||
+		!(failure.status === 429 || isRateLimitedCode(failure.code))
+	)
+		return null;
+	const detailSeconds = failure.detail?.retry_after_seconds;
+	return {
+		retryAfterMs:
+			boundedWaitMs(failure.retryAfterMs) ??
+			boundedWaitMs(
+				typeof detailSeconds === "number" ? detailSeconds * 1_000 : null,
+			) ??
+			TEAM_BRIDGE_RATE_LIMIT_DEFAULT_MS,
+	};
+}
+
+/**
+ * When to read again after a throttle: never sooner than the named wait, plus
+ * full jitter over up to `TEAM_BRIDGE_RATE_LIMIT_JITTER_MAX_MS` (at most the
+ * wait itself, so a short wait is not tripled). `rand` is injectable for tests.
+ */
+export function teamBridgeRateLimitRetryMs(
+	retryAfterMs: number,
+	rand: () => number = Math.random,
+): number {
+	const wait = boundedWaitMs(retryAfterMs) ?? TEAM_BRIDGE_RATE_LIMIT_DEFAULT_MS;
+	const spread = Math.min(wait, TEAM_BRIDGE_RATE_LIMIT_JITTER_MAX_MS);
+	return Math.round(wait + rand() * spread);
+}
+
+/**
+ * The status answer to keep when a fresh read is throttled.
+ *
+ * A READY answer the page already rendered stays the page's answer for the
+ * same account, with the throttle attached as `error`, so the conversations
+ * stay on screen and a quiet "retrying" note explains the pause. A newer
+ * runtime already does this itself; this covers a runtime restarted mid-block
+ * (no last-good answer of its own) while the renderer still holds one. Any
+ * other answer, or a different account, is taken as it came.
+ */
+export function holdReadyThroughThrottle<
+	T extends {
+		state: string;
+		account_id?: string | null;
+		error?: { code?: unknown } | null;
+	},
+>(previous: T | null | undefined, next: T): T {
+	if (
+		previous &&
+		previous.state === "ready" &&
+		next.state === "unavailable" &&
+		isRateLimitedCode(next.error?.code) &&
+		previous.account_id != null &&
+		previous.account_id === next.account_id
+	)
+		return { ...previous, error: next.error };
+	return next;
 }

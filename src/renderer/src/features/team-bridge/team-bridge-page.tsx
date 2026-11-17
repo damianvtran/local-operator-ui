@@ -11,9 +11,11 @@ import {
 } from "@shared/api/local-operator/team-bridge-api";
 import { TEAM_TRIAL_START_ENABLED } from "@shared/api/local-operator/team-trial-activation";
 import { InlineErrorBoundary } from "@shared/components/common/inline-error-boundary";
+import { NOTICE_BAND } from "@shared/components/common/notice-band";
 import { Spinner } from "@shared/components/common/spinner";
 import { useLeftSidebarHosted } from "@shared/components/navigation/left-sidebar-host";
 import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
+import { Alert } from "@shared/components/ui/alert";
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
@@ -196,6 +198,7 @@ import {
 	sendFirstMessage,
 	targetConversation,
 	teamBridgeEligibility,
+	teamBridgeRateLimit,
 	unmatchedDirects,
 	visibleConversationRows,
 } from "./team-bridge-model";
@@ -498,6 +501,26 @@ const TeamBridgeGateLoading: FC = () => {
 	);
 };
 
+/**
+ * The page is usable but its last status read was throttled (incident
+ * 2026-11-17): the conversations already loaded stay, and this one line says
+ * why nothing new is arriving and that the page is retrying on its own. The
+ * same neutral band as the trial note; no button, because the retry is
+ * already scheduled and pressing again is what a throttle punishes.
+ */
+export const TeamBridgeRateLimitNote: FC = () => {
+	useI18nLocale();
+	return (
+		<output className="block px-4 pt-2" data-team-bridge-rate-limited="note">
+			<Alert variant="info" className={cn(NOTICE_BAND, "border-transparent")}>
+				<p className="min-w-0 max-w-prose text-body-sm text-ink">
+					{t("ui.teamBridge.rate_limited.reason")}
+				</p>
+			</Alert>
+		</output>
+	);
+};
+
 /** The localized forms shared by every chief label and storage decision. */
 const chiefLabelCopy = (): ChiefLabels => ({
 	named: (agent, person) => t("ui.teamBridge.chief.label", { agent, person }),
@@ -574,6 +597,12 @@ export const TeamBridgeEligibilityPanel: FC<{
 		unavailable: {
 			title: "ui.teamBridge.plan.unavailable_title",
 			reason: "ui.teamBridge.plan.unavailable_reason",
+		},
+		// Only before anything has loaded: a throttle over a loaded page is the
+		// quiet `TeamBridgeRateLimitNote` instead, and the read retries itself.
+		rate_limited: {
+			title: "ui.teamBridge.rate_limited.title", // i18n: ignore catalogue key for t(); the gate's key pattern is lower-case only
+			reason: "ui.teamBridge.rate_limited.reason",
 		},
 	} as const satisfies Record<
 		TeamBridgeEligibility,
@@ -5343,11 +5372,14 @@ const TeamBridgeOwnedPage: FC<{
 			? "signed_out"
 			: auth.unavailable
 				? "update_required"
-				: auth.error || status.isError || capabilities.isError
-					? "unavailable"
-					: capabilities.data && !ownerGuard
-						? "update_required"
-						: null);
+				: status.isError && teamBridgeRateLimit(null, status.error)
+					? // A throttled status read is "slowing down", never "unavailable".
+						"rate_limited"
+					: auth.error || status.isError || capabilities.isError
+						? "unavailable"
+						: capabilities.data && !ownerGuard
+							? "update_required"
+							: null);
 	const gatePending =
 		eligibility === null &&
 		(!accountId || status.isPending || capabilities.isPending);
@@ -7170,6 +7202,10 @@ const TeamBridgeOwnedPage: FC<{
 				notice={
 					<>
 						{trialNote.note}
+						{eligibility === null &&
+							teamBridgeRateLimit(status.data, status.error) && (
+								<TeamBridgeRateLimitNote />
+							)}
 						<TeamBridgeDefaultOnBanner status={status.data} />
 					</>
 				}

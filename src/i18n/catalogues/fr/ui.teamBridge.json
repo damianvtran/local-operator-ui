@@ -427,5 +427,7 @@
 	"ui.teamBridge.typing.one": "{first} est en train d’écrire",
 	"ui.teamBridge.typing.two": "{first} et {second} sont en train d’écrire",
 	"ui.teamBridge.typing.three": "{first}, {second} et {third} sont en train d’écrire",
-	"ui.teamBridge.typing.several": "Plusieurs personnes sont en train d’écrire"
+	"ui.teamBridge.typing.several": "Plusieurs personnes sont en train d’écrire",
+	"ui.teamBridge.rate_limited.title": "Ralentissement",
+	"ui.teamBridge.rate_limited.reason": "Trop de requêtes pour le moment. Nouvel essai automatique."
 }

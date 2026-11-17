@@ -427,5 +427,7 @@
 	"ui.teamBridge.typing.one": "{first}正在输入",
 	"ui.teamBridge.typing.two": "{first}和{second}正在输入",
 	"ui.teamBridge.typing.three": "{first}、{second}和{third}正在输入",
-	"ui.teamBridge.typing.several": "多人正在输入"
+	"ui.teamBridge.typing.several": "多人正在输入",
+	"ui.teamBridge.rate_limited.title": "正在放慢请求",
+	"ui.teamBridge.rate_limited.reason": "当前请求过多，将自动重试。"
 }

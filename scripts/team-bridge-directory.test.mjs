@@ -88,7 +88,7 @@ const model = await import(
 const componentBundle = await build({
 	stdin: {
 		contents: `
-			export { TeamBridgePageView, TeamBridgeEligibilityPanel, profileMessageTarget } from "./src/renderer/src/features/team-bridge/team-bridge-page";
+			export { TeamBridgePageView, TeamBridgeEligibilityPanel, TeamBridgeRateLimitNote, profileMessageTarget } from "./src/renderer/src/features/team-bridge/team-bridge-page";
 			export { setLocale, t } from "./src/i18n";
 		`,
 		resolveDir: ROOT,
@@ -1831,4 +1831,127 @@ test("the directory carries an agent's own picture only on the served endpoint r
 		assert.equal(parsed.members[0].agent?.name, "Aida");
 		assert.equal(parsed.members[0].agent?.avatar_url, undefined);
 	}
+});
+
+// ---------------------------------------------------------------------------
+// Rate limits (incident 2026-11-17): a throttle is "slowing down", never the
+// hard "unavailable" screen, keeps a loaded page, and retries after its wait.
+// ---------------------------------------------------------------------------
+
+/** The runtime's status answer for the edge's 300 s per-address WAF block. */
+const throttled = (patch = {}) =>
+	status({
+		state: "unavailable",
+		surface_state: null,
+		account_id: "acct_self",
+		error: {
+			code: "rate_limited",
+			message: "Too many requests from this address; retry in 300 seconds.",
+			retry_after_seconds: 300,
+		},
+		...patch,
+	});
+
+test("a throttled status is rate_limited, not unavailable", () => {
+	assert.equal(model.teamBridgeEligibility(throttled()), "rate_limited");
+	// A real outage keeps the hard panel.
+	assert.equal(
+		model.teamBridgeEligibility(
+			throttled({ error: { code: "messaging_unavailable", message: "x" } }),
+		),
+		"unavailable",
+	);
+	// A READY answer carrying a throttle is usable: the page stays up.
+	assert.equal(
+		model.teamBridgeEligibility(
+			status({ error: { code: "rate_limited", retry_after_seconds: 300 } }),
+		),
+		null,
+	);
+});
+
+test("teamBridgeRateLimit reads the wait from the answer or the failed read", () => {
+	assert.deepEqual(model.teamBridgeRateLimit(throttled()), {
+		retryAfterMs: 300_000,
+	});
+	assert.deepEqual(
+		model.teamBridgeRateLimit(throttled({ error: { code: "rate_limited" } })),
+		{ retryAfterMs: model.TEAM_BRIDGE_RATE_LIMIT_DEFAULT_MS },
+		"no named wait falls back to the default",
+	);
+	assert.deepEqual(
+		model.teamBridgeRateLimit(
+			throttled({
+				error: { code: "rate_limited", retry_after_seconds: 10 ** 9 },
+			}),
+		),
+		{ retryAfterMs: model.TEAM_BRIDGE_RATE_LIMIT_MAX_MS },
+		"a hostile wait is capped",
+	);
+	// The runtime's own 429 on the status read (DesktopControlError shape).
+	assert.deepEqual(
+		model.teamBridgeRateLimit(null, { status: 429, retryAfterMs: 42_000 }),
+		{ retryAfterMs: 42_000 },
+	);
+	assert.deepEqual(
+		model.teamBridgeRateLimit(null, {
+			status: 429,
+			detail: { retry_after_seconds: 7 },
+		}),
+		{ retryAfterMs: 7_000 },
+	);
+	assert.equal(model.teamBridgeRateLimit(status()), null);
+	assert.equal(model.teamBridgeRateLimit(null, { status: 502 }), null);
+	assert.equal(model.teamBridgeRateLimit(null, null), null);
+});
+
+test("the retry waits at least the named wait, with bounded full jitter", () => {
+	assert.equal(
+		model.teamBridgeRateLimitRetryMs(300_000, () => 0),
+		300_000,
+	);
+	assert.equal(
+		model.teamBridgeRateLimitRetryMs(300_000, () => 1),
+		300_000 + model.TEAM_BRIDGE_RATE_LIMIT_JITTER_MAX_MS,
+	);
+	// A short wait is spread by at most itself.
+	assert.equal(
+		model.teamBridgeRateLimitRetryMs(5_000, () => 1),
+		10_000,
+	);
+	const spread = new Set(
+		Array.from({ length: 50 }, (_, i) =>
+			model.teamBridgeRateLimitRetryMs(60_000, () => i / 50),
+		),
+	);
+	assert.equal(spread.size, 50, "different draws, different moments");
+});
+
+test("a throttled read keeps the READY answer the page already has", () => {
+	const ready = status({ account_id: "acct_self", tenant_id: "tnt_1" });
+	const held = model.holdReadyThroughThrottle(ready, throttled());
+	assert.equal(held.state, "ready");
+	assert.equal(held.tenant_id, "tnt_1");
+	assert.equal(held.error.code, "rate_limited");
+	assert.equal(model.teamBridgeEligibility(held), null);
+	// Never across accounts, never for a real outage, never without a READY.
+	const other = throttled({ account_id: "acct_other" });
+	assert.equal(model.holdReadyThroughThrottle(ready, other), other);
+	const outage = throttled({ error: { code: "messaging_unavailable" } });
+	assert.equal(model.holdReadyThroughThrottle(ready, outage), outage);
+	const first = throttled();
+	assert.equal(model.holdReadyThroughThrottle(undefined, first), first);
+});
+
+test("the rate-limited panel says retrying, offers no button and is not the outage panel", () => {
+	const html = renderToStaticMarkup(
+		createElement(ui.TeamBridgeEligibilityPanel, { reason: "rate_limited" }),
+	);
+	assert.match(html, /Slowing down/);
+	assert.match(html, /Retrying automatically/);
+	assert.doesNotMatch(html, /Team Bridge is unavailable/);
+	assert.doesNotMatch(html, /<button/, "the retry is already scheduled");
+	const note = renderToStaticMarkup(createElement(ui.TeamBridgeRateLimitNote));
+	assert.match(note, /data-team-bridge-rate-limited="note"/);
+	assert.match(note, /Too many requests right now\. Retrying automatically\./);
 });
