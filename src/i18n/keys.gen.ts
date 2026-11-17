@@ -3008,6 +3008,13 @@ export type MessageParams = {
 	"ui.agents.detail.class.label": undefined;
 	"ui.agents.detail.create.description_duplicate": { name: string };
 	"ui.agents.detail.create.description_new": undefined;
+	"ui.agents.detail.create.error_generic": undefined;
+	"ui.agents.detail.create.error_instructions_required": undefined;
+	"ui.agents.detail.create.error_name_grammar": undefined;
+	"ui.agents.detail.create.error_name_required": undefined;
+	"ui.agents.detail.create.error_name_taken": { name: string };
+	"ui.agents.detail.create.title_duplicate": undefined;
+	"ui.agents.detail.create.title_new": undefined;
 	"ui.agents.detail.delegate.aria": undefined;
 	"ui.agents.detail.delegate.label": undefined;
 	"ui.agents.detail.empty.description": undefined;
@@ -4829,6 +4836,7 @@ export type MessageParams = {
 	"ui.chat.attachments.file_unnamed": undefined;
 	"ui.chat.attachments.not_viewable": { name: string };
 	"ui.chat.attachments.not_viewable_detail": { name: string };
+	"ui.chat.attachments.not_viewable_too_large": { name: string };
 	"ui.chat.attachments.open": undefined;
 	"ui.chat.attachments.open_named": { name: string };
 	"ui.chat.attachments.open_title": { name: string };
@@ -7799,6 +7807,8 @@ export type MessageParams = {
 	"ui.chat.trace.action.write.running": undefined;
 	"ui.chat.trace.action.write.settled": undefined;
 	"ui.chat.trace.object.file_count": { count: number };
+	"ui.chat.trace.reasoning.label": undefined;
+	"ui.chat.trace.reasoning.with_duration": { label: string; duration: string };
 	"ui.chat.trace.send.delivery.failed.note": undefined;
 	"ui.chat.trace.send.delivery.failed.verb": undefined;
 	"ui.chat.trace.send.delivery.failed.word": undefined;

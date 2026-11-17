@@ -18,6 +18,8 @@
 	"ui.chat.trace.action.write.running": "لکھ رہا",
 	"ui.chat.trace.action.write.settled": "لکھا",
 	"ui.chat.trace.object.file_count": "{count, plural, one {{count, number, ::group-off} فائل} other {{count, number, ::group-off} فائلیں}}",
+	"ui.chat.trace.reasoning.label": "استدلال",
+	"ui.chat.trace.reasoning.with_duration": "{label} — {duration} تک",
 	"ui.chat.trace.send.delivery.failed.note": "کچھ بھی نہیں پہنچا۔ نیچے بتائی گئی وجہ دور کریں، یا دوبارہ بھیجنے کی کوشش کریں۔",
 	"ui.chat.trace.send.delivery.failed.verb": "کوشش کی",
 	"ui.chat.trace.send.delivery.failed.word": "نہیں پہنچا",

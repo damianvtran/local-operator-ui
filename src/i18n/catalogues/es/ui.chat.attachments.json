@@ -24,5 +24,6 @@
 	"ui.chat.attachments.not_viewable": "No se puede ver el archivo: {name}",
 	"ui.chat.attachments.owner_unreachable": "no se pudo traer desde el dispositivo que lo tiene.",
 	"ui.chat.attachments.retry_fetch": "Reintentar",
-	"ui.chat.attachments.not_viewable_detail": "{name} no se puede ver (el archivo puede estar incompleto, borrado o movido)"
+	"ui.chat.attachments.not_viewable_detail": "{name} no se puede ver (el archivo puede estar incompleto, borrado o movido)",
+	"ui.chat.attachments.not_viewable_too_large": "{name} es demasiado grande para mostrar una vista previa"
 }

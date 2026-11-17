@@ -67,5 +67,12 @@
 	"ui.agents.detail.action.creating": "Создание…",
 	"ui.agents.detail.action.discard_new_agent": "Отменить создание агента?",
 	"ui.agents.detail.create.description_duplicate": "Копия агента {name}. Это отдельный агент: изменения в нём не затрагивают оригинал.",
-	"ui.agents.detail.create.description_new": "Повторно используемые инструкции, общие для вызовов агента по команде, субагентов и команд. Чаты остаются отдельными."
+	"ui.agents.detail.create.description_new": "Повторно используемые инструкции, общие для вызовов агента по команде, субагентов и команд. Чаты остаются отдельными.",
+	"ui.agents.detail.create.error_generic": "Не удалось создать агента.",
+	"ui.agents.detail.create.error_instructions_required": "Добавьте инструкции агента.",
+	"ui.agents.detail.create.error_name_grammar": "Название не может содержать пробелы и косые черты.",
+	"ui.agents.detail.create.error_name_required": "Укажите название агента.",
+	"ui.agents.detail.create.error_name_taken": "Агент «{name}» уже существует. Выберите другое название или откройте существующего агента, чтобы изменить его.",
+	"ui.agents.detail.create.title_duplicate": "Дублирование агента",
+	"ui.agents.detail.create.title_new": "Новый агент"
 }

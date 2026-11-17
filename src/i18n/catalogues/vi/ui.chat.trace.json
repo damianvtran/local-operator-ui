@@ -18,6 +18,8 @@
 	"ui.chat.trace.action.write.running": "Đang ghi",
 	"ui.chat.trace.action.write.settled": "Đã ghi",
 	"ui.chat.trace.object.file_count": "{count, plural, other {{count, number, ::group-off} tệp}}",
+	"ui.chat.trace.reasoning.label": "Suy luận",
+	"ui.chat.trace.reasoning.with_duration": "{label} trong {duration}",
 	"ui.chat.trace.send.delivery.failed.note": "Không có gì được gửi đi. Hãy khắc phục nguyên nhân nêu bên dưới, hoặc thử gửi lại.",
 	"ui.chat.trace.send.delivery.failed.verb": "Đã thử gửi",
 	"ui.chat.trace.send.delivery.failed.word": "chưa gửi được",

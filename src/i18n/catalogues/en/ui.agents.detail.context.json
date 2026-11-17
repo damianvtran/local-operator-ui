@@ -372,5 +372,56 @@
 		"length": "Two short sentences; wraps.",
 		"note": "Says where the new agent's instructions can be reused (agent commands, subagents, teams) and that a chat does not share them: each chat keeps its own state.",
 		"placeholders": {}
+	},
+	"ui.agents.detail.create.error_generic": {
+		"role": "fallback error shown on the agent create/duplicate form when the refusal carries no message of its own",
+		"tone": "one plain sentence, sentence case, full stop",
+		"length": "One short sentence.",
+		"note": "A refusal from the backend normally replaces it with the backend's own sentence; this is what the form says when there is none. Do not promise a retry or blame the operator.",
+		"placeholders": {}
+	},
+	"ui.agents.detail.create.error_instructions_required": {
+		"role": "validation error on the agent create form when the instructions field is empty",
+		"tone": "imperative, sentence case, full stop",
+		"length": "Four to six words.",
+		"note": "Shown under the field and announced through the form's alert: it must say what is missing, not that something went wrong. 'Instructions' is the product's name for the saved prompt of an agent.",
+		"placeholders": {}
+	},
+	"ui.agents.detail.create.error_name_grammar": {
+		"role": "validation error on the agent create form when the typed name contains a space, a slash or a backslash",
+		"tone": "plain statement, sentence case, full stop",
+		"length": "One short sentence.",
+		"note": "The rule is the storage path's, not a style preference: the name becomes a directory name. Name the same two character classes if the language can, without turning them into a regex.",
+		"placeholders": {}
+	},
+	"ui.agents.detail.create.error_name_required": {
+		"role": "validation error on the agent create form when the name field is empty",
+		"tone": "imperative, sentence case, full stop",
+		"length": "Four to six words.",
+		"note": "First validation of the form; focus moves to the name field as it is shown.",
+		"placeholders": {}
+	},
+	"ui.agents.detail.create.error_name_taken": {
+		"role": "validation error on the agent create form when the typed name is already in use",
+		"tone": "plain statement plus a suggested next step, sentence case, full stops",
+		"length": "Two short sentences; wraps.",
+		"note": "The name is quoted with the source's typographic quotes, which the target language may replace with its own convention. The second sentence offers both outcomes the operator has: pick another name, or open the existing agent and rename that one.",
+		"placeholders": {
+			"name": "the name the operator typed, verbatim, never translated"
+		}
+	},
+	"ui.agents.detail.create.title_duplicate": {
+		"role": "heading of the form that duplicates an existing agent as a new one",
+		"tone": "short noun phrase, sentence case, no full stop",
+		"length": "Four to six words.",
+		"note": "Sits above `description_duplicate`, which names the source agent. The copy is a create that starts filled in, not a mode of the editor.",
+		"placeholders": {}
+	},
+	"ui.agents.detail.create.title_new": {
+		"role": "heading of the form that creates a new agent from scratch",
+		"tone": "short noun phrase, sentence case, no full stop",
+		"length": "Two words in English.",
+		"note": "Sits above `description_new`. 'Agent' is the product's word for a configured assistant.",
+		"placeholders": {}
 	}
 }
