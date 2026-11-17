@@ -454,9 +454,14 @@ test("a failed start publishes its cause, exit code and stderr for the start-up 
 	assert.equal(startup.failure.exitCode, 1);
 	assert.match(startup.failure.stderrTail, /WinError 10048/);
 	assert.equal(startup.attempt, 1);
-	assert.equal(state, "detached", "gated surfaces stop asking a server that is not there");
+	assert.equal(
+		state,
+		"detached",
+		"gated surfaces stop asking a server that is not there",
+	);
 	assert.ok(
-		seen.indexOf("starting") !== -1 && seen.indexOf("starting") < seen.lastIndexOf("failed"),
+		seen.indexOf("starting") !== -1 &&
+			seen.indexOf("starting") < seen.lastIndexOf("failed"),
 		`starting was published before failed: ${seen.join(",")}`,
 	);
 	assert.equal(m.startupFailureReported(), true);
@@ -1909,7 +1914,11 @@ export function execFileSync() { return "S"; }
 	 * panel draws (PostHog D2), not a modal: the modal named no cause and was
 	 * followed by a quit.
 	 */
-	assert.equal(globalThis.__dialog.length, 0, "no modal for a recorded failure");
+	assert.equal(
+		globalThis.__dialog.length,
+		0,
+		"no modal for a recorded failure",
+	);
 	const startup = m.getStatusSnapshot().startup;
 	assert.equal(startup?.phase, "failed", "the failure still reaches the user");
 	assert.match(

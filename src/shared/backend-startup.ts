@@ -44,7 +44,8 @@ export const BACKEND_STARTUP_CATEGORIES = [
 	"timed_out",
 	"unknown",
 ] as const;
-export type BackendStartupCategory = (typeof BACKEND_STARTUP_CATEGORIES)[number];
+export type BackendStartupCategory =
+	(typeof BACKEND_STARTUP_CATEGORIES)[number];
 
 export interface BackendStartupFailure {
 	category: BackendStartupCategory;
@@ -72,6 +73,10 @@ export interface BackendStartup {
 	budgetMs: number;
 	/** 1-based attempt number within this app session. */
 	attempt: number;
+	/** Epoch ms the attempt reached `ready` or `failed`; null while starting.
+	 * With `startedAt` it is the start-up duration the `backend_status` event
+	 * reports - the distribution any change to the budget must be measured on. */
+	settledAt: number | null;
 	failure: BackendStartupFailure | null;
 }
 
@@ -131,7 +136,8 @@ export function classifyStartupFailure(input: {
 	const spawnCode = input.spawnErrorCode ?? null;
 	if (PORT_IN_USE.test(stderr)) return "port_in_use";
 	if (PORT_FORBIDDEN.test(stderr)) return "port_forbidden";
-	if (spawnCode === "EACCES" || spawnCode === "EPERM") return "executable_blocked";
+	if (spawnCode === "EACCES" || spawnCode === "EPERM")
+		return "executable_blocked";
 	if (spawnCode === "ENOENT") return "executable_missing";
 	if (
 		input.exitCode === WIN_ACCESS_DENIED ||

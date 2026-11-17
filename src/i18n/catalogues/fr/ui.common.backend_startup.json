@@ -1,0 +1,21 @@
+{
+	"ui.common.backend_startup.title_starting": "Démarrage du serveur Local Operator…",
+	"ui.common.backend_startup.detail_starting": "Le premier démarrage peut prendre jusqu’à {seconds} secondes.",
+	"ui.common.backend_startup.progress_label": "Progression du démarrage du serveur",
+	"ui.common.backend_startup.title_failed": "Le serveur Local Operator n’a pas pu démarrer.",
+	"ui.common.backend_startup.reason.port_in_use": "Un autre programme utilise le port dont le serveur a besoin. Fermez ce programme ou redémarrez l’ordinateur, puis redémarrez le serveur.",
+	"ui.common.backend_startup.reason.port_forbidden": "Windows a réservé le port dont le serveur a besoin. Redémarrer l’ordinateur le libère généralement ; redémarrez ensuite le serveur.",
+	"ui.common.backend_startup.reason.executable_blocked": "Votre logiciel de sécurité a empêché le serveur de s’exécuter. Autorisez Local Operator dans les paramètres de l’antivirus, puis redémarrez le serveur.",
+	"ui.common.backend_startup.reason.executable_missing": "Une partie de l’installation du serveur est manquante, peut-être supprimée par un logiciel de sécurité. Réinstallez Local Operator, puis redémarrez le serveur.",
+	"ui.common.backend_startup.reason.crashed": "Le serveur a rencontré une erreur au démarrage. Copiez les diagnostics et envoyez-les au support.",
+	"ui.common.backend_startup.reason.exited": "Le serveur s’est arrêté avant la fin de son démarrage.",
+	"ui.common.backend_startup.reason.timed_out": "Le serveur n’a pas répondu dans un délai de {seconds} secondes. L’ordinateur est peut-être occupé ; redémarrez le serveur pour réessayer.",
+	"ui.common.backend_startup.reason.unknown": "Quelque chose a empêché le serveur de démarrer.",
+	"ui.common.backend_startup.action.restart": "Redémarrer le serveur",
+	"ui.common.backend_startup.action.restarting": "Redémarrage…",
+	"ui.common.backend_startup.action.copy_diagnostics": "Copier les diagnostics",
+	"ui.common.backend_startup.action.copied": "Diagnostics copiés",
+	"ui.common.backend_startup.action.copy_failed": "Impossible de copier les diagnostics",
+	"ui.common.backend_startup.details.show": "Afficher les détails",
+	"ui.common.backend_startup.details.hide": "Masquer les détails"
+}

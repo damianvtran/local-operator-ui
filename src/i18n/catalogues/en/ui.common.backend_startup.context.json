@@ -1,0 +1,97 @@
+{
+	"ui.common.backend_startup.title_starting": {
+		"role": "title",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.detail_starting": {
+		"role": "status explanation",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.progress_label": {
+		"role": "progressbar accessible name",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.title_failed": {
+		"role": "title",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.reason.port_in_use": {
+		"role": "status explanation",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.reason.port_forbidden": {
+		"role": "status explanation",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.reason.executable_blocked": {
+		"role": "status explanation",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.reason.executable_missing": {
+		"role": "status explanation",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.reason.crashed": {
+		"role": "status explanation",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.reason.exited": {
+		"role": "status explanation",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.reason.timed_out": {
+		"role": "status explanation",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.reason.unknown": {
+		"role": "status explanation",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.action.restart": {
+		"role": "button",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.action.restarting": {
+		"role": "button",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.action.copy_diagnostics": {
+		"role": "button",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.action.copied": {
+		"role": "button",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.action.copy_failed": {
+		"role": "button",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.details.show": {
+		"role": "button",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	},
+	"ui.common.backend_startup.details.hide": {
+		"role": "button",
+		"tone": "Plain fact about the app's own server, then one concrete step; never blame the user.",
+		"note": "Shown in backend-startup-panel.tsx, the app-level band that replaces the connectivity banner while the owned server is starting or failed to start."
+	}
+}

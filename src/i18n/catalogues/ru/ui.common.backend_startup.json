@@ -1,0 +1,21 @@
+{
+	"ui.common.backend_startup.title_starting": "Запуск сервера Local Operator…",
+	"ui.common.backend_startup.detail_starting": "Первый запуск может занять до {seconds} секунд.",
+	"ui.common.backend_startup.progress_label": "Ход запуска сервера",
+	"ui.common.backend_startup.title_failed": "Не удалось запустить сервер Local Operator.",
+	"ui.common.backend_startup.reason.port_in_use": "Порт, нужный серверу, занят другой программой. Закройте её или перезагрузите компьютер, затем перезапустите сервер.",
+	"ui.common.backend_startup.reason.port_forbidden": "Windows зарезервировала порт, нужный серверу. Обычно его освобождает перезагрузка компьютера; затем перезапустите сервер.",
+	"ui.common.backend_startup.reason.executable_blocked": "Защитное ПО не дало серверу запуститься. Разрешите Local Operator в настройках антивируса, затем перезапустите сервер.",
+	"ui.common.backend_startup.reason.executable_missing": "Часть установки сервера отсутствует — возможно, её удалило защитное ПО. Переустановите Local Operator, затем перезапустите сервер.",
+	"ui.common.backend_startup.reason.crashed": "При запуске сервера произошла ошибка. Скопируйте диагностику и отправьте её в поддержку.",
+	"ui.common.backend_startup.reason.exited": "Сервер остановился, не завершив запуск.",
+	"ui.common.backend_startup.reason.timed_out": "Сервер не ответил за {seconds} секунд. Возможно, компьютер занят; перезапустите сервер, чтобы попробовать снова.",
+	"ui.common.backend_startup.reason.unknown": "Что-то помешало запуску сервера.",
+	"ui.common.backend_startup.action.restart": "Перезапустить сервер",
+	"ui.common.backend_startup.action.restarting": "Перезапуск…",
+	"ui.common.backend_startup.action.copy_diagnostics": "Скопировать диагностику",
+	"ui.common.backend_startup.action.copied": "Диагностика скопирована",
+	"ui.common.backend_startup.action.copy_failed": "Не удалось скопировать диагностику",
+	"ui.common.backend_startup.details.show": "Показать подробности",
+	"ui.common.backend_startup.details.hide": "Скрыть подробности"
+}

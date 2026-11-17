@@ -28,6 +28,12 @@ import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
 import { formatDate, formatTime } from "../../i18n";
 import {
+	type BackendStartup,
+	type BackendStartupFailure,
+	appendStderrTail,
+	classifyStartupFailure,
+} from "../../shared/backend-startup";
+import {
 	type AddressSubstitution,
 	type DaemonStatusSnapshot,
 	isServerReachable,
@@ -55,12 +61,6 @@ import {
 	servingInstallReadings,
 	servingWorkStateFromSessions,
 } from "../backend-version-drift";
-import {
-	type BackendStartup,
-	type BackendStartupFailure,
-	appendStderrTail,
-	classifyStartupFailure,
-} from "../../shared/backend-startup";
 import { DesktopFeedRelay } from "../desktop-feed";
 import {
 	type DesktopMediaResponse,
@@ -1305,6 +1305,7 @@ export class BackendServiceManager {
 			startedAt: this.startup?.startedAt ?? Date.now(),
 			budgetMs: READINESS_BUDGET_MS,
 			attempt: this.startup?.attempt ?? this.startupAttempts,
+			settledAt: Date.now(),
 			failure,
 		});
 		return failure;
@@ -3288,11 +3289,31 @@ export class BackendServiceManager {
 	start(options: StartOptions = {}): Promise<boolean> {
 		if (this.isAppClosing) return Promise.resolve(false);
 		if (this.startPromise) return this.startPromise;
-		this.startPromise = this.startOwned(this.startEpoch, options).finally(
-			() => {
+		this.startPromise = this.startOwned(this.startEpoch, options)
+			.then((started) => {
+				/*
+				 * The start-up record must end in a terminal phase whatever path
+				 * the start took. A start that ATTACHED (discovery found a daemon)
+				 * never spawned, so nothing below set `ready`; a start cancelled by a
+				 * stop or a newer epoch left `starting` behind - and a panel drawing
+				 * "Starting..." over a start nobody is running is the stuck state
+				 * this record exists to remove.
+				 */
+				if (started && this.startup && this.startup.phase !== "ready") {
+					this.setStartup({
+						...this.startup,
+						phase: "ready",
+						settledAt: Date.now(),
+						failure: null,
+					});
+				} else if (!started && this.startup?.phase === "starting") {
+					this.setStartup(null);
+				}
+				return started;
+			})
+			.finally(() => {
 				this.startPromise = null;
-			},
-		);
+			});
 		return this.startPromise;
 	}
 
@@ -3533,6 +3554,7 @@ export class BackendServiceManager {
 				startedAt: Date.now(),
 				budgetMs: READINESS_BUDGET_MS,
 				attempt: this.startupAttempts,
+				settledAt: null,
 				failure: null,
 			});
 
@@ -3579,7 +3601,11 @@ export class BackendServiceManager {
 					// re-reads capabilities on `backendReady` must already see it.
 					await this.registerOwnedDaemon(child, reason);
 					if (this.startup)
-						this.setStartup({ ...this.startup, phase: "ready" });
+						this.setStartup({
+							...this.startup,
+							phase: "ready",
+							settledAt: Date.now(),
+						});
 					this.startHealthCheck();
 					this.notifyBackendReady();
 					return true;

@@ -153,6 +153,7 @@ import {
 } from "./local-config";
 import { createMainLocale } from "./main-locale";
 import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
+import { installTypeOfServiceGuard } from "./net-tos-guard";
 import {
 	NOTIFICATION_SOUND_PLAY_CHANNEL,
 	configureNotificationSound,
@@ -241,7 +242,6 @@ import {
 	reportSkippedWhileQuitting,
 } from "./window-raise";
 import { attachWindowSurface } from "./window-surface";
-import { installTypeOfServiceGuard } from "./net-tos-guard";
 
 /*
  * THE RELEASE GATE'S LAUNCH PROBE, FIRST, before any statement of this module

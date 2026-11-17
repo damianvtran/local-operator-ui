@@ -242,7 +242,11 @@ test("the progress step never exceeds the run's total while the missing list shr
 			// Before the fix the component passed `missing.length` here.
 			const buggy = progress.done + (progress.current ? 1 : 0);
 			readings.push({
-				fixed: installProgressReading(progress.done, progress.current, names.length),
+				fixed: installProgressReading(
+					progress.done,
+					progress.current,
+					names.length,
+				),
 				buggyOverflow: buggy > missing.length,
 			});
 		},

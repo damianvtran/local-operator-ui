@@ -1,0 +1,21 @@
+{
+	"ui.common.backend_startup.title_starting": "Starting the Local Operator server…",
+	"ui.common.backend_startup.detail_starting": "The first start can take up to {seconds} seconds.",
+	"ui.common.backend_startup.progress_label": "Server start-up progress",
+	"ui.common.backend_startup.title_failed": "The Local Operator server could not start.",
+	"ui.common.backend_startup.reason.port_in_use": "Another program is using the port the server needs. Close that program or restart your computer, then restart the server.",
+	"ui.common.backend_startup.reason.port_forbidden": "Windows has reserved the port the server needs. Restarting your computer usually releases it; then restart the server.",
+	"ui.common.backend_startup.reason.executable_blocked": "Your security software blocked the server from running. Allow Local Operator in your antivirus settings, then restart the server.",
+	"ui.common.backend_startup.reason.executable_missing": "Part of the server installation is missing, possibly removed by security software. Reinstall Local Operator, then restart the server.",
+	"ui.common.backend_startup.reason.crashed": "The server hit an error while starting. Copy the diagnostics and send them to support.",
+	"ui.common.backend_startup.reason.exited": "The server stopped before it finished starting.",
+	"ui.common.backend_startup.reason.timed_out": "The server did not answer within {seconds} seconds. Your computer may be busy; restart the server to try again.",
+	"ui.common.backend_startup.reason.unknown": "Something stopped the server from starting.",
+	"ui.common.backend_startup.action.restart": "Restart server",
+	"ui.common.backend_startup.action.restarting": "Restarting…",
+	"ui.common.backend_startup.action.copy_diagnostics": "Copy diagnostics",
+	"ui.common.backend_startup.action.copied": "Diagnostics copied",
+	"ui.common.backend_startup.action.copy_failed": "Could not copy the diagnostics",
+	"ui.common.backend_startup.details.show": "Show details",
+	"ui.common.backend_startup.details.hide": "Hide details"
+}

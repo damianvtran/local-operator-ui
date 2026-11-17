@@ -117,7 +117,8 @@ const { once } = require("node:events");
 
 function runRepro(guarded) {
 	const env = { ...process.env };
-	for (const key of Object.keys(env)) if (key.startsWith("CMUX_")) delete env[key];
+	for (const key of Object.keys(env))
+		if (key.startsWith("CMUX_")) delete env[key];
 	if (guarded) env.GUARD_SOURCE = Buffer.from(guardSource).toString("base64");
 	const result = spawnSync(process.execPath, ["-e", REPRO], {
 		env,
