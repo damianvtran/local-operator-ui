@@ -275,8 +275,16 @@ export const DEFAULT_TEAM_MANAGER = "manager";
  * manager: the runtime's own phrase for an unnamed manager (`its manager is the
  * speaker`), which is distinguishable from the team chip beside it where the
  * team's name was not (design D5).
+ *
+ * KEYED FOR DISPLAY ONLY, AND A FUNCTION SO A LANGUAGE SWITCH REPAINTS IT. This
+ * is the CHIP's text. It is NOT half of the closed sentence: that sentence
+ * (`identityAgentClosedCaption`) mirrors core's `team_owns_the_agent_slot_message`
+ * byte for byte and keeps its own English `its manager`, so the chip may be
+ * translated while the contract sentence stays exactly core's words.
  */
-export const ITS_MANAGER_LABEL = "its manager";
+export function itsManagerLabel(): string {
+	return t("ui.chat.header_identity.its_manager_label");
+}
 
 /**
  * The label ladder, for both controls, from the two sources in their
@@ -381,7 +389,7 @@ export function resolveHeaderIdentity(
 				? hostSpeaker
 				: catalogueManager;
 		seat = {
-			speaker: named ?? ITS_MANAGER_LABEL,
+			speaker: named ?? itsManagerLabel(),
 			speakerKnown: named !== null,
 			team: strictTeam,
 			sentence: identityAgentClosedCaption(strictTeam, named),

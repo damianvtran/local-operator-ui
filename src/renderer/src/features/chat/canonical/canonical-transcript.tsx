@@ -519,7 +519,14 @@ function condenseSentence(segment: SegmentPlan): string {
 		if (spanS !== null) parts.push(formatDuration(spanS));
 	} else {
 		if (segment.facts.durationS !== null) {
-			parts.push(`took ${formatDuration(segment.facts.durationS)}`);
+			/* Keyed as one clause with the duration slot, like its sibling
+			 * `worked_for`: the word order is the language's. This sentence is the
+			 * bar's settle announcement and its "Copy" text (never painted). */
+			parts.push(
+				t("ui.chat.canonical.transcript.took_duration", {
+					duration: formatDuration(segment.facts.durationS),
+				}),
+			);
 		}
 		if (segment.facts.actions > 0) {
 			parts.push(

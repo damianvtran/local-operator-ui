@@ -5442,6 +5442,7 @@ export type MessageParams = {
 	"ui.chat.canonical.transcript.source_unavailable": undefined;
 	"ui.chat.canonical.transcript.start_new_chat": undefined;
 	"ui.chat.canonical.transcript.stopped_before_finishing": undefined;
+	"ui.chat.canonical.transcript.took_duration": { duration: string };
 	"ui.chat.canonical.transcript.worked": undefined;
 	"ui.chat.canonical.transcript.worked_for": { duration: string };
 	"ui.chat.canonical.turn_summary.completed": undefined;
@@ -5841,6 +5842,7 @@ export type MessageParams = {
 	"ui.chat.error_block.schema.before": undefined;
 	"ui.chat.error_block.unavailable.after": undefined;
 	"ui.chat.error_block.unavailable.before": undefined;
+	"ui.chat.header_identity.agent_seat_closed_title": { team: string };
 	"ui.chat.header_identity.aria_agent_assign": { label: string };
 	"ui.chat.header_identity.aria_agent_closed": {
 		label: string;
@@ -5856,11 +5858,31 @@ export type MessageParams = {
 	"ui.chat.header_identity.band_all_teams": undefined;
 	"ui.chat.header_identity.band_recent_agents": undefined;
 	"ui.chat.header_identity.band_recent_teams": undefined;
+	"ui.chat.header_identity.cannot_take_seat": { label: string };
+	"ui.chat.header_identity.footer_all_agents": { count: number };
+	"ui.chat.header_identity.footer_all_teams": { count: number };
+	"ui.chat.header_identity.footer_match_agents": { count: number };
+	"ui.chat.header_identity.footer_match_teams": { count: number };
+	"ui.chat.header_identity.footer_partial_agents": {
+		total: number;
+		matches: number;
+	};
+	"ui.chat.header_identity.footer_partial_teams": {
+		total: number;
+		matches: number;
+	};
+	"ui.chat.header_identity.its_manager_label": undefined;
 	"ui.chat.header_identity.loading": { kind: string };
+	"ui.chat.header_identity.needs_delegating_profile": undefined;
 	"ui.chat.header_identity.no_agent": undefined;
 	"ui.chat.header_identity.no_matches": { query: string };
+	"ui.chat.header_identity.no_settable": undefined;
+	"ui.chat.header_identity.no_settable_typed": undefined;
 	"ui.chat.header_identity.no_team": undefined;
 	"ui.chat.header_identity.search": { kind: string };
+	"ui.chat.header_identity.switch_agent_failed": undefined;
+	"ui.chat.header_identity.switch_team_failed": undefined;
+	"ui.chat.header_identity.team_led_by_manager": { team: string };
 	"ui.chat.highlights.file_resolution_failed": undefined;
 	"ui.chat.hub_update.check_now": undefined;
 	"ui.chat.hub_update.dismiss": undefined;
@@ -7653,6 +7675,8 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.time_section": undefined;
 	"ui.chat.sidebar_view.ungrouped": undefined;
 	"ui.chat.slash.arg.credential_api_key": undefined;
+	"ui.chat.slash.arg.kind_role": undefined;
+	"ui.chat.slash.arg.kind_specialist": undefined;
 	"ui.chat.slash.arg.mcp_detail.reauthorize": undefined;
 	"ui.chat.slash.arg.mcp_detail.reuse": undefined;
 	"ui.chat.slash.arg.mcp_detail.stored": undefined;

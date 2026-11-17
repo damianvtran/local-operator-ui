@@ -219,3 +219,19 @@ test("the English literals are gone from the sources", () => {
 		/It leaves your lists|this conversation|"Archive"/,
 	);
 });
+
+test("the conversation name sets its own direction so an RTL locale cannot clip its first letters", () => {
+	const dialog = src(
+		"src/renderer/src/features/chat/components/archive-conversation-dialog.tsx",
+	);
+	/* `text-overflow` clips from the END of the box's own direction. A name that
+	 * inherited an RTL locale's direction (Urdu) lost the first letters of an
+	 * English title behind the ellipsis. The truncating box itself carries
+	 * `dir="auto"` - a `<bdi>` inside it would not change that box's direction -
+	 * and the name is not wrapped a second time in `isolateLtr`. */
+	assert.match(
+		dialog,
+		/<span dir="auto" className="min-w-0 truncate">\s*\{titleParts\.name\}\s*<\/span>/,
+	);
+	assert.doesNotMatch(dialog, /isolateLtr\(titleParts\.name/);
+});

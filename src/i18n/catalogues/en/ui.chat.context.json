@@ -642,6 +642,131 @@
 			"reason": "the runtime-served closure sentence"
 		}
 	},
+	"ui.chat.header_identity.footer_all_agents": {
+		"role": "footer line of the header agent menu when the full agent list overflows and the search box is empty",
+		"tone": "plain count statement, then a short instruction after an em dash, no trailing punctuation",
+		"length": "One short line in the menu's footer; the panel is about 300px wide and the line wraps rather than clips.",
+		"note": "States the size of the whole roster and tells the reader to scroll or type to filter. The count is the number of agent rows. One complete sentence with its own plural arms, so the count, noun and verb can be reordered freely; add every plural category the language needs (and drop `one` if it has none). Do not split it into fragments. The team menu uses its own twin (footer_all_teams); keep the two parallel.",
+		"placeholders": {
+			"count": "the exact number of rows in the list, shown with Latin digits and no thousands separator; it also picks the singular or plural arm"
+		}
+	},
+	"ui.chat.header_identity.footer_all_teams": {
+		"role": "footer line of the header team menu when the full team list overflows and the search box is empty",
+		"tone": "plain count statement, then a short instruction after an em dash, no trailing punctuation",
+		"length": "One short line in the menu's footer; the panel is about 300px wide and the line wraps rather than clips.",
+		"note": "The team twin of footer_all_agents; keep the two parallel. The count is the number of team rows. One complete sentence with its own plural arms, so the count, noun and verb can be reordered freely; add every plural category the language needs (and drop `one` if it has none). Do not split it into fragments.",
+		"placeholders": {
+			"count": "the exact number of rows in the list, shown with Latin digits and no thousands separator; it also picks the singular or plural arm"
+		}
+	},
+	"ui.chat.header_identity.footer_match_agents": {
+		"role": "footer line of the header agent menu while a search is typed and every agent matches it",
+		"tone": "count plus a verb, lowercase after the number, no trailing punctuation",
+		"length": "A few words.",
+		"note": "Said when the filter keeps the whole roster, so the count is the roster size. English `1 agent matches` / `5 agents match`: the verb agrees with the count. One complete sentence with its own plural arms, so the count, noun and verb can be reordered freely; add every plural category the language needs (and drop `one` if it has none). Do not split it into fragments. The sibling footer_partial_agents says it when only some agents match.",
+		"placeholders": {
+			"count": "the exact number of rows in the list, shown with Latin digits and no thousands separator; it also picks the singular or plural arm"
+		}
+	},
+	"ui.chat.header_identity.footer_match_teams": {
+		"role": "footer line of the header team menu while a search is typed and every team matches it",
+		"tone": "count plus a verb, lowercase after the number, no trailing punctuation",
+		"length": "A few words.",
+		"note": "The team twin of footer_match_agents; keep the two parallel. One complete sentence with its own plural arms, so the count, noun and verb can be reordered freely; add every plural category the language needs (and drop `one` if it has none). Do not split it into fragments.",
+		"placeholders": {
+			"count": "the exact number of rows in the list, shown with Latin digits and no thousands separator; it also picks the singular or plural arm"
+		}
+	},
+	"ui.chat.header_identity.footer_partial_agents": {
+		"role": "footer line of the header agent menu while a search is typed and only some agents match it",
+		"tone": "`N of M` count plus a verb, no trailing punctuation",
+		"length": "A few words.",
+		"note": "Said when the filter keeps part of the roster: {matches} agents of {total} total. The plural arm is chosen by {total}: the noun agrees with the roster size, not with the matches. Both numbers print as Latin digits, and the phrase reads like `4 of 150 agents match`. One complete sentence with its own plural arms, so the count, noun and verb can be reordered freely; add every plural category the language needs (and drop `one` if it has none). Do not split it into fragments. The sibling footer_match_agents says it when everything matches.",
+		"placeholders": {
+			"matches": "how many agents match the search, Latin digits, no thousands separator",
+			"total": "how many agents the roster holds; it also picks the plural arm"
+		}
+	},
+	"ui.chat.header_identity.footer_partial_teams": {
+		"role": "footer line of the header team menu while a search is typed and only some teams match it",
+		"tone": "`N of M` count plus a verb, no trailing punctuation",
+		"length": "A few words.",
+		"note": "The team twin of footer_partial_agents; keep the two parallel. The plural arm is chosen by {total}: the noun agrees with the roster size, not with the matches. Both numbers print as Latin digits, and the phrase reads like `4 of 150 teams match`. One complete sentence with its own plural arms, so the count, noun and verb can be reordered freely; add every plural category the language needs (and drop `one` if it has none). Do not split it into fragments.",
+		"placeholders": {
+			"matches": "how many teams match the search, Latin digits, no thousands separator",
+			"total": "how many teams the roster holds; it also picks the plural arm"
+		}
+	},
+	"ui.chat.header_identity.no_settable_typed": {
+		"role": "footer line of the header agent menu when a search is typed and no profile left in the list may take the seat",
+		"tone": "one sentence, a statement then two ways out after an em dash, full stop",
+		"length": "One or two lines in the menu's footer.",
+		"note": "Tells the reader why nothing can be picked and names the two exits that exist: edit the search, or switch the team (the team picker is the control beside this one). `the seat` means the agent slot of the conversation, which the team's manager leads. Do not promise a `no team` action: this screen has none.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.no_settable": {
+		"role": "footer line of the header agent menu when no profile in the list may take the seat and no search is typed",
+		"tone": "one sentence, a statement then one way out after an em dash, full stop",
+		"length": "One line in the menu's footer.",
+		"note": "The sibling of no_settable_typed without the search exit; same meaning of `the seat` (the conversation's agent slot). Keep the two parallel.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.cannot_take_seat": {
+		"role": "spoken announcement when the reader presses Enter on a menu row the team's rule refuses",
+		"tone": "one short sentence, full stop",
+		"length": "One short sentence.",
+		"note": "Read aloud by a screen reader and shown in the menu's footer. {label} is the row's own name, user data: keep it verbatim and in place. `the seat` means the conversation's agent slot.",
+		"placeholders": {
+			"label": "the refused row's own display name, the reader's data; never translate or trim it"
+		}
+	},
+	"ui.chat.header_identity.needs_delegating_profile": {
+		"role": "description line of a menu row that the team's rule refuses, and part of that row's accessible name",
+		"tone": "short sentence, full stop",
+		"length": "WIDTH-CRITICAL: the row's description slot clips at about 43 characters, so keep the translation at or under that; the first words must carry the meaning.",
+		"note": "Says what THIS row would have to be to take the seat: a profile that can delegate (a coordinating profile), because the team's manager leads the seat. The full rule is team_led_by_manager; this line only has to survive the clip.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.team_led_by_manager": {
+		"role": "caption above the header agent menu's list stating the team's rule for the agent seat",
+		"tone": "one sentence with a semicolon, full stop",
+		"length": "One or two lines above the list.",
+		"note": "States both halves of the rule: the team is led by its manager, and only the manager and profiles that can delegate may take the seat. {team} is the team's name. `profiles that can delegate` matches the role/specialist vocabulary used elsewhere in the app; `its manager` is a plain description here, not a name.",
+		"placeholders": {
+			"team": "the team's own display name (its label when it has one, otherwise its slug); never translate it"
+		}
+	},
+	"ui.chat.header_identity.agent_seat_closed_title": {
+		"role": "lead line of the note shown when a team has closed the agent seat, and the name of that dialog for screen readers",
+		"tone": "short statement, sentence case, no trailing punctuation",
+		"length": "One short line.",
+		"note": "Sits above the runtime's own refusal sentence (which is not translated: it is a fixed cross-repo contract) and names the team the way the team chip does. {team} is the team's display name.",
+		"placeholders": {
+			"team": "the team's own display name (its label when it has one, otherwise its slug); never translate it"
+		}
+	},
+	"ui.chat.header_identity.its_manager_label": {
+		"role": "text of the agent chip while a team owns the seat and the manager's name is unknown",
+		"tone": "lowercase noun phrase, no trailing punctuation",
+		"length": "WIDTH-CRITICAL: a compact chip label, a few characters to about 14.",
+		"note": "The chip stands for the team's manager when neither the host nor the roster has named them, and the lowercase phrase tells it apart from the team chip beside it. It is only the chip's text: the runtime's closure sentence next to it keeps its own fixed English wording.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.switch_team_failed": {
+		"role": "error toast when switching the conversation's team fails and the backend gave no reason",
+		"tone": "one short sentence, no trailing punctuation",
+		"length": "One short line in a toast.",
+		"note": "The fallback text only: when the backend names a reason that reason is shown instead. The agent twin is switch_agent_failed.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.switch_agent_failed": {
+		"role": "error toast when switching the conversation's agent fails and the backend gave no reason",
+		"tone": "one short sentence, no trailing punctuation",
+		"length": "One short line in a toast.",
+		"note": "The fallback text only: when the backend names a reason that reason is shown instead. The team twin is switch_team_failed.",
+		"placeholders": {}
+	},
 	"ui.chat.region.composer": {
 		"role": "accessible name of the composer landmark",
 		"tone": "noun phrase, sentence case, no trailing punctuation",

@@ -191,7 +191,20 @@ export const ArchiveConversationDialog: FC = () => {
 									{titleParts.before}
 								</span>
 							)}
-							<span className="min-w-0 truncate">{titleParts.name}</span>
+							{/*
+							 * THE NAME SETS ITS OWN DIRECTION (`dir="auto"` on the truncating
+							 * box itself, not a `<bdi>` inside it): `text-overflow` clips from
+							 * the END of the box's own direction, so a name inheriting an RTL
+							 * locale's direction (Urdu) lost the first letters of an English
+							 * title behind the ellipsis ("…llo from the mock provider").
+							 * A conversation name is the user's own text and may be in either
+							 * script whatever the interface language is. No `isolateLtr` here:
+							 * the name is not interpolated into the translated sentence (it
+							 * is cut at its slot above), so there is nothing to isolate from.
+							 */}
+							<span dir="auto" className="min-w-0 truncate">
+								{titleParts.name}
+							</span>
 							{titleParts.after !== "" && (
 								<span className="shrink-0 whitespace-pre">
 									{titleParts.after}
