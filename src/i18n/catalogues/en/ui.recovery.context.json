@@ -1,0 +1,246 @@
+{
+	"ui.recovery.approval.setting_auto": {
+		"role": "in-flight label on the pressed approval-policy link",
+		"tone": "neutral",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Replaces 'Set auto for this session' / 'Set auto for all sessions' while the change is being saved. 'auto' is the approval mode that runs tools without asking."
+	},
+	"ui.recovery.approval.all_done": {
+		"role": "confirmation label on a finished link-button, with a check mark",
+		"tone": "calm, factual",
+		"length": "one short line",
+		"placeholders": {},
+		"note": "Shown in place of 'Set auto for all sessions' after the change was saved. States the state that now holds, not an action."
+	},
+	"ui.recovery.approval.session_done": {
+		"role": "confirmation label on a finished link-button, with a check mark",
+		"tone": "calm, factual",
+		"length": "one short line",
+		"placeholders": {},
+		"note": "Shown in place of 'Set auto for this session' after the change was saved."
+	},
+	"ui.recovery.composer.no_provider": {
+		"role": "status line directly under the message box, beside a 'Connect a provider' button",
+		"tone": "plain, not alarming",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Always visible while nothing is connected. Says why Send will not work before the user presses it."
+	},
+	"ui.recovery.composer.no_model": {
+		"role": "status line directly under the message box, beside a 'Choose a model' button",
+		"tone": "plain",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "A provider is connected but no model is set as the default."
+	},
+	"ui.recovery.composer.offline": {
+		"role": "status line under the message box, beside a 'Reconnect' button",
+		"tone": "plain, reassuring",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Local Operator is the product name; keep it untranslated. The background service is the local process the app talks to."
+	},
+	"ui.recovery.send.connect_provider": {
+		"role": "button",
+		"tone": "direct",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Opens the dialog for connecting a model provider."
+	},
+	"ui.recovery.send.choose_model": {
+		"role": "button",
+		"tone": "direct",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Opens the provider dialog where the default model is chosen."
+	},
+	"ui.recovery.send.reconnect": {
+		"role": "button",
+		"tone": "direct",
+		"length": "1-2 words",
+		"placeholders": {},
+		"note": "Re-dials the app's background service."
+	},
+	"ui.recovery.send.reconnecting": {
+		"role": "in-flight button label",
+		"tone": "neutral",
+		"length": "1-2 words",
+		"placeholders": {},
+		"note": "Shown while the reconnect press is running."
+	},
+	"ui.recovery.send.still_offline": {
+		"role": "status text after a reconnect press that did not work",
+		"tone": "neutral",
+		"length": "one short line",
+		"placeholders": {
+			"time": "a clock time with seconds, already localized"
+		},
+		"note": "Changes on every press (the time has seconds), so the user can see each press ran."
+	},
+	"ui.recovery.local.checking": {
+		"role": "status line with a spinner",
+		"tone": "neutral",
+		"length": "one line",
+		"placeholders": {
+			"brand": "local model app name, e.g. Ollama or LM Studio"
+		},
+		"note": "Shown while the app contacts the local model server."
+	},
+	"ui.recovery.local.running": {
+		"role": "success status line",
+		"tone": "positive",
+		"length": "one line",
+		"placeholders": {
+			"brand": "local model app name"
+		},
+		"note": "The local model server answered."
+	},
+	"ui.recovery.local.running_with_models": {
+		"role": "success status line",
+		"tone": "positive",
+		"length": "one line",
+		"placeholders": {
+			"brand": "local model app name",
+			"count": "number of models the server lists"
+		},
+		"note": "Use the language's own plural categories."
+	},
+	"ui.recovery.local.no_models_title": {
+		"role": "status heading",
+		"tone": "plain",
+		"length": "one line",
+		"placeholders": {
+			"brand": "local model app name"
+		},
+		"note": "The server answered but lists no downloaded models."
+	},
+	"ui.recovery.local.no_models_ollama": {
+		"role": "helper text above a copyable command",
+		"tone": "helpful",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Followed by the command 'ollama pull <model>' on its own line; the sentence ends introducing it."
+	},
+	"ui.recovery.local.no_models_other": {
+		"role": "helper text",
+		"tone": "helpful",
+		"length": "one sentence",
+		"placeholders": {
+			"brand": "local model app name"
+		},
+		"note": "For local servers other than Ollama."
+	},
+	"ui.recovery.local.not_running_title": {
+		"role": "status heading",
+		"tone": "plain, not alarming",
+		"length": "one line",
+		"placeholders": {
+			"brand": "local model app name"
+		},
+		"note": "Nothing answered at the default address."
+	},
+	"ui.recovery.local.not_running_body": {
+		"role": "helper text",
+		"tone": "helpful",
+		"length": "two or three short sentences",
+		"placeholders": {
+			"address": "a URL such as http://localhost:11434/v1; keep verbatim",
+			"brand": "local model app name"
+		},
+		"note": "The app cannot tell 'not installed' from 'not started', so the text gives both next steps."
+	},
+	"ui.recovery.local.download": {
+		"role": "button that opens the download page in the browser",
+		"tone": "direct",
+		"length": "2 words",
+		"placeholders": {
+			"brand": "local model app name"
+		},
+		"note": ""
+	},
+	"ui.recovery.local.start_ollama": {
+		"role": "helper text above a copyable command",
+		"tone": "helpful",
+		"length": "one line",
+		"placeholders": {},
+		"note": "Followed by the command 'ollama serve'."
+	},
+	"ui.recovery.local.no_answer_title": {
+		"role": "status heading",
+		"tone": "plain",
+		"length": "one line",
+		"placeholders": {
+			"address": "a URL; keep verbatim"
+		},
+		"note": "The user set a custom address and nothing answered there."
+	},
+	"ui.recovery.local.no_answer_body": {
+		"role": "helper text",
+		"tone": "helpful",
+		"length": "one sentence",
+		"placeholders": {
+			"brand": "local model app name"
+		},
+		"note": ""
+	},
+	"ui.recovery.local.wrong_server_title": {
+		"role": "status heading",
+		"tone": "plain",
+		"length": "one line",
+		"placeholders": {
+			"address": "a URL; keep verbatim",
+			"brand": "local model app name",
+			"status": "an HTTP status number such as 404"
+		},
+		"note": "A program answered at the address but did not serve the model list."
+	},
+	"ui.recovery.local.wrong_server_body": {
+		"role": "helper text",
+		"tone": "helpful",
+		"length": "one or two sentences",
+		"placeholders": {
+			"brand": "local model app name"
+		},
+		"note": ""
+	},
+	"ui.recovery.local.checked_at": {
+		"role": "small receipt beside the Check again button",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"time": "a clock time with seconds, already localized"
+		},
+		"note": "Changes on every check, so each press visibly lands."
+	},
+	"ui.recovery.local.still_not_found": {
+		"role": "small receipt beside the Check again button after a repeated failed check",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"time": "a clock time with seconds, already localized"
+		},
+		"note": "Shown from the second failed check on."
+	},
+	"ui.recovery.local.copy": {
+		"role": "button beside a terminal command",
+		"tone": "direct",
+		"length": "1 word",
+		"placeholders": {},
+		"note": "Copies the command to the clipboard."
+	},
+	"ui.recovery.local.alternative_body": {
+		"role": "helper text above the hosted-alternative button",
+		"tone": "friendly",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Radient is a product name; keep it untranslated."
+	},
+	"ui.recovery.local.use_radient": {
+		"role": "primary button",
+		"tone": "direct",
+		"length": "4-5 words",
+		"placeholders": {},
+		"note": "Opens the Radient sign-in. Radient is a product name."
+	}
+}

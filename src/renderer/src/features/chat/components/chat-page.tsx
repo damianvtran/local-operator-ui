@@ -4276,6 +4276,7 @@ function SessionPanel({
 		attachments: readonly string[];
 		message?: string;
 		retry?: boolean;
+		code?: string;
 	} | null = !draft
 		? null
 		: draft.submittedText !== undefined &&
@@ -4287,6 +4288,8 @@ function SessionPanel({
 					message: draft.error,
 					retry:
 						draft.errorRetry ?? retryOfferedForFailureCode(draft.errorCode),
+					// The cause's code rides to the row so it can name the fix (D3).
+					code: draft.errorCode,
 				}
 			: (draft.undelivered ?? null);
 	/*
@@ -4328,6 +4331,7 @@ function SessionPanel({
 				recordId: deliveryTurn.recordId,
 				message: deliveryTurn.message,
 				retry: deliveryTurn.retry,
+				code: deliveryTurn.code,
 				/*
 				 * DIMMED WHILE THE BOX HOLDS THIS EXACT PAYLOAD (UX round 1, U4): the row
 				 * keeps its statement - the outcome may be unknowable - but one message

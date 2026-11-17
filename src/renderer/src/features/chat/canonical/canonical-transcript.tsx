@@ -53,6 +53,7 @@ import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
 } from "@features/providers/connect-provider-store";
+import { useProviderStatus } from "@features/providers/use-provider-status";
 import type { AvatarMark } from "@shared/agent-avatar/avatar-presence";
 import {
 	desktopFeatureEnabled,
@@ -63,6 +64,7 @@ import { TextSelectionControls } from "@shared/components/common/text-selection-
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
+import { useServerOffline } from "@shared/hooks/use-connectivity-status";
 import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { scrollRegionToTop } from "@shared/lib/scroll";
@@ -132,6 +134,10 @@ import { MessageAvatar } from "../components/message-item/message-avatar";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
+import {
+	recoveryLabel,
+	useSendRecoveryAction,
+} from "../components/send-recovery-action";
 import { skillBlockNames } from "../components/skill-invocation";
 import { DiffBlock, TraceLine } from "../components/trace";
 import { bridgeReceiptOf } from "../components/trace/bridge-receipt-model";
@@ -179,6 +185,11 @@ import {
 	missingSessionNotice,
 } from "../missing-session-notice";
 import { openTrace } from "../open-trace";
+import {
+	keepsSendAgain,
+	recoveryForFailure,
+	sendBlockFor,
+} from "../send-recovery";
 import {
 	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 	type TranscriptDisplayMode,
@@ -980,6 +991,106 @@ export type CanonicalTranscriptProps = {
 	onStartNewChat?: () => void;
 };
 
+/**
+ * §F3's line under a message that did not go out, with the fix its cause earns.
+ *
+ * THE FIX IS NEW (D3, onboarding friction 2026-11): 62 external users pressed
+ * "Send again" here, and for three causes a resend cannot work - nothing
+ * connected, no model chosen, the background service not answering - the row
+ * offered only that press. `recoveryForFailure` names the fix from the code and
+ * sentence the store kept, with the composer's LIVE verdict as the tie-breaker
+ * (a row that failed while the service was down is fixed by reconnecting). A
+ * configuration fix REPLACES "Send again" (the resend would fail identically
+ * until it is applied); a reconnect sits BESIDE it.
+ *
+ * A component of its own so the two reads it needs (provider census, server
+ * health) mount only for the one row that is undelivered, never for every
+ * user row in the transcript.
+ */
+export const UndeliveredLine: FC<{ undelivered: UndeliveredTurn }> = ({
+	undelivered,
+}) => {
+	useI18nLocale();
+	const { needsProvider, needsModel } = useProviderStatus();
+	const serverOffline = useServerOffline();
+	const recovery = recoveryForFailure({
+		code: undelivered.code,
+		message: undelivered.message,
+		block: sendBlockFor({
+			noProvider: needsProvider,
+			noModel: needsModel,
+			serverOffline,
+		}),
+	});
+	const fix = useSendRecoveryAction();
+	const offerSendAgain =
+		undelivered.retry !== false && keepsSendAgain(recovery);
+	return (
+		<div
+			data-undelivered
+			className={cn(
+				"flex w-full items-center justify-end gap-3 text-danger text-meta",
+			)}
+		>
+			<span className={cn("flex items-center gap-1")}>
+				<CircleAlert aria-hidden="true" className={cn("size-3.5 shrink-0")} />
+				{undelivered.message ?? t("ui.chat.canonical.transcript.not_delivered")}
+			</span>
+			{recovery !== null && (
+				<button
+					type="button"
+					data-undelivered-recovery={recovery}
+					aria-disabled={fix.busy || undefined}
+					className={cn(
+						fix.busy
+							? "text-ink-muted"
+							: "cursor-pointer font-medium underline",
+					)}
+					onClick={() => {
+						if (!fix.busy) fix.run(recovery);
+					}}
+				>
+					{recoveryLabel(recovery, fix.busy)}
+				</button>
+			)}
+			{offerSendAgain && (
+				<button
+					type="button"
+					/*
+					 * DIMMED, NOT GONE, while the composer holds this payload (UX round
+					 * 1, U4): the row keeps its statement and both controls, and the
+					 * box's own Send is the live affordance for this message until the
+					 * text changes. `aria-disabled` rather than `disabled` - see the
+					 * `UndeliveredTurn.retryDisabled` note.
+					 */
+					aria-disabled={undelivered.retryDisabled || undefined}
+					className={cn(
+						undelivered.retryDisabled
+							? "text-ink-muted"
+							: "cursor-pointer underline",
+					)}
+					onClick={(event) => {
+						if (undelivered.retryDisabled) {
+							event.preventDefault();
+							return;
+						}
+						undelivered.onSendAgain();
+					}}
+				>
+					{t("ui.chat.canonical.transcript.send_again")}
+				</button>
+			)}
+			<button
+				type="button"
+				className={cn("cursor-pointer underline")}
+				onClick={undelivered.onEdit}
+			>
+				{t("ui.chat.canonical.transcript.edit")}
+			</button>
+		</div>
+	);
+};
+
 // ---------------------------------------------------------------- rows
 
 /**
@@ -1020,6 +1131,12 @@ export type UndeliveredTurn = {
 	 * so every pre-U4 caller keeps the button as it was.
 	 */
 	retryDisabled?: boolean;
+	/**
+	 * The machine code the store kept for this failure (`draft.errorCode`), so
+	 * the row can name the fix its cause earns (`recoveryForFailure`, D3).
+	 * Absent for a claim nothing classified.
+	 */
+	code?: string;
 	onSendAgain: () => void;
 	onEdit: () => void;
 };
@@ -1822,57 +1939,7 @@ const UserRow = memo(function UserRow({
 				 * (`scripts/renderer-driver.mjs`'s `connection-drop` scene reads it), the
 				 * same structural-marker rule the row's own archive press follows.
 				 */}
-				{undelivered !== null && (
-					<div
-						data-undelivered
-						className={cn(
-							"flex w-full items-center justify-end gap-3 text-danger text-meta",
-						)}
-					>
-						<span className={cn("flex items-center gap-1")}>
-							<CircleAlert
-								aria-hidden="true"
-								className={cn("size-3.5 shrink-0")}
-							/>
-							{undelivered.message ??
-								t("ui.chat.canonical.transcript.not_delivered")}
-						</span>
-						{undelivered.retry !== false && (
-							<button
-								type="button"
-								/*
-								 * DIMMED, NOT GONE, while the composer holds this payload (UX round
-								 * 1, U4): the row keeps its statement and both controls, and the
-								 * box's own Send is the live affordance for this message until the
-								 * text changes. `aria-disabled` rather than `disabled` - see the
-								 * `UndeliveredTurn.retryDisabled` note.
-								 */
-								aria-disabled={undelivered.retryDisabled || undefined}
-								className={cn(
-									undelivered.retryDisabled
-										? "text-ink-muted"
-										: "cursor-pointer underline",
-								)}
-								onClick={(event) => {
-									if (undelivered.retryDisabled) {
-										event.preventDefault();
-										return;
-									}
-									undelivered.onSendAgain();
-								}}
-							>
-								{t("ui.chat.canonical.transcript.send_again")}
-							</button>
-						)}
-						<button
-							type="button"
-							className={cn("cursor-pointer underline")}
-							onClick={undelivered.onEdit}
-						>
-							{t("ui.chat.canonical.transcript.edit")}
-						</button>
-					</div>
-				)}
+				{undelivered !== null && <UndeliveredLine undelivered={undelivered} />}
 			</div>
 		</MessageContainer>
 	);

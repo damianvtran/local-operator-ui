@@ -345,16 +345,15 @@ import {
 	CredentialOverlay,
 	composerTextBox,
 } from "@features/chat/components/credential-overlay";
+import { SendBlockedLine } from "@features/chat/components/send-recovery-action";
 /*
  * The pre-emptive quota notice (design §6): its own line beside the connect
  * line above, on the empty band only. Imported like the connect card next
  * door, and the module documents its own lift discipline.
  */
 import { QuotaNoticeLine } from "@features/chat/quota-notice/quota-notice-line";
-import {
-	ConnectProviderCard,
-	NoProviderLine,
-} from "@features/providers/connect-provider-card";
+import { sendBlockFor } from "@features/chat/send-recovery";
+import { ConnectProviderCard } from "@features/providers/connect-provider-card";
 import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
@@ -942,6 +941,16 @@ export type MessageInputProps = {
 	 * Typing is still allowed; the send is not, and the line under the box says why.
 	 */
 	noModel?: boolean;
+	/**
+	 * The app's background service is not answering (`useConnectivityStatus`).
+	 *
+	 * NOT a send gate: a press still goes out and the store's own failure
+	 * classes still answer it, because the health read can lag a recovery by one
+	 * poll. It is the composer's half of D4 (onboarding friction, 2026-11): the
+	 * box says, before the press, that nothing will answer right now, and offers
+	 * the reconnect the pane's status strip offers.
+	 */
+	serverOffline?: boolean;
 	agentData?: AgentDetails | null;
 	/**
 	 * Working directory for this conversation, and the way to change it.
@@ -1882,6 +1891,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			initialSuggestions,
 			noProvider = false,
 			noModel = false,
+			serverOffline = false,
 			agentData,
 			cwd,
 			cwdWritePath,
@@ -5106,6 +5116,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * note on `holdCaretOnRefusedPress`.
 		 */
 		const sendRefused = noProvider || noModel;
+		/*
+		 * THE BLOCK THE LINE UNDER THE BOX STATES, before any press (D4). Wider than
+		 * `sendRefused` by one term, `serverOffline`, which is stated but does not
+		 * refuse - see the prop's note.
+		 */
+		const sendBlock = sendBlockFor({ noProvider, noModel, serverOffline });
 		/**
 		 * Refuse a send and say so, which is what the KEY already does (U27).
 		 *
@@ -9631,6 +9647,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									onKeyDown={handleComposerKeyDown}
 									onPointerDown={() => {
 										/*
+										 * A CLICK INTO A BOX THAT CANNOT SEND lands on the reason (D4):
+										 * ~32 users rage-clicked this field with nothing connected, and
+										 * the field answered with a caret and nothing else. Typing stays
+										 * allowed; the line under the box steps up to full ink so the
+										 * click visibly reaches the explanation and its one-click fix.
+										 */
+										if (sendBlock) explainRefusedSend();
+										/*
 										 * "I am about to type here." An ask gate can advance while the
 										 * user is on their way into this box, and the restore must not
 										 * move them off it: the characters they type would reach
@@ -10674,19 +10698,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * (the card takes the chips' slot there); the two mirrors main kept for a
 				 * centred band are dropped with the centring they existed for.
 				 */}
-				{noProvider && !showEmptyChatPrompt ? (
+				{/*
+				 * ONE LINE FOR EVERY "CANNOT SEND" STATE, ALWAYS VISIBLE WHILE IT HOLDS
+				 * (D4, onboarding friction 2026-11). It replaces two lines: the
+				 * no-provider line (non-empty chats only) and the five-second hint a
+				 * refused press raised as plain text - the text users rage-clicked,
+				 * because it named a fix and was not one. The line carries the fix as a
+				 * control, shows on the empty chat too (the connect card above is not
+				 * where the user is typing), and a refused press or a click into the box
+				 * steps it to full ink (`noProviderHint`) instead of making it appear.
+				 */}
+				{sendBlock ? (
 					<div className={cn("mt-2", CHAT_MEASURE)}>
-						<NoProviderLine />
-					</div>
-				) : null}
-
-				{(noProvider || noModel) && noProviderHint ? (
-					<div className={cn("mt-2", CHAT_MEASURE)}>
-						<output className="block text-body-sm text-ink-muted">
-							{noModel
-								? t("ui.chat.composer_notes.hint.choose_model")
-								: t("ui.chat.composer_notes.hint.connect_provider")}
-						</output>
+						<SendBlockedLine block={sendBlock} emphasis={noProviderHint} />
 					</div>
 				) : null}
 			</form>

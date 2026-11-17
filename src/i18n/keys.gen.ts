@@ -159,6 +159,7 @@ import enUiPhonePairing from "./catalogues/en/ui.phone_pairing.json";
 import enUiPresence from "./catalogues/en/ui.presence.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
 import enUiProviders from "./catalogues/en/ui.providers.json";
+import enUiRecovery from "./catalogues/en/ui.recovery.json";
 import enUiSchedulesErrors from "./catalogues/en/ui.schedules.errors.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
 import enUiSchedulesMonitors from "./catalogues/en/ui.schedules.monitors.json";
@@ -330,6 +331,7 @@ import esUiPhonePairing from "./catalogues/es/ui.phone_pairing.json";
 import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
 import esUiProviders from "./catalogues/es/ui.providers.json";
+import esUiRecovery from "./catalogues/es/ui.recovery.json";
 import esUiSchedulesErrors from "./catalogues/es/ui.schedules.errors.json";
 import esUiSchedules from "./catalogues/es/ui.schedules.json";
 import esUiSchedulesMonitors from "./catalogues/es/ui.schedules.monitors.json";
@@ -501,6 +503,7 @@ import frUiPhonePairing from "./catalogues/fr/ui.phone_pairing.json";
 import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
 import frUiProviders from "./catalogues/fr/ui.providers.json";
+import frUiRecovery from "./catalogues/fr/ui.recovery.json";
 import frUiSchedulesErrors from "./catalogues/fr/ui.schedules.errors.json";
 import frUiSchedules from "./catalogues/fr/ui.schedules.json";
 import frUiSchedulesMonitors from "./catalogues/fr/ui.schedules.monitors.json";
@@ -672,6 +675,7 @@ import hiUiPhonePairing from "./catalogues/hi/ui.phone_pairing.json";
 import hiUiPresence from "./catalogues/hi/ui.presence.json";
 import hiUiProjects from "./catalogues/hi/ui.projects.json";
 import hiUiProviders from "./catalogues/hi/ui.providers.json";
+import hiUiRecovery from "./catalogues/hi/ui.recovery.json";
 import hiUiSchedulesErrors from "./catalogues/hi/ui.schedules.errors.json";
 import hiUiSchedules from "./catalogues/hi/ui.schedules.json";
 import hiUiSchedulesMonitors from "./catalogues/hi/ui.schedules.monitors.json";
@@ -843,6 +847,7 @@ import ruUiPhonePairing from "./catalogues/ru/ui.phone_pairing.json";
 import ruUiPresence from "./catalogues/ru/ui.presence.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
 import ruUiProviders from "./catalogues/ru/ui.providers.json";
+import ruUiRecovery from "./catalogues/ru/ui.recovery.json";
 import ruUiSchedulesErrors from "./catalogues/ru/ui.schedules.errors.json";
 import ruUiSchedules from "./catalogues/ru/ui.schedules.json";
 import ruUiSchedulesMonitors from "./catalogues/ru/ui.schedules.monitors.json";
@@ -1014,6 +1019,7 @@ import urUiPhonePairing from "./catalogues/ur/ui.phone_pairing.json";
 import urUiPresence from "./catalogues/ur/ui.presence.json";
 import urUiProjects from "./catalogues/ur/ui.projects.json";
 import urUiProviders from "./catalogues/ur/ui.providers.json";
+import urUiRecovery from "./catalogues/ur/ui.recovery.json";
 import urUiSchedulesErrors from "./catalogues/ur/ui.schedules.errors.json";
 import urUiSchedules from "./catalogues/ur/ui.schedules.json";
 import urUiSchedulesMonitors from "./catalogues/ur/ui.schedules.monitors.json";
@@ -1185,6 +1191,7 @@ import viUiPhonePairing from "./catalogues/vi/ui.phone_pairing.json";
 import viUiPresence from "./catalogues/vi/ui.presence.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
 import viUiProviders from "./catalogues/vi/ui.providers.json";
+import viUiRecovery from "./catalogues/vi/ui.recovery.json";
 import viUiSchedulesErrors from "./catalogues/vi/ui.schedules.errors.json";
 import viUiSchedules from "./catalogues/vi/ui.schedules.json";
 import viUiSchedulesMonitors from "./catalogues/vi/ui.schedules.monitors.json";
@@ -1356,6 +1363,7 @@ import zhCNUiPhonePairing from "./catalogues/zh-CN/ui.phone_pairing.json";
 import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
 import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
 import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
+import zhCNUiRecovery from "./catalogues/zh-CN/ui.recovery.json";
 import zhCNUiSchedulesErrors from "./catalogues/zh-CN/ui.schedules.errors.json";
 import zhCNUiSchedules from "./catalogues/zh-CN/ui.schedules.json";
 import zhCNUiSchedulesMonitors from "./catalogues/zh-CN/ui.schedules.monitors.json";
@@ -1530,6 +1538,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiPresence,
 	...enUiProjects,
 	...enUiProviders,
+	...enUiRecovery,
 	...enUiSchedulesErrors,
 	...enUiSchedules,
 	...enUiSchedulesMonitors,
@@ -1709,6 +1718,7 @@ export const bundledCatalogues: Readonly<
 		...esUiPresence,
 		...esUiProjects,
 		...esUiProviders,
+		...esUiRecovery,
 		...esUiSchedulesErrors,
 		...esUiSchedules,
 		...esUiSchedulesMonitors,
@@ -1882,6 +1892,7 @@ export const bundledCatalogues: Readonly<
 		...frUiPresence,
 		...frUiProjects,
 		...frUiProviders,
+		...frUiRecovery,
 		...frUiSchedulesErrors,
 		...frUiSchedules,
 		...frUiSchedulesMonitors,
@@ -2055,6 +2066,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiPresence,
 		...hiUiProjects,
 		...hiUiProviders,
+		...hiUiRecovery,
 		...hiUiSchedulesErrors,
 		...hiUiSchedules,
 		...hiUiSchedulesMonitors,
@@ -2228,6 +2240,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiPresence,
 		...ruUiProjects,
 		...ruUiProviders,
+		...ruUiRecovery,
 		...ruUiSchedulesErrors,
 		...ruUiSchedules,
 		...ruUiSchedulesMonitors,
@@ -2401,6 +2414,7 @@ export const bundledCatalogues: Readonly<
 		...urUiPresence,
 		...urUiProjects,
 		...urUiProviders,
+		...urUiRecovery,
 		...urUiSchedulesErrors,
 		...urUiSchedules,
 		...urUiSchedulesMonitors,
@@ -2574,6 +2588,7 @@ export const bundledCatalogues: Readonly<
 		...viUiPresence,
 		...viUiProjects,
 		...viUiProviders,
+		...viUiRecovery,
 		...viUiSchedulesErrors,
 		...viUiSchedules,
 		...viUiSchedulesMonitors,
@@ -2747,6 +2762,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiPresence,
 		...zhCNUiProjects,
 		...zhCNUiProviders,
+		...zhCNUiRecovery,
 		...zhCNUiSchedulesErrors,
 		...zhCNUiSchedules,
 		...zhCNUiSchedulesMonitors,
@@ -11358,6 +11374,40 @@ export type MessageParams = {
 	"ui.providers.provider_labels.this_app_could_not_confirm_the_sign": undefined;
 	"ui.providers.provider_labels.unavailable": undefined;
 	"ui.providers.sign_in_flow.sign_in_could_not_start": undefined;
+	"ui.recovery.approval.all_done": undefined;
+	"ui.recovery.approval.session_done": undefined;
+	"ui.recovery.approval.setting_auto": undefined;
+	"ui.recovery.composer.no_model": undefined;
+	"ui.recovery.composer.no_provider": undefined;
+	"ui.recovery.composer.offline": undefined;
+	"ui.recovery.local.alternative_body": undefined;
+	"ui.recovery.local.checked_at": { time: string };
+	"ui.recovery.local.checking": { brand: string };
+	"ui.recovery.local.copy": undefined;
+	"ui.recovery.local.download": { brand: string };
+	"ui.recovery.local.no_answer_body": { brand: string };
+	"ui.recovery.local.no_answer_title": { address: string };
+	"ui.recovery.local.no_models_ollama": undefined;
+	"ui.recovery.local.no_models_other": { brand: string };
+	"ui.recovery.local.no_models_title": { brand: string };
+	"ui.recovery.local.not_running_body": { address: string; brand: string };
+	"ui.recovery.local.not_running_title": { brand: string };
+	"ui.recovery.local.running": { brand: string };
+	"ui.recovery.local.running_with_models": { count: number; brand: string };
+	"ui.recovery.local.start_ollama": undefined;
+	"ui.recovery.local.still_not_found": { time: string };
+	"ui.recovery.local.use_radient": undefined;
+	"ui.recovery.local.wrong_server_body": { brand: string };
+	"ui.recovery.local.wrong_server_title": {
+		address: string;
+		brand: string;
+		status: string;
+	};
+	"ui.recovery.send.choose_model": undefined;
+	"ui.recovery.send.connect_provider": undefined;
+	"ui.recovery.send.reconnect": undefined;
+	"ui.recovery.send.reconnecting": undefined;
+	"ui.recovery.send.still_offline": { time: string };
 	"ui.schedules.errors.agent_id_missing": undefined;
 	"ui.schedules.errors.agent_id_required": undefined;
 	"ui.schedules.errors.base_url_missing": undefined;
