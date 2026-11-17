@@ -11,9 +11,11 @@ import {
 } from "@shared/api/local-operator/team-bridge-api";
 import { TEAM_TRIAL_START_ENABLED } from "@shared/api/local-operator/team-trial-activation";
 import { InlineErrorBoundary } from "@shared/components/common/inline-error-boundary";
+import { NOTICE_BAND } from "@shared/components/common/notice-band";
 import { Spinner } from "@shared/components/common/spinner";
 import { useLeftSidebarHosted } from "@shared/components/navigation/left-sidebar-host";
 import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
+import { Alert } from "@shared/components/ui/alert";
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
@@ -199,6 +201,7 @@ import {
 	sendFirstMessage,
 	targetConversation,
 	teamBridgeEligibility,
+	teamBridgeRateLimit,
 	unmatchedDirects,
 	visibleConversationRows,
 } from "./team-bridge-model";
@@ -506,6 +509,26 @@ const TeamBridgeGateLoading: FC = () => {
 	);
 };
 
+/**
+ * The page is usable but its last status read was throttled (incident
+ * 2026-11-17): the conversations already loaded stay, and this one line says
+ * why nothing new is arriving and that the page is retrying on its own. The
+ * same neutral band as the trial note; no button, because the retry is
+ * already scheduled and pressing again is what a throttle punishes.
+ */
+export const TeamBridgeRateLimitNote: FC = () => {
+	useI18nLocale();
+	return (
+		<output className="block px-4 pt-2" data-team-bridge-rate-limited="note">
+			<Alert variant="info" className={cn(NOTICE_BAND, "border-transparent")}>
+				<p className="min-w-0 max-w-prose text-body-sm text-ink">
+					{t("ui.teamBridge.rate_limited.reason")}
+				</p>
+			</Alert>
+		</output>
+	);
+};
+
 /** The localized forms shared by every chief label and storage decision. */
 const chiefLabelCopy = (): ChiefLabels => ({
 	named: (agent, person) => t("ui.teamBridge.chief.label", { agent, person }),
@@ -583,6 +606,12 @@ export const TeamBridgeEligibilityPanel: FC<{
 			title: "ui.teamBridge.plan.unavailable_title",
 			reason: "ui.teamBridge.plan.unavailable_reason",
 		},
+		// Only before anything has loaded: a throttle over a loaded page is the
+		// quiet `TeamBridgeRateLimitNote` instead, and the read retries itself.
+		rate_limited: {
+			title: "ui.teamBridge.rate_limited.title", // i18n: ignore catalogue key for t(); the gate's key pattern is lower-case only
+			reason: "ui.teamBridge.rate_limited.reason",
+		},
 	} as const satisfies Record<
 		TeamBridgeEligibility,
 		{ title: string; reason: string }
@@ -595,21 +624,49 @@ export const TeamBridgeEligibilityPanel: FC<{
 			<div className="max-w-lg text-center">
 				{/* The one glyph on the panel: Team Bridge is a people surface, and the
 				    mark gives the centred block an anchor without a control. */}
-				<Users
-					size={20}
-					aria-hidden="true"
-					className="mx-auto mb-3 text-ink-dim"
-				/>
+				{reason === "rate_limited" ? (
+					/* The read is scheduled and this panel can sit unchanged for up to
+					   the edge's 300 s block plus jitter, so the loading panel's spinner
+					   takes the mark's place: "still working", not "failed" (design
+					   round 1, D1). In the mark's slot, not beside the reason, so a
+					   two-line reason does not push it off-centre. Unlabelled: the
+					   reason line already says "Retrying automatically". */
+					<div
+						className="mb-3 flex justify-center"
+						data-team-bridge-rate-limited="gate"
+					>
+						<Spinner size="sm" />
+					</div>
+				) : (
+					<Users
+						size={20}
+						aria-hidden="true"
+						className="mx-auto mb-3 text-ink-dim"
+					/>
+				)}
 				<h1 className="text-balance text-[16px] font-medium text-ink">
 					{t(copy[reason].title)}
 				</h1>
 				<div className="mt-2">
-					{reason !== "off" && reason !== "off_local" && (
-						<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
-							{t("ui.teamBridge.plan.body")}
-						</p>
-					)}
-					<p className="mt-4 text-[12px] leading-snug text-ink-dim">
+					{/* The product description is for someone deciding whether to turn
+					    Team Bridge on. "Off" readers already chose, and a throttled
+					    reader already uses it: under "Slowing down requests" the pitch
+					    reads as an upsell, so the reason sits under the heading
+					    (copy round 1, C2). */}
+					{reason !== "off" &&
+						reason !== "off_local" &&
+						reason !== "rate_limited" && (
+							<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
+								{t("ui.teamBridge.plan.body")}
+							</p>
+						)}
+					<p
+						className={cn(
+							"text-[12px] leading-snug text-ink-dim",
+							// With the pitch gone, the reason sits right under the heading.
+							reason !== "rate_limited" && "mt-4",
+						)}
+					>
 						{t(copy[reason].reason)}
 					</p>
 					{action === "settings" && (
@@ -5439,11 +5496,14 @@ const TeamBridgeOwnedPage: FC<{
 			? "signed_out"
 			: auth.unavailable
 				? "update_required"
-				: auth.error || status.isError || capabilities.isError
-					? "unavailable"
-					: capabilities.data && !ownerGuard
-						? "update_required"
-						: null);
+				: status.isError && teamBridgeRateLimit(null, status.error)
+					? // A throttled status read is "slowing down", never "unavailable".
+						"rate_limited"
+					: auth.error || status.isError || capabilities.isError
+						? "unavailable"
+						: capabilities.data && !ownerGuard
+							? "update_required"
+							: null);
 	const gatePending =
 		eligibility === null &&
 		(!accountId || status.isPending || capabilities.isPending);
@@ -7345,6 +7405,10 @@ const TeamBridgeOwnedPage: FC<{
 				notice={
 					<>
 						{trialNote.note}
+						{eligibility === null &&
+							teamBridgeRateLimit(status.data, status.error) && (
+								<TeamBridgeRateLimitNote />
+							)}
 						<TeamBridgeDefaultOnBanner status={status.data} />
 					</>
 				}

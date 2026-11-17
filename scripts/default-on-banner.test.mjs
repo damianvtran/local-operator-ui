@@ -665,10 +665,18 @@ test("Team Bridge page: the view mounts the banner in its notice slot", () => {
 	);
 	// The slot is a fragment since the Team trial note shares it (the trial
 	// note first, then this banner), so the pin asserts the banner is INSIDE
-	// the `notice` prop rather than its only child.
+	// the `notice` prop rather than its only child. The Team Bridge rate-limit
+	// note (PR #1958) sits between the two, so the pin anchors the fragment's
+	// start and end and requires the banner as its LAST child, without spelling
+	// out every sibling note: `[\s\S]*?` stays inside this one fragment because it
+	// must reach the banner before the first `</>`.
+	const slot = source.match(
+		/notice=\{\s*<>\s*\{trialNote\.note\}([\s\S]*?)<\/>\s*\}/,
+	);
+	assert.ok(slot, "the notice prop is a fragment led by the trial note");
 	assert.match(
-		source,
-		/notice=\{\s*<>\s*\{trialNote\.note\}\s*<TeamBridgeDefaultOnBanner status=\{status\.data\} \/>\s*<\/>\s*\}/,
+		slot[1],
+		/<TeamBridgeDefaultOnBanner status=\{status\.data\} \/>\s*$/,
 	);
 	assert.match(source, /\{notice\}/);
 });

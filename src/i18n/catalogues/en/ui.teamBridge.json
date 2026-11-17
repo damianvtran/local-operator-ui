@@ -427,5 +427,7 @@
 	"ui.teamBridge.typing.one": "{first} is typing",
 	"ui.teamBridge.typing.two": "{first} and {second} are typing",
 	"ui.teamBridge.typing.three": "{first}, {second} and {third} are typing",
-	"ui.teamBridge.typing.several": "Several people are typing"
+	"ui.teamBridge.typing.several": "Several people are typing",
+	"ui.teamBridge.rate_limited.title": "Slowing down requests",
+	"ui.teamBridge.rate_limited.reason": "Too many requests right now, so Team Bridge may be slow to update. Retrying automatically."
 }
