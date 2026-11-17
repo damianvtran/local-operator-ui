@@ -71,6 +71,7 @@ import {
 	useApprovalDecisions,
 	useApprovalRequests,
 	useAuthorizeNotices,
+	useDecidedStoreOwner,
 	useForeignPromptTraces,
 } from "./use-team-bridge-approvals";
 
@@ -541,18 +542,36 @@ function blocksAction(refusal: ApprovalRefusal): boolean {
 }
 
 /** The cooldown sentence, counting down each second (design D4, QA Q3). */
+/*
+ * ONE ANNOUNCEMENT, NOT ONE PER SECOND (design D9). The line sits inside the
+ * refusal `<output>`, a polite atomic live region, so re-rendering its
+ * sentence every second had VoiceOver read it up to eight times in a row. The
+ * region therefore holds a STATIC copy - the wait as it stood when the
+ * refusal arrived, the same sentence in the same words - for screen readers,
+ * and the ticking copy sighted readers watch is `aria-hidden`. No new string:
+ * the English is frozen for translation.
+ */
 function CooldownLine({ until }: { until: number }) {
 	const [seconds, setSeconds] = useState(() => secondsLeft(until));
+	const [announced, setAnnounced] = useState(() => secondsLeft(until));
 	useEffect(() => {
 		setSeconds(secondsLeft(until));
+		setAnnounced(secondsLeft(until));
 		const timer = setInterval(() => setSeconds(secondsLeft(until)), 1000);
 		return () => clearInterval(timer);
 	}, [until]);
 	return (
 		<>
-			{t("ui.teamBridge.approvals.refusal.cooldown", {
-				seconds: Math.max(1, seconds),
-			})}
+			<span className="sr-only">
+				{t("ui.teamBridge.approvals.refusal.cooldown", {
+					seconds: Math.max(1, announced),
+				})}
+			</span>
+			<span aria-hidden="true">
+				{t("ui.teamBridge.approvals.refusal.cooldown", {
+					seconds: Math.max(1, seconds),
+				})}
+			</span>
 		</>
 	);
 }
@@ -623,7 +642,10 @@ function FlowStatus({
 				)}
 			</p>
 			{onDismiss && refusal.kind !== "presence_required" && (
-				<Button size="sm" variant="ghost" onClick={onDismiss}>
+				/* `-my-1` folds the 28 px `sm` button into the 20 px text line, so
+				   Dismiss sits on the sentence's first line under `items-start`
+				   (design D10) and still tops a wrapped sentence. */
+				<Button size="sm" variant="ghost" className="-my-1" onClick={onDismiss}>
 					{t("ui.common.actions.dismiss")}
 				</Button>
 			)}
@@ -808,7 +830,7 @@ function DecisionHistory({
 
 /** The Requests panel, wired: one requests read, the ledger, the decide flow. */
 export function TeamBridgeRequests() {
-	const requests = useApprovalRequests(true);
+	const requests = useApprovalRequests(true, { panel: true });
 	const decisions = useApprovalDecisions(true);
 	const traces = useForeignPromptTraces();
 	const openCard = useOpenCard();
@@ -1013,6 +1035,9 @@ function useCachedSenders(): (messageId: string) => string | null {
  * notice stays both visible and announced over a dialog.
  */
 export function TeamBridgeAuthorizeNotices() {
+	// App-wide like this host, so the decided excerpts go with the account
+	// whichever page is open when it changes (review R2-02).
+	useDecidedStoreOwner();
 	const notices = useAuthorizeNotices();
 	const senderOf = useCachedSenders();
 	if (notices.length === 0 || typeof document === "undefined") return null;

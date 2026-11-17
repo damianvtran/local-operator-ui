@@ -404,6 +404,39 @@ test("a dropped feed clears every standing notice and leaves no guessed trace", 
 	off();
 });
 
+test("S-7 / R2-01: a feed drop retires every unbound own ref, so no later frame can claim it", () => {
+	m.resetClientRefsForTests();
+	m.resetAuthorizeNoticesForTests();
+	// `bound`: our prompting frame was seen before the drop.
+	const bound = m.beginOwnPrompt();
+	apply(prompt("seen", bound));
+	// `unbound`: our prompting frame was lost while the feed was down.
+	const unbound = m.beginOwnPrompt();
+	m.clearAuthorizeNotices();
+	// After reconnect, the first frame carrying the unbound ref is a replay.
+	apply(prompt("replay_after_drop", unbound));
+	assert.equal(
+		noticeById().replay_after_drop.foreign,
+		true,
+		"an unbound ref cannot be claimed after a drop",
+	);
+	// A ref bound before the drop still names its own prompt.
+	apply(prompt("seen", bound, "signed"));
+	apply(prompt("seen", bound));
+	assert.equal(noticeById().seen.foreign, false);
+	apply(prompt("replay_bound", bound));
+	assert.equal(noticeById().replay_bound.foreign, true);
+	// It also holds when the drop finds no notice standing.
+	m.resetAuthorizeNoticesForTests();
+	const quiet = m.beginOwnPrompt();
+	m.clearAuthorizeNotices();
+	apply(prompt("replay_quiet", quiet));
+	assert.equal(noticeById().replay_quiet.foreign, true);
+	m.endOwnPrompt(bound);
+	m.endOwnPrompt(unbound);
+	m.endOwnPrompt(quiet);
+});
+
 test("the feed hook clears notices when the transport drops (wiring)", async () => {
 	const { readFile } = await import("node:fs/promises");
 	const src = await readFile(
@@ -569,7 +602,7 @@ test("D7: the results summary counts decided and not-sent items", () => {
 
 test("U2: what this machine decided is remembered in memory, bounded, never with a body", () => {
 	m.resetDecidedForTests();
-	m.rememberDecided("x", {
+	m.rememberDecided("acct_a", "x", {
 		sender: "Priya",
 		excerpt: "may it deploy?",
 		sessionId: "s1",
@@ -580,13 +613,40 @@ test("U2: what this machine decided is remembered in memory, bounded, never with
 		"sessionId",
 	]);
 	for (let i = 0; i < 250; i++)
-		m.rememberDecided(`m${i}`, { sender: "S", excerpt: null, sessionId: null });
+		m.rememberDecided("acct_a", `m${i}`, {
+			sender: "S",
+			excerpt: null,
+			sessionId: null,
+		});
 	assert.equal(
 		m.decidedSnapshot("x"),
 		null,
 		"the oldest is forgotten past the bound",
 	);
 	assert.notEqual(m.decidedSnapshot("m249"), null);
+});
+
+test("R2-02: the decided excerpts go with the account - switch, sign-out, or a write for another", () => {
+	m.resetDecidedForTests();
+	const snap = { sender: "Priya", excerpt: "may it deploy?", sessionId: "s1" };
+	m.rememberDecided("acct_a", "x", snap);
+	m.retainDecidedFor("acct_a");
+	assert.notEqual(m.decidedSnapshot("x"), null, "same account keeps it");
+	m.retainDecidedFor("acct_b");
+	assert.equal(m.decidedSnapshot("x"), null, "an account switch forgets it");
+	m.rememberDecided("acct_b", "y", snap);
+	m.retainDecidedFor(undefined);
+	assert.equal(m.decidedSnapshot("y"), null, "a sign-out forgets it");
+	m.rememberDecided("acct_a", "z", snap);
+	m.rememberDecided("acct_b", "w", snap);
+	assert.equal(
+		m.decidedSnapshot("z"),
+		null,
+		"a write for another account drops the previous account's excerpts",
+	);
+	assert.notEqual(m.decidedSnapshot("w"), null);
+	m.forgetDecided();
+	assert.equal(m.decidedSnapshot("w"), null);
 });
 
 // -- 5. the wire: the IPC contract refuses what the route would refuse ----------

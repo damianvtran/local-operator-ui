@@ -122,14 +122,14 @@
 	"ui.teamBridge.approvals.approve_locked": {
 		"role": "button",
 		"tone": "neutral",
-		"length": "3-4 words",
+		"length": "2 words",
 		"placeholders": {},
 		"note": "An earlier approval was confirmed but has not reached the teammate. Only this same answer can be sent now."
 	},
 	"ui.teamBridge.approvals.deny_locked": {
 		"role": "button",
 		"tone": "neutral",
-		"length": "3-4 words",
+		"length": "2 words",
 		"placeholders": {},
 		"note": "An earlier denial was confirmed but has not reached the teammate. Only this same answer can be sent now."
 	},
@@ -152,7 +152,7 @@
 	"ui.teamBridge.approvals.excluded": {
 		"role": "inline notice",
 		"tone": "calm",
-		"length": "one sentence",
+		"length": "two sentences",
 		"placeholders": {
 			"count": "number of requests"
 		},
@@ -161,7 +161,7 @@
 	"ui.teamBridge.approvals.reason_no_card": {
 		"role": "row helper text",
 		"tone": "neutral",
-		"length": "one sentence",
+		"length": "two sentences",
 		"placeholders": {},
 		"note": "Explains why the row cannot be decided here."
 	},
@@ -198,7 +198,7 @@
 	"ui.teamBridge.approvals.results_title": {
 		"role": "heading",
 		"tone": "neutral",
-		"length": "1 word",
+		"length": "short count line, e.g. 2 decided · 1 not sent",
 		"placeholders": {
 			"done": "number of requests now decided",
 			"notSent": "number not sent; the second part disappears at zero"
@@ -243,7 +243,7 @@
 	"ui.teamBridge.approvals.result.unconfirmed": {
 		"role": "result label",
 		"tone": "calm",
-		"length": "short",
+		"length": "two sentences",
 		"placeholders": {},
 		"note": "Team Bridge approvals panel."
 	},
@@ -278,7 +278,7 @@
 			"count": "number of affected requests",
 			"names": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
 		},
-		"note": "{names} is a comma-separated list of display names."
+		"note": "{names} is already joined with the locale's own list words (e.g. \"Priya and Omar\"); do not add separators."
 	},
 	"ui.teamBridge.approvals.refusal.locked": {
 		"role": "inline status",
@@ -297,7 +297,7 @@
 	"ui.teamBridge.approvals.refusal.dismissed": {
 		"role": "inline status",
 		"tone": "calm",
-		"length": "two sentences",
+		"length": "three sentences",
 		"placeholders": {},
 		"note": "Team Bridge approvals panel."
 	},

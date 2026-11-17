@@ -742,7 +742,9 @@ export const RequestsNoneWaiting: Story = {
 };
 export const RequestsOpen: Story = {
 	args: {
-		requests: { waiting: 3, panel: requestsPanel },
+		/* The panel lists one decidable row, so the badge counts one (design
+		   D11): a frame whose count disagrees with its list misleads the reader. */
+		requests: { waiting: 1, panel: requestsPanel },
 		initialQuickView: "requests",
 	},
 };

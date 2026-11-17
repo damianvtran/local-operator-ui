@@ -57,6 +57,7 @@ import {
 	useId,
 	useLayoutEffect,
 	useMemo,
+	useReducer,
 	useRef,
 	useState,
 } from "react";
@@ -694,12 +695,12 @@ export type TeamBridgePageViewProps = {
 	requests?: { waiting: number; panel: ReactNode };
 	/**
 	 * Set while the address asks for the Requests view (`?view=requests`, the
-	 * nav row's landing while it counts requests - UX review U1). The view opens
-	 * Requests once and calls `onRequestsViewConsumed` so the parameter is
-	 * cleared and a later refetch cannot pull the reader back.
+	 * nav row's landing while it counts requests - UX review U1). The container
+	 * latches it until the reader leaves Requests (QA Q6) and also seeds it as
+	 * `initialQuickView`; this flag covers a view already mounted when the
+	 * request arrives, opening Requests once the slot exists.
 	 */
 	requestsViewRequested?: boolean;
-	onRequestsViewConsumed?: () => void;
 	/** Page-lifetime data journal; no live mutation closure survives an auth epoch. */
 	draftJournal?: OwnedDraft;
 	isDraftCurrent?: () => boolean;
@@ -1048,7 +1049,6 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	ownerAudit,
 	requests,
 	requestsViewRequested = false,
-	onRequestsViewConsumed,
 	renderThreadPane,
 	threadLink,
 	onCloseThread,
@@ -1664,8 +1664,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	};
 	/*
 	 * `?view=requests` opens Requests once the slot exists (the requests read
-	 * may still be in flight on a cold open), then hands the parameter back.
-	 * Kept in a ref so the effect runs on the two facts that matter, not on
+	 * may still be in flight on a cold open). The container owns clearing the
+	 * parameter (QA Q6: consuming it here lost it on the next mount). Kept in a ref so the effect runs on the two facts that matter, not on
 	 * every render's new `openQuickView` closure.
 	 */
 	const openQuickViewRef = useRef(openQuickView);
@@ -1674,8 +1674,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	useEffect(() => {
 		if (!requestsViewRequested || !requestsSlotReady) return;
 		openQuickViewRef.current("requests");
-		onRequestsViewConsumed?.();
-	}, [requestsViewRequested, requestsSlotReady, onRequestsViewConsumed]);
+	}, [requestsViewRequested, requestsSlotReady]);
 	/*
 	 * THE PANEL BELONGS TO THE ROOM IT WAS OPENED FOR (review round 1, R1). The
 	 * panel is keyed by conversation, so a selection change while it is open
@@ -3083,7 +3082,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						type="button"
 						aria-current={quickView === "requests" ? "page" : undefined}
 						onClick={() => openQuickView("requests")}
-						className="flex h-8 items-center gap-2 rounded-md px-2 text-[14px] text-ink-muted hover:bg-row-hover hover:text-ink"
+						className={cn(
+							"flex h-8 items-center gap-2 rounded-md px-2 text-[14px]",
+							/* Visibly current while open, like Archived (design D8): the
+							   rail must not keep a conversation highlighted while the
+							   main region shows Approvals. */
+							quickView === "requests"
+								? rowCurrent
+								: "text-ink-muted hover:bg-row-hover hover:text-ink",
+						)}
 					>
 						<Inbox size={16} aria-hidden="true" />
 						<span className="min-w-0 flex-1 truncate text-start">
@@ -5130,6 +5137,9 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	 * falls back silently like any other remembered target.
 	 */
 	const clickCarry = useRef<ClickCarry | null>(null);
+	/* The nav badge's `?view=requests` landing, carried across the same owner
+	   remount (QA Q6); see `requestsViewParam` below. A view preference only. */
+	const requestsLandingCarry = useRef(false);
 	// Remount immediately at the real auth transition, before stale TB status can
 	// render. Retain only original-owner data; never carry an A callback into B.
 	return (
@@ -5140,6 +5150,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			receipts={receipts.current}
 			messageLinkCarry={messageLink}
 			clickCarry={clickCarry}
+			requestsLandingCarry={requestsLandingCarry}
 		/>
 	);
 };
@@ -5200,12 +5211,20 @@ const TeamBridgeOwnedPage: FC<{
 	accountId?: string;
 	messageLinkCarry: { current: TeamBridgeMessageLink | null };
 	clickCarry: { current: ClickCarry | null };
+	requestsLandingCarry: { current: boolean };
 	drafts: Map<string, OwnedDraft>;
 	receipts: Map<
 		string,
 		Map<string, { id: string; tenantId: string | undefined }>
 	>;
-}> = ({ accountId, drafts, receipts, messageLinkCarry, clickCarry }) => {
+}> = ({
+	accountId,
+	drafts,
+	receipts,
+	messageLinkCarry,
+	clickCarry,
+	requestsLandingCarry,
+}) => {
 	/* The feature's one cache reader: the opening snapshot below is read from it, and
 	   the writes that patch cached pages run through it. */
 	const client = useQueryClient();
@@ -5734,19 +5753,45 @@ const TeamBridgeOwnedPage: FC<{
 	 * may exist that could not be read, and the panel says so with Retry. Only
 	 * "this daemon has no approvals routes" hides it.
 	 */
+	/*
+	 * STICKY ONCE A READ HAS FAILED (QA Q2, round 2). `isError` alone is not
+	 * stable: TanStack Query v5 resets a no-data query to `pending` with
+	 * `error: null` the moment it refetches, so a slot drawn on `isError`
+	 * vanished on every poll or retry - and with Requests open it unmounted and
+	 * remounted the panel, whose mount refetched, in a loop. The last SETTLED
+	 * error is kept instead; a later success replaces it with data.
+	 */
+	const lastRequestsError = useRef<unknown>(null);
+	if (approvalRequests.isError)
+		lastRequestsError.current = approvalRequests.error;
+	else if (approvalRequests.data) lastRequestsError.current = null;
 	const requestsSlot =
 		readsEnabled &&
 		(approvalRequests.data ||
-			(approvalRequests.isError &&
-				!approvalsUnsupported(approvalRequests.error)))
+			(lastRequestsError.current !== null &&
+				!approvalsUnsupported(lastRequestsError.current)))
 			? {
 					waiting: approvalRequests.data?.pending_count ?? 0,
 					panel: <TeamBridgeRequests />,
 				}
 			: undefined;
-	const requestsViewRequested =
+	/*
+	 * THE BADGE'S LANDING SURVIVES A REMOUNT (QA Q6, round 2). On a cold open
+	 * both this owner (keyed by the auth token) and the view (keyed by account,
+	 * scope and target) mount more than once while those resolve; consuming
+	 * `?view=requests` on the first mount lost it on the next. The request is
+	 * therefore latched in `requestsLandingCarry`, which lives ABOVE the owner
+	 * remount like the notification carries, and is handed to EVERY view mount
+	 * as its initial quick view. The address parameter is cleared at once (so a
+	 * refetch or a back navigation cannot pull the reader back); the latch ends
+	 * only when the view reports that the reader has left Requests.
+	 */
+	const requestsViewParam =
 		searchParams.get(TEAM_BRIDGE_REQUESTS_VIEW_PARAM) === "requests";
-	const consumeRequestsView = useCallback(() => {
+	if (requestsViewParam) requestsLandingCarry.current = true;
+	const [, endRequestsLanding] = useReducer((n: number) => n + 1, 0);
+	useEffect(() => {
+		if (!requestsViewParam) return;
 		setSearchParams(
 			(current) => {
 				const next = new URLSearchParams(current);
@@ -5755,7 +5800,8 @@ const TeamBridgeOwnedPage: FC<{
 			},
 			{ replace: true },
 		);
-	}, [setSearchParams]);
+	}, [requestsViewParam, setSearchParams]);
+	const requestsViewRequested = requestsLandingCarry.current;
 
 	useEffect(() => {
 		if (!(requestedConversation || requestedRowType) || !requestedTenant)
@@ -6041,6 +6087,11 @@ const TeamBridgeOwnedPage: FC<{
 	const rememberView = (
 		patch: Partial<TeamBridgeViewMemory> & { target: TeamBridgeTarget },
 	) => {
+		// The reader left Requests: the badge's landing (QA Q6) has done its job.
+		if (patch.quickView !== "requests" && requestsLandingCarry.current) {
+			requestsLandingCarry.current = false;
+			endRequestsLanding();
+		}
 		if (!accountId) return;
 		const storage = browserDraftStorage();
 		const remembered = patch.target;
@@ -6846,7 +6897,6 @@ const TeamBridgeOwnedPage: FC<{
 				ownerAudit={ownerAudit}
 				requests={requestsSlot}
 				requestsViewRequested={requestsViewRequested}
-				onRequestsViewConsumed={consumeRequestsView}
 				key={viewKey}
 				draftJournal={draftJournal}
 				isDraftCurrent={isCurrentOwner}
@@ -6876,11 +6926,13 @@ const TeamBridgeOwnedPage: FC<{
 				   target they were recorded on: a view mounted for any other target
 				   opens as before (timeline at the newest message). */
 				initialQuickView={
-					rememberedTargetKey !== null &&
-					target !== null &&
-					rememberedTargetKey === draftTargetKey(target)
-						? (viewMemory.current.view?.quickView ?? null)
-						: null
+					requestsViewRequested
+						? "requests"
+						: rememberedTargetKey !== null &&
+								target !== null &&
+								rememberedTargetKey === draftTargetKey(target)
+							? (viewMemory.current.view?.quickView ?? null)
+							: null
 				}
 				initialScroll={rememberedScroll(viewMemory.current.view, target)}
 				onViewMemory={rememberView}

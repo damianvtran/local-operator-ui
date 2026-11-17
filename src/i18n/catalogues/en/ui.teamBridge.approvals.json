@@ -35,7 +35,7 @@
 	"ui.teamBridge.approvals.result.not_sent": "Not sent",
 	"ui.teamBridge.approvals.refusal.in_flight": "A Touch ID check is already open on this Mac. Confirm or cancel it first. Nothing was decided.",
 	"ui.teamBridge.approvals.refusal.cooldown": "{seconds, plural, one {Touch ID was just dismissed. You can try again in {seconds} second. Nothing was decided.} other {Touch ID was just dismissed. You can try again in {seconds} seconds. Nothing was decided.}}",
-	"ui.teamBridge.approvals.refusal.locked_named": "{count, plural, one {Your answer to {names}'s request hasn't been sent yet, and it can't be changed.} other {Your answers to requests from {names} haven't been sent yet, and they can't be changed.}} Send each answer from its row to finish. Nothing was decided.",
+	"ui.teamBridge.approvals.refusal.locked_named": "{count, plural, one {Your answer to {names}'s request hasn't been sent yet, and it can't be changed. Send it from its row to finish.} other {Your answers to requests from {names} haven't been sent yet, and they can't be changed. Send each answer from its row to finish.}} Nothing was decided.",
 	"ui.teamBridge.approvals.refusal.locked": "One of these requests already has an answer that hasn't been sent, and it can't be changed. Send that answer from its row to finish. Nothing was decided.",
 	"ui.teamBridge.approvals.refusal.presence_required": "Touch ID isn't available on this Mac right now, so you can't decide from this list. Answer each request from its approval card in chat instead. Nothing was decided.",
 	"ui.teamBridge.approvals.refusal.dismissed": "Touch ID was not confirmed. Nothing was decided. Wait a few seconds before you try again.",

@@ -279,6 +279,28 @@ function claimOwnPrompt(
 	return bound === authorizeId;
 }
 
+/*
+ * A sentinel binding no frame can carry: `parseAuthorizeFrame` admits only
+ * `authorize_id`s matching `ID_PATTERN` (1-128 chars), so the empty string
+ * never equals one and a ref bound to it can never be claimed again.
+ */
+const RETIRED_REF = "";
+
+/**
+ * Feed dropped (security S-7 / review R2-01): our own `prompting` frame may
+ * have been published while we were not listening, and the feed is live-only,
+ * so it is never redelivered. An UNBOUND pending ref would then bind to the
+ * first frame this renderer sees carrying it - which, after the drop, could be
+ * a replay of the ref read off another subscription. Retiring every unbound
+ * pending ref fails safe: the flow still ends it in its `finally`, and our
+ * own frame, if it does arrive late, is labelled foreign (the warning side).
+ * A ref already bound keeps its binding: that frame was seen, so it is ours.
+ */
+export function retireUnboundOwnRefs(): void {
+	for (const [ref, bound] of pendingRefs)
+		if (bound === null) pendingRefs.set(ref, RETIRED_REF);
+}
+
 /** Test seam: forget every pending ref. */
 export function resetClientRefsForTests(): void {
 	pendingRefs.clear();
@@ -438,6 +460,9 @@ export function applyAuthorizeFrame(raw: unknown, frameKey?: string): void {
  * unknown, and a guess would be a false record.
  */
 export function clearAuthorizeNotices(): void {
+	// Before the early return: a drop with no notice standing is exactly the
+	// case where our own frame was the one lost.
+	retireUnboundOwnRefs();
 	if (prompting.size === 0) return;
 	prompting.clear();
 	snapshot = [];
@@ -757,11 +782,38 @@ export type DecidedSnapshot = {
  */
 const DECIDED_LIMIT = 200;
 const decided = new Map<string, DecidedSnapshot>();
+/*
+ * The account the remembered excerpts were captured under (review R2-02).
+ * The excerpts are chat content that account was shown; they go when the
+ * account does - on a switch or a sign-out - the same moment its rows leave
+ * the screen, rather than lingering in renderer memory until a reload.
+ */
+let decidedOwner: string | null = null;
+
+/** Drop every remembered excerpt. */
+export function forgetDecided(): void {
+	decided.clear();
+	decidedOwner = null;
+}
+
+/**
+ * Keep the store only while `accountId` is the account it was written for;
+ * `undefined` (signed out, or the account not yet resolved) forgets it too,
+ * which errs toward losing an excerpt, never toward showing it to another
+ * account.
+ */
+export function retainDecidedFor(accountId: string | undefined): void {
+	if (accountId === undefined || accountId !== decidedOwner) forgetDecided();
+	if (accountId !== undefined) decidedOwner = accountId;
+}
 
 export function rememberDecided(
+	accountId: string,
 	messageId: string,
 	snapshot: DecidedSnapshot,
 ): void {
+	if (decidedOwner !== accountId) forgetDecided();
+	decidedOwner = accountId;
 	decided.delete(messageId);
 	decided.set(messageId, snapshot);
 	while (decided.size > DECIDED_LIMIT) {
@@ -777,7 +829,7 @@ export function decidedSnapshot(messageId: string): DecidedSnapshot | null {
 
 /** Test seam. */
 export function resetDecidedForTests(): void {
-	decided.clear();
+	forgetDecided();
 }
 
 // -- the authorize -> decide flow, without React ------------------------------

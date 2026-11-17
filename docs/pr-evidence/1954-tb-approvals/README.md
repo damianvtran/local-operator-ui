@@ -23,3 +23,15 @@ presentational — the live daemon path is QA's rig, not these frames.
 | `page-rail-requests-3-*`, `page-rail-requests-0-*`, `page-requests-open-*` | D1, C11 | The Approvals rail entry with and without its badge, and opened |
 | `nav-before-unread-only-*`, `nav-after-requests-takeover-*` | D1 | Sidebar row: unread count before, "2 requests waiting" after |
 | `loading-*`, `empty-*`, `load-error-*`, `authorizing-*` | — | Unchanged states, re-shot on the new head for both themes |
+
+## Round-2 remediation re-shoots
+
+These were re-captured the same way: the harness browser against a Storybook booted on port 6954 by `scripts/with-storybook.mjs`, at 2560×1440, in both themes. Every other frame is unchanged from round 1.
+
+| Frames | Finding | What it shows |
+|---|---|---|
+| `page-requests-open-*` | D8, D11 | Approvals carries the rail's `rowCurrent` fill while it is open, and its badge reads 1 for the one listed row |
+| `cooldown-*`, `locked-refusal-*` | D10, C12 | Dismiss sits on the sentence line. Glyph tops are 345 for the sentence and 347 for Dismiss (cooldown), and 329 and 331 (locked), in device px; round 1 had a 10 px offset. The locked refusal uses the singular "Send it from its row to finish." |
+| `load-error-*` | Q2 | The Requests error panel, with "Requests could not be loaded." and "Try again". The panel is presentational, so these are byte-identical to round 1. The Q2 fix sits in the container, and the live rig plus `scripts/team-bridge-approvals-page.test.mjs` prove it |
+
+D9 has no visual change. The cooldown line now holds a static `sr-only` sentence for the live region, and the ticking sentence is `aria-hidden`.

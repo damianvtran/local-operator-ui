@@ -8,6 +8,7 @@ import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
  * query keys, the account fence and the flow's state.
  */
 import { TeamBridgeApprovalsApi } from "@shared/api/local-operator/team-bridge-approvals-api";
+import { useObservedRadientAuthority } from "@shared/hooks/radient-account-authority";
 import { t } from "@shared/i18n";
 import {
 	type QueryClient,
@@ -31,6 +32,7 @@ import {
 	mapApprovalRefusal,
 	rememberDecided,
 	resultLine,
+	retainDecidedFor,
 	runApprovalFlow,
 	subscribeAuthorizeNotices,
 } from "./team-bridge-approvals-model";
@@ -67,7 +69,19 @@ function pollInterval(): number {
 		: TEAM_BRIDGE_BADGE_POLL_HIDDEN_MS;
 }
 
-export function useApprovalRequests(enabled: boolean) {
+/*
+ * `panel`: the Requests panel's own observer (QA Q2, round 2). A query whose
+ * read failed with no data is always stale, so a mounting observer would
+ * refetch it - and a fetch on a no-data query resets it to `pending` with no
+ * error, which used to unmount the very slot that mounted the panel: a loop of
+ * about two reads a second against the hub. The panel therefore never fetches
+ * on mount while the read is in error; its Retry is the only read it starts.
+ * The page's observer keeps the ordinary poll, which is how the badge recovers.
+ */
+export function useApprovalRequests(
+	enabled: boolean,
+	{ panel = false }: { panel?: boolean } = {},
+) {
 	const client = useQueryClient();
 	const { accountId } = useTeamBridgeAccount();
 	return useQuery({
@@ -81,8 +95,30 @@ export function useApprovalRequests(enabled: boolean) {
 		refetchInterval: (query) =>
 			approvalsUnsupported(query.state.error) ? false : pollInterval(),
 		refetchOnWindowFocus: true,
+		/* Both switches are needed: TanStack Query v5 fetches a NO-DATA query
+		   on mount through `retryOnMount` (`shouldLoadOnMount`), and only a
+		   query that HAS data through `refetchOnMount`. */
+		...(panel
+			? {
+					retryOnMount: false,
+					refetchOnMount: (query: { state: { status: string } }) =>
+						query.state.status !== "error",
+				}
+			: {}),
 		retry: (count, error) => !approvalsUnsupported(error) && count < 1,
 	});
+}
+
+/**
+ * Keeps the in-memory decided-excerpt store tied to the signed-in account
+ * (review R2-02): an account switch or a sign-out forgets it. Mounted once,
+ * app-wide, beside the authorize notices; it only observes the auth read.
+ */
+export function useDecidedStoreOwner() {
+	const { accountId } = useObservedRadientAuthority();
+	useEffect(() => {
+		retainDecidedFor(accountId);
+	}, [accountId]);
 }
 
 export function useApprovalDecisions(enabled: boolean) {
@@ -204,7 +240,7 @@ export function useApprovalDecide(lookup: ApprovalRowLookup) {
 					for (const result of outcome.results) {
 						const snap = snapshots.get(result.message_id);
 						if (snap && resultLine(result).tone === "done")
-							rememberDecided(result.message_id, snap);
+							rememberDecided(accountId, result.message_id, snap);
 					}
 					setState({ phase: "done", results: outcome.results, labels });
 					return;
