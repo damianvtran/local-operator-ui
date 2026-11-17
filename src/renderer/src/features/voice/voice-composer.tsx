@@ -1134,6 +1134,18 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 						<span className="font-normal normal-case tracking-normal">
 							{t("ui.chat.voice.history_last", { count: String(story.length) })}
 						</span>
+						{story.length > 0 && (
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								data-voice-history-clear=""
+								className="ml-auto h-6 px-1.5 text-meta font-normal normal-case tracking-normal text-ink-muted"
+								onClick={() => useVoiceStore.getState().clearStory()}
+							>
+								{t("ui.chat.voice.history_clear")}
+							</Button>
+						)}
 					</div>
 					{story.length === 0 ? (
 						<p className={cn("pb-2 text-meta text-ink-dim", pad)}>

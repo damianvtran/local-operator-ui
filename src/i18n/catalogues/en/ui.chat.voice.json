@@ -52,6 +52,7 @@
 	"ui.chat.voice.cut_chip": "Cut short · rest above ↑",
 	"ui.chat.voice.cut_note": "Cut at the character limit · rest is in the message above",
 	"ui.chat.voice.history_hide": "Hide history",
+	"ui.chat.voice.history_clear": "Clear",
 	"ui.chat.voice.history_last": "last {count}",
 	"ui.chat.voice.empty_history": "Nothing said yet. Try “what’s in this folder?”",
 	"ui.chat.voice.you_label": "You",

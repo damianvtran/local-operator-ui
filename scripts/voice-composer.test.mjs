@@ -897,6 +897,69 @@ test("U1: a take refused by a card says so in place, with the words it dropped",
 	assert.match(caption().textContent, /please also check the tests/);
 });
 
+/*
+ * CLEAR HISTORY. The panel's rows are the window's own in-memory record, and the only
+ * way to empty them used to be restarting the app (found live, 2026-11-17: stale
+ * "Not sent" rows after a refused take). One "Clear" control in the panel's header
+ * drops the rows and the refused-take quote that duplicates them, and nothing else.
+ */
+test("Clear drops the history rows and the refused-take quote, and only those", async () => {
+	await mountStrip();
+	await voiceReady();
+	await act(async () => {
+		const store = useVoiceStore.getState();
+		store.noteTake(AT, "what about digimon", Date.now());
+		store.noteNotSent(AT, "please also check the tests", Date.now() + 1);
+	});
+	await flush();
+	await openHistory();
+	assert.ok(
+		window.document.querySelectorAll("[data-voice-story]").length >= 2,
+		"the rows are on screen before the clear",
+	);
+	const clear = window.document.querySelector("[data-voice-history-clear]");
+	assert.ok(clear, "the panel offers a Clear control while it holds rows");
+	assert.equal(clear.textContent.trim(), "Clear");
+	await act(async () => {
+		clear.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+	});
+	await flush();
+	assert.equal(
+		window.document.querySelectorAll("[data-voice-story]").length,
+		0,
+	);
+	assert.deepEqual(useVoiceStore.getState().story, []);
+	assert.equal(
+		useVoiceStore.getState().lastRefused,
+		null,
+		"the quote is cleared too",
+	);
+	assert.equal(
+		window.document.querySelector("[data-voice-history-clear]"),
+		null,
+		"nothing to clear, so no control",
+	);
+	assert.match(
+		window.document.querySelector("[data-voice-history]").textContent,
+		/Nothing said yet/,
+	);
+	assert.equal(
+		useVoiceStore.getState().active?.session_id,
+		AT,
+		"clearing history never touches who holds the slot",
+	);
+});
+
+test("Clear is not offered while the history is empty", async () => {
+	await mountStrip();
+	await voiceReady();
+	await openHistory();
+	assert.equal(
+		window.document.querySelector("[data-voice-history-clear]"),
+		null,
+	);
+});
+
 test("U5: focus returns to the same control after Resume", async () => {
 	installControls({ rig: "starting" });
 	await mountStrip();

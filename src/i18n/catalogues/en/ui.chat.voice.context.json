@@ -249,6 +249,11 @@
 		"tone": "imperative, sentence case",
 		"note": "Collapses the voice history panel above the strip."
 	},
+	"ui.chat.voice.history_clear": {
+		"role": "text on a small button in the header of the voice history panel",
+		"tone": "imperative, one word, sentence case",
+		"note": "Empties the rows listed in the history panel (what was heard and said, interruptions, refused takes). It does not turn voice off or end the conversation."
+	},
 	"ui.chat.voice.history_last": {
 		"role": "count beside the voice history panel’s heading",
 		"tone": "lower-case fragment",

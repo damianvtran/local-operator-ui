@@ -1196,6 +1196,7 @@ export type MessageParams = {
 	"ui.chat.voice.go_there": undefined;
 	"ui.chat.voice.heard_label": undefined;
 	"ui.chat.voice.history": undefined;
+	"ui.chat.voice.history_clear": undefined;
 	"ui.chat.voice.history_hide": undefined;
 	"ui.chat.voice.history_last": { count: string };
 	"ui.chat.voice.idle_caption": undefined;

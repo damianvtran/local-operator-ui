@@ -179,6 +179,12 @@ type VoiceStoreActions = {
 	/** A take was refused because a card is on screen: an event row, no words. */
 	noteNotSent: (sessionId: string, heard: string, at: number) => void;
 	/**
+	 * Empty the history panel: its rows and the refused-take quote that repeats
+	 * them. Nothing else moves - not the slot, the rig, the exchange or the strip's
+	 * last spoken reply - so it is safe mid-conversation.
+	 */
+	clearStory: () => void;
+	/**
 	 * The rig's audio moved. `started` arms the interruption clock; `ended` says
 	 * "Reply ended" for 1.5 s; `cancelled` says "Interrupted at m:ss" for 3 s and
 	 * never plays the end cue (design D2/D3).
@@ -331,6 +337,7 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 					},
 				]),
 			})),
+		clearStory: () => set({ story: [], lastRefused: null }),
 		noteNotSent: (sessionId, heard, at) =>
 			set((state) => ({
 				lastRefused: { sessionId, text: heard, at },
