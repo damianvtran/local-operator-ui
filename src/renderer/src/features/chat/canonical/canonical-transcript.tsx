@@ -1042,6 +1042,7 @@ export const UndeliveredLine: FC<{ undelivered: UndeliveredTurn }> = ({
 					data-undelivered-recovery={recovery}
 					aria-disabled={fix.busy || undefined}
 					className={cn(
+						"shrink-0 whitespace-nowrap",
 						fix.busy
 							? "text-ink-muted"
 							: "cursor-pointer font-medium underline",
@@ -1065,6 +1066,7 @@ export const UndeliveredLine: FC<{ undelivered: UndeliveredTurn }> = ({
 					 */
 					aria-disabled={undelivered.retryDisabled || undefined}
 					className={cn(
+						"shrink-0 whitespace-nowrap",
 						undelivered.retryDisabled
 							? "text-ink-muted"
 							: "cursor-pointer underline",
@@ -1082,7 +1084,7 @@ export const UndeliveredLine: FC<{ undelivered: UndeliveredTurn }> = ({
 			)}
 			<button
 				type="button"
-				className={cn("cursor-pointer underline")}
+				className={cn("shrink-0 cursor-pointer whitespace-nowrap underline")}
 				onClick={undelivered.onEdit}
 			>
 				{t("ui.chat.canonical.transcript.edit")}
