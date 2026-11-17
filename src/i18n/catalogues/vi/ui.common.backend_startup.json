@@ -13,9 +13,9 @@
 	"ui.common.backend_startup.reason.unknown": "Có điều gì đó đã ngăn máy chủ khởi động.",
 	"ui.common.backend_startup.action.restart": "Khởi động lại máy chủ",
 	"ui.common.backend_startup.action.restarting": "Đang khởi động lại…",
-	"ui.common.backend_startup.action.copy_diagnostics": "Sao chép chẩn đoán",
-	"ui.common.backend_startup.action.copied": "Đã sao chép chẩn đoán",
-	"ui.common.backend_startup.action.copy_failed": "Không thể sao chép chẩn đoán",
+	"ui.common.backend_startup.action.copy_diagnostics": "Sao chép thông tin chẩn đoán",
+	"ui.common.backend_startup.action.copied": "Đã sao chép thông tin chẩn đoán",
+	"ui.common.backend_startup.action.copy_failed": "Không thể sao chép thông tin chẩn đoán",
 	"ui.common.backend_startup.details.show": "Hiện chi tiết",
 	"ui.common.backend_startup.details.hide": "Ẩn chi tiết"
 }

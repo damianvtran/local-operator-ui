@@ -115737,6 +115737,223 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.common.backend_startup",
+			"source_sha256": "90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db",
+			"target_sha256": "af5362da25329a2fc8c36a154b1bb647f2de1995a8d46b59bd5b268910d35f18",
+			"translator": {
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "pr1963-r1-fr-backendstartup-65a7f97cab63",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1963-r1-fr-backendstartup-65a7f97cab63.json",
+					"receipt_sha256": "9ad12a6771d8ebec1706489385cf591a593545164c73e695c98c4731a7b8def9",
+					"scope": "PR #1963 round 1: all 19 ui.common.backend_startup keys (8e64b0ccd0 + auditor locale fixes)",
+					"note": "PR #1963: translator lopdev coder job aceade24b830 (mgr f52727670001); independent audit i18n-auditor task job 65a7f97cab63, same model disclosed"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.common.backend_startup",
+			"source_sha256": "90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db",
+			"target_sha256": "979785644b69ce5bbef4aa433a950694208854cf0f72aaaafa24edbf12ec4978",
+			"translator": {
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean",
+					"instance": "pr1963-r1-es-backendstartup-65a7f97cab63",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1963-r1-es-backendstartup-65a7f97cab63.json",
+					"receipt_sha256": "04d52d53bfea41ec8e5ef40999591564f28d2ed0d2076fafe0c2ac518f1a3a4b",
+					"scope": "PR #1963 round 1: all 19 ui.common.backend_startup keys (8e64b0ccd0 + auditor locale fixes)",
+					"note": "PR #1963: translator lopdev coder job aceade24b830 (mgr f52727670001); independent audit i18n-auditor task job 65a7f97cab63, same model disclosed"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.common.backend_startup",
+			"source_sha256": "90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db",
+			"target_sha256": "f8cea50d08263fd5edbca7a9c17e0c621dc57e97de011c7dde2499c77d709921",
+			"translator": {
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "pr1963-r1-zh-cn-backendstartup-65a7f97cab63",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/pr1963-r1-zh-cn-backendstartup-65a7f97cab63.json",
+					"receipt_sha256": "3bb4322754373a3d374e32d13c1f881861df7afce77300c6142525296c9c2d72",
+					"scope": "PR #1963 round 1: all 19 ui.common.backend_startup keys (8e64b0ccd0 + auditor locale fixes)",
+					"note": "PR #1963: translator lopdev coder job aceade24b830 (mgr f52727670001); independent audit i18n-auditor task job 65a7f97cab63, same model disclosed"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.common.backend_startup",
+			"source_sha256": "90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db",
+			"target_sha256": "d4dda62046f674113c38892ea06386b038abde5145cbff20d064d9b889b0dc3f",
+			"translator": {
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "pr1963-r1-ru-backendstartup-65a7f97cab63",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/pr1963-r1-ru-backendstartup-65a7f97cab63.json",
+					"receipt_sha256": "d46ddecb2418fa3e651d12ed5a1d039ce89a63ca53bb2678e96f1df9cc27665e",
+					"scope": "PR #1963 round 1: all 19 ui.common.backend_startup keys (8e64b0ccd0 + auditor locale fixes)",
+					"note": "PR #1963: translator lopdev coder job aceade24b830 (mgr f52727670001); independent audit i18n-auditor task job 65a7f97cab63, same model disclosed"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.common.backend_startup",
+			"source_sha256": "90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db",
+			"target_sha256": "c9736af3f4103e8b869bea1e40b2d40b230489db660054723f32bb68e588dc21",
+			"translator": {
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "pr1963-r1-vi-backendstartup-65a7f97cab63",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/pr1963-r1-vi-backendstartup-65a7f97cab63.json",
+					"receipt_sha256": "ea7552c949f14f168d0fc75fe92cfc0321fd45b6cd8b656aa6381334f90d11c0",
+					"scope": "PR #1963 round 1: all 19 ui.common.backend_startup keys (8e64b0ccd0 + auditor locale fixes)",
+					"note": "PR #1963: translator lopdev coder job aceade24b830 (mgr f52727670001); independent audit i18n-auditor task job 65a7f97cab63, same model disclosed"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.common.backend_startup",
+			"source_sha256": "90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db",
+			"target_sha256": "39c5a0726f9ef7d561fb2cba779c65833d1454bb87e6283366f658eba479ce46",
+			"translator": {
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "pr1963-r1-ur-backendstartup-65a7f97cab63",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/pr1963-r1-ur-backendstartup-65a7f97cab63.json",
+					"receipt_sha256": "9959777bf4c961b0561ab7a6e6513df1d4d914f9de712dc7cf8847c93f4d3b3c",
+					"scope": "PR #1963 round 1: all 19 ui.common.backend_startup keys (8e64b0ccd0 + auditor locale fixes)",
+					"note": "PR #1963: translator lopdev coder job aceade24b830 (mgr f52727670001); independent audit i18n-auditor task job 65a7f97cab63, same model disclosed"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.backend_startup",
+			"source_sha256": "90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db",
+			"target_sha256": "de9e07a93375cc69797ab8901cc55082d9f0ba501a302a464606a0b58bdba699",
+			"translator": {
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "pr1963-r1-hi-backendstartup-65a7f97cab63",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1963-r1-hi-backendstartup-65a7f97cab63.json",
+					"receipt_sha256": "0af48669a5c7bcfd238c3c5a4fa9c1be84188fc7211286904ac1aace672ca5c9",
+					"scope": "PR #1963 round 1: all 19 ui.common.backend_startup keys (8e64b0ccd0 + auditor locale fixes)",
+					"note": "PR #1963: translator lopdev coder job aceade24b830 (mgr f52727670001); independent audit i18n-auditor task job 65a7f97cab63, same model disclosed"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

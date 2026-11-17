@@ -13,7 +13,7 @@
 	"ui.common.backend_startup.reason.unknown": "Что-то помешало запуску сервера.",
 	"ui.common.backend_startup.action.restart": "Перезапустить сервер",
 	"ui.common.backend_startup.action.restarting": "Перезапуск…",
-	"ui.common.backend_startup.action.copy_diagnostics": "Скопировать диагностику",
+	"ui.common.backend_startup.action.copy_diagnostics": "Копировать диагностику",
 	"ui.common.backend_startup.action.copied": "Диагностика скопирована",
 	"ui.common.backend_startup.action.copy_failed": "Не удалось скопировать диагностику",
 	"ui.common.backend_startup.details.show": "Показать подробности",
