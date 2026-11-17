@@ -15665,6 +15665,23 @@
 					"receipt": "i18n/receipts/8ea83141eaec.json",
 					"receipt_sha256": "d3b6cbfc1046a6056e184ac564d0b601b9a913082bb88adc4b202754f85dcf6c",
 					"scope": "ui.chat.attachments fr: the 3 keys added for the canonical transcript working line, link actions and broken attachments (24 across both namespaces), audited at the committed bytes"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "8ea83141eaec-r2",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/8ea83141eaec-r2.json",
+					"receipt_sha256": "ef68c4d70cd0071bd56c147887c39b3abcddd4654488e6c3f519ba49dc3b45f2",
+					"scope": "Round 2 re-audit, unchanged file",
+					"note": "Remediation pass applied independent findings (fr: F1 fit); the re-audit is the bound receipt. Re-issued under a distinct instance: ledger-assemble rejects a second receipt under a recorded instance."
 				}
 			],
 			"status": "audited",
@@ -15913,7 +15930,7 @@
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
 			"source_sha256": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5",
-			"target_sha256": "b9871f8bb31640e88ca647a7bbf9ef943d378e1c0f4f6dad0ff5a7b5d9d5eb9e",
+			"target_sha256": "b2be5e350598b90f2a0778fdccca402d93f08d9fe36c1c0ced656bf9784a8943",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -15926,16 +15943,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
 					"result": "clean-with-findings",
-					"instance": "8ea83141eaec",
+					"instance": "8ea83141eaec-r2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 4
 					},
-					"receipt": "i18n/receipts/8ea83141eaec.json",
-					"receipt_sha256": "d3b6cbfc1046a6056e184ac564d0b601b9a913082bb88adc4b202754f85dcf6c",
-					"scope": "ui.chat.canonical fr: the 21 keys added for the canonical transcript working line, link actions and broken attachments (24 across both namespaces), audited at the committed bytes"
+					"receipt": "i18n/receipts/8ea83141eaec-r2.json",
+					"receipt_sha256": "ef68c4d70cd0071bd56c147887c39b3abcddd4654488e6c3f519ba49dc3b45f2",
+					"scope": "Round 2 re-audit of the 24 new keys on final bytes",
+					"note": "Remediation pass applied independent findings (); the re-audit is the bound receipt. Re-issued under a distinct instance: ledger-assemble rejects a second receipt under a recorded instance."
 				}
 			],
 			"status": "audited",
@@ -16817,6 +16835,29 @@
 							"receipt_sha256": "9ec10c75c61cad1bd231aa94997741491d4ffd83458c232e86c2b97a8ebe57f4",
 							"scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked;0 new semantic keys",
 							"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5",
+					"target_sha256": "b9871f8bb31640e88ca647a7bbf9ef943d378e1c0f4f6dad0ff5a7b5d9d5eb9e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "8ea83141eaec",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/8ea83141eaec.json",
+							"receipt_sha256": "d3b6cbfc1046a6056e184ac564d0b601b9a913082bb88adc4b202754f85dcf6c",
+							"scope": "ui.chat.canonical fr: the 21 keys added for the canonical transcript working line, link actions and broken attachments (24 across both namespaces), audited at the committed bytes"
 						}
 					],
 					"status": "audited"
@@ -29080,6 +29121,23 @@
 					"receipt": "i18n/receipts/5c4efda15ac7.json",
 					"receipt_sha256": "d79aee43b78e9d8e456255625cab2fce87cd36c26b352c2a4bd984881dc1720f",
 					"scope": "ui.chat.attachments hi: the 3 keys added for the canonical transcript working line, link actions and broken attachments (24 across both namespaces), audited at the committed bytes"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "5c4efda15ac7-r3",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5c4efda15ac7-r3.json",
+					"receipt_sha256": "5b2a199b0baba616c093a50c08e646440666fd232fd4ffc140e7d1cc6746c6bf",
+					"scope": "Round 3 on final bytes, unchanged file",
+					"note": "Remediation pass applied independent findings (hi: design D2); the re-audit is the bound receipt. Re-issued under a distinct instance: ledger-assemble rejects a second receipt under a recorded instance."
 				}
 			],
 			"status": "audited",
@@ -29328,7 +29386,7 @@
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
 			"source_sha256": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5",
-			"target_sha256": "9aa447da1f1d7188a15d7deb811d9f6a03975cde88be2d200d2b509227bd04bf",
+			"target_sha256": "bfc4c0e06e3fae3d2bf63580a31a4768e799ad545e3f04ea635c63e724fb5096",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -29341,16 +29399,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "5c4efda15ac7",
+					"instance": "5c4efda15ac7-r3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/5c4efda15ac7.json",
-					"receipt_sha256": "d79aee43b78e9d8e456255625cab2fce87cd36c26b352c2a4bd984881dc1720f",
-					"scope": "ui.chat.canonical hi: the 21 keys added for the canonical transcript working line, link actions and broken attachments (24 across both namespaces), audited at the committed bytes"
+					"receipt": "i18n/receipts/5c4efda15ac7-r3.json",
+					"receipt_sha256": "5b2a199b0baba616c093a50c08e646440666fd232fd4ffc140e7d1cc6746c6bf",
+					"scope": "Round 3 on final bytes",
+					"note": "Remediation pass applied independent findings (hi: design D2); the re-audit is the bound receipt. Re-issued under a distinct instance: ledger-assemble rejects a second receipt under a recorded instance."
 				}
 			],
 			"status": "audited",
@@ -30220,6 +30279,29 @@
 							"receipt_sha256": "58cd327e22a51354b28f0311c92c43b2d1a2f45afbf231cb26edf74d536d9359",
 							"scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked;0 new semantic keys",
 							"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5",
+					"target_sha256": "9aa447da1f1d7188a15d7deb811d9f6a03975cde88be2d200d2b509227bd04bf",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "5c4efda15ac7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5c4efda15ac7.json",
+							"receipt_sha256": "d79aee43b78e9d8e456255625cab2fce87cd36c26b352c2a4bd984881dc1720f",
+							"scope": "ui.chat.canonical hi: the 21 keys added for the canonical transcript working line, link actions and broken attachments (24 across both namespaces), audited at the committed bytes"
 						}
 					],
 					"status": "audited"
@@ -55080,7 +55162,7 @@
 			"locale": "ur",
 			"namespace": "ui.chat.attachments",
 			"source_sha256": "1a5709a63c44655e0d96ec39ef87ddfd4715a811b6de2f29e851080a10dd42e7",
-			"target_sha256": "755a3f8a3a674030fb178d6c555e7fe019da0e21ff40413b2e94c3b1e5f3c773",
+			"target_sha256": "7b5758e2fc6f4bc7060a50fc59f0aa7c5e127cd345f291724996f86566abad61",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -55093,16 +55175,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "1703be2b4196",
+					"instance": "1703be2b4196-r2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/1703be2b4196.json",
-					"receipt_sha256": "d068dcfa93fa630cfebc755bf0cd4a899dda34849dffb4e65fce536914dc9e5a",
-					"scope": "ui.chat.attachments ur: the 3 keys added for the canonical transcript working line, link actions and broken attachments (24 across both namespaces), audited at the committed bytes"
+					"receipt": "i18n/receipts/1703be2b4196-r2.json",
+					"receipt_sha256": "5d9df69845f9ac089c159966d5df59630b3a5581b75ed1e98465a5d4b71dd74f",
+					"scope": "Round 2 on final bytes",
+					"note": "Remediation pass applied independent findings (ur: UR-1..3 + design D2/D4); the re-audit is the bound receipt. Re-issued under a distinct instance: ledger-assemble rejects a second receipt under a recorded instance."
 				}
 			],
 			"status": "audited",
@@ -55344,6 +55427,29 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "1a5709a63c44655e0d96ec39ef87ddfd4715a811b6de2f29e851080a10dd42e7",
+					"target_sha256": "755a3f8a3a674030fb178d6c555e7fe019da0e21ff40413b2e94c3b1e5f3c773",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "1703be2b4196",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1703be2b4196.json",
+							"receipt_sha256": "d068dcfa93fa630cfebc755bf0cd4a899dda34849dffb4e65fce536914dc9e5a",
+							"scope": "ui.chat.attachments ur: the 3 keys added for the canonical transcript working line, link actions and broken attachments (24 across both namespaces), audited at the committed bytes"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -55351,7 +55457,7 @@
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
 			"source_sha256": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5",
-			"target_sha256": "b0ea23cd97a1423e40bc0378cdb83b1a0795f8c1222ca1deb4f4440eadab0e3a",
+			"target_sha256": "f568fbd1e90edfbdd05d17b0addf29e14bb88fb4540b5f021b901691f0bbde60",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -55364,16 +55470,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
 					"result": "clean-with-findings",
-					"instance": "1703be2b4196",
+					"instance": "1703be2b4196-r2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 4,
-						"nit": 3
+						"minor": 2,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/1703be2b4196.json",
-					"receipt_sha256": "d068dcfa93fa630cfebc755bf0cd4a899dda34849dffb4e65fce536914dc9e5a",
-					"scope": "ui.chat.canonical ur: the 21 keys added for the canonical transcript working line, link actions and broken attachments (24 across both namespaces), audited at the committed bytes"
+					"receipt": "i18n/receipts/1703be2b4196-r2.json",
+					"receipt_sha256": "5d9df69845f9ac089c159966d5df59630b3a5581b75ed1e98465a5d4b71dd74f",
+					"scope": "Round 2 on final bytes",
+					"note": "Remediation pass applied independent findings (ur: UR-1..3 + design D2/D4); the re-audit is the bound receipt. Re-issued under a distinct instance: ledger-assemble rejects a second receipt under a recorded instance."
 				}
 			],
 			"status": "audited",
@@ -56287,6 +56394,29 @@
 							"receipt_sha256": "ccdd470acd7a10ea27d603b209547664abc1d1fa0b61c4d2dc54cc09c48358d1",
 							"scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked,0 new semantic keys",
 							"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5",
+					"target_sha256": "b0ea23cd97a1423e40bc0378cdb83b1a0795f8c1222ca1deb4f4440eadab0e3a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "1703be2b4196",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/1703be2b4196.json",
+							"receipt_sha256": "d068dcfa93fa630cfebc755bf0cd4a899dda34849dffb4e65fce536914dc9e5a",
+							"scope": "ui.chat.canonical ur: the 21 keys added for the canonical transcript working line, link actions and broken attachments (24 across both namespaces), audited at the committed bytes"
 						}
 					],
 					"status": "audited"
