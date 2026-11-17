@@ -71,5 +71,21 @@
 	"ui.chat.composer.tip.run_panel": "откройте панель выполнения: план хода и субагенты",
 	"ui.chat.composer.tip.schedule": "настройте расписание, чтобы промпт выполнялся по таймеру",
 	"ui.chat.composer.tip.search_past_work": "ищите по чатам и агентам, чтобы открыть прежнюю сессию",
-	"ui.chat.composer.secret_closure_notice": "Ответьте на запрос секрета на панели запросов — ввод в этом поле приостановлен до ответа, черновик сохранён."
+	"ui.chat.composer.secret_closure_notice": "Ответьте на запрос секрета на панели запросов — ввод в этом поле приостановлен до ответа, черновик сохранён.",
+	"ui.chat.composer.dictated_away.not_sent": "Не отправлено в «{title}»: {reason}. Надиктованный текст находится в черновике этого чата.",
+	"ui.chat.composer.dictated_away.not_sent_body": "Не отправлено: {reason}. Надиктованный текст находится в черновике этого чата.",
+	"ui.chat.composer.dictated_away.transcription_failed": "Не удалось расшифровать диктовку для «{title}». Запись не сохранена — запишите её заново.",
+	"ui.chat.composer.dictated_away.transcription_failed_body": "Не удалось расшифровать диктовку. Запись не сохранена — запишите её заново.",
+	"ui.chat.composer.dictated_away.reason_edited": "черновик этого чата был изменён, пока шла расшифровка",
+	"ui.chat.composer.dictated_away.reason_command": "слова выполнились бы как команда",
+	"ui.chat.composer.dictated_away.reason_gate": "слова ответили бы на вопрос, которого этот чат ждёт",
+	"ui.chat.composer.dictated_away.reason_secret": "слова похожи на учётные данные",
+	"ui.chat.composer.dictated_away.reason_no_model": "в этом чате не выбрана модель для ответа",
+	"ui.chat.composer.dictated_away.reason_unavailable": "этот чат не смог принять сообщение",
+	"ui.chat.composer.dictated_away.reason_not_ready": "этот чат ещё открывается",
+	"ui.chat.composer.dictated_away.open_chat": "Открыть чат",
+	"ui.chat.composer.dictated_away.draft_label": "Новый чат",
+	"ui.chat.composer.dictated_away.untitled_chat": "Чат без названия",
+	"ui.chat.composer.dictated_away.origin_gone": "Не отправлено в «{title}»: этого чата больше нет, поэтому надиктованный текст тоже потерян.",
+	"ui.chat.composer.dictated_away.origin_gone_body": "Не отправлено: этого чата больше нет, поэтому надиктованный текст тоже потерян."
 }

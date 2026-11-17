@@ -71,5 +71,21 @@
 	"ui.chat.composer.tip.run_panel": "mở bảng lượt chạy để xem kế hoạch và tác nhân con của lượt",
 	"ui.chat.composer.tip.schedule": "đặt lịch chạy prompt theo hẹn giờ",
 	"ui.chat.composer.tip.search_past_work": "tìm cuộc trò chuyện và tác nhân để mở lại phiên trước đó",
-	"ui.chat.composer.secret_closure_notice": "Trả lời yêu cầu bí mật trong bảng câu hỏi — ô này tạm dừng cho đến khi có câu trả lời, và bản nháp của bạn vẫn được giữ lại."
+	"ui.chat.composer.secret_closure_notice": "Trả lời yêu cầu bí mật trong bảng câu hỏi — ô này tạm dừng cho đến khi có câu trả lời, và bản nháp của bạn vẫn được giữ lại.",
+	"ui.chat.composer.dictated_away.not_sent": "Chưa gửi tới “{title}”: {reason}. Nội dung bạn đọc đã nằm trong bản nháp của cuộc trò chuyện đó.",
+	"ui.chat.composer.dictated_away.not_sent_body": "Chưa gửi: {reason}. Nội dung bạn đọc đã nằm trong bản nháp của cuộc trò chuyện đó.",
+	"ui.chat.composer.dictated_away.transcription_failed": "Không thể chuyển lời bạn đọc cho “{title}” thành văn bản. Bản ghi âm không được giữ lại — hãy ghi lại.",
+	"ui.chat.composer.dictated_away.transcription_failed_body": "Không thể chuyển lời bạn đọc thành văn bản. Bản ghi âm không được giữ lại — hãy ghi lại.",
+	"ui.chat.composer.dictated_away.reason_edited": "bạn đã sửa bản nháp của cuộc trò chuyện đó trong lúc đang chuyển thành văn bản",
+	"ui.chat.composer.dictated_away.reason_command": "những từ đó sẽ được chạy như một câu lệnh",
+	"ui.chat.composer.dictated_away.reason_gate": "những từ đó sẽ trả lời câu hỏi mà cuộc trò chuyện đó đang chờ",
+	"ui.chat.composer.dictated_away.reason_secret": "những từ đó trông như một thông tin xác thực",
+	"ui.chat.composer.dictated_away.reason_no_model": "cuộc trò chuyện đó chưa chọn mô hình nào để trả lời",
+	"ui.chat.composer.dictated_away.reason_unavailable": "cuộc trò chuyện đó không nhận được tin nhắn",
+	"ui.chat.composer.dictated_away.reason_not_ready": "cuộc trò chuyện đó vẫn đang mở",
+	"ui.chat.composer.dictated_away.open_chat": "Mở cuộc trò chuyện",
+	"ui.chat.composer.dictated_away.draft_label": "Cuộc trò chuyện mới",
+	"ui.chat.composer.dictated_away.untitled_chat": "Cuộc trò chuyện chưa có tên",
+	"ui.chat.composer.dictated_away.origin_gone": "Chưa gửi tới “{title}”: cuộc trò chuyện đó không còn nữa, nên nội dung đã đọc cũng mất.",
+	"ui.chat.composer.dictated_away.origin_gone_body": "Chưa gửi: cuộc trò chuyện đó không còn nữa, nên nội dung đã đọc cũng mất."
 }

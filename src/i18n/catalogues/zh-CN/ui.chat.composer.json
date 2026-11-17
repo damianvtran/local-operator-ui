@@ -71,5 +71,21 @@
 	"ui.chat.composer.tip.run_panel": "打开运行面板，查看当前轮次的计划和子智能体",
 	"ui.chat.composer.tip.schedule": "设置定时，按时运行提示词",
 	"ui.chat.composer.tip.search_past_work": "搜索对话和智能体，重新打开先前的会话",
-	"ui.chat.composer.secret_closure_notice": "请在请求面板中回复这条敏感信息请求——在它得到答复前，此输入框暂停使用，草稿已保留。"
+	"ui.chat.composer.secret_closure_notice": "请在请求面板中回复这条敏感信息请求——在它得到答复前，此输入框暂停使用，草稿已保留。",
+	"ui.chat.composer.dictated_away.not_sent": "未发送到“{title}”：{reason}。听写内容已保存在该聊天的草稿中。",
+	"ui.chat.composer.dictated_away.not_sent_body": "未发送：{reason}。听写内容已保存在该聊天的草稿中。",
+	"ui.chat.composer.dictated_away.transcription_failed": "无法转写“{title}”中的听写。录音未保留——请重新录制。",
+	"ui.chat.composer.dictated_away.transcription_failed_body": "无法转写听写内容。录音未保留——请重新录制。",
+	"ui.chat.composer.dictated_away.reason_edited": "转写期间该聊天的草稿被修改了",
+	"ui.chat.composer.dictated_away.reason_command": "这些文字会被当作命令执行",
+	"ui.chat.composer.dictated_away.reason_gate": "这些文字会回答该聊天正在等待的问题",
+	"ui.chat.composer.dictated_away.reason_secret": "这些文字看起来像凭据",
+	"ui.chat.composer.dictated_away.reason_no_model": "该聊天尚未选定回答所用的模型",
+	"ui.chat.composer.dictated_away.reason_unavailable": "该聊天无法接收消息",
+	"ui.chat.composer.dictated_away.reason_not_ready": "该聊天仍在打开中",
+	"ui.chat.composer.dictated_away.open_chat": "打开聊天",
+	"ui.chat.composer.dictated_away.draft_label": "新聊天",
+	"ui.chat.composer.dictated_away.untitled_chat": "无标题聊天",
+	"ui.chat.composer.dictated_away.origin_gone": "未发送到“{title}”：该聊天已不存在，听写内容也随之丢失。",
+	"ui.chat.composer.dictated_away.origin_gone_body": "未发送：该聊天已不存在，听写内容也随之丢失。"
 }

@@ -71,5 +71,21 @@
 	"ui.chat.composer.secret_fill_refused": "El campo secreto no aceptó ese valor. Tu texto se conserva; el panel de consultas explica por qué.",
 	"ui.chat.composer.secret_fill_unavailable": "No se pudo acceder al campo secreto. Tu texto se conserva.",
 	"ui.chat.composer.secret_fill_multi": "Esta solicitud pide más de un secreto. Tu texto se conserva; elige el campo en el panel de consultas.",
-	"ui.chat.composer.secret_closure_notice": "Responde a la solicitud de secreto en el panel de consultas — este cuadro está en pausa hasta que la respondas, y tu borrador se conserva."
+	"ui.chat.composer.secret_closure_notice": "Responde a la solicitud de secreto en el panel de consultas — este cuadro está en pausa hasta que la respondas, y tu borrador se conserva.",
+	"ui.chat.composer.dictated_away.not_sent": "No se envió a «{title}»: {reason}. Tu texto dictado está en el borrador de ese chat.",
+	"ui.chat.composer.dictated_away.not_sent_body": "No se envió: {reason}. Tu texto dictado está en el borrador de ese chat.",
+	"ui.chat.composer.dictated_away.transcription_failed": "No se pudo transcribir tu dictado para «{title}». La grabación no se conservó — vuelve a grabarla.",
+	"ui.chat.composer.dictated_away.transcription_failed_body": "No se pudo transcribir tu dictado. La grabación no se conservó — vuelve a grabarla.",
+	"ui.chat.composer.dictated_away.reason_edited": "cambiaste el borrador de ese chat mientras se escribían las palabras",
+	"ui.chat.composer.dictated_away.reason_command": "las palabras se habrían ejecutado como un comando",
+	"ui.chat.composer.dictated_away.reason_gate": "las palabras habrían respondido a la pregunta que ese chat está esperando",
+	"ui.chat.composer.dictated_away.reason_secret": "las palabras parecen una credencial",
+	"ui.chat.composer.dictated_away.reason_no_model": "ese chat no tiene ningún modelo elegido para responder",
+	"ui.chat.composer.dictated_away.reason_unavailable": "ese chat no pudo aceptar un mensaje",
+	"ui.chat.composer.dictated_away.reason_not_ready": "ese chat todavía se está abriendo",
+	"ui.chat.composer.dictated_away.open_chat": "Abrir chat",
+	"ui.chat.composer.dictated_away.draft_label": "Chat nuevo",
+	"ui.chat.composer.dictated_away.untitled_chat": "Chat sin título",
+	"ui.chat.composer.dictated_away.origin_gone": "No se envió a «{title}»: ese chat ya no existe, así que el texto dictado también se ha perdido.",
+	"ui.chat.composer.dictated_away.origin_gone_body": "No se envió: ese chat ya no existe, así que el texto dictado también se ha perdido."
 }

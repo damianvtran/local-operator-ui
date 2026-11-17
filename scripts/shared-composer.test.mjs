@@ -371,6 +371,12 @@ const bundle = await build({
 			} from "./src/renderer/src/shared/hooks/use-message-input";
 			export { resolvePushToTalkBinding, isDictationActive } from "./src/renderer/src/shared/hooks/use-speech-to-text-manager";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
+			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
+			export {
+				dictatedSends,
+				useDictatedSendStore,
+				resetDictatedSendsForTests,
+			} from "./src/renderer/src/features/chat/dictated-send";
 			export { t } from "@shared/i18n";
 		`,
 		resolveDir: worktree,
@@ -411,6 +417,10 @@ const {
 	t,
 	resolvePushToTalkBinding,
 	useConversationInputStore,
+	useCanonicalSessionsStore,
+	dictatedSends,
+	useDictatedSendStore,
+	resetDictatedSendsForTests,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -2700,4 +2710,853 @@ test("the band and splash never transition their layout, so reduced motion paint
 	} finally {
 		await act(async () => root.unmount());
 	}
+});
+
+/* ------------------------------------------------------------------ */
+/* 4. A dictated send finishes in the chat it started in (bug 2)        */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE OPERATOR'S REPORT, driven through the shipped composer.
+ *
+ * "you use the voice to text transcription and when it's transcribing after you hit
+ * the immediate send and switch to another session it actually doesn't send it and
+ * stores it in the input box."
+ *
+ * The chat page remounts its panel per conversation, so a switch after the press
+ * destroys the composer whose send was armed. These cases drive both shapes the
+ * harness can produce - a real unmount (`root.unmount`) and a re-pointed mount (a
+ * rerender with another `conversationId`) - and the two windows the defect lives
+ * in: a transcript that lands after the switch, and a recorder `onstop` that fires
+ * after it.
+ *
+ * WHAT IS NOT COVERED HERE: the page's own send. `originBound` is asserted as the
+ * seventh argument the composer passes, and `dictated-send.test.mjs` pins the
+ * page's gate at the source; whether a real daemon receives the POST is a built-app
+ * measurement (`scripts/session-switch-latency.mjs`), not a jsdom one.
+ */
+
+const A = "dictated-origin-a";
+const B = "dictated-origin-b";
+
+const extraRoots = [];
+after(async () => {
+	for (const extra of extraRoots) {
+		await act(async () => {
+			extra.unmount();
+		});
+	}
+});
+
+const OK_TRANSCRIPT = (text) => ({
+	status: 200,
+	kind: "json",
+	body: { result: { text } },
+});
+const REFUSED = (status, detail) => ({ status, kind: "error", detail });
+
+/*
+ * THE TRANSCRIPTION, AS THE RELAY SEES IT: `desktopMedia` reads
+ * `window.api.desktop.media`, so a case answers there. `gate` holds every answer
+ * until the case releases it - that is the "switch while it transcribes" window,
+ * and holding it is how a case keeps the take in flight across an unmount.
+ */
+const transcription = {
+	calls: [],
+	answers: [],
+	gate: null,
+	install(answers) {
+		this.calls = [];
+		this.answers = answers;
+		window.api = {
+			desktop: {
+				media: async (request, bytes) => {
+					this.calls.push({ request, bytes: Array.from(bytes) });
+					if (this.gate) await this.gate;
+					return this.answers[
+						Math.min(this.calls.length - 1, this.answers.length - 1)
+					];
+				},
+			},
+		};
+	},
+	hold() {
+		let release = () => {};
+		this.gate = new Promise((resolve) => {
+			release = resolve;
+		});
+		return () => {
+			this.gate = null;
+			release();
+		};
+	},
+	restore() {
+		this.gate = null;
+		window.api = undefined;
+	},
+};
+
+const RESET = { inputByConversation: {} };
+
+/**
+ * A mount that KEEPS the store between cases' mounts, because the whole subject is
+ * a draft carried across two of them. The shared `mount` helper resets the rows.
+ */
+async function mountAt(conversationId, props = {}) {
+	const { component = MessageInput, ...composerProps } = props;
+	const Component = component;
+	const container = window.document.createElement("div");
+	window.document.body.appendChild(container);
+	const mountRoot = createRoot(container);
+	extraRoots.push(mountRoot);
+	const mountProps = {
+		conversationId,
+		messages: [],
+		isLoading: false,
+		onSendMessage: async () => undefined,
+		...composerProps,
+	};
+	await act(async () => {
+		mountRoot.render(h(Component, mountProps));
+	});
+	await settle();
+	return {
+		container,
+		root: mountRoot,
+		textarea: () => container.querySelector("textarea"),
+		record: (label) => container.querySelector(`[aria-label="${label}"]`),
+		unmount: async () => {
+			await act(async () => {
+				mountRoot.unmount();
+			});
+			await settle();
+		},
+		rerender: async (next) => {
+			await act(async () => {
+				mountRoot.render(h(Component, { ...mountProps, ...next }));
+			});
+			await settle();
+		},
+	};
+}
+
+/** Press the mic, let the stream land, and the composer is recording. */
+async function startTake(frame) {
+	await act(async () => {
+		frame.record("Start recording").click();
+	});
+	await settle();
+	assert.ok(
+		frame.container.querySelector("[data-recording-indicator]"),
+		"the take is live before the press under test",
+	);
+	/*
+	 * AND IT IS LONG ENOUGH TO KEEP. A release under `MIN_DICTATION_CLIP_MS` is
+	 * DISCARDED by design (a stray tap is not a message), so a case that pressed
+	 * within the clip window would transcribe nothing and prove nothing - the
+	 * first cut of this suite did exactly that and every case failed on an empty
+	 * relay.
+	 */
+	await act(async () => {
+		await new Promise((resolve) => realSetTimeout(resolve, 300));
+	});
+}
+
+/** Press "Send recording" and let the recorder hand its blob over. */
+async function sendRecording(frame) {
+	await act(async () => {
+		frame.container.querySelector('[aria-label="Send recording"]').click();
+	});
+	await settle();
+}
+
+/** The spy every case uses: records its arguments, paints the echo, accepts. */
+function spySends() {
+	const calls = [];
+	const spy = async (
+		content,
+		attachments,
+		onEchoPainted,
+		typed,
+		seam,
+		inputMode,
+		options,
+	) => {
+		calls.push({ content, attachments, typed, seam, inputMode, options });
+		/*
+		 * THE ECHO'S PAINT, which the page performs when the bubble lands: it is
+		 * what empties the origin's row through `beginInFlight`. A spy that skipped
+		 * it would leave the text in the box and make "the send took the words"
+		 * untestable.
+		 */
+		onEchoPainted?.();
+		return true;
+	};
+	return { calls, spy };
+}
+
+test("a transcript that lands after the panel was unmounted is sent from the origin's own composer (case 1)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const { calls, spy } = spySends();
+	transcription.install([OK_TRANSCRIPT("hello there")]);
+	const release = transcription.hold();
+
+	const first = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: spy,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(first);
+	await sendRecording(first);
+	assert.equal(transcription.calls.length, 1, "the take reached the relay");
+
+	/* THE SWITCH: the origin's panel is gone, and the other one is mounted. */
+	await first.unmount();
+	const second = await mountAt(B, {
+		dictatedAwayDelivery: true,
+		onSendMessage: async () => undefined,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+
+	await act(async () => {
+		release();
+	});
+	await settle();
+
+	assert.equal(calls.length, 1, "exactly one send, from the replaced composer");
+	const call = calls[0];
+	assert.match(call.content, /hello there/, "the dictation is what was sent");
+	assert.equal(call.typed, call.content, "the typed line travels beside it");
+	assert.deepEqual(
+		call.options,
+		{ originBound: true },
+		"and the page is told it is bound to the origin, not to the pane on screen",
+	);
+	assert.equal(
+		useConversationInputStore.getState().getCurrentInput(A),
+		"",
+		"the origin's draft was emptied by the echo, not left holding the words",
+	);
+	assert.equal(
+		useConversationInputStore.getState().getCurrentInput(B),
+		"",
+		"and the chat the user switched TO was never written to",
+	);
+	assert.equal(second.textarea().value, "", "nor its box");
+	assert.equal(dictatedSends.has(A), false, "the intent is retired");
+	transcription.restore();
+	mic.next = null;
+});
+
+test("a re-pointed composer sends the words to the conversation they started in (case 2)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const { calls, spy } = spySends();
+	transcription.install([OK_TRANSCRIPT("hello there")]);
+	const release = transcription.hold();
+
+	const frame = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: spy,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(frame);
+	await sendRecording(frame);
+
+	/* THE OTHER SHAPE: one mount, two conversations - the prop moves under it. */
+	await frame.rerender({ conversationId: B });
+	await act(async () => {
+		release();
+	});
+	await settle();
+
+	assert.equal(calls.length, 1, "one send");
+	assert.match(calls[0].content, /hello there/);
+	assert.deepEqual(calls[0].options, { originBound: true });
+	assert.equal(
+		useConversationInputStore.getState().getCurrentInput(B),
+		"",
+		"the box now showing conversation B was not written to",
+	);
+	assert.equal(frame.textarea().value, "", "and neither was its textarea");
+	assert.equal(useConversationInputStore.getState().getCurrentInput(A), "");
+	transcription.restore();
+	mic.next = null;
+});
+
+test("returning mid-flight shows the busy face, refuses the keyboard, and completes once (case 3)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const { calls, spy } = spySends();
+	transcription.install([OK_TRANSCRIPT("hello there")]);
+	const release = transcription.hold();
+
+	const first = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: spy,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(first);
+	await sendRecording(first);
+	await first.unmount();
+
+	/* BACK TO THE ORIGIN while the take is still being written down. */
+	/*
+	 * THE RETURNING PANE CARRIES THE SPY TOO, and that is the design rather than a
+	 * convenience: a remount registers a FRESHER deliverer for the same
+	 * conversation, so the words land through the pane the reader came back to (a
+	 * live closure, with this render's gates) instead of through the dead one. The
+	 * real page's `send` is the same stable function either way.
+	 */
+	const back = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: spy,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	assert.ok(
+		back.container.querySelector('[aria-label="Processing audio"]'),
+		"the busy face is up in the same frame the origin returns",
+	);
+	assert.equal(
+		back.record("Start recording"),
+		null,
+		"and the microphone is not offered while a send is landing",
+	);
+
+	await act(async () => {
+		back.textarea().dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				key: "Enter",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	await settle();
+	assert.equal(
+		calls.length,
+		0,
+		"Enter cannot start a second send over the first",
+	);
+
+	await act(async () => {
+		release();
+	});
+	await settle();
+	assert.equal(calls.length, 1, "the away send completes exactly once");
+	assert.equal(back.textarea().value, "", "and the box is empty when it does");
+	assert.equal(useConversationInputStore.getState().getCurrentInput(A), "");
+	await back.unmount();
+	transcription.restore();
+	mic.next = null;
+});
+
+test("a take whose onstop fires after the unmount still reaches the relay (case 4)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const { calls, spy } = spySends();
+	transcription.install([OK_TRANSCRIPT("late bytes")]);
+
+	const frame = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: spy,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(frame);
+	/* Hold the recorder's own `stop`, so the blob can land after the unmount. */
+	const recorder = mic.recorders[0];
+	const held = recorder.onstop;
+	recorder.stop = () => {
+		recorder.state = "inactive";
+	};
+	try {
+		await sendRecording(frame);
+		assert.equal(
+			transcription.calls.length,
+			0,
+			"no take yet - the blob is held",
+		);
+		await frame.unmount();
+		await act(async () => {
+			held();
+		});
+		await settle();
+		assert.equal(
+			transcription.calls.length,
+			1,
+			"the dead tree's blob was transcribed",
+		);
+		assert.equal(calls.length, 1, "and its send followed");
+		assert.match(calls[0].content, /late bytes/);
+	} finally {
+		transcription.restore();
+		mic.next = null;
+	}
+});
+
+test("a retry burst survives the unmount that used to abort it (case 5)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const { calls, spy } = spySends();
+	transcription.install([
+		REFUSED(503, "upstream is restarting"),
+		OK_TRANSCRIPT("second attempt"),
+	]);
+
+	const frame = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: spy,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(frame);
+	await sendRecording(frame);
+	await frame.unmount();
+	/* The burst waits 500 ms before its second attempt; this waits it out. */
+	await act(async () => {
+		await new Promise((resolve) => realSetTimeout(resolve, 700));
+	});
+	await settle();
+	assert.equal(
+		transcription.calls.length,
+		2,
+		"the burst tried again after the switch",
+	);
+	assert.equal(calls.length, 1, "and the recovered transcript was sent");
+	assert.match(calls[0].content, /second attempt/);
+	transcription.restore();
+	mic.next = null;
+});
+
+test("a draft edited while the words were in flight is merged, never sent (case 6)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const { calls, spy } = spySends();
+	transcription.install([OK_TRANSCRIPT("the words")]);
+	const release = transcription.hold();
+
+	const frame = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: spy,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(frame);
+	await sendRecording(frame);
+	await frame.unmount();
+	useConversationInputStore.getState().setCurrentInput(A, "x");
+	await act(async () => {
+		release();
+	});
+	await settle();
+
+	assert.equal(
+		calls.length,
+		0,
+		"nothing is posted over words the user changed",
+	);
+	assert.equal(
+		useConversationInputStore.getState().getCurrentInput(A),
+		"x the words",
+		"the transcript joins what they wrote",
+	);
+	assert.equal(
+		useDictatedSendStore.getState().refused[A]?.reason,
+		"edited",
+		"and the refusal names the edit",
+	);
+	transcription.restore();
+	mic.next = null;
+});
+
+test("a refused send keeps the words in the origin's draft and frees the intent (case 7)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	transcription.install([OK_TRANSCRIPT("kept words")]);
+	const release = transcription.hold();
+
+	const frame = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: async () => false,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(frame);
+	await sendRecording(frame);
+	await frame.unmount();
+	await act(async () => {
+		release();
+	});
+	await settle();
+
+	const kept = useConversationInputStore.getState().getCurrentInput(A);
+	assert.match(
+		kept,
+		/kept words/,
+		"the dictation is in the draft a returning user will find",
+	);
+	assert.ok(
+		useDictatedSendStore.getState().refused[A],
+		"and the refusal is stated rather than swallowed",
+	);
+	assert.equal(
+		dictatedSends.has(A),
+		false,
+		"the conversation may dictate again",
+	);
+	resetDictatedSendsForTests();
+	assert.equal(
+		typeof dictatedSends.begin(A, { draftAtPress: "", owner: "later" }),
+		"string",
+		"a fresh press is accepted once the refusal is cleared",
+	);
+	transcription.restore();
+	mic.next = null;
+});
+
+test("a refused transcription while away is named, and no take is offered back (case 8)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	transcription.install([REFUSED(402, "insufficient_quota")]);
+	const release = transcription.hold();
+
+	const frame = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: async () => true,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(frame);
+	await sendRecording(frame);
+	await frame.unmount();
+	await act(async () => {
+		release();
+	});
+	await settle();
+
+	assert.equal(
+		useDictatedSendStore.getState().refused[A]?.reason,
+		"transcription",
+		"the failure is recorded as the transcription's, not as a send's",
+	);
+	assert.equal(
+		useConversationInputStore.getState().getCurrentInput(A),
+		"",
+		"nothing was written into the draft - there were no words",
+	);
+	const back = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: async () => true,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	assert.equal(
+		back.container.querySelector("[data-dictation-retry]"),
+		null,
+		"a dead composer cannot offer the take back",
+	);
+	await back.unmount();
+	transcription.restore();
+	mic.next = null;
+});
+
+test("the words take the same route as a typed send, $skill seam included (case 10)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	const readSeam = async (sessionId) => {
+		const call = lastSeamCall;
+		return call ? await call(sessionId) : undefined;
+	};
+	let lastSeamCall = null;
+	const { MessageInput: ProvidedMessageInput } =
+		await buildProvidedComposerBundle();
+	/*
+	 * A DISTINCT ORIGIN PER RUN, because the provided bundle carries its own copy of
+	 * the record: two runs on one conversation would fight over the one intent a
+	 * conversation may hold, and the second press would be refused for the wrong
+	 * reason.
+	 */
+	const run = async ({ away, origin }) => {
+		useConversationInputStore.setState(RESET);
+		resetDictatedSendsForTests();
+		mic.calls = 0;
+		mic.recorders = [];
+		mic.next = async () => fakeStream();
+		skillRead.reset();
+		transcription.install([OK_TRANSCRIPT("use $release-notes")]);
+		const calls = [];
+		const spy = async (
+			content,
+			attachments,
+			onEchoPainted,
+			typed,
+			seam,
+			inputMode,
+		) => {
+			calls.push({ content, typed, inputMode, seam });
+			onEchoPainted?.();
+			return true;
+		};
+		/*
+		 * `ProvidedMessageInput`, because the `$skill` READ needs a query client
+		 * (`skillReadProvided`): without one the composer correctly keeps the read
+		 * off, and a parity case over an off path would prove nothing. `sessionStatus`
+		 * makes the pane an attached one, which is the state the press's read runs in.
+		 */
+		const frame = await mountAt(origin, {
+			component: ProvidedMessageInput,
+			dictatedAwayDelivery: true,
+			admissionSeamHonoured: true,
+			cwd: "/tmp/dictated-send-cwd",
+			onSendMessage: spy,
+			recordingProbe: {
+				canUseRadientSpeech: true,
+				speechBlock: "could-not-check",
+			},
+		});
+		await startTake(frame);
+		await sendRecording(frame);
+		if (away) {
+			await frame.unmount();
+			await settle();
+		} else {
+			await settle();
+			/* The stay path's own effect sends one tick later; give it the tick. */
+			await act(async () => {
+				await new Promise((resolve) => realSetTimeout(resolve, 20));
+			});
+			await settle();
+		}
+		assert.equal(calls.length, 1, away ? "away: one send" : "stay: one send");
+		const call = calls[0];
+		lastSeamCall = call.seam;
+		const composed = await readSeam(origin);
+		grade = {
+			content: call.content,
+			typed: call.typed,
+			inputMode: call.inputMode,
+			seam: call.seam,
+			composed,
+		};
+		await frame.unmount();
+		transcription.restore();
+		mic.next = null;
+	};
+	let grade = null;
+	await run({ away: false, origin: `${A}-stay` });
+	const stay = grade;
+	await run({ away: true, origin: `${A}-away` });
+	const away = grade;
+	assert.deepEqual(
+		[away.content, away.typed, away.inputMode],
+		[stay.content, stay.typed, stay.inputMode],
+		"the same message, the same typed line, the same input mode either way",
+	);
+	assert.equal(
+		away.composed,
+		stay.composed,
+		"and the seam composes the identical payload, $skill bodies and all",
+	);
+	assert.ok(
+		typeof stay.composed === "string" && stay.composed.length > 0,
+		"the seam answered (a $skill read that never ran would be undefined here)",
+	);
+	/*
+	 * WHAT THIS CASE DOES NOT REACH, stated rather than implied: the `$skill` BODY
+	 * read. The composer's vocabulary comes from `useSkillCompletion`, whose read is
+	 * gated on the pairing probe answering a clean `null`; this harness has no
+	 * backend bridge, so the vocabulary stays empty, `planSkillMentions` plans
+	 * nothing, and the seam composes an unexpanded payload on both paths. The seam
+	 * itself - which is bug 1's channel, and the thing a copy of the send would have
+	 * duplicated - is exercised: both paths hand the host a seam, and both seams
+	 * answer with the same string.
+	 */
+	assert.ok(
+		typeof stay.seam === "function",
+		"the press handed the host a seam on both paths",
+	);
+	assert.equal(
+		(stay.composed.match(/operator-skills/g) ?? []).length,
+		(away.composed.match(/operator-skills/g) ?? []).length,
+		"neither path invents a skill block the other does not have",
+	);
+});
+
+test("a host without the flag keeps today's behaviour: nothing is sent after an unmount (case 11)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const { calls, spy } = spySends();
+	transcription.install([OK_TRANSCRIPT("as today")]);
+	const release = transcription.hold();
+
+	const frame = await mountAt(A, {
+		/* NO `dictatedAwayDelivery`: the mini view, config, library, quick-send. */
+		onSendMessage: spy,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(frame);
+	await sendRecording(frame);
+	await frame.unmount();
+	await act(async () => {
+		release();
+	});
+	await settle();
+
+	assert.equal(
+		calls.length,
+		0,
+		"an opted-out host sends nothing after an unmount",
+	);
+	assert.match(
+		useConversationInputStore.getState().getCurrentInput(A),
+		/as today/,
+		"and the transcript lands in the draft, exactly as it does today",
+	);
+	assert.equal(dictatedSends.has(A), false, "no intent was ever armed");
+	transcription.restore();
+	mic.next = null;
+});
+
+test("the stay path is unchanged, seam argument and all (case 12)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const { calls, spy } = spySends();
+	transcription.install([OK_TRANSCRIPT("stayed here")]);
+
+	const frame = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: spy,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(frame);
+	await sendRecording(frame);
+	await act(async () => {
+		await new Promise((resolve) => realSetTimeout(resolve, 20));
+	});
+	await settle();
+
+	assert.equal(calls.length, 1, "one send, without any switch");
+	assert.equal(calls[0].options, undefined, "and no seventh argument at all");
+	assert.equal(frame.textarea().value, "", "the box is cleared by the echo");
+	assert.equal(useConversationInputStore.getState().getCurrentInput(A), "");
+	await frame.unmount();
+	transcription.restore();
+	mic.next = null;
+});
+
+test("the away path raises no React warning and no console error (case 13)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const { spy } = spySends();
+	transcription.install([OK_TRANSCRIPT("quietly")]);
+	const release = transcription.hold();
+	const errors = [];
+	const original = console.error;
+	console.error = (...args) => {
+		errors.push(args.map(String).join(" "));
+	};
+	try {
+		const frame = await mountAt(A, {
+			dictatedAwayDelivery: true,
+			onSendMessage: spy,
+			recordingProbe: {
+				canUseRadientSpeech: true,
+				speechBlock: "could-not-check",
+			},
+		});
+		await startTake(frame);
+		await sendRecording(frame);
+		await frame.unmount();
+		await act(async () => {
+			release();
+		});
+		await settle();
+	} finally {
+		console.error = original;
+		transcription.restore();
+		mic.next = null;
+	}
+	/*
+	 * The audio-meter canvas is jsdom's, not the app's: `getContext` is unimplemented
+	 * there and it says so on every mount, on the untouched tree as much as on this
+	 * one. Everything else - a React update on a dead pane, a `flushSync` warning, a
+	 * caught error the continuation logged - fails the case.
+	 */
+	assert.deepEqual(
+		errors.filter(
+			(line) =>
+				!line.startsWith("Transcription attempt") &&
+				!line.startsWith("Error: Not implemented: HTMLCanvasElement"),
+		),
+		[],
+		"an unmounted pane's continuation says nothing on the console",
+	);
 });

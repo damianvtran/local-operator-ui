@@ -71,5 +71,21 @@
 	"ui.chat.composer.secret_fill_refused": "راز کے خانے نے یہ قدر قبول نہیں کی۔ آپ کا متن محفوظ ہے — سوالات کے پینل میں وجہ دیکھیں۔",
 	"ui.chat.composer.secret_fill_unavailable": "راز کے خانے تک رسائی نہیں ہو سکی۔ آپ کا متن محفوظ ہے۔",
 	"ui.chat.composer.secret_fill_multi": "اس درخواست میں ایک سے زیادہ راز درکار ہیں۔ آپ کا متن محفوظ ہے — سوالات کے پینل میں خانہ منتخب کریں۔",
-	"ui.chat.composer.secret_closure_notice": "سوالات کے پینل میں راز کی درخواست کا جواب دیں — جواب ملنے تک یہ خانہ موقوف ہے، اور آپ کا مسودہ محفوظ رہتا ہے۔"
+	"ui.chat.composer.secret_closure_notice": "سوالات کے پینل میں راز کی درخواست کا جواب دیں — جواب ملنے تک یہ خانہ موقوف ہے، اور آپ کا مسودہ محفوظ رہتا ہے۔",
+	"ui.chat.composer.dictated_away.not_sent": "«{title}» کو نہیں بھیجا گیا: {reason}۔ آپ کا لکھوایا ہوا متن اُس چیٹ کے ڈرافٹ میں محفوظ ہے۔",
+	"ui.chat.composer.dictated_away.not_sent_body": "نہیں بھیجا گیا: {reason}۔ آپ کا لکھوایا ہوا متن اُس چیٹ کے ڈرافٹ میں محفوظ ہے۔",
+	"ui.chat.composer.dictated_away.transcription_failed": "«{title}» کے لیے آپ کی ڈکٹیشن کا متن نہیں بنایا جا سکا۔ ریکارڈنگ محفوظ نہیں رکھی گئی — دوبارہ ریکارڈ کریں۔",
+	"ui.chat.composer.dictated_away.transcription_failed_body": "آپ کی ڈکٹیشن کا متن نہیں بنایا جا سکا۔ ریکارڈنگ محفوظ نہیں رکھی گئی — دوبارہ ریکارڈ کریں۔",
+	"ui.chat.composer.dictated_away.reason_edited": "متن لکھے جانے کے دوران اُس چیٹ کا ڈرافٹ بدل دیا گیا",
+	"ui.chat.composer.dictated_away.reason_command": "یہ الفاظ بطور کمانڈ چل جاتے",
+	"ui.chat.composer.dictated_away.reason_gate": "یہ الفاظ اُس سوال کا جواب دیتے جس کا یہ چیٹ انتظار کر رہا ہے",
+	"ui.chat.composer.dictated_away.reason_secret": "یہ الفاظ کسی اِسناد جیسے لگتے ہیں",
+	"ui.chat.composer.dictated_away.reason_no_model": "اِس چیٹ میں جواب دینے کے لیے کوئی ماڈل منتخب نہیں",
+	"ui.chat.composer.dictated_away.reason_unavailable": "اِس چیٹ نے پیغام نہیں لیا",
+	"ui.chat.composer.dictated_away.reason_not_ready": "یہ چیٹ ابھی کھل رہی ہے",
+	"ui.chat.composer.dictated_away.open_chat": "چیٹ کھولیں",
+	"ui.chat.composer.dictated_away.draft_label": "نئی چیٹ",
+	"ui.chat.composer.dictated_away.untitled_chat": "بے عنوان چیٹ",
+	"ui.chat.composer.dictated_away.origin_gone": "«{title}» کو نہیں بھیجا گیا: یہ چیٹ اب موجود نہیں، اِس لیے لکھوایا ہوا متن بھی ضائع ہو گیا۔",
+	"ui.chat.composer.dictated_away.origin_gone_body": "نہیں بھیجا گیا: یہ چیٹ اب موجود نہیں، اِس لیے لکھوایا ہوا متن بھی ضائع ہو گیا۔"
 }

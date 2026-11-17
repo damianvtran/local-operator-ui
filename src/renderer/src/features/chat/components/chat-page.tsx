@@ -67,6 +67,7 @@ import {
 	SESSION_UNVALIDATED_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
+	composerIdentityFor,
 	isSessionUnvalidated,
 	migrateHeldClaim,
 	paneDraftKey,
@@ -166,6 +167,13 @@ import {
 import { ChatDeviceHold } from "../device/chat-device-hold";
 import { ChatDeviceNotice } from "../device/chat-device-notice";
 import { ChatDeviceSlot } from "../device/chat-device-slot";
+import {
+	dictatedRefusalSentence,
+	dictatedSends,
+	dismissDictatedToast,
+	setDictatedSendNavigate,
+	useDictatedSendStore,
+} from "../dictated-send";
 import {
 	type DraftResolution,
 	type DraftSelectionTarget,
@@ -324,6 +332,39 @@ function SessionPanel({
 	const draft = useCanonicalSessionsStore((state) =>
 		draftIdentity ? state.drafts[draftIdentity] : undefined,
 	);
+	/*
+	 * A DICTATED SEND THAT ENDED WITHOUT POSTING IS SAID HERE (bug 2).
+	 *
+	 * The refusal is recorded against the CONVERSATION (`dictated-send.ts`), not
+	 * against a pane, because the pane it belongs to is exactly the thing that may
+	 * be gone when it happens. This effect is where the record meets the notice this
+	 * pane already renders: opening that chat - now, or an hour later - states the
+	 * sentence, clears the record and retires the persistent toast, so the reader is
+	 * told once, in the place the dictation lives.
+	 *
+	 * The toast itself is raised at the refusal, and only when the reader is looking
+	 * at another chat; `dismissDictatedToast` here is what withdraws it once they
+	 * come back to this one.
+	 */
+	const dictatedRefusal = useDictatedSendStore((state) =>
+		identity ? state.refused[identity] : undefined,
+	);
+	useEffect(() => {
+		if (!identity || !dictatedRefusal) return;
+		setSendError(dictatedRefusalSentence(dictatedRefusal));
+		setSendErrorCode(undefined);
+		setSendErrorRetry(false);
+		setSendErrorMuted(false);
+		dictatedSends.clearRefusal(identity);
+		dismissDictatedToast(identity);
+	}, [identity, dictatedRefusal]);
+	/*
+	 * THE REFUSAL TOAST'S "Open chat" NEEDS A ROUTER (bug 2), and this panel is
+	 * where one lives. Registered rather than imported so `dictated-send.ts` stays
+	 * a plain module the node suites can drive without a React tree. Declared below
+	 * with the panel's own `navigate` (line ~1380), which is why it registers in an
+	 * effect there instead of here.
+	 */
 	/*
 	 * The id this pane's STREAM addresses: the session once it exists, the
 	 * minted draft before that (`sessions.draft`'s id — a real bridge on the
@@ -1339,6 +1380,15 @@ function SessionPanel({
 				? undefined
 				: moveUnavailableReason();
 	const navigate = useNavigate();
+	/*
+	 * THE REFUSAL TOAST'S "Open chat" NEEDS A ROUTER (bug 2), and this panel has one.
+	 * Registered rather than imported so `dictated-send.ts` stays a plain module the
+	 * node suites can drive without a React tree; re-registered on a rerender so the
+	 * toast never opens a route through a stale closure.
+	 */
+	useEffect(() => {
+		setDictatedSendNavigate(navigate);
+	}, [navigate]);
 	const rebind = (id: string) => {
 		/* The `/chat` slash finger on the switch; the rule is in `openConversation`. */
 		void openConversation(navigate, id);
@@ -1950,7 +2000,30 @@ function SessionPanel({
 		 * whichever value the first attempt carried.
 		 */
 		inputMode?: "typed" | "dictated" | "mixed",
+		/**
+		 * THE SEND IS BOUND TO THE CONVERSATION IT STARTED IN, WHICHEVER PANE IS ON
+		 * SCREEN (bug 2). Passed by exactly one caller: the composer's dictated-away
+		 * deliverer, which finishes a "send recording" press in the chat the press
+		 * belonged to after the user has moved to another one.
+		 *
+		 * It relaxes exactly two of this function's own refusals, and both are about
+		 * the VIEW rather than about the send:
+		 *
+		 *   - the "the user has already left this conversation" gate below, whose
+		 *     whole point is to stop a press that raced a switch - here the switch is
+		 *     the expected state, and refusing would drop the dictation;
+		 *   - the validation-window hold, which parks a press until THIS pane's stream
+		 *     answers - a pane that is not mounted has no stream to wait on, so an
+		 *     unvalidated origin is refused with a sentence instead of held forever.
+		 *
+		 * It does NOT relax the payload refusals above (an unreadable attachment, the
+		 * size budget): those are about the message, and the voice's words are held to
+		 * the same rules as the keyboard's. Nor does it enable the navigation the
+		 * success path performs - that would yank the reader out of the chat they chose.
+		 */
+		options?: { originBound?: boolean },
 	): Promise<SendOutcome> => {
+		const originBound = options?.originBound === true;
 		const store = useCanonicalSessionsStore.getState();
 		// Same ROW the view reads, so a send can never address a different draft
 		// than the one whose retained text and Discard control are shown. The
@@ -2459,10 +2532,48 @@ function SessionPanel({
 			 * with this conversation's draft, the same outcome as `abandoned`.
 			 */
 			if (
+				!originBound &&
 				sessionId &&
 				!viewIsOnThisSession(useCanonicalSessionsStore.getState(), sessionId)
 			)
 				return false;
+			/*
+			 * AN ORIGIN-BOUND SEND HAS NO WINDOW TO WAIT IN (bug 2). The hold below parks
+			 * a press until THIS pane's stream answers; a pane that is not mounted has no
+			 * stream and never will while the reader is elsewhere, so the press would sit
+			 * in `awaitWindow()` until something settled it. Refused with the same
+			 * sentence the stream failure uses, and recorded against the origin so the
+			 * reader is told why their dictation did not go - `not-ready` rather than a
+			 * wait they cannot see.
+			 */
+			if (
+				originBound &&
+				sessionId &&
+				isSessionUnvalidated(
+					useCanonicalSessionsStore.getState().validatingSessionId,
+					sessionId,
+				)
+			) {
+				const sentence = sessionUnvalidatedMessage();
+				setSendError(sentence);
+				setSendErrorCode(SESSION_UNVALIDATED_CODE);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
+				/*
+				 * AND THE ORIGIN IS TOLD, not only this pane (bug 2). `setSendError` above
+				 * writes a pane-state notice, and the pane this send belongs to may not be
+				 * mounted: the sentence would be lost with it. The refusal record carries
+				 * the same words to whichever composer holds that conversation next - and,
+				 * because the reader is by definition looking somewhere else, raises the
+				 * persistent toast that names the chat.
+				 */
+				dictatedSends.refuseAway(
+					composerIdentityFor(key, sessionId),
+					"not-ready",
+					sentence,
+				);
+				return false;
+			}
 			if (
 				sessionId &&
 				isSessionUnvalidated(
@@ -2584,6 +2695,7 @@ function SessionPanel({
 				canvas.addMentionedFilesBatch(id, sentFiles);
 			}
 			if (
+				!originBound &&
 				draftKey &&
 				useCanonicalSessionsStore.getState().activeSessionId === id
 			)
@@ -5190,6 +5302,13 @@ function SessionPanel({
 					 * the typed line first (bug 1). See `MessageInputProps`.
 					 */
 					admissionSeamHonoured
+					/*
+					 * AND THIS PAGE FINISHES A DICTATED SEND IN THE CHAT IT STARTED IN (bug 2):
+					 * `send` accepts an `originBound` call for a conversation this pane is not
+					 * showing, so a "send recording" press survives a session switch instead of
+					 * landing in the next chat's box. See `MessageInputProps`.
+					 */
+					dictatedAwayDelivery
 					/*
 					 * The SAME dispatcher the chips use, handed the planner's own answer (an
 					 * invocation, never the draft) with its outcome handed back: the composer
