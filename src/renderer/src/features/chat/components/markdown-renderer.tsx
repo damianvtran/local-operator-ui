@@ -46,8 +46,8 @@ import remarkGuardedMath from "./markdown-math-guarded";
 import { MarkdownTable } from "./markdown-table";
 import "./markdown.css";
 import { MAX_PROBE_PATHS } from "../../../../../shared/desktop-contract";
+import { ChatDiagram } from "./chat-diagram";
 import { containsRenderableMath } from "./markdown-math";
-import { MermaidDiagram } from "./mermaid-diagram";
 import { SEPARATOR_CLASS, SEPARATOR_RUN } from "./slash-token";
 
 // katex.min.css is unconditional dead weight for the vast majority of messages,
@@ -392,7 +392,7 @@ const MARKDOWN_COMPONENTS: Components = {
 
 		if (language === "mermaid") {
 			return (
-				<MermaidDiagram chart={String(children).replace(NEWLINE_REGEX, "")} />
+				<ChatDiagram chart={String(children).replace(NEWLINE_REGEX, "")} />
 			);
 		}
 

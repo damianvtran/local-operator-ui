@@ -188,7 +188,7 @@ const rendererFeatureFiles = (dir = "src/renderer/src", out = []) => {
 const DEFERRED_PANELS = {
 	"src/renderer/src/features/browser/components/browser-url-bar.tsx":
 		"floats over the page, not over app-painted content: a different backdrop class, not this row's floor",
-	"src/renderer/src/features/chat/components/mermaid-diagram.tsx":
+	"src/renderer/src/features/chat/components/diagram-viewer.tsx":
 		"the diagram controls, over the rendered diagram in the canvas pane",
 	"src/renderer/src/features/chat/components/run-details/job-cancel-popover.tsx":
 		"the job-cancel confirmation card",
