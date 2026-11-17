@@ -308,6 +308,14 @@ type ChatContentProps = {
 		 */
 		beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
 	) => SendOutcome | Promise<SendOutcome>;
+	/**
+	 * Whether the page that owns `onSendMessage` APPLIES the seam it is handed
+	 * (`MessageInputProps.admissionSeamHonoured`). True only for the chat pane,
+	 * whose `send` forwards the seam to `admitChatDraft` and composes an aside's
+	 * text through it; every other `ChatContent` caller leaves it false and keeps
+	 * the composer's pre-seam behaviour.
+	 */
+	admissionSeamHonoured?: boolean;
 	currentJobId: string | null;
 	onCancelJob: (jobId: string) => void;
 	agentData?: AgentDetails | null;
@@ -952,6 +960,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		scrollToBottom,
 		rawInfoContent,
 		onSendMessage,
+		admissionSeamHonoured = false,
 		currentJobId,
 		onCancelJob,
 		onComposerInput,
@@ -3377,6 +3386,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<MessageInput
 								ref={messageInputRef}
 								onSendMessage={onSendMessage}
+								admissionSeamHonoured={admissionSeamHonoured}
 								onComposerInput={onComposerInput}
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
 								noProvider={needsProvider}

@@ -204,7 +204,10 @@ import {
 	unreadableAttachmentRefusal,
 } from "../utils/attachment-read";
 import { canvasDocumentForPath } from "../utils/canvas-document";
-import { messageBudgetRefusal } from "../utils/message-budget";
+import {
+	budgetCheckedSeam,
+	messageBudgetRefusal,
+} from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
 import { ChatHeaderDraftTarget } from "./chat-header-draft-target";
 import { draftTargetChipShown } from "./chat-header-draft-target-model";
@@ -2220,6 +2223,19 @@ function SessionPanel({
 				return false;
 			}
 			/*
+			 * THE SEAM'S ANSWER IS A PAYLOAD, SO IT IS WEIGHED LIKE ONE (bug 1).
+			 *
+			 * Up to this change the press's `content` WAS the whole payload, and the
+			 * refusal above weighed all of it. A `$skill` message now carries its
+			 * typed line here and its `<operator-skills>` block through
+			 * `beforeAdmission` (`message-input.tsx`), so the string the owner receives
+			 * is no longer the string that was weighed - and a skill body is arbitrary
+			 * length. `budgetCheckedSeam` re-weighs the composed answer inside the
+			 * admission and refuses it there; see its own note for why that is the
+			 * failure row rather than this line.
+			 */
+			const admitSeam = budgetCheckedSeam(beforeAdmission, images);
+			/*
 			 * WHILE AN ASIDE IS ATTACHED THE COMPOSER ADDRESSES THE ASIDE.
 			 *
 			 * WHY HERE, BETWEEN THE REFUSALS ABOVE AND EVERYTHING BELOW. Above, because
@@ -2310,6 +2326,33 @@ function SessionPanel({
 					return false;
 				}
 				/*
+				 * THE QUESTION TAKES THE COMPOSED TEXT (bug 1's aside arm). An aside is an
+				 * off-record answer that never enters `admitChatDraft`, so it is the one
+				 * door the store's seam never runs for: the composer hands it the typed
+				 * line now and the `$skill` block rides
+				 * `beforeAdmission` like everywhere else, so the door has to ask the seam
+				 * itself or the question reaches the owner with `$name` as prose.
+				 *
+				 * AND THE ANSWER IS WEIGHED HERE rather than through
+				 * `budgetCheckedSeam`: that wrapper throws, which is right inside the
+				 * store's admission (a failure row) and wrong on this door, where the
+				 * refusal belongs on the composer's own line with the question still in
+				 * the box. `beforeAdmission` is undefined whenever nothing is left to
+				 * compose, so a plain attached send is byte-identical to today's.
+				 */
+				let asideContent = content;
+				if (beforeAdmission) {
+					asideContent = (await beforeAdmission(sessionId)) ?? content;
+					const asideRefusal = messageBudgetRefusal(asideContent, images);
+					if (asideRefusal) {
+						setSendError(asideRefusal);
+						setSendErrorCode(undefined);
+						setSendErrorRetry(false);
+						setSendErrorMuted(false);
+						return false;
+					}
+				}
+				/*
 				 * THE SUBSCRIPTION TRAVELS WITH THE ASK. The stream is read by every
 				 * attached viewer of this session, so an owner that routes `aside_delta`
 				 * to the subscription that asked — rather than broadcasting it — needs to
@@ -2339,7 +2382,7 @@ function SessionPanel({
 				setSendErrorCode(undefined);
 				const ask = askAside(
 					sessionId,
-					content,
+					asideContent,
 					canonical.subscriptionId ?? undefined,
 				);
 				/*
@@ -2510,7 +2553,7 @@ function SessionPanel({
 					},
 					sessionId,
 					onEchoPainted,
-					beforeAdmission,
+					admitSeam,
 				),
 			);
 			if (!id) return false;
@@ -5140,6 +5183,13 @@ function SessionPanel({
 					scrollToBottom={scrollToBottom}
 					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}
 					onSendMessage={stableSend}
+					/*
+					 * THIS PAGE APPLIES THE SEAM: `send` forwards it to `admitChatDraft`
+					 * (weighed by `budgetCheckedSeam`) and composes an aside's question
+					 * through it, so the composer may hand the `$skill` read to it and paint
+					 * the typed line first (bug 1). See `MessageInputProps`.
+					 */
+					admissionSeamHonoured
 					/*
 					 * The SAME dispatcher the chips use, handed the planner's own answer (an
 					 * invocation, never the draft) with its outcome handed back: the composer

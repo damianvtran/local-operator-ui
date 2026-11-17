@@ -23,6 +23,7 @@ import {
 	DESKTOP_SYSTEM_PROMPT_MAX_CHARS,
 	desktopEndpoint,
 } from "../../../../../shared/desktop-contract";
+import { UserFacingError } from "../../../shared/api/local-operator/desktop-api";
 import { formatByteSize } from "../../../shared/lib/format-bytes";
 import type { WireImage } from "./bound-image";
 
@@ -319,4 +320,65 @@ export function messageBudgetRefusal(
 	}
 	const [size, limit] = formatByteSizePair(textBytes, budget);
 	return t("ui.chat.message_budget.text_size", { size, limit });
+}
+
+/**
+ * An admission seam, as `admitChatDraft` runs one.
+ *
+ * Spelled here beside the weigh it is wrapped with, so the two halves of "the
+ * seam's answer is a payload like any other" are in one module rather than in
+ * the component that happens to build the seam.
+ */
+export type AdmissionSeam = (sessionId: string) => Promise<string | undefined>;
+
+/**
+ * The code an over-budget composed payload carries.
+ *
+ * It exists so the refusal is classified by a FACT rather than by a sentence:
+ * the store's `isRefusedBeforeAdmission` reads codes, and a bare
+ * `UserFacingError` with none is classed "unknown outcome" - which would say the
+ * app cannot tell whether the message went, latch a claim on the row and offer a
+ * Retry that re-posts the same over-budget bytes. Nothing was admitted here and
+ * the app knows it (`budgetCheckedSeam`'s own note).
+ */
+export const MESSAGE_BUDGET_CODE = "message_budget";
+
+/**
+ * The press's budget rule, applied to the seam's answer.
+ *
+ * WHY THE ANSWER IS WEIGHED AT ALL. The press weighs `content` before it admits
+ * anything (`chat-page.tsx`), and that was the whole payload while the composer
+ * composed the `$skill` block ahead of the press. The block now travels through
+ * the seam instead - the typed line is what the press carries, and the seam's
+ * answer is what the owner receives - so the string that reaches the wire is no
+ * longer the string that was weighed. A skill body is arbitrary length (a
+ * SKILL.md plus whatever reference files it names), so a message that passed at
+ * the press could still be refused by the transport AFTER the row was painted
+ * and the box cleared. Weighing the seam's answer puts the refusal back where
+ * the remedy is: the box still holds the message and the sentence names what to
+ * cut.
+ *
+ * A THROW RATHER THAN A SENTENCE, because this runs inside the store's own
+ * admission: `admitChatDraft` runs the seam before the wire, so a
+ * `UserFacingError` from here is "nothing was admitted" - the store classifies
+ * it `not_sent`, writes that sentence on the failure row and hands the payload
+ * back to the composer, which is the outcome an over-budget press already got.
+ *
+ * `undefined` in, `undefined` out: a host that offers no seam keeps its own
+ * pre-seam behaviour untouched, because there is nothing to weigh.
+ */
+export function budgetCheckedSeam(
+	seam: AdmissionSeam | undefined,
+	images: readonly WireImage[],
+): AdmissionSeam | undefined {
+	if (!seam) return undefined;
+	return async (sessionId) => {
+		const rendered = await seam(sessionId);
+		if (rendered === undefined) return undefined;
+		// A copy because `messageBudgetRefusal` takes the wire images to weigh them
+		// with the text, and its own callers all own their array.
+		const refusal = messageBudgetRefusal(rendered, [...images]);
+		if (refusal) throw new UserFacingError(refusal, MESSAGE_BUDGET_CODE);
+		return rendered;
+	};
 }

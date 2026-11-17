@@ -255,6 +255,31 @@ window.electron = {
  * 1, MINOR 1).
  */
 const transportOps = [];
+/*
+ * THE `$skill` BODY READ, AS THE CASES ABOUT ITS LATENCY HOLD IT (bug 1).
+ *
+ * A `skills.list` carrying a `name` is the body read the press used to await.
+ * `hold` is a promise the mock does not answer past (a gate the case releases),
+ * `latency` answers after a real delay (the structural gate's d), and
+ * `unreadable` names a body the daemon refuses - the arm whose notice says the
+ * message went as written. `started`/`answered` are the ORDER readings: a press
+ * that waited for the wire is visible as "no `onSendMessage` yet" while
+ * `started` is already non-empty.
+ */
+const skillRead = {
+	started: [],
+	answered: 0,
+	hold: null,
+	latency: 0,
+	unreadable: new Set(),
+	reset() {
+		this.started = [];
+		this.answered = 0;
+		this.hold = null;
+		this.latency = 0;
+		this.unreadable = new Set();
+	},
+};
 globalThis.fetch = async (_url, init) => {
 	let request = {};
 	try {
@@ -290,6 +315,20 @@ globalThis.fetch = async (_url, init) => {
 		 * it as content, exactly as a real SKILL.md's instruction half would.
 		 */
 		if (typeof request.name === "string") {
+			/*
+			 * THE READ'S OWN INSTRUMENT (see `skillRead`): recorded when it STARTS,
+			 * because "the press waited for the read" is a statement about starts and
+			 * answers, not about the body that eventually comes back.
+			 */
+			skillRead.started.push(request.name);
+			if (skillRead.hold) await skillRead.hold;
+			if (skillRead.latency > 0)
+				await new Promise((resolve) =>
+					realSetTimeout(resolve, skillRead.latency),
+				);
+			skillRead.answered += 1;
+			if (skillRead.unreadable.has(request.name))
+				throw new Error(`skills.list ${request.name} refused`);
 			/*
 			 * One body per name, because the seam test drives several mentions in
 			 * one message and their ORDER is the claim: a stub that answered every
@@ -918,6 +957,313 @@ test("the draft send seam composes the new `$skill` block for every mention (B1)
 		assert.deepEqual(run.notes, [
 			"skill `hollow` has an empty body — sending your message as written",
 		]);
+	}
+});
+
+/* ------------------------------------------------------------------ */
+/* 1e. The press does not wait for the bodies (bug 1)                  */
+/* ------------------------------------------------------------------ */
+
+test("an attached composer reaches the host before the `$skill` bodies are read, and the seam composes them (bug 1)", async () => {
+	/*
+	 * THE OPERATOR'S REPORT: "I press enter and it's ... up to a second when there
+	 * are skills noted in the message too. this shouldn't be the case, it should
+	 * be instant or at least appear instant and run in the background if needed".
+	 *
+	 * WHAT WAS SLOW, IN THIS FILE'S OWN TERMS. The press used to loop over the
+	 * planned names and `await readSkillBody` once per name BEFORE `onSendMessage`,
+	 * so the bubble and the box waited on one desktop IPC and one daemon catalogue
+	 * scan per name. Nothing else on the press path fetches: the credential rewrite
+	 * early-returns when the text cites nothing.
+	 *
+	 * THE CONTRACT PINNED HERE. On a pane whose host honours `admissionSeamHonoured`
+	 * the first argument is the TYPED line, the bodies ride the fifth (the seam),
+	 * and the host is reached while the reads are still in flight. The base has
+	 * `sent.length === 0` under the same gate, which is the defect this case
+	 * exists for.
+	 *
+	 * AND THE STRUCTURAL GATE THE BRIEF ASKS FOR: the same press at injected
+	 * read latencies d in {0, 70, 250, 1000} ms. A press that waits for the read
+	 * cannot pass a single one of them, and the assertion is about SHAPE and ORDER
+	 * (`onSendMessage` issued while `started` is non-empty and `answered` is 0),
+	 * never about milliseconds - jsdom has no clock worth quoting.
+	 */
+	const EXPECTED_BODIES = {
+		research: "# research\n\nRead the code first.\n",
+		"release-notes": "# release-notes\n\nWrite the release notes.\n",
+	};
+	const SKILL_PREAMBLE =
+		"The user invoked the following skills directly. Follow them for this request. Their reference files, if any, are listed at the end of each body and are read with `skill://<name>/<path>`.";
+	const expectedBlock = (entries) =>
+		`<operator-skills>\n\n${SKILL_PREAMBLE}\n\n${entries
+			.map(([name, body]) => `<skill name="${name}">\n${body}\n</skill>`)
+			.join("\n\n")}\n\n</operator-skills>`;
+	const NOTE_EMPTY =
+		"skill `hollow` has an empty body — sending your message as written";
+	const NOTE_FAILED =
+		"could not load skill `hollow` — sending your message as written";
+
+	const { MessageInput: ProvidedMessageInput } =
+		await buildProvidedComposerBundle();
+	const valueSetter = Object.getOwnPropertyDescriptor(
+		window.HTMLTextAreaElement.prototype,
+		"value",
+	).set;
+
+	/** One promise and its handle, for a gate a case releases by hand. */
+	const deferred = () => {
+		let release;
+		const promise = new Promise((resolve) => {
+			release = resolve;
+		});
+		return { promise, release };
+	};
+
+	/**
+	 * An ATTACHED pane (`sessionStatus` present, not a draft - the one condition
+	 * that makes `credentialSessionId` defined), typed into and pressed ONCE.
+	 *
+	 * The reading is taken while whatever the case gated is still held, so
+	 * `whileHeld` describes the press and not the settle: `sent` is what the host
+	 * was handed by then, `started`/`answered` are the reads'. The gate is then
+	 * released and the seam is invoked the way `admitChatDraft` does, which is the
+	 * only place the composed payload can come from now.
+	 */
+	const pressAttached = async (
+		draft,
+		{
+			admissionSeamHonoured = true,
+			gate = null,
+			latency = 0,
+			unreadable = [],
+		} = {},
+	) => {
+		skillRead.reset();
+		skillRead.hold = gate?.promise ?? null;
+		skillRead.latency = latency;
+		for (const name of unreadable) skillRead.unreadable.add(name);
+		const sent = [];
+		const notes = [];
+		const container = window.document.createElement("div");
+		window.document.body.appendChild(container);
+		const paneRoot = createRoot(container);
+		let handle = null;
+		const cwd = `~/attached-${++mountSeq}`;
+		const before = transportOps.filter((op) => op === "skills.list").length;
+		await act(async () => {
+			paneRoot.render(
+				h(ProvidedMessageInput, {
+					conversationId: `shared-composer-attached-${++mountSeq}`,
+					messages: [],
+					isLoading: false,
+					// Attached: a session exists, so the pane stores credentials itself.
+					sessionStatus: { frontend: null },
+					admissionSeamHonoured,
+					cwd,
+					onSlashNote: (text) => notes.push(text),
+					ref: (node) => {
+						handle = node;
+					},
+					onSendMessage: async (...args) => {
+						sent.push(args);
+						return undefined;
+					},
+				}),
+			);
+		});
+		await settle();
+		const reads = () =>
+			transportOps.filter((op) => op === "skills.list").length;
+		for (let pass = 0; pass < 40 && reads() === before; pass++) {
+			await settle();
+		}
+		assert.ok(
+			reads() > before,
+			`the sessionless vocabulary read fired for ${cwd}`,
+		);
+		const field = container.querySelector("textarea");
+		await act(async () => {
+			valueSetter.call(field, draft);
+			field.dispatchEvent(new window.Event("input", { bubbles: true }));
+		});
+		await settle();
+		assert.ok(handle?.submitNow, "the composer's handle is mounted");
+		await act(async () => {
+			handle.submitNow();
+		});
+		/*
+		 * ONE SETTLE, NOT A WAIT ON THE READ. `settle` flushes microtasks and a few
+		 * zero-delay macrotasks; a gated or delayed read cannot answer inside it, so
+		 * what is read here is the press's own reach.
+		 */
+		await settle();
+		const whileHeld = {
+			sent: sent.length,
+			started: [...skillRead.started],
+			answered: skillRead.answered,
+		};
+		skillRead.hold = null;
+		gate?.release();
+		await settle();
+		const [content, , , typed, seam] = sent[0] ?? [];
+		const rendered =
+			typeof seam === "function" ? await seam("1234567890ab") : undefined;
+		await act(async () => {
+			paneRoot.unmount();
+		});
+		container.remove();
+		return { content, notes, rendered, seam, typed, whileHeld };
+	};
+
+	// ONE MENTION, HELD: the host is reached while the body read is in flight.
+	{
+		const draft = "$release-notes QA fixture: summarise today.";
+		const run = await pressAttached(draft, { gate: deferred() });
+		assert.equal(
+			run.whileHeld.sent,
+			1,
+			"the press reaches the host while the body read is still held - on the base this is 0, which is the reported lag",
+		);
+		assert.deepEqual(
+			run.whileHeld.started,
+			["release-notes"],
+			"and the read it did not wait for had already started",
+		);
+		assert.equal(run.content, draft, "the first argument is the typed line");
+		assert.equal(
+			run.typed,
+			draft,
+			"the fourth argument is still the typed text",
+		);
+		assert.equal(
+			typeof run.seam,
+			"function",
+			"an attached pane whose bodies are still owed hands the host a seam",
+		);
+		assert.equal(
+			run.rendered,
+			`${draft}\n\n${expectedBlock([
+				["release-notes", EXPECTED_BODIES["release-notes"]],
+			])}`,
+			"the seam composes the payload the press used to compose",
+		);
+		assert.deepEqual(run.notes, [], "a readable body says nothing");
+	}
+
+	// THREE MENTIONS, HELD: every read is issued before any of them answers.
+	{
+		const draft = "compare $research and $release-notes and $hollow now";
+		const run = await pressAttached(draft, { gate: deferred() });
+		assert.equal(run.whileHeld.sent, 1, "still one press, still immediate");
+		assert.deepEqual(
+			run.whileHeld.started,
+			["research", "release-notes", "hollow"],
+			"all three reads are issued together, in text order",
+		);
+		assert.equal(
+			run.whileHeld.answered,
+			0,
+			"and none of them had answered when the host was reached",
+		);
+		assert.equal(
+			run.rendered,
+			`${draft}\n\n${expectedBlock([
+				["research", EXPECTED_BODIES.research],
+				["release-notes", EXPECTED_BODIES["release-notes"]],
+			])}`,
+			"the block carries the readable bodies in text order, the stub skipped",
+		);
+		assert.deepEqual(run.notes, [NOTE_EMPTY]);
+	}
+
+	// DEDUPE BY RESOLVED NAME: one read, one body.
+	{
+		const draft = "$research then $Research again";
+		const run = await pressAttached(draft, { gate: deferred() });
+		assert.deepEqual(
+			run.whileHeld.started,
+			["research"],
+			"the second spelling costs no second read",
+		);
+		assert.equal(
+			run.rendered,
+			`${draft}\n\n${expectedBlock([["research", EXPECTED_BODIES.research]])}`,
+		);
+	}
+
+	// ALL EMPTY: no block, the note still raised, the message goes as written.
+	{
+		const draft = "$hollow please";
+		const run = await pressAttached(draft, { gate: deferred() });
+		assert.equal(run.rendered, draft, "the typed line goes through untouched");
+		assert.deepEqual(
+			run.notes,
+			[NOTE_EMPTY],
+			"the notice is raised from the seam, after the box has been handed back",
+		);
+	}
+
+	// A READ THE DAEMON REFUSES: per-name notice, no block, message as written.
+	{
+		const draft = "$hollow fix";
+		const run = await pressAttached(draft, {
+			gate: deferred(),
+			unreadable: ["hollow"],
+		});
+		assert.equal(run.rendered, draft);
+		assert.deepEqual(run.notes, [NOTE_FAILED]);
+	}
+
+	// A HOST THAT DOES NOT HONOUR THE SEAM: the pre-change contract, whole.
+	{
+		const draft = "$research fix";
+		const run = await pressAttached(draft, {
+			admissionSeamHonoured: false,
+			gate: deferred(),
+		});
+		assert.equal(
+			run.whileHeld.sent,
+			0,
+			"a host that cannot take the seam is not sent a line it would have to compose itself - the press waits, as it always did",
+		);
+		assert.equal(
+			run.content,
+			`${draft}\n\n${expectedBlock([["research", EXPECTED_BODIES.research]])}`,
+			"and its first argument is the composed payload",
+		);
+		assert.equal(
+			run.seam,
+			undefined,
+			"an attached pane with nothing left to settle hands no seam",
+		);
+	}
+
+	// THE STRUCTURAL GATE: the press's reach does not depend on the read's delay.
+	for (const d of [0, 70, 250, 1000]) {
+		const draft = "$research what changed";
+		const run = await pressAttached(draft, { latency: d });
+		assert.equal(
+			run.whileHeld.sent,
+			1,
+			`d=${d}ms: the host is reached before the body read answers`,
+		);
+		assert.deepEqual(
+			run.whileHeld.started,
+			["research"],
+			`d=${d}ms: the read the press skipped had started`,
+		);
+		if (d > 0) {
+			assert.equal(
+				run.whileHeld.answered,
+				0,
+				`d=${d}ms: and had not answered when it did`,
+			);
+		}
+		assert.equal(
+			run.rendered,
+			`${draft}\n\n${expectedBlock([["research", EXPECTED_BODIES.research]])}`,
+			`d=${d}ms: the payload is composed identically whatever the delay`,
+		);
 	}
 });
 

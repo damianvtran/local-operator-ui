@@ -407,8 +407,8 @@ import { skillCompletionFor } from "@features/chat/components/skill-completion";
 import { skillHighlightRuns } from "@features/chat/components/skill-highlight";
 import {
 	planSkillMentions,
+	readPlannedSkillBodies,
 	renderSkillBlock,
-	skillBodyHasContent,
 } from "@features/chat/components/skill-invocation";
 import {
 	type SkillCatalogRow,
@@ -620,6 +620,25 @@ export type MessageInputProps = {
 		inputMode?: "typed" | "dictated" | "mixed",
 	) => SendOutcome | Promise<SendOutcome>;
 	isLoading: boolean;
+	/**
+	 * THIS HOST APPLIES THE `beforeAdmission` SEAM'S ANSWER - so the composer may
+	 * hand it work that has to happen AFTER the message is on screen.
+	 *
+	 * The `$skill` bodies are the case: reading them is one daemon catalogue scan
+	 * per name (measured p50 67 ms, max 80 ms, n=15), and awaiting them before the
+	 * press reaches `onSendMessage` is what put a partial-second gap between Enter
+	 * and the bubble on exactly the messages that named skills. With this flag the
+	 * composer sends the TYPED line at once and the composed payload travels
+	 * through the seam instead; without it there is no agreed way back from the
+	 * seam to the wire, and the composer keeps the pre-seam behaviour (await the
+	 * reads, first argument is the composed payload).
+	 *
+	 * OFF BY DEFAULT, deliberately: hosts that ignore the fifth argument
+	 * (`project-quick-send`, `config-composer`, `library-composer`) would post the
+	 * typed line and drop the expansion on the floor, and a `$name` reaching the
+	 * model as prose is worse than the wait this flag removes.
+	 */
+	admissionSeamHonoured?: boolean;
 	/**
 	 * A send this composer made has been admitted and the owner has not answered
 	 * it yet.
@@ -1900,6 +1919,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			unavailable = false,
 			mentionsEnabled = false,
 			mentionsUnsupported = false,
+			admissionSeamHonoured = false,
 			sessionStatus,
 			onSlashCommand,
 			onSlashNote,
@@ -3022,37 +3042,63 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * TYPED line before anything splices it, and the vocabulary it resolves
 				 * against is the same sessionless answer the list shows.
 				 *
-				 * READ ONCE, ABOVE BOTH COMPOSERS: the attached path's composition and
-				 * the draft path's seam both consume these bodies, and a second read
-				 * inside the seam would be a second request for an answer already in
-				 * hand.
+				 * ONE READ PER NAME, AND ITS RESULT HANDED TO WHICHEVER PATH COMPOSES
+				 * (`readPlannedSkillBodies`): a second read inside the seam would be a
+				 * second request for an answer already in hand.
 				 */
-				const skillEntries: { name: string; body: string }[] = [];
-				if (planned.length > 0 && skillReadProvided) {
-					for (const mention of planned) {
-						const body = await readSkillBody(
-							skillReadClient,
-							cwd ?? "",
-							mention.name,
+				const readPlanned = () =>
+					readPlannedSkillBodies(planned, (name) =>
+						readSkillBody(skillReadClient, cwd ?? "", name),
+					);
+				const raiseSkippedNotes = (
+					skipped: readonly {
+						name: string;
+						reason: "empty" | "unreadable";
+					}[],
+				) => {
+					for (const { name, reason } of skipped)
+						onSlashNote?.(
+							t(
+								reason === "empty"
+									? "ui.chat.composer_notes.skill_empty_body"
+									: "ui.chat.composer_notes.skill_load_failed",
+								{ name },
+							),
 						);
-						if (body !== null && skillBodyHasContent(body))
-							skillEntries.push({ name: mention.name, body });
-						else if (body !== null)
-							onSlashNote?.(
-								t("ui.chat.composer_notes.skill_empty_body", {
-									name: mention.name,
-								}),
-							);
-						else
-							onSlashNote?.(
-								t("ui.chat.composer_notes.skill_load_failed", {
-									name: mention.name,
-								}),
-							);
-					}
+				};
+				/*
+				 * THE BODY READ LEAVES THE PRESS'S PATH WHEN THE HOST CAN TAKE IT LATER
+				 * (operator report, 2026-11-17: "I press enter and it's ... up to a second
+				 * when there are skills noted in the message too. this shouldn't be the
+				 * case, it should be instant or at least appear instant and run in the
+				 * background if needed").
+				 *
+				 * EVERYTHING ABOVE THIS LINE IS THE PRESS'S OWN WORK — the credential
+				 * rewrite, the plan, the composition — and it is a promise about the
+				 * STRING, not a request. The bodies are a request: one desktop IPC and one
+				 * daemon catalogue scan per name (measured p50 67 ms, max 80 ms, n=15, with
+				 * no cache in the daemon), serial, all of it BETWEEN Enter and
+				 * `onSendMessage` — so the bubble and the box waited on the wire. A host
+				 * that honours `beforeAdmission` gives the press a window after the row is
+				 * painted and before the message is admitted, and the read belongs there:
+				 * started HERE so it overlaps the paint, awaited by the seam.
+				 *
+				 * THE SEAM IS THE ONLY CHANNEL THAT CAN CARRY IT. `onSendMessage`'s first
+				 * argument is what a host that ignores the seam would post, so it stays
+				 * the TYPED line here; a host that cannot honour the seam (the three
+				 * quick-send rows, a story, a rig) keeps the awaited read and the composed
+				 * first argument, which is the behaviour every one of them has today.
+				 */
+				const seamCarriesSkillRead =
+					planned.length > 0 && skillReadProvided && admissionSeamHonoured;
+				const seamSkillRead = seamCarriesSkillRead ? readPlanned() : null;
+				let skillBlock = "";
+				if (planned.length > 0 && skillReadProvided && !seamCarriesSkillRead) {
+					const read = await readPlanned();
+					raiseSkippedNotes(read.skipped);
+					skillBlock =
+						read.entries.length > 0 ? renderSkillBlock(read.entries) : "";
 				}
-				const skillBlock =
-					skillEntries.length > 0 ? renderSkillBlock(skillEntries) : "";
 				/*
 				 * THE ONE COMPOSITION, over whichever text the credential step settled
 				 * on — and WHY IT IS ONE (QA round 1, Q-1, the blocker). On a DRAFT pane
@@ -3068,27 +3114,73 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * drift — the failure was invisible precisely because every gate, the
 				 * read and the list were all working; only the final string was
 				 * replaced.
+				 *
+				 * AND THE BLOCK IS A PARAMETER (bug 1): the seam composes from the bodies
+				 * it awaited, so the builder cannot close over a block the press did not
+				 * read.
 				 */
-				const composeOutgoing = (substitutedText: string): string =>
+				const composeOutgoing = (
+					substitutedText: string,
+					block: string,
+				): string =>
 					buildSendPayload(
-						skillBlock
-							? `${substitutedText}\n\n${skillBlock}`
-							: substitutedText,
+						block ? `${substitutedText}\n\n${block}` : substitutedText,
 						replies,
 					);
-				const seam = credentialSessionId
-					? undefined
-					: async (sessionId: string) => {
-							settled = await storeCitedCredentials(message, sessionId);
-							return composeOutgoing(settled.text);
-						};
-				const outgoingText = composeOutgoing(carried.text);
+				/*
+				 * THE SEAM EXISTS WHENEVER SOMETHING IS STILL TO SETTLE AFTER THE PRESS:
+				 * a credential that has no session to be stored into yet (a draft pane),
+				 * or a `$skill` read the press started and did not await. An attached
+				 * pane with neither keeps `undefined` — the pre-seam behaviour, byte for
+				 * byte.
+				 */
+				const seam =
+					!credentialSessionId || seamCarriesSkillRead
+						? async (sessionId: string) => {
+								/*
+								 * THE CREDENTIAL STEP, AND ONLY ON THE PANE THAT COULD NOT TAKE IT
+								 * AT THE PRESS: an attached pane settled `carried` above, and
+								 * storing it a second time inside the seam would repeat a write
+								 * whose answer the press already reported.
+								 */
+								if (!credentialSessionId)
+									settled = await storeCitedCredentials(message, sessionId);
+								const substituted = settled?.text ?? carried.text;
+								if (!seamSkillRead)
+									return composeOutgoing(substituted, skillBlock);
+								/*
+								 * THE BODIES, READ WHILE THE PRESS WAS PAINTING. A read that could
+								 * not answer is `readSkillBody`'s own `null`, reported per name and
+								 * sent WITHOUT the block (the design agreed with UX to keep today's
+								 * semantics: the note says what happened, the message goes as
+								 * written). The `catch` is the belt on that brace — a throw here
+								 * would fail the whole send, and a message the user can see and
+								 * resend beats a gesture that looked like it fired and did not.
+								 */
+								try {
+									const read = await seamSkillRead;
+									raiseSkippedNotes(read.skipped);
+									return composeOutgoing(
+										substituted,
+										read.entries.length > 0
+											? renderSkillBlock(read.entries)
+											: "",
+									);
+								} catch {
+									return composeOutgoing(substituted, "");
+								}
+							}
+						: undefined;
+				const outgoingText = composeOutgoing(carried.text, skillBlock);
 				const accepted = await onSendMessage(
 					/*
-					 * THE COMPOSED PAYLOAD WHEN AT LEAST ONE SKILL ATTACHED, the settled text
-					 * otherwise. With the seam the payload travels with its markers as before —
-					 * the bodies were read from the TYPED line, and the prose is whichever text
-					 * the credential step settled on.
+					 * THE COMPOSED PAYLOAD WHEN THE PRESS HAD TO READ THE BODIES ITSELF (a host
+					 * that ignores the seam, or one with no `$skill` in the message), and the
+					 * TYPED line when the seam carries them: `seamSkillRead` is the one fact
+					 * that decides, and `outgoingText` above is built from that same read, so
+					 * the two cannot disagree. With the seam the payload travels with its
+					 * markers as before — the bodies were read from the TYPED line, and the
+					 * prose is whichever text the credential step settled on.
 					 */
 					outgoingText,
 					attachments.map((a) => a.path),
@@ -3204,6 +3296,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				skillReadProvided,
 				cwd,
 				onSlashNote,
+				// Whether this host can take the `$skill` read through the seam (bug 1):
+				// a memo that captured the old value would keep awaiting the bodies on a
+				// host that had become able to take them later, or send it a typed line
+				// it cannot compose.
+				admissionSeamHonoured,
 			],
 		);
 
@@ -5884,7 +5981,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				// Tab, and every Tab with an empty box or a caret mid-draft, keeps
 				// its native meaning (UX round 2, U7; code review round 2, F2).
 				const textarea = textareaRef.current;
-				const target = firstLiveAnswerOption();
+				/*
+				 * AND THE OPTION GROUP'S QUERY RUNS ONLY FOR THE KEY THAT CAN REACH IT (bug
+				 * 1's reading of this handler). Every keydown in the box used to build a
+				 * selector and walk the document to answer a question only Tab can act on
+				 * (`shouldTabIntoAnswerOptions` is Tab's alone), including the keydown that
+				 * submits - which is the press this change is about.
+				 */
+				const target = event.key === "Tab" ? firstLiveAnswerOption() : null;
 				if (
 					target &&
 					shouldTabIntoAnswerOptions(
