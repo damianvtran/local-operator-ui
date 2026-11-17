@@ -56,6 +56,7 @@ import agentPortrait from "../../assets/images/storybook-avatar-portrait.jpg";
 import profileImage from "../../assets/radient-icon-1024x1024.png";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
 import { useUiPreferencesStore } from "../../shared/store/ui-preferences-store";
+import { TeamBridgeRequestsView } from "./team-bridge-approvals";
 import { draftStorageKey, draftTargetKey } from "./team-bridge-drafts";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -698,6 +699,51 @@ export const InvitationWaiting: Story = {
 			},
 			group,
 		],
+	},
+};
+
+/*
+ * THE REQUESTS RAIL ENTRY (Team Bridge approvals, design review D1). With
+ * requests waiting the entry carries the shared accent badge; with none it is
+ * a quiet row. `RequestsOpen` is the entry selected, with its panel.
+ */
+const requestsPanel = (
+	<TeamBridgeRequestsView
+		listState="ready"
+		rows={[
+			{
+				message_id: "bcmsg_1",
+				thread_id: "bth_1",
+				created_at: "2026-11-17T14:05:00Z",
+				excerpt:
+					"Priya's agent asks: may it deploy the staging build of the billing service?",
+				request: { state: "pending", expires_at: "2026-11-17T15:05:00Z" },
+				sender: {
+					account_id: "acct_priya",
+					endpoint_id: null,
+					name: "Priya Raman",
+					email: "priya@example.com",
+				},
+				ask: { session_id: "s_cos", ask_id: "ask_1", status: "open" },
+				decidable: true,
+				unsent_decision: null,
+			},
+		]}
+		flow={{ phase: "idle" }}
+		onDecide={() => {}}
+		history={{ state: "ready", rows: [] }}
+	/>
+);
+export const RequestsWaiting: Story = {
+	args: { requests: { waiting: 3, panel: requestsPanel } },
+};
+export const RequestsNoneWaiting: Story = {
+	args: { requests: { waiting: 0, panel: requestsPanel } },
+};
+export const RequestsOpen: Story = {
+	args: {
+		requests: { waiting: 3, panel: requestsPanel },
+		initialQuickView: "requests",
 	},
 };
 
