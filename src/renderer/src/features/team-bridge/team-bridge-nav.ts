@@ -1,9 +1,11 @@
 import { t } from "@shared/i18n";
 import { MessagesSquare } from "lucide-react";
+import { requestsWaitingLabel } from "./team-bridge-approvals-model";
 import { TEAM_BRIDGE_ALL_SCOPE } from "./team-bridge-model";
 import { useTeamBridgeAccount } from "./team-bridge-owner";
 import { useTeamBridgeUnreadView } from "./team-bridge-unread-sync";
 import { useTeamBridgeStatus, useTeamBridgeUnread } from "./use-team-bridge";
+import { useApprovalRequests } from "./use-team-bridge-approvals";
 
 /**
  * The sidebar descriptor for the Team Bridge row.
@@ -63,16 +65,32 @@ export function useTeamBridgeNavItem(
 	 * cannot claim unread that no row shows (see `team-bridge-unread-sync.ts`).
 	 */
 	const view = useTeamBridgeUnreadView(ready ? accountId : undefined);
+	/*
+	 * APPROVAL REQUESTS OUTRANK UNREAD IN THE ONE BADGE SLOT. A request is a
+	 * teammate's agent blocked on this person's answer; an unread message is
+	 * not blocked on anything. The row has one trailing badge (the sidebar's
+	 * one-fact-per-slot rule), so while any request waits the badge counts
+	 * requests and the row's name says "N requests waiting" (spec
+	 * request.badge); with none it falls back to the unread total as before.
+	 * `pending_count` is the DECIDABLE rows only, the ones a person can act on.
+	 */
+	const requests = useApprovalRequests(ready);
 	if (!enabled) return null;
+	const waiting = ready ? (requests.data?.pending_count ?? 0) : 0;
 	// Disabled observers can still expose cached data: unresolved auth is zero.
-	const attention = ready && unread.data ? view.total : 0;
+	const unreadTotal = ready && unread.data ? view.total : 0;
 	return {
 		icon: MessagesSquare,
 		label: t("ui.teamBridge.nav.label"),
 		path: TEAM_BRIDGE_PATH,
 		tourTag: TEAM_BRIDGE_TOUR_TAG,
-		attention,
+		attention: waiting > 0 ? waiting : unreadTotal,
 		attentionTag: TEAM_BRIDGE_BADGE_TAG,
-		attentionName: (count: number) => t("ui.teamBridge.nav.unread", { count }),
+		attentionName: (count: number) => {
+			const label = waiting > 0 ? requestsWaitingLabel(count) : null;
+			return label
+				? t("ui.teamBridge.approvals.nav_name", { label })
+				: t("ui.teamBridge.nav.unread", { count });
+		},
 	};
 }

@@ -41,6 +41,7 @@ import {
 	Clock,
 	CloudOff,
 	Hash,
+	Inbox,
 	MailPlus,
 	MessagesSquare,
 	Pencil,
@@ -88,6 +89,7 @@ import {
 import { TeamBridgeMentionProvider } from "./mentions";
 import { clearStagedMentions, stagedMentions } from "./mentions/mention-outbox";
 import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
+import { TeamBridgeRequests } from "./team-bridge-approvals";
 import {
 	TeamBridgeArchiveDialog,
 	TeamBridgeArchivedBanner,
@@ -326,6 +328,7 @@ import {
 	useUnarchiveTeamBridgeConversation,
 	useWithdrawTeamBridgeAgent,
 } from "./use-team-bridge";
+import { useApprovalRequests } from "./use-team-bridge-approvals";
 import { useTeamBridgeDrafts } from "./use-team-bridge-drafts";
 import { type FileSend, filesCapability } from "./use-team-bridge-files";
 
@@ -678,6 +681,13 @@ type OwnedDraft = {
 export type TeamBridgePageViewProps = {
 	/** Human-only audit never enters member targets, drafts or the agent lane. */
 	ownerAudit?: OwnerAuditSlot;
+	/**
+	 * Approval requests (local-operator #4099). Absent when the daemon predates
+	 * the routes (they 404) or the account is unresolved: then the rail entry is
+	 * not drawn at all. `waiting` is the decidable count; `panel` is the wired
+	 * Requests view, passed in so this props-only view never starts a query.
+	 */
+	requests?: { waiting: number; panel: ReactNode };
 	/** Page-lifetime data journal; no live mutation closure survives an auth epoch. */
 	draftJournal?: OwnedDraft;
 	isDraftCurrent?: () => boolean;
@@ -1024,6 +1034,7 @@ export type TeamBridgePageViewProps = {
 
 export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	ownerAudit,
+	requests,
 	renderThreadPane,
 	threadLink,
 	onCloseThread,
@@ -1627,7 +1638,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * (review round 4, R4-02).
 	 */
 	const openQuickView = (
-		next: "drafts" | "scheduled" | "invitations" | "archived",
+		next: "drafts" | "scheduled" | "invitations" | "archived" | "requests",
 	) => {
 		if (threadSelection) {
 			setThreadSelection(null);
@@ -3039,6 +3050,30 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					<Clock size={16} aria-hidden="true" />
 					{t("ui.teamBridge.schedule.list")}
 				</button>
+				{requests && (
+					<button
+						type="button"
+						aria-current={quickView === "requests" ? "page" : undefined}
+						onClick={() => openQuickView("requests")}
+						className="flex h-8 items-center gap-2 rounded-md px-2 text-[14px] text-ink-muted hover:bg-row-hover hover:text-ink"
+					>
+						<Inbox size={16} aria-hidden="true" />
+						<span className="min-w-0 flex-1 truncate text-start">
+							{t("ui.teamBridge.approvals.title")}
+						</span>
+						{requests.waiting > 0 && (
+							/* A request is a teammate's agent waiting on this person:
+							   an attention count, so the shared accent badge. */
+							<AttentionBadge
+								count={requests.waiting}
+								className="shrink-0"
+								aria-label={t("ui.teamBridge.approvals.waiting", {
+									count: requests.waiting,
+								})}
+							/>
+						)}
+					</button>
+				)}
 				{invitationsEntry.current && (
 					<button
 						type="button"
@@ -3655,6 +3690,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				)}
 				{ownerAudit?.active ? (
 					ownerAudit.panel
+				) : quickView === "requests" && requests ? (
+					requests.panel
 				) : quickView === "invitations" ? (
 					<TeamBridgeInvitations
 						invitations={invitations}
@@ -5658,6 +5695,19 @@ const TeamBridgeOwnedPage: FC<{
 	});
 
 	clearOwnerAudit.current = () => ownerAudit?.clear();
+	/*
+	 * Approval requests: one read shared with the nav badge (same query key),
+	 * gated like the other reads. A daemon without the routes answers 404 and the
+	 * slot stays absent, so an older backend shows no Requests entry at all.
+	 */
+	const approvalRequests = useApprovalRequests(readsEnabled);
+	const requestsSlot =
+		readsEnabled && approvalRequests.data
+			? {
+					waiting: approvalRequests.data.pending_count,
+					panel: <TeamBridgeRequests />,
+				}
+			: undefined;
 
 	useEffect(() => {
 		if (!(requestedConversation || requestedRowType) || !requestedTenant)
@@ -6746,6 +6796,7 @@ const TeamBridgeOwnedPage: FC<{
 		<>
 			<TeamBridgePageView
 				ownerAudit={ownerAudit}
+				requests={requestsSlot}
 				key={viewKey}
 				draftJournal={draftJournal}
 				isDraftCurrent={isCurrentOwner}

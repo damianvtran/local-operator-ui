@@ -183,6 +183,7 @@ import enUiSharedUnifiedDiff from "./catalogues/en/ui.shared.unified_diff.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellMenubar from "./catalogues/en/ui.shell.menubar.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
+import enUiTeamBridgeApprovals from "./catalogues/en/ui.teamBridge.approvals.json";
 import enUiTeamBridgeArchive from "./catalogues/en/ui.teamBridge.archive.json";
 import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import enUiTeamBridgeLeave from "./catalogues/en/ui.teamBridge.leave.json";
@@ -1546,6 +1547,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiShell,
 	...enUiShellMenubar,
 	...enUiShellRail,
+	...enUiTeamBridgeApprovals,
 	...enUiTeamBridgeArchive,
 	...enUiTeamBridge,
 	...enUiTeamBridgeLeave,
@@ -12992,6 +12994,64 @@ export type MessageParams = {
 		count: number;
 		countText: string;
 	};
+	"ui.teamBridge.approvals.approve": undefined;
+	"ui.teamBridge.approvals.approve_locked": undefined;
+	"ui.teamBridge.approvals.approve_selected": undefined;
+	"ui.teamBridge.approvals.authorizing": undefined;
+	"ui.teamBridge.approvals.cap_reached": { max: number };
+	"ui.teamBridge.approvals.deciding": undefined;
+	"ui.teamBridge.approvals.deny": undefined;
+	"ui.teamBridge.approvals.deny_locked": undefined;
+	"ui.teamBridge.approvals.deny_selected": undefined;
+	"ui.teamBridge.approvals.empty": undefined;
+	"ui.teamBridge.approvals.excluded": { count: number };
+	"ui.teamBridge.approvals.history.approved": undefined;
+	"ui.teamBridge.approvals.history.decided_by": { name: string };
+	"ui.teamBridge.approvals.history.denied": undefined;
+	"ui.teamBridge.approvals.history.empty": undefined;
+	"ui.teamBridge.approvals.history.load_failed": undefined;
+	"ui.teamBridge.approvals.history.loading": undefined;
+	"ui.teamBridge.approvals.history.other": undefined;
+	"ui.teamBridge.approvals.history.requested_by": { name: string };
+	"ui.teamBridge.approvals.intro": undefined;
+	"ui.teamBridge.approvals.load_failed": undefined;
+	"ui.teamBridge.approvals.loading": undefined;
+	"ui.teamBridge.approvals.locked_note": undefined;
+	"ui.teamBridge.approvals.nav_name": { label: string };
+	"ui.teamBridge.approvals.notice.foreign": undefined;
+	"ui.teamBridge.approvals.notice.foreign_help": undefined;
+	"ui.teamBridge.approvals.notice.item_approve": { sender: string };
+	"ui.teamBridge.approvals.notice.item_deny": { sender: string };
+	"ui.teamBridge.approvals.notice.label": undefined;
+	"ui.teamBridge.approvals.notice.title": { count: number };
+	"ui.teamBridge.approvals.notice.unknown_item": undefined;
+	"ui.teamBridge.approvals.reason_no_card": undefined;
+	"ui.teamBridge.approvals.reason_not_open": undefined;
+	"ui.teamBridge.approvals.received": { time: string };
+	"ui.teamBridge.approvals.refusal.cooldown": { seconds: number };
+	"ui.teamBridge.approvals.refusal.dismissed": undefined;
+	"ui.teamBridge.approvals.refusal.expired": undefined;
+	"ui.teamBridge.approvals.refusal.in_flight": undefined;
+	"ui.teamBridge.approvals.refusal.locked": undefined;
+	"ui.teamBridge.approvals.refusal.locked_named": { names: string };
+	"ui.teamBridge.approvals.refusal.other": undefined;
+	"ui.teamBridge.approvals.refusal.presence_required": undefined;
+	"ui.teamBridge.approvals.result.already_answered": undefined;
+	"ui.teamBridge.approvals.result.approved": undefined;
+	"ui.teamBridge.approvals.result.denied": undefined;
+	"ui.teamBridge.approvals.result.locked": undefined;
+	"ui.teamBridge.approvals.result.no_card": undefined;
+	"ui.teamBridge.approvals.result.not_sent": undefined;
+	"ui.teamBridge.approvals.result.unconfirmed": undefined;
+	"ui.teamBridge.approvals.results_title": undefined;
+	"ui.teamBridge.approvals.select_all": undefined;
+	"ui.teamBridge.approvals.select_row": { sender: string };
+	"ui.teamBridge.approvals.selected_count": { count: number };
+	"ui.teamBridge.approvals.tab_history": undefined;
+	"ui.teamBridge.approvals.tab_waiting": undefined;
+	"ui.teamBridge.approvals.title": undefined;
+	"ui.teamBridge.approvals.unknown_sender": undefined;
+	"ui.teamBridge.approvals.waiting": { count: number };
 	"ui.teamBridge.archive.banner.by_on": { name: string; date: string };
 	"ui.teamBridge.archive.banner.delete": undefined;
 	"ui.teamBridge.archive.banner.on": { date: string };

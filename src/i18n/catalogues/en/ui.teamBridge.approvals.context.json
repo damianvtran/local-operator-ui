@@ -1,0 +1,436 @@
+{
+	"ui.teamBridge.approvals.title": {
+		"role": "heading and rail entry",
+		"tone": "plain",
+		"length": "1 word",
+		"placeholders": {},
+		"note": "Names the list of approval requests teammates' agents sent the reader. Also the Team Bridge rail entry that opens it."
+	},
+	"ui.teamBridge.approvals.intro": {
+		"role": "helper text under the heading",
+		"tone": "calm, explanatory",
+		"length": "one sentence or two",
+		"placeholders": {},
+		"note": "A teammate is a person; their agent is the AI agent acting for them. Keep the two words distinct; never say bare \"team\"."
+	},
+	"ui.teamBridge.approvals.waiting": {
+		"role": "badge label / accessible count",
+		"tone": "neutral",
+		"length": "3 words",
+		"placeholders": {
+			"count": "number of requests"
+		},
+		"note": "The ONE singular/plural label for the request badge (spec request.badge). Say \"waiting\", not \"pending approvals\"."
+	},
+	"ui.teamBridge.approvals.nav_name": {
+		"role": "accessible name of the sidebar row while requests wait",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"label": "translated waiting phrase"
+		},
+		"note": "{label} is the already-translated \"N requests waiting\" phrase. Team Bridge is a product name; keep it untranslated if the locale's glossary does."
+	},
+	"ui.teamBridge.approvals.loading": {
+		"role": "loading status",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.load_failed": {
+		"role": "error message",
+		"tone": "calm",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Shown with a Retry button."
+	},
+	"ui.teamBridge.approvals.empty": {
+		"role": "empty state",
+		"tone": "calm",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.tab_waiting": {
+		"role": "tab label",
+		"tone": "neutral",
+		"length": "1 word",
+		"placeholders": {},
+		"note": "Tab showing requests that still need an answer."
+	},
+	"ui.teamBridge.approvals.tab_history": {
+		"role": "tab label",
+		"tone": "neutral",
+		"length": "2 words",
+		"placeholders": {},
+		"note": "Tab showing past approve/deny decisions (an audit trail)."
+	},
+	"ui.teamBridge.approvals.select_all": {
+		"role": "checkbox label",
+		"tone": "imperative",
+		"length": "2 words",
+		"placeholders": {},
+		"note": "Selects every request that can be decided, up to the batch limit."
+	},
+	"ui.teamBridge.approvals.select_row": {
+		"role": "accessible name of a row checkbox",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"sender": "display name"
+		},
+		"note": "{sender} is a teammate's or their agent's display name."
+	},
+	"ui.teamBridge.approvals.selected_count": {
+		"role": "selection count",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"count": "number of requests"
+		},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.approve_selected": {
+		"role": "button",
+		"tone": "imperative",
+		"length": "2 words",
+		"placeholders": {},
+		"note": "Approves every selected request in one Touch ID confirmation."
+	},
+	"ui.teamBridge.approvals.deny_selected": {
+		"role": "button",
+		"tone": "imperative",
+		"length": "2 words",
+		"placeholders": {},
+		"note": "Denies every selected request in one Touch ID confirmation."
+	},
+	"ui.teamBridge.approvals.approve": {
+		"role": "button",
+		"tone": "imperative",
+		"length": "1 word",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.deny": {
+		"role": "button",
+		"tone": "imperative",
+		"length": "1 word",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.approve_locked": {
+		"role": "button",
+		"tone": "neutral",
+		"length": "3-4 words",
+		"placeholders": {},
+		"note": "An earlier approval was confirmed but has not reached the teammate. Only this same answer can be sent now."
+	},
+	"ui.teamBridge.approvals.deny_locked": {
+		"role": "button",
+		"tone": "neutral",
+		"length": "3-4 words",
+		"placeholders": {},
+		"note": "An earlier denial was confirmed but has not reached the teammate. Only this same answer can be sent now."
+	},
+	"ui.teamBridge.approvals.locked_note": {
+		"role": "helper text on a row",
+		"tone": "calm",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.cap_reached": {
+		"role": "inline notice",
+		"tone": "calm",
+		"length": "one or two sentences",
+		"placeholders": {
+			"max": "the batch limit (50)"
+		},
+		"note": "{max} is a number (50)."
+	},
+	"ui.teamBridge.approvals.excluded": {
+		"role": "inline notice",
+		"tone": "calm",
+		"length": "one sentence",
+		"placeholders": {
+			"count": "number of requests"
+		},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.reason_no_card": {
+		"role": "row helper text",
+		"tone": "neutral",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Explains why the row cannot be decided here."
+	},
+	"ui.teamBridge.approvals.reason_not_open": {
+		"role": "row helper text",
+		"tone": "neutral",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Explains why the row cannot be decided here."
+	},
+	"ui.teamBridge.approvals.received": {
+		"role": "row meta",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"time": "formatted date and time"
+		},
+		"note": "{time} is a formatted date and time."
+	},
+	"ui.teamBridge.approvals.authorizing": {
+		"role": "status line",
+		"tone": "calm",
+		"length": "short",
+		"placeholders": {},
+		"note": "The system Touch ID prompt is open."
+	},
+	"ui.teamBridge.approvals.deciding": {
+		"role": "status line",
+		"tone": "calm",
+		"length": "short",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.results_title": {
+		"role": "heading",
+		"tone": "neutral",
+		"length": "1 word",
+		"placeholders": {},
+		"note": "Per-request outcome of the decision that was just sent."
+	},
+	"ui.teamBridge.approvals.result.approved": {
+		"role": "result label",
+		"tone": "neutral",
+		"length": "1 word",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.result.denied": {
+		"role": "result label",
+		"tone": "neutral",
+		"length": "1 word",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.result.already_answered": {
+		"role": "result label",
+		"tone": "neutral",
+		"length": "2 words",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.result.no_card": {
+		"role": "result label",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.result.locked": {
+		"role": "result label",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.result.unconfirmed": {
+		"role": "result label",
+		"tone": "calm",
+		"length": "short",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.result.not_sent": {
+		"role": "result label",
+		"tone": "neutral",
+		"length": "2 words",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.refusal.in_flight": {
+		"role": "inline status",
+		"tone": "calm",
+		"length": "two or three sentences",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.refusal.cooldown": {
+		"role": "inline status",
+		"tone": "calm",
+		"length": "two or three sentences",
+		"placeholders": {
+			"seconds": "whole seconds to wait"
+		},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.refusal.locked_named": {
+		"role": "inline status",
+		"tone": "calm",
+		"length": "two or three sentences",
+		"placeholders": {
+			"names": "comma-separated display names"
+		},
+		"note": "{names} is a comma-separated list of display names."
+	},
+	"ui.teamBridge.approvals.refusal.locked": {
+		"role": "inline status",
+		"tone": "calm",
+		"length": "two or three sentences",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.refusal.presence_required": {
+		"role": "inline status",
+		"tone": "calm",
+		"length": "two or three sentences",
+		"placeholders": {},
+		"note": "Points the person to the per-request ask cards in their chat."
+	},
+	"ui.teamBridge.approvals.refusal.dismissed": {
+		"role": "inline status",
+		"tone": "calm",
+		"length": "two sentences",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.refusal.expired": {
+		"role": "inline status",
+		"tone": "calm",
+		"length": "three short sentences",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.refusal.other": {
+		"role": "inline status",
+		"tone": "calm",
+		"length": "two sentences",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.unknown_sender": {
+		"role": "fallback display name",
+		"tone": "neutral",
+		"length": "2 words",
+		"placeholders": {},
+		"note": "Used when a request's sender has no name or email."
+	},
+	"ui.teamBridge.approvals.history.loading": {
+		"role": "loading status",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.history.load_failed": {
+		"role": "error message",
+		"tone": "calm",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.history.empty": {
+		"role": "empty state",
+		"tone": "calm",
+		"length": "short",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.history.approved": {
+		"role": "decision label",
+		"tone": "neutral",
+		"length": "1 word",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.history.denied": {
+		"role": "decision label",
+		"tone": "neutral",
+		"length": "1 word",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.history.other": {
+		"role": "decision label",
+		"tone": "neutral",
+		"length": "1 word",
+		"placeholders": {},
+		"note": "A decision whose state is neither approved nor denied."
+	},
+	"ui.teamBridge.approvals.history.requested_by": {
+		"role": "row text",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"name": "display name"
+		},
+		"note": "{name} is the teammate or agent who asked."
+	},
+	"ui.teamBridge.approvals.history.decided_by": {
+		"role": "row meta",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"name": "display name"
+		},
+		"note": "{name} is who decided."
+	},
+	"ui.teamBridge.approvals.notice.title": {
+		"role": "notice heading",
+		"tone": "calm",
+		"length": "one line",
+		"placeholders": {
+			"count": "number of requests"
+		},
+		"note": "Shown while the system Touch ID prompt is open, listing what it would sign."
+	},
+	"ui.teamBridge.approvals.notice.foreign": {
+		"role": "notice label",
+		"tone": "plain, cautionary",
+		"length": "3-4 words",
+		"placeholders": {},
+		"note": "Security label: another program on this machine asked for this Touch ID prompt, not this window."
+	},
+	"ui.teamBridge.approvals.notice.foreign_help": {
+		"role": "notice helper text",
+		"tone": "calm, cautionary",
+		"length": "two sentences",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.notice.item_approve": {
+		"role": "notice list item",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"sender": "display name"
+		},
+		"note": "{sender} is a display name."
+	},
+	"ui.teamBridge.approvals.notice.item_deny": {
+		"role": "notice list item",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"sender": "display name"
+		},
+		"note": "{sender} is a display name."
+	},
+	"ui.teamBridge.approvals.notice.unknown_item": {
+		"role": "fallback in a notice list item",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {},
+		"note": "Replaces the sender name when the request has no local card."
+	},
+	"ui.teamBridge.approvals.notice.label": {
+		"role": "accessible name of the notice region",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {},
+		"note": "Team Bridge approvals panel."
+	}
+}

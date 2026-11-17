@@ -43,6 +43,7 @@ import { ConnectProviderDialog } from "@features/providers/connect-provider-dial
 import { SessionSwitcher } from "@features/session-switcher/components/session-switcher";
 import { useSyncRecordingClaims } from "@features/settings/components/keyboard-shortcuts-section";
 import { LanguageDialog } from "@features/settings/components/language-dialog";
+import { TeamBridgeAuthorizeNotices } from "@features/team-bridge/team-bridge-approvals";
 import { TEAM_BRIDGE_PATH } from "@features/team-bridge/team-bridge-nav";
 import { TeamBridgeEarlyColumn } from "@features/team-bridge/team-bridge-route-column";
 import { useTeamBridgeNotificationOpen } from "@features/team-bridge/use-team-bridge-notification-open";
@@ -1200,6 +1201,13 @@ const App: FC = () => {
 						}
 					/>
 				</div>
+				{/* What a Team Bridge Touch ID prompt is confirming (local-operator
+				    #4099, S-6). App-wide rather than on the Team Bridge page: any
+				    local process can raise the prompt, so the person must see what
+				    it is for - and that it was not started here - wherever they
+				    are. Renders nothing while no prompt is up; a backend without
+				    the frame never publishes one. */}
+				{bridgeState === "enabled" && <TeamBridgeAuthorizeNotices />}
 			</div>
 		</OnboardingProvider>
 	);

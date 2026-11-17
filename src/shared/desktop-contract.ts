@@ -51,6 +51,31 @@ const id = z
 	.min(1)
 	.max(128)
 	.regex(/^[a-zA-Z0-9_-]+$/);
+
+/**
+ * The Team Bridge approvals selection: 1..50 `{message_id, decision}` pairs.
+ * 50 is the daemon's `approvals.BATCH_MAX` (local-operator #4099), mirrored so
+ * the renderer can never send a body the route refuses by size alone.
+ */
+export const TEAM_BRIDGE_APPROVAL_BATCH_MAX = 50;
+/** The account-scoped approvals ops (no `tenant_id`; see the tenant guard). */
+const TEAM_BRIDGE_APPROVAL_OPS: ReadonlySet<string> = new Set([
+	"team_bridge.requests.list",
+	"team_bridge.requests.authorize",
+	"team_bridge.requests.decide",
+	"team_bridge.decisions.list",
+]);
+const teamBridgeApprovalSelection = z
+	.array(
+		z
+			.object({
+				message_id: z.string().min(1).max(80),
+				decision: z.enum(["approve", "deny"]),
+			})
+			.strict(),
+	)
+	.min(1)
+	.max(TEAM_BRIDGE_APPROVAL_BATCH_MAX);
 /**
  * A full-diff route's call id: a provider tool-call id (`id`'s alphabet), or a
  * NESTED `write`/`edit` id the eval bridge mints as `<outer id>:<suffix>`
@@ -4503,6 +4528,63 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * TEAM BRIDGE APPROVALS (local-operator #4099): the pending requests a
+	 * teammate's agent sent this operator, the two-step human batch decide, and the
+	 * decision ledger. The selection ops carry the operator's EXPLICIT list - the
+	 * route has no "all" flag and none may be added (§10.2) - bounded at the
+	 * route's own 50 so an oversized selection is refused here, before IPC, with
+	 * the same rule the daemon applies. `client_ref` is lowercase hex <=32, the
+	 * route's own grammar: it is echoed on the `team_bridge_authorize` feed frame
+	 * so this renderer can tell a Touch ID prompt it started from one it did not.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.requests.list"),
+			expected_account_id: id,
+			after: z.string().min(1).max(512).optional(),
+			limit: z.number().int().min(1).max(100).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.decisions.list"),
+			expected_account_id: id,
+			role: z.enum(["made", "requested"]).optional(),
+			after: z.string().min(1).max(512).optional(),
+			limit: z.number().int().min(1).max(100).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.requests.authorize"),
+			expected_account_id: id,
+			items: teamBridgeApprovalSelection,
+			client_ref: z
+				.string()
+				.regex(/^[0-9a-f]{1,32}$/)
+				.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.requests.decide"),
+			expected_account_id: id,
+			items: teamBridgeApprovalSelection,
+			/* Echoed VERBATIM from the authorize reply; the daemon verifies it. */
+			operator_proof: z
+				.object({
+					challenge: z.string().regex(/^[0-9a-f]{64}$/),
+					sig: z
+						.string()
+						.min(2)
+						.max(320)
+						.regex(/^[0-9a-f]+$/),
+					key_id: z.string().min(1).max(128),
+				})
+				.strict(),
+		})
+		.strict(),
+	/*
 	 * The directory and the eligibility read (Team Bridge directory slice).
 	 *
 	 * `directory` is TENANT-SCOPED BY CONSTRUCTION: `tenant_id` is required, so
@@ -5553,8 +5635,13 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		}
 		// Guarded conversation writes never fall back to the token's default org.
 		// Legacy callers remain compatible; the new renderer requires the capability.
+		// The approvals ops are exempt because their routes take NO tenant at all:
+		// local-operator #4099 resolves it from the committed owner's read context
+		// and refuses any extra field or query parameter (`_Strict`, the query
+		// allowlist), so there is no default org for them to fall back to.
 		if (
 			request.op.startsWith("team_bridge.") &&
+			!TEAM_BRIDGE_APPROVAL_OPS.has(request.op) &&
 			"expected_account_id" in request &&
 			request.expected_account_id &&
 			(!("tenant_id" in request) || !request.tenant_id)
@@ -7688,6 +7775,10 @@ export function desktopRequestDeadlineMs(
 	// applies, so it waits on the same human gesture. Its retry never signs.
 	if (op === "approvals.approve" || op === "approvals.approveCredential")
 		return APPROVAL_APPROVE_DEADLINE_MS;
+	// The batch authorize raises the OS Touch ID sheet in the daemon and blocks
+	// until the person answers it, exactly like the typed approve above.
+	if (op === "team_bridge.requests.authorize")
+		return APPROVAL_APPROVE_DEADLINE_MS;
 	/*
 	 * A PHONE PAIRING'S SIGNATURE, a phone's removal and turning approvals on all
 	 * wait on a person at an OS prompt (Touch ID, then the admin prompt that admits
@@ -7820,6 +7911,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.owner_audit.messages",
 	"team_bridge.owner_audit.replies",
 	"team_bridge.unread",
+	"team_bridge.requests.list",
+	"team_bridge.decisions.list",
 	"team_bridge.directory",
 	"team_bridge.status",
 	"accounts.list",
@@ -11382,6 +11475,51 @@ export function desktopEndpoint(request: DesktopRequest): {
 					expected_account_id: request.expected_account_id,
 					tenant_id: request.tenant_id,
 					seq: request.seq,
+				},
+			};
+		/*
+		 * Approvals (local-operator #4099). Query values are URL-encoded, so a
+		 * crafted cursor can never compose a second parameter; the selection
+		 * bodies are passed through as the route's own field names.
+		 */
+		case "team_bridge.requests.list":
+		case "team_bridge.decisions.list": {
+			const query = new URLSearchParams({
+				expected_account_id: request.expected_account_id,
+			});
+			if (request.after !== undefined) query.set("after", request.after);
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			if (request.op === "team_bridge.decisions.list") {
+				if (request.role !== undefined) query.set("role", request.role);
+				return {
+					path: `/v1/desktop/team-bridge/decisions?${query}`,
+					method: "GET",
+				};
+			}
+			return {
+				path: `/v1/desktop/team-bridge/requests?${query}`,
+				method: "GET",
+			};
+		}
+		case "team_bridge.requests.authorize":
+			return {
+				path: "/v1/desktop/team-bridge/requests/decide/authorize",
+				method: "POST",
+				body: {
+					expected_account_id: request.expected_account_id,
+					items: request.items,
+					...(request.client_ref ? { client_ref: request.client_ref } : {}),
+				},
+			};
+		case "team_bridge.requests.decide":
+			return {
+				path: "/v1/desktop/team-bridge/requests/decide",
+				method: "POST",
+				body: {
+					expected_account_id: request.expected_account_id,
+					items: request.items,
+					operator_proof: request.operator_proof,
 				},
 			};
 		case "team_bridge.unread": {
