@@ -1,6 +1,6 @@
 {
 	"ui.teamBridge.approvals.title": "स्वीकृतियाँ",
-	"ui.teamBridge.approvals.intro": "आपके साथियों के एजेंटों ने आपको जो स्वीकृति अनुरोध भेजे हैं। हर निर्णय की पुष्टि Touch ID से होती है।",
+	"ui.teamBridge.approvals.intro": "आपके साथियों के एजेंटों द्वारा आपको भेजे गए स्वीकृति अनुरोध। हर निर्णय की पुष्टि Touch ID से होती है।",
 	"ui.teamBridge.approvals.waiting": "{count, plural, one {{count} अनुरोध प्रतीक्षा में} other {{count} अनुरोध प्रतीक्षा में}}",
 	"ui.teamBridge.approvals.nav_name": "Team Bridge, {label}",
 	"ui.teamBridge.approvals.loading": "अनुरोध लोड हो रहे हैं…",

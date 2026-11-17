@@ -57,7 +57,7 @@
 	"ui.teamBridge.approvals.notice.label": "Touch ID تصدیق جاری ہے",
 	"ui.teamBridge.approvals.approve_selected_partial": "{total, number} میں سے {send, number} منظور کریں",
 	"ui.teamBridge.approvals.deny_selected_partial": "{total, number} میں سے {send, number} مسترد کریں",
-	"ui.teamBridge.approvals.expires": "میعاد: {time}",
+	"ui.teamBridge.approvals.expires": "میعاد ختم: {time}",
 	"ui.teamBridge.approvals.open_card": "چیٹ میں کھولیں",
 	"ui.teamBridge.approvals.open_card_named": "{sender} کی درخواست چیٹ میں کھولیں",
 	"ui.teamBridge.approvals.refusal.challenge_limit": "ابھی ابھی Touch ID کی بہت زیادہ تصدیقیں مانگی گئیں۔ تھوڑا انتظار کریں، پھر دوبارہ کوشش کریں۔ کوئی فیصلہ نہیں ہوا۔",
