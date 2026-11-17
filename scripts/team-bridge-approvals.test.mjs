@@ -638,15 +638,34 @@ test("R2-02: the decided excerpts go with the account - switch, sign-out, or a w
 	m.retainDecidedFor(undefined);
 	assert.equal(m.decidedSnapshot("y"), null, "a sign-out forgets it");
 	m.rememberDecided("acct_a", "z", snap);
+	assert.notEqual(m.decidedSnapshot("z"), null, "an ownerless store adopts");
+	m.retainDecidedFor("acct_b");
 	m.rememberDecided("acct_b", "w", snap);
-	assert.equal(
-		m.decidedSnapshot("z"),
-		null,
-		"a write for another account drops the previous account's excerpts",
-	);
+	assert.equal(m.decidedSnapshot("z"), null, "the switch forgot A's excerpt");
 	assert.notEqual(m.decidedSnapshot("w"), null);
 	m.forgetDecided();
 	assert.equal(m.decidedSnapshot("w"), null);
+});
+
+test("S-8: a decide settling after an account switch never re-seeds the previous account's excerpts", () => {
+	m.resetDecidedForTests();
+	const snap = { sender: "Priya", excerpt: "may it deploy?", sessionId: "s1" };
+	m.retainDecidedFor("acct_a");
+	m.rememberDecided("acct_a", "a1", snap);
+	// The person switches to B while A's decide is still in flight.
+	m.retainDecidedFor("acct_b");
+	m.rememberDecided("acct_b", "b1", snap);
+	// A's decide settles late, still carrying A's account.
+	m.rememberDecided("acct_a", "a2", snap);
+	assert.equal(m.decidedSnapshot("a2"), null, "the late A write is dropped");
+	assert.equal(m.decidedSnapshot("a1"), null, "A's earlier excerpt stays gone");
+	assert.notEqual(
+		m.decidedSnapshot("b1"),
+		null,
+		"B keeps its own excerpt and its ownership",
+	);
+	m.rememberDecided("acct_b", "b2", snap);
+	assert.notEqual(m.decidedSnapshot("b2"), null, "B still writes after it");
 });
 
 // -- 5. the wire: the IPC contract refuses what the route would refuse ----------

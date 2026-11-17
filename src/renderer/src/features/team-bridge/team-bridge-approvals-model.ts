@@ -812,7 +812,14 @@ export function rememberDecided(
 	messageId: string,
 	snapshot: DecidedSnapshot,
 ): void {
-	if (decidedOwner !== accountId) forgetDecided();
+	/* A write for an account other than the store's owner is DROPPED, not
+	   adopted (security S-8): a decide that settles after a switch still
+	   carries the previous account, and adopting it would re-seed that
+	   account's excerpts under the next one. The owner is set by
+	   `retainDecidedFor` on every account transition, so a current account's
+	   write always matches; only an ownerless store (cold start, sign-out)
+	   adopts its first writer. */
+	if (decidedOwner !== null && decidedOwner !== accountId) return;
 	decidedOwner = accountId;
 	decided.delete(messageId);
 	decided.set(messageId, snapshot);

@@ -229,7 +229,10 @@ export function TeamBridgeRequestsView({
 	};
 	const batchLabel = (word: ApprovalWord) => {
 		const { send } = preview[word];
-		if (send < live.size)
+		/* "N of M" only when some of the selection would go (U11): at 0 the
+		   button is disabled, and "Deny 0 of 1" is arithmetic, not a reason -
+		   the plain label sits beside the row's own locked reason instead. */
+		if (send > 0 && send < live.size)
 			return word === "approve"
 				? t("ui.teamBridge.approvals.approve_selected_partial", {
 						send,

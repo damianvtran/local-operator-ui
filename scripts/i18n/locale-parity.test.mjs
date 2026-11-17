@@ -965,6 +965,14 @@ const IDENTICAL_OK = new Map([
 		"Product name (Team Bridge), preserved verbatim by the programme glossary.",
 	],
 	[
+		"ui.teamBridge.approvals.nav_name",
+		"Product name (Team Bridge) plus the inserted, already-translated {label}; the only other character is the list comma. ur and zh-CN use their own comma and differ, the rest are identical by design (ui#1954 i18n audit round 1).",
+	],
+	[
+		"ui.teamBridge.approvals.result.item",
+		"Placeholders and middle-dot separators only ({sender} · {word} · {outcome}); every part is inserted already translated, so no locale has prose to change (ui#1954 i18n audit round 1).",
+	],
+	[
 		"ui.teamBridge.chief.label",
 		"Placeholders and brackets only ({agent} ({person})); both names are inserted verbatim. Locales with full-width brackets (zh-CN) differ, the rest are identical by design.",
 	],

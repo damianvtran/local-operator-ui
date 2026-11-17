@@ -1628,8 +1628,41 @@ const ROW_STATE_GROUNDS = [
 		 */
 		what: "the Team Bridge page's Archived channels entry",
 		rowFile: TEAM_BRIDGE_PAGE,
-		expression: () => expressionBefore(TEAM_BRIDGE_PAGE, "? rowCurrent"),
+		/* Scoped to the entry's own `aria-current`, not the file's first
+		   `? rowCurrent`: the Approvals entry (ui#1954, design D8) is a second
+		   painter in this file and sits above it, so the first-occurrence anchor
+		   landed on Approvals, whose expression is not current under this row's
+		   `quickView: "archived"` stub. */
+		expression: () =>
+			expressionAfterWithin(
+				TEAM_BRIDGE_PAGE,
+				'aria-current={quickView === "archived"',
+				"className={cn(",
+			),
 		stubs: { quickView: "archived", rowCurrent },
+		ground: () =>
+			literalClassAt(
+				TEAM_BRIDGE_PAGE,
+				'data-glass-region="page-sidebar"',
+				"after",
+			),
+		groundFile: TEAM_BRIDGE_PAGE,
+	},
+	{
+		/*
+		 * The Team Bridge page's Approvals entry (ui#1954, design D8): visibly
+		 * current while Requests is open, in the same `<aside>` as the rail rows,
+		 * so it is asserted on the same `surface` ground as the Archived entry.
+		 */
+		what: "the Team Bridge page's Approvals entry",
+		rowFile: TEAM_BRIDGE_PAGE,
+		expression: () =>
+			expressionAfterWithin(
+				TEAM_BRIDGE_PAGE,
+				'aria-current={quickView === "requests"',
+				"className={cn(",
+			),
+		stubs: { quickView: "requests", rowCurrent },
 		ground: () =>
 			literalClassAt(
 				TEAM_BRIDGE_PAGE,

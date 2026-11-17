@@ -5140,6 +5140,18 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	/* The nav badge's `?view=requests` landing, carried across the same owner
 	   remount (QA Q6); see `requestsViewParam` below. A view preference only. */
 	const requestsLandingCarry = useRef(false);
+	/* A landing belongs to the account it was asked under (R3-02): a switch
+	   from one account to another, or a sign-out, ends it so B's first view
+	   does not open on Requests. The cold open's `undefined` -> account
+	   resolution is NOT a switch - that is the remount the latch exists to
+	   survive (QA Q6). Render-time like the latch itself, so the reset lands
+	   before the next owner reads it. */
+	const landingAccount = useRef(account.accountId);
+	if (landingAccount.current !== account.accountId) {
+		if (landingAccount.current !== undefined)
+			requestsLandingCarry.current = false;
+		landingAccount.current = account.accountId;
+	}
 	// Remount immediately at the real auth transition, before stale TB status can
 	// render. Retain only original-owner data; never carry an A callback into B.
 	return (
@@ -7271,6 +7283,16 @@ const TeamBridgeOwnedPage: FC<{
 					/* A union row calls `changeScope` then this in one handler: the
 					   reader's pick wins over the scope's remembered landing. */
 					if (next) restoredScopes.current.add(scope);
+					/* The reader's own pick ends the badge's landing (R3-01). The
+					   target change remounts the view (it is keyed by target)
+					   before the old view can report leaving Requests, so the
+					   `rememberView` exit never fires and the next view would
+					   reopen on Requests. The cold landing reaches its conversation
+					   through the default-landing effect, not here, so Q6 holds. */
+					if (requestsLandingCarry.current) {
+						requestsLandingCarry.current = false;
+						endRequestsLanding();
+					}
 					setThreadLink(null);
 					setChannelFormOpen(false);
 					// A members-open intent belongs to the row it was asked for only.
