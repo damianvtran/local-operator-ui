@@ -236,6 +236,7 @@ import {
 	OlderHistorySlotReserve,
 } from "./older-history-slot";
 import type { OpenFrameFacts } from "./open-frame";
+import { paintKeepsTopAnchor } from "./paint-top-anchor";
 import {
 	type ProviderErrorAction,
 	providerErrorGuidance,
@@ -858,6 +859,21 @@ export type CanonicalTranscriptProps = {
 	 * default - so a miss costs the reader nothing.
 	 */
 	restoredScroll?: PaintedScroll | null;
+	/**
+	 * Whether the cached paint behind these rows is the WHOLE conversation - the
+	 * cache entry's `complete` - or absent when no paint seeded this pane.
+	 *
+	 * WHY THE COLUMN READS IT (P2 of the session-switch plan). `mb-auto` is this
+	 * column's top anchor, and it is right for a conversation that fits and wrong
+	 * for a cached FRAGMENT: when the taller page lands the column overflows, the
+	 * margin resolves to zero, and every row drops to the bottom in one frame
+	 * (measured: first visible row +200.6 px, last row +212.6 px, 26/26 and 16/16
+	 * runs at 500/700 KB tool results). So the anchor is dropped while such a
+	 * fragment is stale, and only then; the rule and its truth table live in
+	 * `paint-top-anchor.ts`. Absent or null is "no cache entry" - a live pane, or
+	 * a caller that set `stale` itself - which keeps today's layout.
+	 */
+	paintComplete?: boolean | null;
 	/**
 	 * True when this conversation is owned by another device (the catalogue's
 	 * placement fact or row `locality`, `remoteOwnedId`). Changes only the WORDS
@@ -4266,6 +4282,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	staleIndicatorDelayMs = STALE_INDICATOR_DELAY_MS,
 	paintRunning = false,
 	restoredScroll = null,
+	paintComplete = null,
 	remote = false,
 	missing = false,
 	missingTemporary = false,
@@ -5374,6 +5391,15 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	};
 	const holdPlaceholder = transcriptPaneHoldsPlaceholder(paneView);
 	const collapsed = transcriptPaneCollapses(paneView);
+	/*
+	 * The column's top anchor, for THIS pane: the ordinary layout unless the rows
+	 * are a stale cached fragment (see `paint-top-anchor.ts`).
+	 */
+	const topAnchor = paintKeepsTopAnchor({
+		stale,
+		complete: paintComplete === true,
+		hasEntry: paintComplete !== null && paintComplete !== undefined,
+	});
 
 	/*
 	 * The END of the click-to-visible trace: the first commit that paints a
@@ -7992,13 +8018,25 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 						 * `scrollable`-conditioned `justify-end`, which would need a threshold to
 						 * tune and could oscillate around the fill point.
 						 *
+						 * AND IT IS WITHDRAWN WHILE THE ROWS ARE A STALE CACHED FRAGMENT
+						 * (`topAnchor`, from `paint-top-anchor.ts`). "Only while it fits" is the
+						 * defect on that path: a cached suffix often fits the pane, and the page
+						 * that replaces it usually does not, so the margin would resolve to zero
+						 * at the moment the page lands and every row would jump by the leftover
+						 * height. Bottom-packing the fragment from its first frame is the same
+						 * layout the page will leave behind, so the landing moves nothing.
+						 *
 						 * The empty state is untouched by it: a collapsed pane is `h-0` (see
 						 * `collapsed` above), so there is no free space for a margin to absorb
 						 * and the centred splash is unaffected. And a transcript shorter than the
 						 * pane never scrolls, so the mask stays inert (the ramp note in
 						 * `styles/index.css`).
 						 */
-						className={cn("relative mb-auto flex flex-col", CHAT_MEASURE)}
+						className={cn(
+							"relative flex flex-col",
+							topAnchor && "mb-auto",
+							CHAT_MEASURE,
+						)}
 					>
 						{/* The state this element exists for: the frame BEFORE the conversation's
 				    first page, when there is nothing of it to paint yet - either because

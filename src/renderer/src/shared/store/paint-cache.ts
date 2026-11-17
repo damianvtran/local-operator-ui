@@ -190,6 +190,33 @@ export type PaintedConversation = {
 	 * is the behaviour before this existed.
 	 */
 	replayBorn: ReadonlySet<string>;
+	/**
+	 * Whether these rows are the WHOLE conversation, as opposed to its newest
+	 * suffix.
+	 *
+	 * WHY THE PANE NEEDS IT (P2 of the session-switch plan). The two ceilings
+	 * below keep a suffix, and a heavy session's suffix is often shorter than the
+	 * transcript pane. The column top-anchors a conversation that fits
+	 * (`mb-auto`, canonical-transcript.tsx), which is right for a genuinely short
+	 * conversation and wrong for a suffix: when the taller page lands, the column
+	 * overflows, the auto margin resolves to zero, and every row bottom-packs -
+	 * measured on a built renderer, the first visible row moved 200.6 px and the
+	 * last 212.6 px in ONE frame, 26/26 and 16/16 runs at 500/700 KB tool results.
+	 *
+	 * TRUE ONLY WHEN NOTHING WAS DROPPED AND NO OLDER ROWS ARE OWED. "Owed" is
+	 * read from what the pane knew at write, because this module never sees the
+	 * backend: a page that said more rows exist (`hasMore`), no page at all (no
+	 * `oldestId` - a live-only pane, or a mount this cache itself seeded, which
+	 * clears the cursor), and a settings prune still waiting on its older native
+	 * target (`profileHistoryPending`). A trim by either ceiling is a suffix by
+	 * definition, so it is incomplete whatever the page said.
+	 *
+	 * A CLAIM ABOUT COVERAGE, NOT FRESHNESS: `stale` says these rows may be
+	 * behind; this says they are not merely the tail of the conversation. The pane
+	 * reads the two separately, and the layout takes completeness into account
+	 * only while `stale` holds.
+	 */
+	complete: boolean;
 };
 
 type Entry = PaintedConversation;
@@ -299,10 +326,14 @@ function measure(records: TranscriptState["records"]): number {
 function trimRecords(records: TranscriptState["records"]): {
 	records: TranscriptState["records"];
 	bytes: number;
+	/** Whether either ceiling dropped a row; see `complete` on the entry. */
+	trimmed: boolean;
 } {
 	const capped = records.slice(-PAINT_CACHE_MAX_ROWS);
+	const trimmedByRows = capped.length < records.length;
 	const bytes = measure(capped);
-	if (bytes <= PAINT_CACHE_SESSION_BYTES) return { records: capped, bytes };
+	if (bytes <= PAINT_CACHE_SESSION_BYTES)
+		return { records: capped, bytes, trimmed: trimmedByRows };
 	/*
 	 * This write runs synchronously in the old pane's unmount cleanup and can
 	 * block renderer work during a switch. Measuring every shrinking suffix encodes
@@ -328,7 +359,30 @@ function trimRecords(records: TranscriptState["records"]): {
 			fitBytes = middleBytes;
 		}
 	}
-	return { records: capped.slice(fit), bytes: fitBytes };
+	return { records: capped.slice(fit), bytes: fitBytes, trimmed: true };
+}
+
+/**
+ * Whether the pane's rows covered the WHOLE conversation when the paint was
+ * taken.
+ *
+ * READ FROM THE INPUT TRANSCRIPT, before the stored copy clears the paging
+ * cursor: the cache cannot KEEP a cursor (see `writePaint`), but the question
+ * this answers is what the pane itself knew at that instant.
+ *
+ * AN ABSENT CURSOR IS NOT A STATEMENT OF COVERAGE. A snapshot page that carries
+ * rows defines `oldestId`; the field is null only until one does (a cleared or
+ * never-loaded view whose rows are live ones) and on every mount this cache
+ * seeded, because the stored transcript carries no cursor. `hasMore` is the
+ * backend's own "there are older rows", and `profileHistoryPending` is a local
+ * prune that still owes its older native target - both make what the pane holds a
+ * window rather than the conversation.
+ */
+function coversWholeConversation(transcript: TranscriptState): boolean {
+	if (transcript.oldestId === null) return false;
+	if (transcript.hasMore) return false;
+	if ((transcript.profileHistoryPending?.length ?? 0) > 0) return false;
+	return true;
 }
 
 /**
@@ -374,7 +428,7 @@ export function writePaint(
 	// because the deltas that would advance it were consumed by the previous
 	// mount. A caller that forgot would produce a permanently half-written row
 	// that no caption can make honest.
-	const { records, bytes } = trimRecords(
+	const { records, bytes, trimmed } = trimRecords(
 		dropLiveRecords(input.transcript).records,
 	);
 	if (records.length === 0) {
@@ -452,6 +506,14 @@ export function writePaint(
 			transcript.index,
 		),
 		busy: input.busy === true,
+		/*
+		 * A suffix is incomplete by construction, so the trim decides first and the
+		 * pane's own page knowledge decides the rest. Dropping IN-FLIGHT rows does
+		 * not count: those are rows that have not settled, so the page that follows
+		 * can only add below what this paint shows - the direction new rows are
+		 * allowed to arrive in.
+		 */
+		complete: !trimmed && coversWholeConversation(input.transcript),
 	};
 	// The measurement belongs to THIS write; a later paint of this conversation
 	// measures its own.

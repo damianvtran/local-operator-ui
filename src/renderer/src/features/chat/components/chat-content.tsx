@@ -3168,14 +3168,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 												canonical.view.temporaryDeleted === true
 											}
 											/*
-											 * The cached paint's own two facts, beside the rows it seeded: where
-											 * the reader was, and whether a turn was running when this window
-											 * last showed the conversation. Both are claims the snapshot
-											 * corrects; both are one-shot reads of the paint, not live state
-											 * (`use-canonical-session` clears them in the snapshot's commit).
+											 * The cached paint's own THREE facts, beside the rows it seeded: where
+											 * the reader was, whether a turn was running when this window
+											 * last showed the conversation, and whether those rows were all of it.
+											 * All are claims the snapshot corrects; all are one-shot reads of the
+											 * paint, not live state (`use-canonical-session` clears them in the
+											 * snapshot's commit).
 											 */
 											restoredScroll={canonical.view.paintScroll}
 											paintRunning={canonical.view.paintBusy}
+											/*
+											 * And the one the LAYOUT reads: a cached fragment shorter than the pane
+											 * must not top-anchor, or the page that lands moves every row.
+											 */
+											paintComplete={canonical.view.paintComplete}
 										/>
 										<JobCancelPopover {...musicJobCancel.popover} />
 									</MusicJobsLiveContext.Provider>,
