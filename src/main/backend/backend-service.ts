@@ -55,6 +55,12 @@ import {
 	servingInstallReadings,
 	servingWorkStateFromSessions,
 } from "../backend-version-drift";
+import {
+	type BackendStartup,
+	type BackendStartupFailure,
+	appendStderrTail,
+	classifyStartupFailure,
+} from "../../shared/backend-startup";
 import { DesktopFeedRelay } from "../desktop-feed";
 import {
 	type DesktopMediaResponse,
@@ -729,6 +735,14 @@ interface OwnedServe {
 	/** Escalation timers, held so this generation's exit cancels them; a timer
 	 * that outlives its generation is how a replacement used to get killed. */
 	timers: Set<NodeJS.Timeout>;
+	/** The child's last stderr, bounded (`STDERR_TAIL_CHARS`): the evidence a
+	 * failed start is classified from and the user can copy. */
+	stderrTail: string;
+	/** How the child ended, once it has: read by the start-up record. */
+	exitCode: number | null;
+	signal: string | null;
+	/** The errno-style code of a spawn that never produced a process. */
+	spawnErrorCode: string | null;
 }
 
 /**
@@ -999,6 +1013,13 @@ export class BackendServiceManager {
 	 * that was already committed, and the caller installs over a live serve. */
 	private startPromise: Promise<boolean> | null = null;
 	private restartPromise: Promise<boolean> | null = null;
+	/**
+	 * The owned server's start-up, as the renderer's start-up panel draws it
+	 * (`src/shared/backend-startup.ts` for why it is a record of its own).
+	 * Null until this session spawns: an attached external daemon never has one.
+	 */
+	private startup: BackendStartup | null = null;
+	private startupAttempts = 0;
 	/** Bumped by every stop. A start that began under an older epoch cannot
 	 * report success or adopt its child: the cancellation happened after it
 	 * checked, and this is what it re-checks across each await. */
@@ -1224,7 +1245,69 @@ export class BackendServiceManager {
 		return {
 			...snapshot,
 			addressSubstitution: this.addressSubstitutionFor(snapshot),
+			startup: this.startup,
 		};
+	}
+
+	/**
+	 * Whether a failed start is on record for the status surface to show.
+	 *
+	 * `index.ts` reads it to decide that a failed launch keeps its window: the
+	 * window's start-up panel names the cause and offers Restart and Copy
+	 * diagnostics, where the old answer was a modal with no cause and a quit.
+	 */
+	startupFailureReported(): boolean {
+		return this.startup?.phase === "failed";
+	}
+
+	/** Publish a start-up transition. */
+	private setStartup(next: BackendStartup | null): void {
+		this.startup = next;
+		this.notifyStatus();
+	}
+
+	/**
+	 * Record a failed start from what the generation left behind, and move the
+	 * connection to `detached` with main's sentence, so every surface gated on
+	 * the server stops asking it and the panel is the one place that speaks.
+	 */
+	private recordStartupFailure(
+		generation: OwnedServe | null,
+		message: string,
+		timedOut: boolean,
+		error?: unknown,
+	): BackendStartupFailure {
+		const thrownCode = (error as { code?: unknown } | undefined)?.code;
+		const spawnErrorCode =
+			generation?.spawnErrorCode ??
+			(typeof thrownCode === "string" ? thrownCode : null);
+		const failure: BackendStartupFailure = {
+			category: classifyStartupFailure({
+				spawnErrorCode,
+				exitCode: generation?.exitCode ?? null,
+				signal: generation?.signal ?? null,
+				stderrTail: generation?.stderrTail ?? "",
+				timedOut,
+			}),
+			exitCode: generation?.exitCode ?? null,
+			signal: generation?.signal ?? null,
+			spawnErrorCode,
+			stderrTail: generation?.stderrTail ?? "",
+			message,
+		};
+		logger.error(
+			`Backend start failed (${failure.category}; exit=${failure.exitCode ?? "none"} signal=${failure.signal ?? "none"} spawn=${failure.spawnErrorCode ?? "none"})`,
+			LogFileType.BACKEND,
+		);
+		this.daemonState.observe({ kind: "no-candidate", detail: message });
+		this.setStartup({
+			phase: "failed",
+			startedAt: this.startup?.startedAt ?? Date.now(),
+			budgetMs: READINESS_BUDGET_MS,
+			attempt: this.startup?.attempt ?? this.startupAttempts,
+			failure,
+		});
+		return failure;
 	}
 
 	/**
@@ -3444,6 +3527,14 @@ export class BackendServiceManager {
 			});
 			const generation = this.captureServe(child);
 			captured = generation;
+			this.startupAttempts += 1;
+			this.setStartup({
+				phase: "starting",
+				startedAt: Date.now(),
+				budgetMs: READINESS_BUDGET_MS,
+				attempt: this.startupAttempts,
+				failure: null,
+			});
 
 			// Log output
 			if (child.stdout) {
@@ -3455,6 +3546,10 @@ export class BackendServiceManager {
 			if (child.stderr) {
 				child.stderr.on("data", (data) => {
 					logger.error(`Backend stderr: ${data}`, LogFileType.BACKEND);
+					generation.stderrTail = appendStderrTail(
+						generation.stderrTail,
+						String(data),
+					);
 				});
 			}
 
@@ -3483,6 +3578,8 @@ export class BackendServiceManager {
 					// version comes from this registration, and a consumer that
 					// re-reads capabilities on `backendReady` must already see it.
 					await this.registerOwnedDaemon(child, reason);
+					if (this.startup)
+						this.setStartup({ ...this.startup, phase: "ready" });
 					this.startHealthCheck();
 					this.notifyBackendReady();
 					return true;
@@ -3493,6 +3590,12 @@ export class BackendServiceManager {
 				await new Promise((resolve) => setTimeout(resolve, delay));
 			}
 
+			/*
+			 * Read BEFORE the stop below: a child still alive here is the
+			 * readiness budget running out, and the kill that follows would
+			 * otherwise read as an exit.
+			 */
+			const timedOut = !generation.exited && !generation.stop;
 			await this.stopGeneration(generation, false);
 			if (epoch !== this.startEpoch) return false;
 			logger.error(
@@ -3500,8 +3603,21 @@ export class BackendServiceManager {
 				LogFileType.BACKEND,
 			);
 
+			/*
+			 * The status surface carries this failure - cause, Restart and Copy
+			 * diagnostics in the window - so it is reported there and never as a
+			 * modal: the modal said "check the logs" and nothing else, and
+			 * `index.ts` used to follow it with a quit.
+			 */
+			this.recordStartupFailure(
+				generation,
+				timedOut
+					? `The server did not answer within ${Math.round(READINESS_BUDGET_MS / 1000)} s of starting.`
+					: "The server process ended before it answered.",
+				timedOut,
+			);
 			this.reportStartOutcome(
-				options,
+				{ ...options, quiet: true },
 				"Failed to start the Local Operator backend service. Please check the logs for more information.",
 			);
 
@@ -3539,8 +3655,14 @@ export class BackendServiceManager {
 				error,
 			);
 
+			this.recordStartupFailure(
+				captured,
+				`Error starting the Local Operator backend service: ${error}`,
+				false,
+				error,
+			);
 			this.reportStartOutcome(
-				options,
+				{ ...options, quiet: true },
 				`Error starting the Local Operator backend service: ${error}`,
 			);
 
@@ -3784,6 +3906,10 @@ export class BackendServiceManager {
 			resolveExit: () => resolveExit(),
 			stop: null,
 			timers: new Set(),
+			stderrTail: "",
+			exitCode: null,
+			signal: null,
+			spawnErrorCode: null,
 		};
 		this.ownedServe = generation;
 		this.process = child;
@@ -3798,9 +3924,11 @@ export class BackendServiceManager {
 		 * (`attachTo`, the fixed-port adopt), so clearing it here loses nothing.
 		 */
 		this.attachedRecord = null;
-		const exited = (code?: number | null) => {
+		const exited = (code?: number | null, signal?: NodeJS.Signals | null) => {
 			if (generation.exited) return;
 			generation.exited = true;
+			generation.exitCode = code ?? null;
+			generation.signal = signal ?? null;
 			// This generation's escalation timers die with it, so a SIGKILL armed
 			// for a process that has already gone cannot fire at a successor that
 			// took its place in the meantime.
@@ -3819,22 +3947,37 @@ export class BackendServiceManager {
 			// Windows exit code 1 that a terminated serve reports, which the previous
 			// code had to special-case by platform because it could not tell a
 			// requested termination from a crash.
+			//
+			// It is reported through the start-up record, not a modal: the window's
+			// start-up panel names the cause from the exit code and stderr, and
+			// offers Restart and Copy diagnostics - the modal asked the user to
+			// restart the whole application and said nothing else. An exit DURING
+			// the readiness wait is left to that loop, which records it with the
+			// right sentence; this arm is the server dying after it was ready.
 			if (
 				code != null &&
 				code !== 0 &&
 				!generation.stop &&
 				!this.isAppClosing &&
-				!this.isAutoUpdating
+				!this.isAutoUpdating &&
+				this.startup?.phase === "ready"
 			) {
-				electronDialog.showErrorBox(
-					"Backend Error",
-					`The Local Operator backend service exited unexpectedly with code ${code}. Please restart the application.`,
+				this.recordStartupFailure(
+					generation,
+					`The server stopped unexpectedly with exit code ${code}.`,
+					false,
 				);
 			}
 		};
 		child.once("exit", exited);
 		child.on("error", (error) => {
 			logger.error("Owned backend process error", LogFileType.BACKEND, error);
+			// The errno a spawn failed with (ENOENT, EACCES, EPERM) is the one
+			// evidence an executable blocked or removed by antivirus leaves.
+			if (child.pid === undefined) {
+				const code = (error as NodeJS.ErrnoException).code;
+				generation.spawnErrorCode = typeof code === "string" ? code : null;
+			}
 			// Spawn failure has no process. A signal error with a PID does not
 			// prove exit and must retain ownership for fail-closed cleanup.
 			if (child.pid === undefined) exited();
@@ -5596,13 +5739,15 @@ export class BackendServiceManager {
 	 * default grace exactly as before.
 	 * @returns Promise resolving to true if the restart was successful, false otherwise
 	 */
-	restart(options: { stopGraceMs?: number } = {}): Promise<boolean> {
+	restart(
+		options: { stopGraceMs?: number; quiet?: boolean } = {},
+	): Promise<boolean> {
 		if (this.restartPromise) return this.restartPromise;
 		this.restartPromise = (async () => {
 			try {
 				await this.stop(true, { graceMs: options.stopGraceMs });
 				if (this.isAppClosing) return false;
-				return await this.start();
+				return await this.start({ quiet: options.quiet });
 			} catch (error) {
 				logger.error("Backend restart refused", LogFileType.BACKEND, error);
 				return false;

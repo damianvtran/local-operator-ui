@@ -102,6 +102,10 @@ def main():
     port = int(sys.argv[sys.argv.index('--port') + 1])
     mode = os.environ.get('FIXTURE_MODE', '')
     if mode == 'early': sys.exit(7)
+    if mode == 'portbusy':
+        sys.stderr.write('Traceback (most recent call last):\\n  File "server.py", line 1\\nOSError: [WinError 10048] Only one usage of each socket address (protocol/network address/port) is normally permitted\\n')
+        sys.stderr.flush()
+        sys.exit(1)
     if mode == 'ignore': signal.signal(signal.SIGTERM, signal.SIG_IGN)
     if mode == 'unready':
         while True: time.sleep(1)
@@ -432,6 +436,36 @@ test("startup timeout and early exit clean actual children without claiming runn
 	} finally {
 		globalThis.setTimeout = original;
 	}
+});
+
+test("a failed start publishes its cause, exit code and stderr for the start-up panel (PostHog D2)", async () => {
+	/*
+	 * A real child (the python fixture) that fails the way a Windows first run
+	 * does when its port is held: a Winsock traceback on stderr, exit 1. Before
+	 * this record the app showed "Failed to start ... check the logs" and quit.
+	 */
+	const m = await manager("portbusy");
+	const seen = [];
+	m.onStatusChange((snapshot) => seen.push(snapshot.startup?.phase ?? null));
+	assert.equal(await m.start(), false);
+	const { startup, state } = m.getStatusSnapshot();
+	assert.equal(startup.phase, "failed");
+	assert.equal(startup.failure.category, "port_in_use");
+	assert.equal(startup.failure.exitCode, 1);
+	assert.match(startup.failure.stderrTail, /WinError 10048/);
+	assert.equal(startup.attempt, 1);
+	assert.equal(state, "detached", "gated surfaces stop asking a server that is not there");
+	assert.ok(
+		seen.indexOf("starting") !== -1 && seen.indexOf("starting") < seen.lastIndexOf("failed"),
+		`starting was published before failed: ${seen.join(",")}`,
+	);
+	assert.equal(m.startupFailureReported(), true);
+
+	const ok = await manager();
+	assert.equal(await ok.start(), true);
+	assert.equal(ok.getStatusSnapshot().startup.phase, "ready");
+	assert.equal(ok.startupFailureReported(), false);
+	await ok.stop(false);
 });
 
 test("readiness polls fast while a start is young, then backs off to the flat second", () => {
@@ -1870,14 +1904,23 @@ export function execFileSync() { return "S"; }
 		false,
 		"a failed cleanup is reported, not thrown at the watchdog",
 	);
-	assert.equal(
-		globalThis.__dialog.length,
-		1,
-		"the failure still reaches the user",
-	);
+	/*
+	 * The failure reaches the user through the start-up record the window's
+	 * panel draws (PostHog D2), not a modal: the modal named no cause and was
+	 * followed by a quit.
+	 */
+	assert.equal(globalThis.__dialog.length, 0, "no modal for a recorded failure");
+	const startup = m.getStatusSnapshot().startup;
+	assert.equal(startup?.phase, "failed", "the failure still reaches the user");
 	assert.match(
-		globalThis.__dialog[0][1],
+		startup.failure.message,
 		/Error starting the Local Operator backend service/,
+	);
+	assert.equal(m.startupFailureReported(), true);
+	assert.equal(
+		m.getStatusSnapshot().state,
+		"detached",
+		"every surface gated on the server stops asking it",
 	);
 	assert.deepEqual(
 		child.signals,
@@ -2439,6 +2482,7 @@ test("a failed start on an address this app does not own does not quit, and ever
 		{
 			start: async () => false,
 			isStartBlockedByOccupiedAddress: () => false,
+			startupFailureReported: () => false,
 		},
 		{ BACKEND: "backend" },
 	);
@@ -2446,6 +2490,25 @@ test("a failed start on an address this app does not own does not quit, and ever
 		other.map(([kind]) => kind),
 		["log", "dialog", "quit"],
 		"a failed start for any other reason still reports and quits, as it did",
+	);
+	/*
+	 * PostHog D2: a failed start the manager RECORDED (exit code, stderr, spawn
+	 * errno) keeps the window - its start-up panel reports the cause with
+	 * Restart and Copy diagnostics - so it neither raises a modal nor quits.
+	 */
+	const recorded = await runStartBranch(
+		code,
+		{
+			start: async () => false,
+			isStartBlockedByOccupiedAddress: () => false,
+			startupFailureReported: () => true,
+		},
+		{ BACKEND: "backend" },
+	);
+	assert.deepEqual(
+		recorded.map(([kind]) => kind),
+		["log"],
+		"a recorded start failure keeps the app and its window, with no modal",
 	);
 });
 
@@ -2500,6 +2563,7 @@ test("the post-install start does not quit either, on the same answer (review ro
 		{
 			start: async () => false,
 			isStartBlockedByOccupiedAddress: () => false,
+			startupFailureReported: () => false,
 		},
 		{ INSTALLER: "installer" },
 	);
@@ -2507,5 +2571,24 @@ test("the post-install start does not quit either, on the same answer (review ro
 		other.map(([kind]) => kind),
 		["log", "dialog", "quit"],
 		"an installed-but-unstartable backend for any other reason still reports and quits",
+	);
+	/*
+	 * PostHog D2: a failed start the manager RECORDED (exit code, stderr, spawn
+	 * errno) keeps the window - its start-up panel reports the cause with
+	 * Restart and Copy diagnostics - so it neither raises a modal nor quits.
+	 */
+	const recorded = await runStartBranch(
+		code,
+		{
+			start: async () => false,
+			isStartBlockedByOccupiedAddress: () => false,
+			startupFailureReported: () => true,
+		},
+		{ INSTALLER: "installer" },
+	);
+	assert.deepEqual(
+		recorded.map(([kind]) => kind),
+		["log"],
+		"a recorded start failure keeps the app and its window, with no modal",
 	);
 });
