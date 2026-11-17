@@ -60,6 +60,23 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	jsx: "automatic",
+	/*
+	 * SONNER, AS A RECORDER. The refusal's toast is the one surface this suite cannot
+	 * mount (it renders through the app's Toaster, which is `undo-toasts.test.mjs`'s
+	 * rig), so its OPTIONS are read here - the class that has to reach Sonner's
+	 * `[data-content]` and the node the copy is built into - and the DOM half is the
+	 * toast suite's. The same fixture shape that suite uses on `toast.*`.
+	 */
+	plugins: [
+		{
+			name: "sonner-recorder",
+			setup(builder) {
+				builder.onResolve({ filter: /^sonner$/ }, () => ({
+					path: `${process.cwd()}/scripts/fixtures/sonner-recorder.mjs`,
+				}));
+			},
+		},
+	],
 	external: [
 		"react",
 		"react-dom",
@@ -412,4 +429,63 @@ test("the chat page's send is origin-bound: the view gate, the validation hold a
 		/!originBound &&\s*draftKey &&\s*useCanonicalSessionsStore\.getState\(\)\.activeSessionId === id/,
 		"and a successful one never navigates the reader away from the chat they chose",
 	);
+});
+
+/*
+ * THE REFUSAL TOAST'S SHAPE (design round 1, D1-D3).
+ *
+ * The blocker: a long session title grew the refusal card to 976 px inside a
+ * 356 px toast, so the reason and the Open chat action were unreachable. The fix
+ * is Sonner's own `classNames.content` (the rule the archive offer already
+ * carries), and these are the two halves a suite can read from a module that
+ * renders nowhere: the option that reaches `[data-content]`, and the node whose
+ * two lines are the heading and the sentence.
+ */
+test("the refusal toast hands Sonner the shrink-to-the-card class, a heading title and a prose body", () => {
+	/* THE READER IS IN ANOTHER CHAT, which is the only arm that raises a toast. */
+	viewOn("session-b");
+	useCanonicalSessionsStore.setState({
+		sessions: [{ session_id: A, title: "x".repeat(120) }],
+	});
+	globalThis.__sonnerCalls ??= [];
+	const calls = globalThis.__sonnerCalls;
+	calls.length = 0;
+	dictatedSends.refuseAway(A, "unavailable");
+	const warning = calls.find((call) => call.level === "warning");
+	assert.ok(warning, "the refusal raised a warning toast");
+	assert.equal(
+		warning.options?.classNames?.content,
+		"min-w-0",
+		"sonner's [data-content] is a flex item: without min-w-0 a long title refuses to give and the card outgrows the toast",
+	);
+	/*
+	 * THE TITLE IS CLAMPED BEFORE IT ENTERS THE COPY (D5): the composer's notice
+	 * spells the same name out in a sentence with no CSS truncation, and the toast
+	 * keeps its own `truncate` for the narrower card.
+	 */
+	assert.match(
+		warning.message.props.children[0].props.children,
+		/^x{1,60}\u2026$/,
+		"the name is clamped, not the whole card",
+	);
+	assert.equal(
+		warning.message.props.children[0].props.className,
+		"truncate font-medium",
+	);
+	assert.equal(
+		warning.message.props.children[0].props.dir,
+		"auto",
+		"a right-to-left name is laid out by its own first strong character (D3)",
+	);
+	assert.equal(
+		warning.message.props.children[1].props.className,
+		"font-normal",
+		"the body reads as prose under the name, not as a second heading (D2)",
+	);
+	assert.equal(
+		warning.options?.id,
+		dictatedToastId(A),
+		"and the toast is still one per conversation",
+	);
+	useCanonicalSessionsStore.setState({ sessions: [], activeSessionId: A });
 });

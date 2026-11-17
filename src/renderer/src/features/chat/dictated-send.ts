@@ -270,15 +270,34 @@ function viewIdentity(): string | undefined {
 	);
 }
 
+/**
+ * How far a conversation's name may run before it is clamped.
+ *
+ * WHY A CLAMP AND NOT ONLY THE TOAST'S `truncate` (design round 1, D5). The same
+ * name is spliced into the COMPOSER's refusal sentence as well ("Not sent to
+ * "<title>"…"), where there is no CSS truncation at all - a long session title
+ * pushed that sentence to three lines over the box. 60 characters holds every
+ * title the sidebar shows in full and leaves the sentence's own words room; the
+ * toast's truncation still handles the narrower toast, so neither surface has to
+ * know about the other.
+ */
+const TITLE_CLAMP = 60;
+
+function clampedTitle(raw: string): string {
+	const text = raw.trim();
+	if (text.length <= TITLE_CLAMP) return text;
+	return `${text.slice(0, TITLE_CLAMP - 1).trimEnd()}\u2026`;
+}
+
 /** How the reader knows this conversation: its title, its target's name, or a label. */
 function titleForOrigin(originId: string): string {
 	const state = useCanonicalSessionsStore.getState();
 	const title = state.sessions
 		.find((row) => row.session_id === originId)
 		?.title?.trim();
-	if (title) return title;
+	if (title) return clampedTitle(title);
 	const target = state.drafts[originId]?.target?.name?.trim();
-	if (target) return target;
+	if (target) return clampedTitle(target);
 	return originId.startsWith("draft:")
 		? t("ui.chat.composer.dictated_away.draft_label")
 		: t("ui.chat.composer.dictated_away.untitled_chat");
@@ -329,15 +348,47 @@ function recordRefusal(
 			{ className: "flex min-w-0 flex-col gap-0.5" },
 			createElement(
 				"span",
-				{ key: "title", className: "truncate font-medium" },
+				{
+					key: "title",
+					/*
+					 * `dir="auto"` BECAUSE A TITLE IS THE USER'S, NOT THE APP'S (design round
+					 * 1, D3): a right-to-left name was laid out by the surrounding
+					 * left-to-right direction and put its own "!" on the wrong side
+					 * ("Q3 report (draft)!" rendered as "!Q3 report (draft)"). The browser
+					 * picks the direction from the first strong character instead, which is
+					 * what the sidebar's own row does.
+					 */
+					className: "truncate font-medium",
+					dir: "auto",
+				},
 				refusal.title,
 			),
-			createElement("span", { key: "body" }, dictatedRefusalBody(refusal)),
+			/*
+			 * THE BODY READS AS PROSE UNDER THE NAME (design round 1, D2). The toast's
+			 * content inherits the medium weight the title needs, so a sentence at the
+			 * same weight made the whole card look like a heading; `font-normal` is
+			 * what makes the first line the name and the second the explanation.
+			 */
+			createElement(
+				"span",
+				{ key: "body", className: "font-normal" },
+				dictatedRefusalBody(refusal),
+			),
 		),
 		{
 			id: dictatedToastId(originId),
 			duration: Number.POSITIVE_INFINITY,
 			closeButton: true,
+			/*
+			 * THE FLEX CHAIN HAS TO SHRINK TO THE TOAST (design round 1, D1 = blocker).
+			 * Sonner's `[data-content]` is a flex item whose automatic minimum size is
+			 * its content's, so a long title inside it refused to give and the refusal
+			 * card grew to 976 px inside a 356 px toast - the reason and the Open chat
+			 * action pushed out of reach. `min-w-0` is the utility the archive offer
+			 * already carries for the same rule (`undo-toasts.tsx` measures it), so the
+			 * title ellipsises and the sentence wraps inside the toast's own width.
+			 */
+			classNames: { content: "min-w-0" },
 			...(canOpen && navigateTo
 				? {
 						action: {

@@ -292,6 +292,22 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/submit-skill-latency-after.mjs",
+		"spawn",
+		2,
+		/\{\s*env:\s*appEnv\s*,/,
+		"The send-latency rig's AFTER tree boots a built app on a scratch profile to time a press; its analytics must not report a product user.",
+		/const appEnv = withTelemetryOff\(\{/,
+	),
+	guarded(
+		"scripts/submit-skill-latency-baseline.mjs",
+		"spawn",
+		2,
+		/\{\s*env:\s*appEnv\s*,/,
+		"The send-latency rig's BEFORE tree boots the baseline build the same way; launch suppression must accompany the scratch profile.",
+		/const appEnv = withTelemetryOff\(\{/,
+	),
+	guarded(
 		"scripts/extension-native-proof.mjs",
 		"spawn",
 		1,

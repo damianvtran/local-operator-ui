@@ -7247,8 +7247,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * transcribed. With an armed dictated send the bytes go straight to the
 						 * transcription instead; on every other path (a plain Confirm, a
 						 * discarded take) this is the same write it always was.
+						 *
+						 * AND THE INTENT IS THE GATE, NOT THE REF (round-1 finding, reviewer M3).
+						 * `dictatedSendRef` is written by every press on every host - it is how the
+						 * stay path arms itself - so `dictatedSendRef.current` alone was true on a
+						 * host that never opted in (`dictatedAwayDelivery` absent: the mini view,
+						 * config, library, project quick-send). A press that raced an unmount there
+						 * transcribed the take and appended the words to the draft, which is a
+						 * behaviour those hosts did not have and this change promised they would not
+						 * gain (`shared-composer.test.mjs` case 11: the media stub is never called).
+						 * Only an armed intent - the opt-in's own record, created by
+						 * `dictatedSends.begin` - authorises a take from a dead tree.
 						 */
-						if (dictatedSendRef.current && !mountedRef.current) {
+						if (dictatedSendRef.current?.intentId && !mountedRef.current) {
 							audioChunksRef.current = [];
 							transcribeTakeRef.current(completeAudioBlob);
 							return;
@@ -7905,27 +7916,96 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				const origin = options.originId ?? conversationId;
 				if (!origin) return "origin-gone";
-				if (isInputDisabled || noProvider) return "unavailable";
+				/*
+				 * A PANE THAT IS STILL OPENING IS NOT A CHAT THAT CANNOT BE REACHED (round-1
+				 * finding, UX U2). `isHydrating` is the transcript's own "no page applied
+				 * yet" hold - the state the pane paints as "Loading conversation…" - and it
+				 * refuses input on this composer for as long as it lasts, so the away delivery
+				 * used to answer `unavailable`: "that chat could not take a message", about a
+				 * chat the reader had just navigated INTO. Nothing was wrong with the chat; it
+				 * was still opening. `not-ready` is the module's existing arm for exactly that
+				 * sentence ("that chat is still opening"), which is true, and the words stay in
+				 * its draft either way.
+				 *
+				 * THE TERM IS `isHydrating` ON TOP OF A REFUSAL, not on its own: a pane can be
+				 * hydrating while its box still takes a press (measured here - the away send
+				 * posts normally), and that path is left exactly as it was. Only a press this
+				 * composer would have refused BECAUSE the transcript has not painted yet is
+				 * re-worded.
+				 *
+				 * WAITING FOR THE READY DELIVERER INSTEAD WAS REJECTED rather than overlooked:
+				 * the closure is re-registered every render, so the wait would have to be
+				 * bounded by a number nobody has measured (the ledger's own rule: no new
+				 * timeout without its distribution), and an unbounded wait holds a delivered
+				 * transcript hostage to a pane the reader may never finish opening. The truthful
+				 * sentence is the smaller, safer answer.
+				 */
+				if (isInputDisabled || noProvider)
+					return isHydrating ? "not-ready" : "unavailable";
 				if (noModel || draftModelUnresolved) return "no-model";
 				if (planForDraft(text, text.length).kind !== "send") return "command";
 				if (awaitingAnswer && dictatedWouldAnswerGate(text)) return "gate";
 				if (secretAsk !== null && looksLikeSecret(text)) return "secret";
+				/*
+				 * THE ECHO'S PAINT IS THE CLEAR'S CLOCK ONLY WHILE THIS SEND IS STILL OUT.
+				 *
+				 * WHY THAT IS A CONDITION AND NOT A GIVEN (round-1 finding, UX U1 = QA Q1).
+				 * The paint is not synchronous on this path: `paintPendingSend` applies it at
+				 * the press only when a transcript for the origin is MOUNTED, and RETAINS it
+				 * otherwise (`use-canonical-session`'s registry). A dictated send whose origin
+				 * the reader has left has no such transcript, so the callback below runs at
+				 * the origin's NEXT mount - seconds later, after `finishDraft` has already
+				 * settled the send. The write it then made ("move what left into
+				 * `inFlight`, empty the box") was therefore a record nothing would ever
+				 * settle: the row kept `inFlight: <the message>` with an empty box, the next
+				 * launch folded it back into the box (`rehydrateInputRows`), and Enter over it
+				 * posted the sent words again - measured 4/4, and the store-level repro is
+				 * in `shared-composer.test.mjs`'s retained-paint case.
+				 *
+				 * So the callback is the paint's clock, and `sendEnded` is the send's:
+				 * a paint that arrives while the request is out still empties the box in the
+				 * same commit the row appears (the reader came back mid-flight, and the
+				 * mounted box must not hold words that are already sent); one drained after
+				 * the send ended is a no-op, because the accept arm below is what clears the
+				 * box by then - and on a failure the text must stay exactly where it is.
+				 */
+				let sendEnded = false;
 				const accepted = await onSubmit(
 					text,
 					() => {
+						if (sendEnded) return;
 						/*
-						 * THE ECHO'S PAINT IS THE CLEAR'S CLOCK, exactly as on the stay path: the
-						 * row records what left and empties the box in one write, which is what a
-						 * remounted composer adopts (`textRevision`). Read from the store rather
-						 * than from this render, because the box may have been re-keyed since.
+						 * The row records what left and empties the box in one write, which is
+						 * what a remounted composer adopts (`textRevision`). Read from the store
+						 * rather than from this render, because the box may have been re-keyed
+						 * since.
 						 */
 						const box = useConversationInputStore.getState();
 						box.beginInFlight(origin, { text, attachments, replies }, true);
 					},
 					{ dictatedAway: true, inputMode: options.inputMode },
 				);
+				sendEnded = true;
 				if (accepted === false) return "unavailable";
 				const box = useConversationInputStore.getState();
+				/*
+				 * AND THE CLEAR AN ACCEPTED AWAY SEND OWES ITS BOX IS THIS WRITE.
+				 *
+				 * Nothing else will empty the origin's row once the send has settled:
+				 * `finishDraft` settles records, it does not write the box, and the paint
+				 * that would have done it has either already run (a mounted transcript -
+				 * where this write finds nothing left to clear and says so with
+				 * `textLeaves` false) or is retained and will be skipped by `sendEnded`
+				 * above. `record: false` is the whole point: the send is OVER, so there is
+				 * no in-flight window left for a payload record to restore a crash from -
+				 * `inFlight` here would be a message the app already delivered, offered
+				 * back to the composer at the next launch.
+				 *
+				 * The write is conditional on the row still holding exactly the words that
+				 * left (`beginInFlight`'s own `textLeaves`), so text typed in the origin
+				 * while the request was out survives it.
+				 */
+				box.beginInFlight(origin, { text, attachments, replies }, false);
 				box.addSubmittedMessage(origin, text);
 				/*
 				 * AND THE EMPTIED DRAFT LANDS NOW, not 300 ms from now: the writer that came
@@ -7938,6 +8018,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			},
 			[
 				conversationId,
+				isHydrating,
 				isInputDisabled,
 				noProvider,
 				noModel,
@@ -9128,7 +9209,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					>
 						<p
 							className={cn(
-								"flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1",
+								/*
+								 * `flex-nowrap items-start`, NOT `flex-wrap items-center` (design round 1,
+								 * D4). A multi-line sentence (the dictated-away refusal names the chat and
+								 * the reason) left the icon on a line of its own with the text starting on
+								 * the next - a 14 px glyph alone above a paragraph reads as a broken layout.
+								 * Nowrap keeps the glyph at the first line's left and `items-start` aligns
+								 * it to that first line instead of to the paragraph's middle. The sentence
+								 * span already owns `min-w-0 break-words`, so it still wraps inside the row.
+								 */
+								"flex min-w-0 flex-nowrap items-start gap-x-3",
 								composerAlert.muted ? "text-ink-muted" : "text-danger",
 							)}
 						>

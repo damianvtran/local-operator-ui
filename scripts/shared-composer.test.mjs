@@ -371,7 +371,8 @@ const bundle = await build({
 			} from "./src/renderer/src/shared/hooks/use-message-input";
 			export { resolvePushToTalkBinding, isDictationActive } from "./src/renderer/src/shared/hooks/use-speech-to-text-manager";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
-			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
+			export { useCanonicalSessionsStore, paneDraftKey } from "./src/renderer/src/shared/store/canonical-sessions-store";
+			export { paintPendingSend, __registerEchoTarget, discardPendingSends } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export {
 				dictatedSends,
 				useDictatedSendStore,
@@ -421,6 +422,10 @@ const {
 	dictatedSends,
 	useDictatedSendStore,
 	resetDictatedSendsForTests,
+	paneDraftKey,
+	paintPendingSend,
+	__registerEchoTarget,
+	discardPendingSends,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -1262,17 +1267,39 @@ test("an attached composer reaches the host before the `$skill` bodies are read,
 			["research"],
 			`d=${d}ms: the read the press skipped had started`,
 		);
-		if (d > 0) {
-			assert.equal(
-				run.whileHeld.answered,
-				0,
-				`d=${d}ms: and had not answered when it did`,
-			);
-		}
 		assert.equal(
 			run.rendered,
 			`${draft}\n\n${expectedBlock([["research", EXPECTED_BODIES.research]])}`,
 			`d=${d}ms: the payload is composed identically whatever the delay`,
+		);
+	}
+	/*
+	 * THE "AND HAD NOT ANSWERED YET" HALF IS HELD, NOT TIMED (round-1 finding,
+	 * reviewer M1). It used to be asserted inside the loop above, against a real
+	 * 70/250/1000 ms timer, with the reading taken after one `settle` - so on a
+	 * loaded machine the read could answer inside that settle and fail a behaviour
+	 * that was correct. The gate deferred is the same fact with no race in it, and
+	 * it is the instrument the held case at the top of this test already uses; the
+	 * loop keeps its ordering claims, which are about the press and the read
+	 * STARTING, and never about how fast the wire is.
+	 */
+	{
+		const draft = "$research what changed";
+		const run = await pressAttached(draft, { gate: deferred() });
+		assert.equal(
+			run.whileHeld.sent,
+			1,
+			"the host was reached while the read was held",
+		);
+		assert.deepEqual(
+			run.whileHeld.started,
+			["research"],
+			"the read the press skipped had started",
+		);
+		assert.equal(
+			run.whileHeld.answered,
+			0,
+			"and had not answered when the host was reached",
 		);
 	}
 });
@@ -3435,7 +3462,7 @@ test("the words take the same route as a typed send, $skill seam included (case 
 	);
 });
 
-test("a host without the flag keeps today's behaviour: nothing is sent after an unmount (case 11)", async () => {
+test("a host without the flag keeps today's behaviour: a take released after an unmount is dropped (case 11)", async () => {
 	useConversationInputStore.setState(RESET);
 	resetDictatedSendsForTests();
 	mic.calls = 0;
@@ -3443,7 +3470,6 @@ test("a host without the flag keeps today's behaviour: nothing is sent after an 
 	mic.next = async () => fakeStream();
 	const { calls, spy } = spySends();
 	transcription.install([OK_TRANSCRIPT("as today")]);
-	const release = transcription.hold();
 
 	const frame = await mountAt(A, {
 		/* NO `dictatedAwayDelivery`: the mini view, config, library, quick-send. */
@@ -3454,10 +3480,31 @@ test("a host without the flag keeps today's behaviour: nothing is sent after an 
 		},
 	});
 	await startTake(frame);
-	await sendRecording(frame);
+	/*
+	 * THE RECORDER'S RELEASE IS HELD (round-1 finding, reviewer M3). The dead-tree
+	 * branch this case is about only runs when `onstop` arrives AFTER the unmount,
+	 * so the take's own event has to be delivered by the case rather than by the
+	 * fixture's microtask - otherwise the composer is still mounted when it fires
+	 * and this measures the ordinary transcription instead.
+	 */
+	const recorder = mic.recorders.at(-1);
+	let deliver = null;
+	recorder.stop = function () {
+		this.state = "inactive";
+		deliver = () => {
+			this.ondataavailable?.({
+				data: new Blob(["0123456789"], { type: "audio/webm" }),
+			});
+			this.onstop?.();
+		};
+	};
+	await act(async () => {
+		frame.container.querySelector('[aria-label="Send recording"]').click();
+	});
+	await settle();
 	await frame.unmount();
 	await act(async () => {
-		release();
+		deliver?.();
 	});
 	await settle();
 
@@ -3466,10 +3513,25 @@ test("a host without the flag keeps today's behaviour: nothing is sent after an 
 		0,
 		"an opted-out host sends nothing after an unmount",
 	);
-	assert.match(
+	/*
+	 * THE TAKE IS NOT TRANSCRIBED EITHER. The dead tree's `onstop` used to
+	 * transcribe on any press (`dictatedSendRef` is written by every press, on
+	 * every host) and appended the words to the draft - a behaviour these hosts
+	 * never had, since only an ARMED INTENT (the opt-in's record) authorises a
+	 * take from a tree that is gone. The media stub is the instrument: uncalled
+	 * means the bytes went nowhere, which is the pre-existing behaviour this PR
+	 * promised to leave alone.
+	 */
+	assert.equal(deliver !== null, true, "the release did reach the recorder");
+	assert.deepEqual(
+		transcription.calls,
+		[],
+		"no transcription request is made on a host that never opted in",
+	);
+	assert.equal(
 		useConversationInputStore.getState().getCurrentInput(A),
-		/as today/,
-		"and the transcript lands in the draft, exactly as it does today",
+		"",
+		"and nothing was appended to the draft",
 	);
 	assert.equal(dictatedSends.has(A), false, "no intent was ever armed");
 	transcription.restore();
@@ -3559,4 +3621,308 @@ test("the away path raises no React warning and no console error (case 13)", asy
 		[],
 		"an unmounted pane's continuation says nothing on the console",
 	);
+});
+
+/*
+ * THE PAGE'S HALF OF A SEND, AS THE SHIPPING PAGE PLAYS IT.
+ *
+ * The earlier cases stub `onSendMessage` and call `onEchoPainted` inline, which
+ * is only the app's shape while a transcript for the identity is MOUNTED. The
+ * real page paints through `paintPendingSend`, whose application is synchronous
+ * with a target and RETAINED without one (the reader is in another chat), and it
+ * settles through `finishDraft`, which is what ends the in-flight record. A case
+ * about what an away send leaves behind has to run both halves, or it tests a
+ * page that does not exist.
+ */
+function pageSend({ origin, posts }) {
+	const echoes = [];
+	const send = async (content, _attachments, onEchoPainted) => {
+		posts.push(content);
+		paintPendingSend(origin, {
+			id: crypto.randomUUID(),
+			text: content,
+			images: [],
+			onPainted: () => {
+				echoes.push(content);
+				onEchoPainted?.();
+			},
+		});
+		useCanonicalSessionsStore
+			.getState()
+			.finishDraft(
+				paneDraftKey(null, origin, useCanonicalSessionsStore.getState().drafts),
+				origin,
+			);
+		return true;
+	};
+	return { echoes, send };
+}
+
+/** The row an away send must leave behind: empty, and holding nothing in flight. */
+function originRow(id) {
+	const row = useConversationInputStore.getState().inputByConversation[id];
+	return {
+		text: row?.currentInput ?? "",
+		inFlight: row?.inFlight?.text ?? null,
+	};
+}
+
+test("an away send the reader walked away from leaves that chat's box empty and nothing in flight (case 14)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	discardPendingSends(A);
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const posts = [];
+	const { echoes, send } = pageSend({ origin: A, posts });
+	transcription.install([OK_TRANSCRIPT("hello there")]);
+	const release = transcription.hold();
+
+	const first = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: send,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(first);
+	await sendRecording(first);
+
+	/* THE SWITCH: the origin's panel is gone, so the echo has no target. */
+	await first.unmount();
+	const second = await mountAt(B, {
+		dictatedAwayDelivery: true,
+		onSendMessage: async () => undefined,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await act(async () => {
+		release();
+	});
+	await settle();
+
+	assert.equal(posts.length, 1, "the away send happened exactly once");
+	assert.deepEqual(
+		echoes,
+		[],
+		"and its echo was RETAINED: no transcript for the origin was mounted",
+	);
+	/*
+	 * THE DEFECT (round-1 F1, UX U1 = QA Q1). The clear used to be the echo's
+	 * alone, so the row kept the sent words here - currentInput `hello there`,
+	 * no record - until the origin was next mounted, at which point the drained
+	 * callback emptied the row into `inFlight` after the send had settled. Both
+	 * halves are asserted: the text must be gone NOW (nothing else will empty it
+	 * once the send has settled), and no record may survive (the next launch
+	 * folds one back into the box, and Enter over it re-sends the message).
+	 */
+	assert.deepEqual(
+		originRow(A),
+		{ text: "", inFlight: null },
+		"the accepted away send emptied the origin's row and recorded nothing",
+	);
+	assert.deepEqual(
+		useConversationInputStore.getState().getSubmittedMessages(A),
+		["hello there"],
+		"and the delivered message went into the box's history, as every send's does",
+	);
+
+	/* THE RETURN: the origin's transcript mounts and drains the retained echo. */
+	const back = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: send,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	/*
+	 * Kept in a `finally` for the reason the whole file has one: a registration
+	 * that outlives its case makes the NEXT case's paint apply synchronously, and
+	 * the next case is about a retained paint.
+	 */
+	const unregister = __registerEchoTarget(A, () => {});
+	try {
+		await settle();
+		assert.deepEqual(
+			echoes,
+			["hello there"],
+			"the retained paint reached the origin's next mount",
+		);
+		assert.equal(back.textarea().value, "", "the returned box is empty");
+		assert.deepEqual(
+			originRow(A),
+			{ text: "", inFlight: null },
+			"and the row is still empty with nothing in flight",
+		);
+
+		/* AND ENTER OVER IT SENDS NOTHING: the words were delivered, not drafted. */
+		await act(async () => {
+			back.textarea().dispatchEvent(
+				new window.KeyboardEvent("keydown", {
+					key: "Enter",
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		});
+		await settle();
+		assert.equal(posts.length, 1, "no second POST from an empty box");
+	} finally {
+		unregister();
+	}
+	await back.unmount();
+	await second.unmount();
+	transcription.restore();
+	mic.next = null;
+});
+
+test("the same, on a host whose one composer is re-pointed at another chat (case 15)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	discardPendingSends(A);
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const posts = [];
+	const { echoes, send } = pageSend({ origin: A, posts });
+	transcription.install([OK_TRANSCRIPT("hello there")]);
+	const release = transcription.hold();
+
+	const frame = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: send,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(frame);
+	await sendRecording(frame);
+	/* THE PERSISTING HOST: one mount, the prop moves to the other chat. */
+	await frame.rerender({ conversationId: B });
+	await act(async () => {
+		release();
+	});
+	await settle();
+
+	assert.equal(posts.length, 1, "one send, to the origin");
+	assert.deepEqual(
+		echoes,
+		[],
+		"still no transcript for the origin to paint into",
+	);
+	assert.deepEqual(
+		originRow(A),
+		{ text: "", inFlight: null },
+		"the origin's row is empty with nothing in flight",
+	);
+	assert.equal(
+		frame.textarea().value,
+		"",
+		"and the box now showing B holds nothing",
+	);
+
+	await frame.rerender({ conversationId: A });
+	const unregister = __registerEchoTarget(A, () => {});
+	await settle();
+	assert.deepEqual(echoes, ["hello there"], "the drained paint ran on return");
+	assert.equal(frame.textarea().value, "", "the returning box is empty");
+	assert.deepEqual(
+		originRow(A),
+		{ text: "", inFlight: null },
+		"and nothing was recorded at the drain",
+	);
+	await act(async () => {
+		frame.textarea().dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				key: "Enter",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	await settle();
+	assert.equal(posts.length, 1, "Enter over it sends nothing");
+	unregister();
+	await frame.unmount();
+	transcription.restore();
+	mic.next = null;
+});
+
+test("a return to a chat that is still opening is refused as still opening, not as unreachable (case 16)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	discardPendingSends(A);
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	const posts = [];
+	transcription.install([OK_TRANSCRIPT("hello there")]);
+	const release = transcription.hold();
+
+	const first = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: async (content) => {
+			posts.push(content);
+			return true;
+		},
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(first);
+	await sendRecording(first);
+	await first.unmount();
+
+	/*
+	 * THE READER COMES BACK INTO A PANE THAT IS STILL OPENING (round-1 finding, UX
+	 * U2): `isHydrating` is the hold the pane paints as "Loading conversation…", and
+	 * the composer refuses input for as long as it lasts. This mount's deliverer is
+	 * the one registered for the origin, so the words land under that hold - and the
+	 * refusal must say the chat is still opening, because "that chat could not take
+	 * a message" is a claim about a chat the reader is looking at.
+	 */
+	const back = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		isHydrating: true,
+		unavailable: true,
+		onSendMessage: async (content) => {
+			posts.push(content);
+			return true;
+		},
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await act(async () => {
+		release();
+	});
+	await settle();
+
+	assert.deepEqual(posts, [], "nothing was posted while the pane was opening");
+	const refusal = useDictatedSendStore.getState().refused[A];
+	assert.equal(
+		refusal?.reason,
+		"not-ready",
+		"the reason is the pane's state - still opening - not an unreachable chat",
+	);
+	assert.ok(
+		typeof refusal?.title === "string" && refusal.title.length > 0,
+		"and the refusal names the chat it was bound to",
+	);
+	assert.equal(
+		useConversationInputStore.getState().getCurrentInput(A),
+		"hello there",
+		"the words are waiting in that chat's draft",
+	);
+	await back.unmount();
+	transcription.restore();
+	mic.next = null;
 });

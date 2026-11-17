@@ -2023,8 +2023,15 @@ function SessionPanel({
 		 */
 		options?: { originBound?: boolean },
 	): Promise<SendOutcome> => {
-		const originBound = options?.originBound === true;
 		const store = useCanonicalSessionsStore.getState();
+		/*
+		 * READ AFTER THE STORE (round-1 finding, reviewer test pin). The door's shape is
+		 * pinned by `ask-composer-no-routing.test.mjs`: the first statement inside it is
+		 * the store read, which is what makes the test's "no ask branch before the
+		 * store" claim readable at all. A declaration about the CALLER's options sat
+		 * between the two and broke that pin without changing what this function does.
+		 */
+		const originBound = options?.originBound === true;
 		// Same ROW the view reads, so a send can never address a different draft
 		// than the one whose retained text and Discard control are shown. The
 		// resolver rather than `draftIdentityFor` alone: a pane reached by the
