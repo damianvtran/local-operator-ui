@@ -456,6 +456,29 @@ export const ROSETTA_EXEC_REFUSAL =
 	"Not executed: exec of an x86_64 bundle on an arm64 host runs under Rosetta and can make macOS show the macOS-28 'App Update Required' notice against Local Operator; run on a GitHub-hosted runner or set LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1";
 
 /**
+ * Split one candidate's check rows into the two questions the signed-update
+ * harness asks of it: what the build ASSEMBLED (every row whose id is not in
+ * `signatureIds`, all of which must pass) and which SIGNATURE rows failed.
+ *
+ * WHY THIS LIVES HERE AND NOT IN `verify-signed-update.mjs`: that script runs at
+ * import (it is a one-shot CI harness), so nothing in it can be imported by a
+ * test. Its BLOCKED decision once ran unconditionally - every candidate,
+ * including a fully signed one, stopped at "carries no valid release
+ * signature... ()" with an empty list, so the exact-update swap could never be
+ * reached (QA finding Q3 on PR #1948). The caller must treat an EMPTY
+ * `brokenSignatures` as "signed, carry on"; returning the rows rather than a
+ * boolean keeps the BLOCKED message able to name each failing check.
+ */
+export function partitionCandidateChecks(results, signatureIds) {
+	return {
+		assembly: results.filter((row) => !signatureIds.has(row.id)),
+		brokenSignatures: results.filter(
+			(row) => signatureIds.has(row.id) && !row.passed,
+		),
+	};
+}
+
+/**
  * The entitlements an embedded provisioning profile authorizes, if it has one.
  *
  * Why `security cms -D` rather than a plist read: `embedded.provisionprofile`
