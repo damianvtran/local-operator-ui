@@ -256,12 +256,5 @@
 	"ui.browser.browser_tab_strip.close_conversation_tabs": "Fermer les {count, plural, one {{count, number, ::group-off} onglet} many {{count, number, ::group-off} d’onglets} other {{count, number, ::group-off} onglets}} de cette conversation",
 	"ui.browser.browser_file_transfer_row.attached_verb": "{count, plural, one {a été joint à} many {ont été joints à} other {ont été joints à}}",
 	"ui.browser.browser_file_transfer_row.upload_more": "+ {count, plural, one {{count, number, ::group-off} de plus} many {{count, number, ::group-off} de plus} other {{count, number, ::group-off} de plus}}",
-	"ui.browser.browser_passkey_custody.label": "Demande du gestionnaire de mots de passe en attente",
-	"ui.browser.browser_passkey_custody.message": "Votre gestionnaire de mots de passe a besoin de vous dans l’onglet de cet agent.",
-	"ui.browser.browser_passkey_custody.explanation": "Vous seul pouvez voir sa demande et y répondre, et l’agent est en pause sur cet onglet. Quand vous avez terminé, rendez l’onglet à l’agent ; vous devrez peut-être lui demander de continuer. Si vous le rendez alors que la demande est encore ouverte, la page se recharge et toute connexion ou tout enregistrement inachevé est annulé.",
-	"ui.browser.browser_passkey_custody.return_to_agent": "Rendre à l’agent",
-	"ui.browser.browser_passkey_custody.returning": "Retour en cours…",
-	"ui.browser.browser_passkey_custody.return_refused_stale": "Cet avis n’est plus à jour ; l’onglet reste à vous.",
-	"ui.browser.browser_passkey_custody.return_refused_not_held": "Cet onglet ne vous attend plus.",
-	"ui.browser.browser_passkey_custody.return_failed": "Impossible de rendre l’onglet à l’agent. Réessayez."
+	"ui.browser.approvals_card.password_manager_notice": "Sa demande est ouverte dans cet onglet. L’agent est en pause sur cet onglet uniquement et continue de travailler dans les autres."
 }

@@ -114,13 +114,21 @@ test("passkey hold arrival: the tab is NOT activated and nothing is raised; the 
 	assert.equal(state.active, 7, "the user's browser tab did not move");
 	assert.deepEqual(
 		custody.views(),
-		[{ tabId: 1, at: 500, providerId: ONEPASSWORD }],
-		"the hold is listed for the sidebar row",
+		[
+			{
+				tabId: 1,
+				at: 500,
+				providerId: ONEPASSWORD,
+				kind: "quiet",
+				dismissed: false,
+			},
+		],
+		"the hold is listed; a quiet one is filtered out of the WAITING rows by the host",
 	);
 	assert.equal(custody.isHeld(10), true, "and the agent keeps waiting");
 });
 
-test("passkey hold: the row's click activates the tab; Return to agent gives the user's tab back", () => {
+test("passkey hold: the row's click activates the tab; the hold ending gives the user's tab back", () => {
 	const { attention, calls, state } = rig();
 	attention.onBegin({ tabId: 1, at: 5 });
 	attention.userOpened(1);

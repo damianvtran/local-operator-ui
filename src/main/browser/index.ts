@@ -87,6 +87,7 @@ import {
 	mustReloadOnOwnerChange,
 	refusesExtensionSubframe,
 } from "./extensions/subframe-policy";
+import { TabEngagement, admitIfEngaged } from "./extensions/tab-engagement";
 import {
 	WEBSTORE_ORIGIN,
 	WEB_STORE_PRELOAD_ID,
@@ -569,13 +570,6 @@ export function startBrowserHost(
 					reason: t("ui.browser.browser_passkey_notice.continue_unavailable"),
 				},
 		},
-		passkeyCustody: {
-			release: (tabId, at, trusted) =>
-				bindings.passkeyCustody?.release(tabId, at, trusted) ?? {
-					ok: false,
-					reason: "not_held",
-				},
-		},
 		userAttention: {
 			open: (tabId) => bindings.userAttention?.open(tabId) ?? false,
 		},
@@ -932,6 +926,10 @@ async function initializeBrowserHost(
 					? undefined
 					: registry.byWebContentsId(contents.id);
 			if (!record) return { tabId: null, pageTitle: null };
+			// A WebAuthn account chooser attributed to this tab corroborates that a
+			// quiet password-manager hold there is a real passkey ceremony, so it
+			// now gets its notice and WAITING row (`passkey-custody.ts`).
+			passkeyCustody.promote(record.tabId);
 			const title = record.view.webContents.isDestroyed()
 				? ""
 				: record.view.webContents.getTitle();
@@ -1102,6 +1100,33 @@ async function initializeBrowserHost(
 					});
 			},
 		});
+		/*
+		 * Whether a person has engaged each agent tab (`tab-engagement.ts`): custody
+		 * admits a password manager's frame ONLY in an engaged tab, so an agent on a
+		 * login page by itself never pauses or raises anything (2026-11-17).
+		 */
+		const engagement = new TabEngagement();
+		/*
+		 * The liveness check behind custody's self-release (`PasskeyCustody.sweep`).
+		 * Exists only while a hold does; it ends a hold whose prompt frame is gone,
+		 * never one that is still up, so it is not an expiry.
+		 */
+		let custodySweepTimer: ReturnType<typeof setInterval> | null = null;
+		const syncCustodySweep = (): void => {
+			if (passkeyCustody.hasHolds()) {
+				custodySweepTimer ??= setInterval(
+					() => passkeyCustody.sweepAll(),
+					1_000,
+				);
+				return;
+			}
+			if (custodySweepTimer) clearInterval(custodySweepTimer);
+			custodySweepTimer = null;
+		};
+		rollback.add(() => {
+			if (custodySweepTimer) clearInterval(custodySweepTimer);
+			custodySweepTimer = null;
+		});
 		const passkeyCustody = new PasskeyCustody({
 			log,
 			// A recording would keep encoding the prompt underneath the hold and hand
@@ -1109,10 +1134,28 @@ async function initializeBrowserHost(
 			// (review R1/R2; `discardRecordingForCustody` has the why).
 			onHold: (webContentsId) => discardRecordingForCustody(webContentsId),
 			onBegin: (view) => {
+				syncCustodySweep();
 				if (!registry.get(view.tabId)) return;
 				custodyAttention.onBegin(view);
 			},
-			onEnd: (view) => custodyAttention.onEnd(view),
+			onChange: () => notifyChanged(),
+			onEnd: (view) => {
+				syncCustodySweep();
+				custodyAttention.onEnd(view);
+			},
+			// The committed frame tree of the view still holds an extension document.
+			// A view that is gone holds nothing.
+			hasProviderFrame: (webContentsId) => {
+				const record = registry.byWebContentsId(webContentsId);
+				const contents = record?.view.webContents as unknown as
+					| Electron.WebContents
+					| undefined;
+				if (!contents || contents.isDestroyed()) return false;
+				const frame = contents.mainFrame;
+				return frame.framesInSubtree.some(
+					(child) => child !== frame && isExtensionDocumentUrl(child.url),
+				);
+			},
 		});
 		/**
 		 * Popup windows an agent's page opened, held hidden until the user clicks
@@ -1199,6 +1242,11 @@ async function initializeBrowserHost(
 						// The projection is the renderer's only view of the shield; a
 						// dismissal from the card itself must push it (F1).
 						onChanged: () => notifyChanged(),
+						// X / Escape on the password-manager notice: hide it and its
+						// WAITING row, nothing more (`PasskeyCustody.dismiss`).
+						onNoticeDismiss: ({ tabId, at }) => {
+							if (passkeyCustody.dismiss(tabId, at)) notifyChanged();
+						},
 						log,
 						respond: (entryId, decision) => {
 							if (!respondToConsent) {
@@ -1297,7 +1345,25 @@ async function initializeBrowserHost(
 			);
 		};
 
+		/*
+		 * The approvals card's password-manager notice follows the ACTIVE tab's
+		 * undismissed ceremony hold — the copy says "in this tab" — and leaves with
+		 * it. Other tabs' ceremonies are WAITING rows. Runs on every projection
+		 * change; `setNotice` is idempotent. `registryForDownloads` is null until the
+		 * registry exists, which is also before any hold can.
+		 */
+		const syncCustodyNotice = (): void => {
+			if (!approvalsOverlay) return;
+			const active = registryForDownloads?.activeTab ?? null;
+			const view = active ? passkeyCustody.viewForTab(active.tabId) : null;
+			approvalsOverlay.setNotice(
+				view && view.kind === "ceremony" && !view.dismissed
+					? { tabId: view.tabId, at: view.at }
+					: null,
+			);
+		};
 		const notifyChanged = (): void => {
+			syncCustodyNotice();
 			stateWriter?.publishNow();
 			// A WINDOW CLOSE DESTROYS ITS WEB CONTENTS BEFORE `closed` REACHES THIS
 			// HOST. `stop()` then tears tabs down, and each teardown notifies; reading
@@ -1342,25 +1408,34 @@ async function initializeBrowserHost(
 						})
 					)
 						return;
-					// The one exception: a known password manager's passkey prompt,
-					// admitted ONLY with the agent already locked out of this tab
-					// (`admit` puts the hold in place before it returns true, and this
-					// handler runs before the frame's document exists).
+					// The one exception: a known password manager's prompt, admitted
+					// ONLY in a tab a person has engaged (`tab-engagement.ts`) and ONLY
+					// with the agent already locked out of this tab (`admit` puts the
+					// hold in place before it returns true, and this handler runs
+					// before the frame's document exists). Not engaged: refused exactly
+					// as before custody existed, so the passive autofill card on a login
+					// page an agent reached by itself pauses nothing (2026-11-17).
 					if (
-						passkeyCustody.admit({
-							webContentsId: view.webContents.id,
-							tabId,
-							url: event.url,
-							isInstalled: (id) => extensions.isActive(id),
-							// Tracked so a Return that races this navigation's commit
-							// reloads instead of unlocking (review R3).
-							frame: (event as { frame?: Electron.WebFrameMain | null }).frame,
-						})
+						admitIfEngaged(engagement, tabId, () =>
+							passkeyCustody.admit({
+								webContentsId: view.webContents.id,
+								tabId,
+								url: event.url,
+								isInstalled: (id) => extensions.isActive(id),
+								// Tracked so the self-release cannot fire while this frame is
+								// still on its way to committing (review R3).
+								frame: (event as { frame?: Electron.WebFrameMain | null })
+									.frame,
+								// The tab's own passkey signal makes a generic notification
+								// frame a real ceremony (notice + WAITING row).
+								corroborated: passkeyNotices.viewFor(tabId) !== null,
+							}),
+						)
 					)
 						return;
 					if (passkeyPromptProvider(event.url))
 						log(
-							`[browser] tab ${tabId}: refused a password manager prompt frame (extension not active)`,
+							`[browser] tab ${tabId}: refused a password manager prompt frame (${engagement.has(tabId) ? "extension not active" : "no person has engaged this tab"})`,
 						);
 					event.preventDefault();
 				});
@@ -1369,8 +1444,12 @@ async function initializeBrowserHost(
 			releaseTab,
 			notifyChanged,
 			(snapshot) => {
+				// Engagement belongs to the tab a person focused; activating any other
+				// tab ends it (`tab-engagement.ts`).
+				engagement.activated(snapshot.activeTabId);
 				addressOverlay?.onLayout(snapshot);
 				approvalsOverlay?.onLayout(snapshot);
+				syncCustodyNotice();
 				// addTab marks even a background tab active inside the adapter. Reassert
 				// the registry's user-selected tab after EVERY layout, including when an
 				// agent created a hidden view without changing activeTabId.
@@ -1593,6 +1672,8 @@ async function initializeBrowserHost(
 		// R1-4: a hand-over away from the user re-applies the subframe rule to
 		// frames that loaded while the tab was the user's, by reloading it.
 		registry.ownerChanged = (record) => {
+			// A hand-over is not the person who engaged the tab still being in it.
+			engagement.clear(record.tabId);
 			const contents = record.view
 				.webContents as unknown as Electron.WebContents;
 			if (contents.isDestroyed()) return;
@@ -1643,6 +1724,7 @@ async function initializeBrowserHost(
 		function releaseTab(tabId: number, webContentsId: number): void {
 			// A closed tab's hold ends with it; nothing is left to protect.
 			passkeyCustody.forget(webContentsId);
+			engagement.clear(tabId);
 			// Link tabs this tab's page opened die with it unless a session adopted
 			// them (R1-1): an agent's unadopted link tab is counted against
 			// MAX_AGENT_TABS and no scope will ever close it. `destroy` re-enters this
@@ -1813,12 +1895,17 @@ async function initializeBrowserHost(
 			// Every wait an agent tab has on a PERSON, for the sidebar's rows and the
 			// Browser badge (`user-attention.ts`). All tabs, not only the active one:
 			// the whole point is a wait the user is not looking at.
+			// Only a CEREMONY the person has not dismissed is a wait on them: a quiet
+			// hold (the passive autofill card) lists nothing (2026-11-17).
 			waitingOnUser: (): UserAttentionEntry[] => [
-				...passkeyCustody.views().map((view) => ({
-					kind: "passkey" as const,
-					tabId: view.tabId,
-					at: view.at,
-				})),
+				...passkeyCustody
+					.views()
+					.filter((view) => view.kind === "ceremony" && !view.dismissed)
+					.map((view) => ({
+						kind: "passkey" as const,
+						tabId: view.tabId,
+						at: view.at,
+					})),
 				...heldPopups.entries(),
 			],
 			mediaPermission: (tabId) => mediaPermissions.viewFor(tabId),
@@ -1915,6 +2002,8 @@ async function initializeBrowserHost(
 		};
 		const resetPageFocus = (): void => {
 			host.clearPageFocus();
+			// The person is in the app's chrome or chat, not in an agent tab.
+			engagement.clearAll();
 		};
 		const resetMenuShortcutSuppression = () => {
 			// `webContents` itself throws on a destroyed window (see `notifyChanged`).
@@ -2201,51 +2290,10 @@ async function initializeBrowserHost(
 					}),
 			},
 			/*
-			 * "Return to agent" on a passkey custody notice: the ONLY way a hold ends
-			 * short of closing the tab. Human-only twice over: the IPC is
-			 * sender-checked (no RPC method reaches it) and the click must be a trusted
-			 * event. If a provider frame is still in the tab, the page reloads first
-			 * and the agent gets it back only once that new document has committed.
-			 */
-			passkeyCustody: {
-				release: (tabId, at, trusted) => {
-					if (!trusted) return { ok: false, reason: "not_trusted" };
-					const outcome = passkeyCustody.release({
-						tabId,
-						at,
-						hasProviderFrame: (webContentsId) => {
-							const record = registry.byWebContentsId(webContentsId);
-							const frame = (
-								record?.view.webContents as unknown as
-									| Electron.WebContents
-									| undefined
-							)?.mainFrame;
-							if (!frame) return false;
-							return frame.framesInSubtree.some(
-								(child) => child !== frame && isExtensionDocumentUrl(child.url),
-							);
-						},
-						reload: (webContentsId) => {
-							const record = registry.byWebContentsId(webContentsId);
-							if (!record) throw new Error("the tab is gone");
-							(
-								record.view.webContents as unknown as Electron.WebContents
-							).reload();
-						},
-					});
-					notifyChanged();
-					// `reloaded` tells the band to stay busy until the hold actually
-					// lifts on the reload's commit (review U2).
-					return outcome.ok
-						? { ok: true, reloaded: outcome.reloaded }
-						: { ok: false, reason: outcome.reason };
-				},
-			},
-			/*
 			 * The user clicked a sidebar notification row for this tab: the ONE moment
 			 * a held wait comes forward (`user-attention.ts`). The tab becomes the
-			 * active one (remembering, for a custody hold, the tab it displaced so
-			 * "Return to agent" can give it back) and every popup held for it is
+			 * active one (remembering, for a custody hold, the tab it displaced so it
+			 * can be given back when the hold ends) and every popup held for it is
 			 * presented under the launch plan — a person's click inside the app is
 			 * what `popup-attention-open` names, so `window-raise.ts` still decides.
 			 */
@@ -2482,6 +2530,16 @@ async function initializeBrowserHost(
 			// window. `ownsPage` combines this with the active/presented check.
 			contents.on("focus", () => {
 				host.setPageFocused(tabId, true);
+				// The ONE engagement signal custody admits on (`tab-engagement.ts`):
+				// native focus while this tab is active, presented and the window is
+				// focused. Blur deliberately does not clear it.
+				const active = registry.activeTab;
+				engagement.focused(tabId, {
+					activeTabId: active?.tabId ?? null,
+					presented: active?.tabId === tabId && active.presented,
+					windowFocused:
+						!options.window.isDestroyed() && options.window.isFocused(),
+				});
 				// Main owns "the user clicked into the page": a parent DOM blur cannot
 				// see it (S3 V-FOCUS-CLICK is blocked), and the native focus event is
 				// the fact itself. This lowers the product popout for that tab only.
@@ -2524,23 +2582,33 @@ async function initializeBrowserHost(
 					_isMainFrame,
 					frameProcessId,
 					frameRoutingId,
-				) =>
+				) => {
 					injectPasskeyShim(
 						webFrameMain.fromId(frameProcessId, frameRoutingId),
-					),
+					);
+					// A frame navigating away may be the prompt closing.
+					passkeyCustody.sweep(contents.id);
+				},
 			);
 			contents.on(
 				"did-frame-finish-load",
-				(_event, _isMainFrame, frameProcessId, frameRoutingId) =>
+				(_event, _isMainFrame, frameProcessId, frameRoutingId) => {
 					injectPasskeyShim(
 						webFrameMain.fromId(frameProcessId, frameRoutingId),
-					),
+					);
+					passkeyCustody.sweep(contents.id);
+				},
 			);
 			contents.on("console-message", (event) => {
 				// ONLY the message is used: the event's `frame` is the top frame even for a
 				// child's line (measured), so the frame is resolved from the nonce instead.
 				const { message } = event as unknown as { message: string };
-				if (passkeyNotices.observe(tabId, message)) notifyChanged();
+				if (passkeyNotices.observe(tabId, message)) {
+					// The tab's own passkey signal corroborates a quiet hold there as a
+					// real ceremony (`passkey-custody.ts`).
+					if (passkeyNotices.viewFor(tabId)) passkeyCustody.promote(tabId);
+					notifyChanged();
+				}
 			});
 			/*
 			 * A PAGE PRESS IS A DISMISSAL EVEN WHEN THE PAGE ALREADY HAS FOCUS
@@ -2943,9 +3011,8 @@ async function initializeBrowserHost(
 				// The tab is on a document now, so whatever the last navigation was refused
 				// for no longer describes what is on screen.
 				host.clearLoadFailure(tabId);
-				// A release waiting for its reload lifts here: the document that held
-				// the provider's frame is gone. A hold the user has NOT returned stays
-				// across the sign-in's own redirects.
+				// The old document's frames are gone with it; a hold whose prompt went
+				// with them lifts here (`PasskeyCustody.committed`).
 				passkeyCustody.committed(contents.id);
 				// Returning to an approved site must not expose logs buffered while
 				// an autonomous unapproved document occupied this same WebContents.

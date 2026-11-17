@@ -75,7 +75,6 @@ import { BrowserLoadFailure } from "./browser-load-failure";
 import { BrowserMediaPermissionPrompt } from "./browser-media-permission-prompt";
 import { BrowserNewTab } from "./browser-new-tab";
 import { BrowserPageMenu } from "./browser-page-menu";
-import { BrowserPasskeyCustody } from "./browser-passkey-custody";
 import { BrowserPasskeyNotice } from "./browser-passkey-notice";
 import { BrowserTabStrip } from "./browser-tab-strip";
 import {
@@ -1430,12 +1429,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					void browserBridge()
 						?.focusPage()
 						.catch(() => {})
-				}
-			/>
-			<BrowserPasskeyCustody
-				custody={chrome.state?.passkeyCustody}
-				onReturn={(custody, trusted) =>
-					chrome.releasePasskeyCustody(custody.tabId, custody.at, trusted)
 				}
 			/>
 			<PasskeyNoticeHost

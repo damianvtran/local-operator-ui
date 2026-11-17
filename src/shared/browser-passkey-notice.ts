@@ -42,11 +42,11 @@ export interface PasskeyNoticeView {
 }
 
 /**
- * The active tab's passkey custody, when it has one
- * (`main/browser/extensions/passkey-custody.ts`): a password manager's passkey
- * prompt is up in an agent-driven tab, the agent is paused on that tab, and only
- * the user can return it. `at` identifies the hold; the renderer echoes it on
- * release so a click on an earlier hold's notice cannot end a later one.
+ * A tab's passkey custody, when it has one
+ * (`main/browser/extensions/passkey-custody.ts`): a password manager's prompt
+ * is up in an agent-driven tab a person engaged, and the agent is paused on
+ * that tab until the prompt closes. `at` identifies the hold, so a dismissal
+ * of an earlier hold's notice cannot touch a later one.
  */
 export interface PasskeyCustodyView {
 	tabId: number;

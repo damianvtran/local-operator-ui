@@ -44,6 +44,7 @@ import {
 	type ApprovalsCardDecision,
 	type ApprovalsCardDismissPayload,
 	type ApprovalsCardModel,
+	type ApprovalsCardNotice,
 	isApprovalsCardDecision,
 } from "../../shared/browser-approvals-overlay";
 import { sanitizePaletteVars } from "../../shared/theme-engine/roles.mjs";
@@ -119,6 +120,12 @@ export interface ApprovalsOverlayDeps {
 	 * throwing) turns the card's inline error state on and decides nothing.
 	 */
 	respond?: (entryId: string, decision: ApprovalsCardDecision) => unknown;
+	/**
+	 * The person dismissed the card's password-manager notice (X or Escape). The
+	 * host only marks that hold's notice dismissed (`PasskeyCustody.dismiss`):
+	 * no release, no reload, no CDP — the prompt itself is untouched.
+	 */
+	onNoticeDismiss?: (notice: { tabId: number; at: number }) => void;
 	/** The presented page, for focus return on close. */
 	pageWebContents?: () => { isDestroyed(): boolean; focus(): void } | null;
 	/**
@@ -219,6 +226,11 @@ export function approvalsDocumentUrl(
 	}
 }
 
+/** Whether the card has anything to show: a request, or the custody notice. */
+function hasContent(model: ApprovalsCardModel): boolean {
+	return model.request !== null || model.notice !== null;
+}
+
 export class ApprovalsOverlayController {
 	private readonly window: BrowserWindow;
 	private readonly documentUrl: string;
@@ -234,6 +246,11 @@ export class ApprovalsOverlayController {
 		| ((target: { isDestroyed(): boolean; focus(): void }) => void)
 		| null;
 	private readonly onChanged: (() => void) | null;
+	private readonly onNoticeDismiss:
+		| ((notice: { tabId: number; at: number }) => void)
+		| null;
+	/** The custody notice main last set; see `setNotice`. */
+	private notice: { entryId: string; tabId: number; at: number } | null;
 	private readonly log: (message: string) => void;
 	private readonly onDismissAction: (
 		event: IpcMainEvent,
@@ -303,6 +320,8 @@ export class ApprovalsOverlayController {
 		this.pageWebContents = deps.pageWebContents ?? null;
 		this.focusTarget = deps.focusTarget ?? null;
 		this.onChanged = deps.onChanged ?? null;
+		this.onNoticeDismiss = deps.onNoticeDismiss ?? null;
+		this.notice = null;
 		this.log = deps.log ?? (() => {});
 		this.view = null;
 		this.documentTheme = null;
@@ -338,6 +357,20 @@ export class ApprovalsOverlayController {
 		this.onDismissAction = (event, payload) => {
 			if (!this.acceptAction(event, payload)) return;
 			const action = payload as ApprovalsCardDismissPayload;
+			// The password-manager notice: hide it, decide and release nothing.
+			if (this.notice && action.entryId === this.model?.notice?.entryId) {
+				this.actionCounts.dismissed += 1;
+				const { tabId, at } = this.notice;
+				try {
+					this.onNoticeDismiss?.({ tabId, at });
+				} catch (error) {
+					this.log(
+						`[browser] approvals card: notice dismiss failed: ${String(error)}`,
+					);
+				}
+				this.returnFocus();
+				return;
+			}
 			/*
 			 * ANY LIVE ENTRY MAY BE DISMISSED. The list view lets the operator
 			 * select a request other than the oldest one, so membership in the
@@ -429,6 +462,7 @@ export class ApprovalsOverlayController {
 			busy: input.busy === true,
 			error: input.error ?? null,
 			dismissed: this.dismissed,
+			notice: this.noticeModel(),
 		});
 		this.model = model;
 		this.pending = model.count;
@@ -441,7 +475,7 @@ export class ApprovalsOverlayController {
 			}
 		}
 		this.pushModel(false);
-		if (!model.request) {
+		if (!hasContent(model)) {
 			// An auto-present can empty while the shield still reads the card as
 			// explicitly open. Clearing here keeps the shield's aria-expanded and its
 			// next click coherent (M1).
@@ -460,6 +494,50 @@ export class ApprovalsOverlayController {
 		 * decision buttons below the fold.
 		 */
 		if (this.ready) this.measureAndShow();
+	}
+
+	/**
+	 * Set (or clear) the non-deciding password-manager notice: main passes the
+	 * ACTIVE tab's undismissed ceremony hold, or null. Auto-presented unfocused,
+	 * like a request; hidden again when it clears and nothing else is pending.
+	 * Idempotent, because the host calls it on every projection change.
+	 */
+	setNotice(next: { tabId: number; at: number } | null): void {
+		if (this.disposed) return;
+		const entryId = next ? `passkey-custody:${next.tabId}:${next.at}` : null;
+		if ((this.notice?.entryId ?? null) === entryId) return;
+		this.notice =
+			next && entryId ? { entryId, tabId: next.tabId, at: next.at } : null;
+		const model = approvalsCardModelFrom({
+			seq: ++this.modelSeq,
+			entries: this.entries,
+			locale: this.locale,
+			dir: this.dir,
+			theme: this.theme,
+			palette: this.palette,
+			paletteVars: this.paletteVars,
+			requesterLabels: this.requesterLabels,
+			view: this.model?.view ?? "request",
+			focus: false,
+			busy: this.model?.busy === true,
+			error: this.actionError,
+			dismissed: this.dismissed,
+			notice: this.noticeModel(),
+		});
+		this.model = model;
+		this.pushModel(false);
+		if (!hasContent(model)) {
+			this.hide();
+			return;
+		}
+		this.maybeShow();
+		if (this.ready) this.measureAndShow();
+	}
+
+	private noticeModel(): ApprovalsCardNotice | null {
+		return this.notice
+			? { entryId: this.notice.entryId, kind: "password_manager" }
+			: null;
 	}
 
 	/**
@@ -518,6 +596,7 @@ export class ApprovalsOverlayController {
 				busy: false,
 				error: null,
 				dismissed: this.dismissed,
+				notice: this.noticeModel(),
 			});
 			this.pending = this.model.count;
 		}
@@ -612,6 +691,7 @@ export class ApprovalsOverlayController {
 				busy: this.model.busy,
 				error: this.actionError,
 				dismissed: this.dismissed,
+				notice: this.noticeModel(),
 			});
 		}
 		this.pushModel(false);
@@ -688,7 +768,7 @@ export class ApprovalsOverlayController {
 			this.hide();
 			return;
 		}
-		if (this.model?.request) this.maybeShow();
+		if (this.model && hasContent(this.model)) this.maybeShow();
 	}
 
 	facts(): ApprovalsOverlayFacts {
@@ -835,6 +915,7 @@ export class ApprovalsOverlayController {
 				busy: this.model.busy,
 				error: this.actionError,
 				dismissed: this.dismissed,
+				notice: this.noticeModel(),
 			});
 			this.remeasureAfterModelChange();
 		}
@@ -881,11 +962,12 @@ export class ApprovalsOverlayController {
 			busy: false,
 			error: null,
 			dismissed: this.dismissed,
+			notice: this.noticeModel(),
 		});
 		this.model = model;
 		this.pending = model.count;
 		this.pushModel(false);
-		if (!model.request) {
+		if (!hasContent(model)) {
 			this.explicitOpen = false;
 			this.pendingFocus = false;
 			this.hide();
@@ -971,7 +1053,8 @@ export class ApprovalsOverlayController {
 		if (
 			this.disposed ||
 			this.failedReason !== null ||
-			this.pending <= 0 ||
+			!this.model ||
+			!hasContent(this.model) ||
 			!this.layout.chromeVisible ||
 			!this.layout.contentRect
 		) {

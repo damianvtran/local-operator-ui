@@ -38,6 +38,16 @@
         <button type="button" class="card-close" id="approvals-close"></button>
       </header>
       <div class="card-body" tabindex="-1">
+        <!--
+          A NON-DECIDING NOTICE (2026-11-17): a password manager's real prompt is
+          open in this agent tab. It answers nothing and blocks nothing; its one
+          control hides it (the same `dismiss` verb, the notice's own entry id).
+          With no request pending it is the whole card.
+        -->
+        <section id="approvals-notice" class="card-notice" hidden>
+          <p id="approvals-notice-text" class="card-notice-text"></p>
+          <button type="button" class="card-close" id="approvals-notice-dismiss"></button>
+        </section>
         <section id="approvals-request">
           <div class="card-context" tabindex="-1">
             <!--
