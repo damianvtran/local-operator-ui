@@ -2,7 +2,7 @@ export type DiagramEngine = "pele" | "mermaid";
 
 export const DIAGRAM_ENGINE_STORAGE_KEY = "diagramEngine";
 
-export const DEFAULT_DIAGRAM_ENGINE: DiagramEngine = "mermaid";
+export const DEFAULT_DIAGRAM_ENGINE: DiagramEngine = "pele";
 
 export function parseDiagramEngine(
 	value: string | null | undefined,

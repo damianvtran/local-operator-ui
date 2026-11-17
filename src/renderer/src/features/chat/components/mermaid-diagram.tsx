@@ -60,7 +60,8 @@ const ROLE_DANGER_WASH = "var(--color-danger-wash)";
 
 /**
  * Categorical fills cycle the decorative and semantic washes so labels stay `ink`
- * on them.
+ * on them. Mermaid is the opt-in engine now (`diagram-engine.ts`: Pele is the
+ * default), so this ramp paints only when the `diagramEngine` flag selects it.
  *
  * The second accent sits at INDEX 1, ahead of the semantics, and that position is
  * the change: `fillType0..7` is this app's only categorical ramp (the journey and
