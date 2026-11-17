@@ -25,5 +25,8 @@
 	"ui.chat.attachments.owner_unreachable": "no se pudo traer desde el dispositivo que lo tiene.",
 	"ui.chat.attachments.retry_fetch": "Reintentar",
 	"ui.chat.attachments.not_viewable_detail": "{name} no se puede ver (el archivo puede estar incompleto, borrado o movido)",
-	"ui.chat.attachments.not_viewable_too_large": "{name} es demasiado grande para mostrar una vista previa"
+	"ui.chat.attachments.not_viewable_too_large": "{name} es demasiado grande para mostrar una vista previa",
+	"ui.chat.attachments.broken_moved": "No se pudo mostrar {name}. Puede haberse movido, renombrado o borrado.",
+	"ui.chat.attachments.broken_unavailable": "No se pudo mostrar {name}. Su copia guardada no está disponible en este visor.",
+	"ui.chat.attachments.broken_media_unavailable": "No se pudo reproducir {name}. Su copia guardada no está disponible en este visor."
 }

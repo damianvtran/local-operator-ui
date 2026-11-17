@@ -25,5 +25,8 @@
 	"ui.chat.attachments.owner_unreachable": "اسے رکھنے والی ڈیوائس سے حاصل نہیں کی جا سکی۔",
 	"ui.chat.attachments.retry_fetch": "دوبارہ کوشش کریں",
 	"ui.chat.attachments.not_viewable_detail": "فائل {name} دیکھی نہیں جا سکتی (شاید نامکمل ہو، حذف ہو چکی ہو یا کہیں اور منتقل ہو گئی ہو)",
-	"ui.chat.attachments.not_viewable_too_large": "فائل {name} پیش منظر کے لیے بہت بڑی ہے"
+	"ui.chat.attachments.not_viewable_too_large": "فائل {name} پیش منظر کے لیے بہت بڑی ہے",
+	"ui.chat.attachments.broken_moved": "فائل {name} نہیں دکھائی جا سکی۔ شاید کہیں اور منتقل ہو گئی ہو، اس کا نام بدل گیا ہو یا حذف ہو چکی ہو۔",
+	"ui.chat.attachments.broken_unavailable": "فائل {name} نہیں دکھائی جا سکی۔ اس کی محفوظ شدہ نقل اس ایپ میں دستیاب نہیں ہے۔",
+	"ui.chat.attachments.broken_media_unavailable": "فائل {name} نہیں چلائی جا سکی۔ اس کی محفوظ شدہ نقل اس ایپ میں دستیاب نہیں ہے۔"
 }

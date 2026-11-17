@@ -25,5 +25,8 @@
 	"ui.chat.attachments.owner_unreachable": "не удалось получить с устройства, на котором он хранится.",
 	"ui.chat.attachments.retry_fetch": "Повторить",
 	"ui.chat.attachments.not_viewable_detail": "{name} нельзя просмотреть (файл может быть неполным, удалённым или перемещённым)",
-	"ui.chat.attachments.not_viewable_too_large": "Файл {name} слишком большой для предпросмотра"
+	"ui.chat.attachments.not_viewable_too_large": "Файл {name} слишком большой для предпросмотра",
+	"ui.chat.attachments.broken_moved": "Не удалось отобразить {name}. Возможно, файл перемещён, переименован или удалён.",
+	"ui.chat.attachments.broken_unavailable": "Не удалось отобразить {name}. Сохранённая копия здесь недоступна.",
+	"ui.chat.attachments.broken_media_unavailable": "Не удалось воспроизвести {name}. Сохранённая копия здесь недоступна."
 }
