@@ -28,7 +28,7 @@ const resolveRole = (name: string): string =>
 const idPrefixFor = (id?: string): string => {
 	diagramCounter += 1;
 	const stem = (id ?? "").replace(/[^A-Za-z0-9_-]/g, "");
-	return `pele-${stem || "d"}-${diagramCounter}`;
+	return `pele-${stem || "d"}-${diagramCounter}`; // i18n: ignore SVG id prefix, not interface copy
 };
 
 export const renderPeleSvg = async (

@@ -31,7 +31,7 @@ export const PELE_FONT_SIZE = 14;
 export const PELE_THEME_STYLE: CSSProperties = Object.fromEntries(
 	Object.entries({ ...THEME_ROLES, ...FONT_VARIABLES }).map(([name, role]) => [
 		name,
-		`var(${role})`,
+		`var(${role})`, // i18n: ignore CSS var() reference, not interface copy
 	]),
 ) as CSSProperties;
 
