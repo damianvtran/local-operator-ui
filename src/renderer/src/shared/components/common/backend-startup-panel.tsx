@@ -231,7 +231,13 @@ export const BackendStartupPanel = ({
 			data-testid="backend-startup-panel"
 			data-phase="failed"
 		>
-			<Alert variant="danger" className={NOTICE_BAND} role={liveRole}>
+			<Alert
+				variant="danger"
+				// Top-aligned: the band grows when details open, and the mark stays
+				// beside the title rather than drifting to the middle.
+				className={cn(NOTICE_BAND, "items-start")}
+				role={liveRole}
+			>
 				<div className="flex w-full min-w-0 flex-col gap-2">
 					<div className="flex w-full min-w-0 flex-wrap items-center gap-2">
 						<span className="min-w-0 flex-1 text-body-sm text-ink">
@@ -296,7 +302,7 @@ export const BackendStartupPanel = ({
 					{showDetails && stderr ? (
 						<pre
 							data-testid="backend-startup-stderr"
-							className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-sm bg-surface-sunken p-2 font-mono text-meta text-ink"
+							className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-sm bg-sunken p-2 font-mono text-meta text-ink"
 						>
 							{stderr}
 						</pre>
