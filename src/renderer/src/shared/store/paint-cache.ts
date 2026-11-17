@@ -135,6 +135,15 @@ export type PaintedConversation = {
 	 */
 	busy: boolean;
 	/**
+	 * UTF-8 bytes of the retained rows, as this cache measured them at write.
+	 *
+	 * Part of the READ contract because the open trace reports the size of the
+	 * paint a click actually got (`paintBytes`), and re-measuring on the click path
+	 * would encode the same rows a second time - in exactly the place this cache
+	 * exists to keep cheap.
+	 */
+	bytes: number;
+	/**
 	 * Call ids whose label read the paint was still waiting on when it was stored.
 	 *
 	 * WHY THIS TRAVELS WITH THE ROWS. A cached tool row carries no arguments (the
@@ -183,7 +192,7 @@ export type PaintedConversation = {
 	replayBorn: ReadonlySet<string>;
 };
 
-type Entry = PaintedConversation & { bytes: number };
+type Entry = PaintedConversation;
 
 const cache = new Map<string, Entry>();
 
@@ -219,6 +228,44 @@ const pendingScroll = new Map<string, PaintedScroll>();
  * bound's test names the constant rather than a copy of its value.
  */
 export const PENDING_SCROLL_MAX = 32;
+
+/**
+ * Why the last paint for an id left no entry, for the open trace's
+ * `paintReason`.
+ *
+ * THE CACHE FORGETS, THE DIAGNOSTIC REMEMBERS. Every path that ends with no
+ * entry under an id - a write whose rows were all in flight or all trimmed away,
+ * and eviction dropping the oldest - deletes the key, so a later `readPaint`
+ * cannot tell "this window never painted it" from "it was trimmed to nothing"
+ * or "it was evicted". Those are different answers about the same click: a cache
+ * that keeps nothing and one that was never asked look identical in a hit rate.
+ * So the reason is kept beside the cache, and nothing that decides what to paint
+ * reads it.
+ */
+export type PaintMiss = "empty-after-trim" | "evicted";
+
+/**
+ * How many miss notes to keep.
+ *
+ * Bounded because a session id comes from the backend and would otherwise be
+ * remembered for every conversation this window ever painted. 64 is several
+ * screens of recent switches - the whole window in which a revisit can be told
+ * apart from a first open - and an aged-out note reads as `no-entry`, which is
+ * the honest answer once the note is gone.
+ */
+const PAINT_MISS_NOTES = 64;
+const misses = new Map<string, PaintMiss>();
+
+function noteMiss(sessionId: string, reason: PaintMiss): void {
+	// Delete before set so the re-inserted key is the newest, as the cache does.
+	misses.delete(sessionId);
+	misses.set(sessionId, reason);
+	while (misses.size > PAINT_MISS_NOTES) {
+		const oldest = misses.keys().next().value;
+		if (oldest === undefined) break;
+		misses.delete(oldest);
+	}
+}
 
 /**
  * UTF-8 bytes of the retained rows, which is the unit the bounds are stated in.
@@ -331,6 +378,7 @@ export function writePaint(
 		dropLiveRecords(input.transcript).records,
 	);
 	if (records.length === 0) {
+		noteMiss(sessionId, "empty-after-trim");
 		cache.delete(sessionId);
 		// Nothing to place a reader in: a measured position for an empty
 		// transcript is not a place this cache can keep.
@@ -411,6 +459,8 @@ export function writePaint(
 	// Delete before set so the re-inserted key is the newest for eviction order.
 	cache.delete(sessionId);
 	cache.set(sessionId, entry);
+	// A stored paint ANSWERS the question the note existed to answer.
+	misses.delete(sessionId);
 	evict();
 }
 
@@ -462,14 +512,22 @@ function retainedScroll(
 
 /** The cached paint for `sessionId`, or null. Does not change eviction order. */
 export function readPaint(sessionId: string): PaintedConversation | null {
-	const entry = cache.get(sessionId);
-	if (!entry) return null;
-	const { bytes: _bytes, ...paint } = entry;
-	return paint;
+	return cache.get(sessionId) ?? null;
+}
+
+/**
+ * Why `sessionId` has no paint, when this cache can still say: `empty-after-trim`
+ * (the last write had nothing durable to keep) or `evicted` (the byte bound
+ * dropped it). Null when it never painted here, or the note has aged out - both
+ * of which the trace reports as `no-entry`. Diagnostic only.
+ */
+export function paintMissReason(sessionId: string): PaintMiss | null {
+	return misses.get(sessionId) ?? null;
 }
 
 /** Forget one conversation. Used when the backend says it is gone (M6). */
 export function dropPaint(sessionId: string): void {
+	misses.delete(sessionId);
 	cache.delete(sessionId);
 	// A place measured for the paint that will never be written describes rows
 	// this window no longer holds.
@@ -528,6 +586,7 @@ function evict(): void {
 		// An evicted conversation's rows are gone; a place for the paint that was
 		// never written describes the same gone rows.
 		pendingScroll.delete(oldest);
+		noteMiss(oldest, "evicted");
 		total -= entry?.bytes ?? 0;
 	}
 }
@@ -551,4 +610,5 @@ export function __paintCacheStats(): {
 export function __resetPaintCache(): void {
 	cache.clear();
 	pendingScroll.clear();
+	misses.clear();
 }
