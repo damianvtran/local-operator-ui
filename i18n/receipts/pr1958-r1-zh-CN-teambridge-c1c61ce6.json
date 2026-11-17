@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1 re-audit after translator fix, PR #1958",
+  "locale": "zh-CN",
+  "namespace": "ui.teamBridge",
+  "pr": 1958,
+  "date": "2026-11-17",
+  "head": "a6eaf6c616 + uncommitted working tree (.worktrees/tb-429-state)",
+  "instance": "pr1958-r1-zh-CN-teambridge-c1c61ce6",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (team radientdev, reviewer role); did not translate or author these strings or the fix",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 31eb227efab1, the reviewer instance that issued pr1958-r1-zh-CN-teambridge-4e6c6fb5 (changes_requested); not the translator, who applied the fix. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1958-r1-zh-CN-teambridge-c1c61ce6"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.rate_limited.reason",
+      "note": "Prior MINOR from pr1958-r1-zh-CN-teambridge-4e6c6fb5 fixed: Space between 'Team Bridge' and '可能' removed (zh-CN style guide lines 67-69); now 'Team Bridge可能更新较慢'. Verified the new value equals the previously audited value with only that one-character change; the title is unchanged; the only keys differing from base a6eaf6c6 are rate_limited.title and rate_limited.reason; key set unchanged; no bidi control characters. Previously audited target sha256 fcb7eaef0c3297f691fc7d709bd0b19db776811b7c7f1fe29bdb66bd9d56b855."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.rate_limited.title, ui.teamBridge.rate_limited.reason",
+      "note": "Meaning, tone and context conformance carried from the prior receipt: requests named as what is slowed, may be slow to update, automatic retry, calm, no error/try-again wording, Team Bridge kept in Latin."
+    }
+  ],
+  "audited_values": {
+    "ui.teamBridge.rate_limited.title": "正在降低请求频率",
+    "ui.teamBridge.rate_limited.reason": "当前请求过多，Team Bridge可能更新较慢。将自动重试。"
+  },
+  "binding": "Verified on the uncommitted working tree over a6eaf6c616: target src/i18n/catalogues/zh-CN/ui.teamBridge.json sha256 0d75cfc0d76e1e3bf383f04893cc6fb1f2239fc6ce284620825be443c619c8e1; English sha256 c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c; context sha256 4242cece7dd96aa5ab7d13463b9e00e3f09b0bff399fe4a5ebf80cb6ac4aec0a. Hashes matched the delegator's brief before audit.",
+  "supersedes": "pr1958-r1-zh-CN-teambridge-4e6c6fb5",
+  "scope": "PR #1958 round 1 re-audit: ui.teamBridge.rate_limited.reason fix (title and remainder confirmed unchanged)",
+  "en_sha256": "c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c",
+  "context_sha256": "4242cece7dd96aa5ab7d13463b9e00e3f09b0bff399fe4a5ebf80cb6ac4aec0a",
+  "target_sha256": "0d75cfc0d76e1e3bf383f04893cc6fb1f2239fc6ce284620825be443c619c8e1",
+  "sha256": {
+    "zh-CN": "0d75cfc0d76e1e3bf383f04893cc6fb1f2239fc6ce284620825be443c619c8e1",
+    "en": "c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c"
+  }
+}

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, unlinkSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -1927,6 +1928,150 @@ test("the retry waits at least the named wait, with bounded full jitter", () => 
 	assert.equal(spread.size, 50, "different draws, different moments");
 });
 
+test("a stated wait of 0 is floored at one second, never 'no interval'", () => {
+	// query-core reads a refetchInterval of 0 as "no interval": unfloored, the
+	// page would say "Retrying automatically" and never retry (review M3).
+	assert.deepEqual(
+		model.teamBridgeRateLimit(
+			throttled({ error: { code: "rate_limited", retry_after_seconds: 0 } }),
+		),
+		{ retryAfterMs: model.TEAM_BRIDGE_RATE_LIMIT_MIN_MS },
+	);
+	assert.deepEqual(
+		model.teamBridgeRateLimit(null, { status: 429, retryAfterMs: 0 }),
+		{ retryAfterMs: 1_000 },
+	);
+	assert.equal(
+		model.teamBridgeRateLimitRetryMs(0, () => 0),
+		1_000,
+	);
+	assert.ok(
+		model.teamBridgeStatusRefetchInterval({
+			data: throttled({
+				error: { code: "rate_limited", retry_after_seconds: 0 },
+			}),
+			error: null,
+			dataUpdatedAt: 1,
+			errorUpdatedAt: 0,
+		}) >= 1_000,
+	);
+});
+
+test("the throttle's refetch interval is stable for one answer and differs between answers", () => {
+	const state = (updatedAt) => ({
+		data: throttled(),
+		error: null,
+		dataUpdatedAt: updatedAt,
+		errorUpdatedAt: 0,
+	});
+	const at = Date.parse("2026-11-17T16:00:00.000Z");
+	const first = model.teamBridgeStatusRefetchInterval(state(at));
+	for (let i = 0; i < 20; i += 1)
+		assert.equal(
+			model.teamBridgeStatusRefetchInterval(state(at)),
+			first,
+			"the same answer must name the same deadline on every render",
+		);
+	assert.ok(first >= 300_000 && first <= 330_000);
+	// Clients (and successive answers) a millisecond apart still spread out.
+	const spread = new Set(
+		Array.from({ length: 200 }, (_, i) =>
+			model.teamBridgeStatusRefetchInterval(state(at + i)),
+		),
+	);
+	assert.ok(spread.size > 190, `jitter collapsed: ${spread.size}/200`);
+	for (let i = 0; i < 200; i += 1) {
+		const v = model.teamBridgeRateLimitJitter(at + i)();
+		assert.ok(v >= 0 && v < 1);
+	}
+	// A failed read is seeded by its errorUpdatedAt, and no throttle -> none.
+	assert.equal(
+		model.teamBridgeStatusRefetchInterval({
+			data: undefined,
+			error: { status: 429, retryAfterMs: 2_000 },
+			dataUpdatedAt: 0,
+			errorUpdatedAt: at,
+		}),
+		model.teamBridgeRateLimitRetryMs(
+			2_000,
+			model.teamBridgeRateLimitJitter(at),
+		),
+	);
+	assert.equal(
+		model.teamBridgeStatusRefetchInterval({
+			data: status(),
+			error: null,
+			dataUpdatedAt: at,
+			errorUpdatedAt: 0,
+		}),
+		false,
+	);
+});
+
+test("re-rendering an observer does not postpone the throttled retry (real query-core)", async (t) => {
+	// Review M1, reproduced against the pinned query-core: `useBaseQuery` calls
+	// `setOptions` on every render, and the observer restarts its interval
+	// timer whenever `refetchInterval` returns a different value. With a fresh
+	// random jitter per call, an observer re-rendering every 100 ms never
+	// reached its deadline; with the per-answer jitter it does.
+	const reactQuery = createRequire(import.meta.url).resolve(
+		"@tanstack/react-query/package.json",
+	);
+	// query-core decides `isServer` (no window -> never arms an interval) once,
+	// at load; give it a window for that one load, then put the global back.
+	const hadWindow = "window" in globalThis;
+	if (!hadWindow) globalThis.window = globalThis;
+	let core;
+	try {
+		core = createRequire(reactQuery)("@tanstack/query-core");
+	} finally {
+		if (!hadWindow) Reflect.deleteProperty(globalThis, "window");
+	}
+	assert.equal(core.isServer, false, "harness: query-core must arm intervals");
+	const { QueryClient, QueryObserver } = core;
+	const run = async (refetchInterval) => {
+		const client = new QueryClient();
+		let reads = 0;
+		const options = {
+			queryKey: ["tb-status-m1"],
+			queryFn: async () => {
+				reads += 1;
+				return throttled({
+					error: { code: "rate_limited", retry_after_seconds: 0 },
+				});
+			},
+			refetchInterval,
+			retry: false,
+		};
+		const observer = new QueryObserver(client, options);
+		const unsubscribe = observer.subscribe(() => {});
+		// A "render" every 100 ms for 4.5 s: a 1 s wait plus at most 1 s jitter
+		// must land at least twice more in that window.
+		const renders = setInterval(() => observer.setOptions({ ...options }), 100);
+		await new Promise((resolve) => setTimeout(resolve, 4_500));
+		clearInterval(renders);
+		unsubscribe();
+		client.clear();
+		return reads;
+	};
+	const stable = await run((query) =>
+		model.teamBridgeStatusRefetchInterval(query.state),
+	);
+	assert.ok(stable >= 3, `stable jitter: ${stable} reads in 4.5 s`);
+	// Negative control: the round-1 shape (fresh random per call) stalls.
+	const fresh = await run((query) => {
+		const limit = model.teamBridgeRateLimit(
+			query.state.data,
+			query.state.error,
+		);
+		return limit ? model.teamBridgeRateLimitRetryMs(limit.retryAfterMs) : false;
+	});
+	t.diagnostic(
+		`reads in 4.5 s: stable jitter ${stable}, fresh jitter ${fresh}`,
+	);
+	assert.ok(fresh < stable, `control: fresh jitter ${fresh} vs ${stable}`);
+});
+
 test("a throttled read keeps the READY answer the page already has", () => {
 	const ready = status({ account_id: "acct_self", tenant_id: "tnt_1" });
 	const held = model.holdReadyThroughThrottle(ready, throttled());
@@ -1947,11 +2092,20 @@ test("the rate-limited panel says retrying, offers no button and is not the outa
 	const html = renderToStaticMarkup(
 		createElement(ui.TeamBridgeEligibilityPanel, { reason: "rate_limited" }),
 	);
-	assert.match(html, /Slowing down/);
+	assert.match(html, /Slowing down requests/);
 	assert.match(html, /Retrying automatically/);
+	// Copy round 1, C2: the product pitch is for deciding to turn it on, not
+	// for someone already using it; design round 1, D1: a spinner says the
+	// panel is working, not stuck.
+	assert.doesNotMatch(html, /Communicate with your team members/);
+	assert.match(html, /data-team-bridge-rate-limited="gate"/);
+	assert.match(html, /animate-spin/);
 	assert.doesNotMatch(html, /Team Bridge is unavailable/);
 	assert.doesNotMatch(html, /<button/, "the retry is already scheduled");
 	const note = renderToStaticMarkup(createElement(ui.TeamBridgeRateLimitNote));
 	assert.match(note, /data-team-bridge-rate-limited="note"/);
-	assert.match(note, /Too many requests right now\. Retrying automatically\./);
+	assert.match(
+		note,
+		/Too many requests right now, so Team Bridge may be slow to update\. Retrying automatically\./,
+	);
 });

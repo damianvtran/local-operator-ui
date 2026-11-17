@@ -428,6 +428,6 @@
 	"ui.teamBridge.typing.two": "{first} y {second} están escribiendo",
 	"ui.teamBridge.typing.three": "{first}, {second} y {third} están escribiendo",
 	"ui.teamBridge.typing.several": "Varias personas están escribiendo",
-	"ui.teamBridge.rate_limited.title": "Bajando el ritmo",
-	"ui.teamBridge.rate_limited.reason": "Hay demasiadas solicitudes ahora mismo. Se reintentará automáticamente."
+	"ui.teamBridge.rate_limited.title": "Reduciendo la frecuencia de solicitudes",
+	"ui.teamBridge.rate_limited.reason": "Hay demasiadas solicitudes ahora mismo, así que Team Bridge puede tardar en actualizarse. Se reintentará automáticamente."
 }

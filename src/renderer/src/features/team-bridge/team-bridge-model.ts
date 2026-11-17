@@ -2196,9 +2196,21 @@ function isRateLimitedCode(code: unknown): boolean {
 	return code === "rate_limited";
 }
 
+/**
+ * The shortest wait honoured. A stated wait of 0 (or anything under a second)
+ * must still schedule a read: query-core treats a `refetchInterval` of 0 as "no
+ * interval", so an unfloored 0 would leave the page saying "Retrying
+ * automatically" and never retry (agent review round 1, M3). One second matches
+ * agent-server's own floor (`ratelimit.RetryAfterSeconds` never names less).
+ */
+export const TEAM_BRIDGE_RATE_LIMIT_MIN_MS = 1_000;
+
 function boundedWaitMs(ms: unknown): number | null {
 	if (typeof ms !== "number" || !Number.isFinite(ms) || ms < 0) return null;
-	return Math.min(ms, TEAM_BRIDGE_RATE_LIMIT_MAX_MS);
+	return Math.min(
+		Math.max(ms, TEAM_BRIDGE_RATE_LIMIT_MIN_MS),
+		TEAM_BRIDGE_RATE_LIMIT_MAX_MS,
+	);
 }
 
 /**
@@ -2267,6 +2279,57 @@ export function teamBridgeRateLimitRetryMs(
 	const wait = boundedWaitMs(retryAfterMs) ?? TEAM_BRIDGE_RATE_LIMIT_DEFAULT_MS;
 	const spread = Math.min(wait, TEAM_BRIDGE_RATE_LIMIT_JITTER_MAX_MS);
 	return Math.round(wait + rand() * spread);
+}
+
+/**
+ * A jitter source that answers the SAME value for the same query answer.
+ *
+ * WHY: `refetchInterval` is a function query-core calls on every render
+ * (`useBaseQuery` -> `setOptions`), and it clears and restarts the timer
+ * whenever the returned value differs from the last (`queryObserver`
+ * `#updateRefetchInterval`). A fresh `Math.random()` per call therefore pushed
+ * the retry back on every re-render, indefinitely for a busy observer (agent
+ * review round 1, M1). Seeding from the answer's own timestamp keeps the value
+ * fixed until a new read lands, still differs between clients (each records
+ * its own millisecond), and gives every observer of one query the same
+ * deadline, so they coalesce into one read instead of one each.
+ *
+ * `updatedAt` is the latest of the query's `dataUpdatedAt`/`errorUpdatedAt`.
+ * The mix is a 32-bit integer hash (splitmix-style avalanche), not crypto:
+ * it only has to spread nearby timestamps across [0, 1).
+ */
+export function teamBridgeRateLimitJitter(updatedAt: number): () => number {
+	const at = Number.isFinite(updatedAt) ? Math.trunc(updatedAt) : 0;
+	// Epoch milliseconds exceed 32 bits: fold the high word into the low one.
+	let h = (at >>> 0) ^ Math.trunc(at / 2 ** 32);
+	h = Math.imul(h ^ (h >>> 16), 0x7feb352d);
+	h = Math.imul(h ^ (h >>> 15), 0x846ca68b);
+	h ^= h >>> 16;
+	const value = (h >>> 0) / 2 ** 32;
+	return () => value;
+}
+
+/**
+ * The status query's `refetchInterval`, given the query's state: after a
+ * throttle (in the answer or as the read's own 429), the named wait plus
+ * jitter that is stable for that answer; otherwise no interval. Lives here,
+ * not inline in the hook, so the "same answer, same deadline" property is
+ * testable against the real query-core observer.
+ */
+export function teamBridgeStatusRefetchInterval(state: {
+	data?: Parameters<typeof teamBridgeRateLimit>[0];
+	error?: unknown;
+	dataUpdatedAt: number;
+	errorUpdatedAt: number;
+}): number | false {
+	const limit = teamBridgeRateLimit(state.data, state.error);
+	if (!limit) return false;
+	return teamBridgeRateLimitRetryMs(
+		limit.retryAfterMs,
+		teamBridgeRateLimitJitter(
+			Math.max(state.dataUpdatedAt, state.errorUpdatedAt),
+		),
+	);
 }
 
 /**

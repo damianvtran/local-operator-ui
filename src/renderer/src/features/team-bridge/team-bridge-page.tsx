@@ -616,21 +616,49 @@ export const TeamBridgeEligibilityPanel: FC<{
 			<div className="max-w-lg text-center">
 				{/* The one glyph on the panel: Team Bridge is a people surface, and the
 				    mark gives the centred block an anchor without a control. */}
-				<Users
-					size={20}
-					aria-hidden="true"
-					className="mx-auto mb-3 text-ink-dim"
-				/>
+				{reason === "rate_limited" ? (
+					/* The read is scheduled and this panel can sit unchanged for up to
+					   the edge's 300 s block plus jitter, so the loading panel's spinner
+					   takes the mark's place: "still working", not "failed" (design
+					   round 1, D1). In the mark's slot, not beside the reason, so a
+					   two-line reason does not push it off-centre. Unlabelled: the
+					   reason line already says "Retrying automatically". */
+					<div
+						className="mb-3 flex justify-center"
+						data-team-bridge-rate-limited="gate"
+					>
+						<Spinner size="sm" />
+					</div>
+				) : (
+					<Users
+						size={20}
+						aria-hidden="true"
+						className="mx-auto mb-3 text-ink-dim"
+					/>
+				)}
 				<h1 className="text-balance text-[16px] font-medium text-ink">
 					{t(copy[reason].title)}
 				</h1>
 				<div className="mt-2">
-					{reason !== "off" && reason !== "off_local" && (
-						<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
-							{t("ui.teamBridge.plan.body")}
-						</p>
-					)}
-					<p className="mt-4 text-[12px] leading-snug text-ink-dim">
+					{/* The product description is for someone deciding whether to turn
+					    Team Bridge on. "Off" readers already chose, and a throttled
+					    reader already uses it: under "Slowing down requests" the pitch
+					    reads as an upsell, so the reason sits under the heading
+					    (copy round 1, C2). */}
+					{reason !== "off" &&
+						reason !== "off_local" &&
+						reason !== "rate_limited" && (
+							<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
+								{t("ui.teamBridge.plan.body")}
+							</p>
+						)}
+					<p
+						className={cn(
+							"text-[12px] leading-snug text-ink-dim",
+							// With the pitch gone, the reason sits right under the heading.
+							reason !== "rate_limited" && "mt-4",
+						)}
+					>
 						{t(copy[reason].reason)}
 					</p>
 					{action === "settings" && (

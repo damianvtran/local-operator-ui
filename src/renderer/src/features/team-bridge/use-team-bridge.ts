@@ -87,7 +87,7 @@ import {
 	isNotAMemberRefusal,
 	ownActiveAgent,
 	teamBridgeRateLimit,
-	teamBridgeRateLimitRetryMs,
+	teamBridgeStatusRefetchInterval,
 	withAppendedPage,
 	withConversationStatus,
 	withNotificationPreference,
@@ -712,10 +712,9 @@ export function useTeamBridgeStatus(
 		 * exactly what kept the edge's per-address block alive. Anything else
 		 * keeps the one quick retry and no interval.
 		 */
-		refetchInterval: (query) => {
-			const limit = teamBridgeRateLimit(query.state.data, query.state.error);
-			return limit ? teamBridgeRateLimitRetryMs(limit.retryAfterMs) : false;
-		},
+		// Stable per answer: a fresh random value per call restarted the timer
+		// on every render and postponed the retry (review round 1, M1).
+		refetchInterval: (query) => teamBridgeStatusRefetchInterval(query.state),
 		retry: (failures, error) =>
 			teamBridgeRateLimit(null, error) === null && failures < 1,
 	});
