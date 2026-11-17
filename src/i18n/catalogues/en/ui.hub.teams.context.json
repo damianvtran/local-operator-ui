@@ -55,8 +55,8 @@
 		"tone": "plain, one word"
 	},
 	"ui.hub.teams.kind.specialist": {
-		"note": "A roster slot whose kind is `specialist` on the wire. Sits beside kind.role in the same column, so keep the two comparable in length. Narrow cell.",
-		"role": "roster slot kind label",
+		"note": "A roster slot whose kind is `specialist` on the wire. Sits beside kind.role in the same column, so keep the two comparable in length. Narrow cell. Also reused as one fact in the agent detail pane's dot-separated meta line, where it is read as a noun beside the source and class facts.",
+		"role": "kind label: roster slot, and the agent detail pane's meta line (`Built-in · Specialist`)",
 		"tone": "plain, one word"
 	},
 	"ui.hub.teams.manager": {

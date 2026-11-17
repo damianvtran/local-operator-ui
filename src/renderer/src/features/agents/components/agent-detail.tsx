@@ -202,7 +202,8 @@ export function AgentMeta({ profile }: { profile: ReusableProfile }) {
 		sourceLabel(profile.source),
 		classOf(profile) === "proactive" ? CLASS_LABEL.proactive : null,
 		profile.delegate ? t("ui.agents.detail.meta.delegates") : null,
-		profile.kind === "specialist" ? "Specialist" : null,
+		// One word, one key: the roster's kind label for the same wire value.
+		profile.kind === "specialist" ? t("ui.hub.teams.kind.specialist") : null,
 	].filter(Boolean);
 	return (
 		<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -466,13 +467,11 @@ function ToolsEditor({
 		const token = entry.trim();
 		if (!token) return;
 		if (!TOOL_TOKEN.test(token)) {
-			setEntryError(
-				"Tool names are letters, digits, dot, underscore, dash or colon.",
-			);
+			setEntryError(t("ui.agents.detail.tools.error_grammar"));
 			return;
 		}
 		if (tools?.includes(token)) {
-			setEntryError("That tool is already listed.");
+			setEntryError(t("ui.agents.detail.tools.error_duplicate"));
 			return;
 		}
 		setEntryError(null);
@@ -798,7 +797,7 @@ export function AgentDetail({
 			typeof changed.instructions === "string" &&
 			!changed.instructions.trim()
 		) {
-			setError("Give the agent instructions.");
+			setError(t("ui.agents.detail.create.error_instructions_required"));
 			setErrorField("instructions");
 			return;
 		}
@@ -830,7 +829,7 @@ export function AgentDetail({
 			const copy = refusalCopy(
 				caught instanceof Error
 					? caught.message
-					: "The agent could not be saved.",
+					: t("ui.agents.detail.edit.error_generic"),
 			);
 			setError(copy.message);
 			setErrorField(copy.field);
@@ -911,7 +910,7 @@ export function AgentDetail({
 			const copy = refusalCopy(
 				caught instanceof Error
 					? caught.message
-					: "The agent could not be installed.",
+					: t("ui.agents.detail.install.error_generic"),
 			);
 			setError(copy.message);
 			showErrorToast(copy.message);
@@ -1044,7 +1043,11 @@ export function AgentDetail({
 								<Button
 									variant="ghost"
 									onClick={() =>
-										onAskAgent(`Change the agent ${profile.name}: `)
+										onAskAgent(
+											t("ui.agents.detail.ask_change_prefill", {
+												name: profile.name,
+											}),
+										)
 									}
 								>
 									{t("ui.agents.detail.action.ask_change")}
