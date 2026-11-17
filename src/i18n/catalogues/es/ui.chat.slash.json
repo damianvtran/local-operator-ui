@@ -1,5 +1,7 @@
 {
 	"ui.chat.slash.arg.credential_api_key": "clave de API",
+	"ui.chat.slash.arg.kind_role": "rol",
+	"ui.chat.slash.arg.kind_specialist": "especialista",
 	"ui.chat.slash.arg.mcp_detail.reauthorize": "conectado — se reautorizará",
 	"ui.chat.slash.arg.mcp_detail.reuse": "conectado — se reutilizará",
 	"ui.chat.slash.arg.mcp_detail.stored": "credencial guardada",

@@ -1,5 +1,7 @@
 {
 	"ui.chat.slash.arg.credential_api_key": "ключ API",
+	"ui.chat.slash.arg.kind_role": "роль",
+	"ui.chat.slash.arg.kind_specialist": "специалист",
 	"ui.chat.slash.arg.mcp_detail.reauthorize": "подключён — вход будет выполнен заново",
 	"ui.chat.slash.arg.mcp_detail.reuse": "подключён — вход сохранится",
 	"ui.chat.slash.arg.mcp_detail.stored": "учётные данные сохранены",
