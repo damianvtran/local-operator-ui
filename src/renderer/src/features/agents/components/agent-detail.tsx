@@ -55,7 +55,7 @@ import {
 } from "@shared/components/ui/select";
 import { Switch } from "@shared/components/ui/switch";
 import { Textarea } from "@shared/components/ui/textarea";
-import { t } from "@shared/i18n";
+import { t, translateRaw } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -1044,7 +1044,13 @@ export function AgentDetail({
 									variant="ghost"
 									onClick={() =>
 										onAskAgent(
-											t("ui.agents.detail.ask_change_prefill", {
+											// `translateRaw`, NOT `t`: this text is pre-filled into the chat
+											// composer and SENT to the assistant, so it is data. In an RTL
+											// catalogue (ur) `t` wraps the Latin agent name in U+2068/2069
+											// (src/i18n/bidi.ts), and those invisible controls would travel
+											// in the message and could stop the assistant matching the
+											// agent by name. English and every LTR locale are unchanged.
+											translateRaw("ui.agents.detail.ask_change_prefill", {
 												name: profile.name,
 											}),
 										)

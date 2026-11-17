@@ -546,3 +546,68 @@ for (const scenario of SCENARIOS) {
 		});
 	}
 }
+
+/*
+ * THE COMPOSER TEXT IS DATA, NOT DISPLAY (ur audit finding, 2026-11-17).
+ *
+ * `ask_change_prefill` is pre-filled into the chat composer and the operator
+ * SENDS it to the assistant ("Change the agent <name>: ..."). `translate()`
+ * wraps a Latin-led argument in FSI...PDI (U+2068/U+2069) for an RTL catalogue
+ * (`src/i18n/bidi.ts`), so in Urdu the agent name would reach the assistant with
+ * invisible controls around it and could stop it matching the agent by name.
+ * Text that leaves the UI as data asks for `translateRaw` (messages.ts).
+ *
+ * The VALUE under test is the REAL ur catalogue string, not a marker: the
+ * defect is in what the real value does to the argument, and a marker with no
+ * RTL text would not select the isolating path in a way that reflects shipping
+ * copy. English is unaffected (an LTR answer is never isolated) and is pinned
+ * by the scenario above.
+ *
+ * CONTROL: `EDIT_AGENT_CONTROL_BASE=<sha>` loads the pre-fix `agent-detail.tsx`;
+ * on the commit that keyed the string (which called `t()`), the isolate
+ * assertion FAILS and the `t()` sanity assertion (that the hazard is real) still
+ * PASSES.
+ */
+const BIDI_ISOLATE = /[\u2066-\u2069]/;
+
+test("ask-for-a-change composer text carries no bidi isolates in an RTL language", async () => {
+	const ur = JSON.parse(
+		readFileSync(
+			join(ROOT, "src/i18n/catalogues/ur/ui.agents.detail.json"),
+			"utf8",
+		),
+	);
+	const key = "ui.agents.detail.ask_change_prefill";
+	assert.ok(ur[key], "the ur catalogue has the prefill");
+
+	const sent = [];
+	const mounted = await mountDetail(PROFILE, {
+		askEnabled: true,
+		onAskAgent: (p) => sent.push(p),
+	});
+	try {
+		const ask = mounted.buttonByText("Ask for a change");
+		await act(async () => {
+			registerCatalogue("ur", { [key]: ur[key] });
+			setLocale("ur");
+			await flush();
+		});
+		/* The hazard is real: the DISPLAY path isolates the name in ur. */
+		assert.match(
+			t(key, { name: "coder" }),
+			BIDI_ISOLATE,
+			"sanity: t() isolates a Latin name in an RTL catalogue",
+		);
+		await mounted.click(ask);
+		const text = sent.at(-1) ?? "";
+		assert.ok(text.includes("coder"), `the name is in ${JSON.stringify(text)}`);
+		assert.ok(
+			!BIDI_ISOLATE.test(text),
+			`no U+2066-2069 may travel to the assistant: ${JSON.stringify(text)}`,
+		);
+		assert.equal(text, ur[key].replace("{name}", "coder"));
+	} finally {
+		await mounted.unmount();
+		await backToEnglish();
+	}
+});
