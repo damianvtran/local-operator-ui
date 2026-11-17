@@ -80,6 +80,7 @@ import {
 	gateOfFrame,
 	generationOfFrame,
 	historyIdsOfFrame,
+	queuedEngineOfFrame,
 	queuedSteeringOfFrame,
 	streamingOfFrame,
 } from "./voice-turns";
@@ -283,6 +284,9 @@ export function subscribeVoiceStream(
 							snapshot,
 							...(generation !== undefined ? { generation } : {}),
 						});
+					// BEFORE the gate: a frame that carries both must be read as a queued
+					// ask's mirror, never as a card.
+					if (queuedEngineOfFrame(frame)) onInput({ kind: "queued_engine" });
 					const gate = gateOfFrame(frame);
 					if (gate !== undefined) onInput({ kind: "gate", gate, snapshot });
 					return;

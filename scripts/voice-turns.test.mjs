@@ -43,6 +43,7 @@ const {
 	stepVoiceTurns,
 	VOICE_TAKE_ROW_TTL_MS,
 	gateOfFrame,
+	queuedEngineOfFrame,
 	streamingOfFrame,
 	VOICE_DEDUPE_LIMIT,
 } = await import(
@@ -271,6 +272,109 @@ test("the pending approval follows the gate frames (for the approval_pending pre
 		null,
 		"an ask is not an approval",
 	);
+});
+
+/*
+ * A QUEUED ASK IS NOT A CARD (found live, 2026-11-17). The backend mirrors a queued
+ * ask onto `pending_gate` for one release so an old client can answer it, but the
+ * agent keeps running, so voice must not refuse words for it. The wire's own
+ * capability read tells the two apart: `asks` / `asks_open` present on a frame IS
+ * "the queued engine is live" (`desktop-session-contract.ts`). Without it, an
+ * ask-kind gate is a BLOCKING ask and still blocks (V13).
+ */
+test("a queued ask's mirrored gate is not a pending card once the queued engine is seen", () => {
+	const engineFirst = run([
+		{ kind: "queued_engine" },
+		{ kind: "gate", gate: { request_id: "a-1.0", kind: "ask" } },
+	]);
+	assert.equal(
+		engineFirst.state.pendingCard,
+		null,
+		"queued ask must not block words",
+	);
+	assert.equal(engineFirst.state.pendingApproval, null);
+	const gateFirst = run([
+		{ kind: "gate", gate: { request_id: "a-1.0", kind: "ask" } },
+		{ kind: "queued_engine" },
+	]);
+	assert.equal(
+		gateFirst.state.pendingCard,
+		null,
+		"learning the engine AFTER the gate must clear the card the gate set",
+	);
+});
+
+test("an approval still blocks words when the queued engine is live", () => {
+	const approval = run([
+		{ kind: "queued_engine" },
+		{ kind: "gate", gate: { request_id: "g1", kind: "approval" } },
+	]);
+	assert.equal(approval.state.pendingCard, "g1");
+	assert.equal(approval.state.pendingApproval, "g1");
+	const late = run([
+		{ kind: "gate", gate: { request_id: "g1", kind: "approval" } },
+		{ kind: "queued_engine" },
+	]);
+	assert.equal(
+		late.state.pendingCard,
+		"g1",
+		"the engine bit must not clear an approval",
+	);
+});
+
+test("a blocking ask (no queued engine ever seen) still blocks words", () => {
+	const ask = run([{ kind: "gate", gate: { request_id: "a1", kind: "ask" } }]);
+	assert.equal(ask.state.pendingCard, "a1");
+});
+
+test("the engine bit survives a gate clearing, and a stopped watcher resets it", () => {
+	const live = run([
+		{ kind: "queued_engine" },
+		{ kind: "gate", gate: { request_id: "a-1.0", kind: "ask" } },
+		{ kind: "gate", gate: null },
+		{ kind: "gate", gate: { request_id: "a-2.0", kind: "ask" } },
+	]);
+	assert.equal(
+		live.state.pendingCard,
+		null,
+		"a second queued ask is still not a card",
+	);
+	const stopped = run([{ kind: "stopped" }], live.state);
+	assert.equal(
+		stopped.state.queuedEngine,
+		false,
+		"a stopped watcher cannot vouch for the engine; the next snapshot re-learns it",
+	);
+});
+
+test("queuedEngineOfFrame reads asks / asks_open off a snapshot, replace or update frame", () => {
+	const snap = (snapshot) => ({
+		type: "snapshot",
+		payload: { frontend: { snapshot } },
+	});
+	assert.equal(
+		queuedEngineOfFrame(snap({ asks_open: 0 })),
+		true,
+		"zero is a value",
+	);
+	assert.equal(queuedEngineOfFrame(snap({ asks: [{ ask_id: "a-1" }] })), true);
+	assert.equal(queuedEngineOfFrame(snap({ pending_gate: null })), undefined);
+	assert.equal(
+		queuedEngineOfFrame({
+			type: "frontend.update",
+			payload: { changes: { asks_open: 1 } },
+		}),
+		true,
+	);
+	assert.equal(
+		queuedEngineOfFrame({
+			type: "frontend.update",
+			payload: { changes: { streaming: true } },
+		}),
+		undefined,
+	);
+	assert.equal(queuedEngineOfFrame({ type: "event", payload: {} }), undefined);
+	assert.equal(queuedEngineOfFrame(null), undefined);
 });
 
 const CARD_PRECHECK = /if \(voiceCardPending\(sessionId\)\) \{/;

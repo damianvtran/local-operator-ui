@@ -95,6 +95,21 @@ export type VoiceTurnsState = {
 	 * approval-only (`pendingApproval`).
 	 */
 	pendingCard: string | null;
+	/**
+	 * The `kind` of the card in `pendingCard` (`approval` | `ask`), so learning
+	 * that the queued engine is live can drop a card that was only an ask's
+	 * legacy mirror.
+	 */
+	pendingCardKind: string | null;
+	/**
+	 * The session's backend runs the queued-ask engine, learned off any frame
+	 * that carries `asks` / `asks_open` (the wire's capability read). Sticky for
+	 * the watcher's life - a frame that says nothing about asks never unsets it -
+	 * and cleared when the watcher stops, because a stopped watcher cannot vouch
+	 * for it. While true, an ask-kind `pending_gate` is only the mirror of a
+	 * QUEUED ask, which parks nothing, so it is not a card.
+	 */
+	queuedEngine: boolean;
 };
 
 export type VoiceTurnsInput =
@@ -149,6 +164,11 @@ export type VoiceTurnsInput =
 			snapshot?: boolean;
 	  }
 	/**
+	 * A frame carried `asks` / `asks_open`: the backend runs the queued-ask
+	 * engine, so an ask-kind `pending_gate` is its legacy mirror, not a card.
+	 */
+	| { kind: "queued_engine" }
+	/**
 	 * The stream watcher stopped: it can no longer see a gate clear or a turn
 	 * end, so neither may keep being asserted (review round 2, N1).
 	 */
@@ -170,6 +190,8 @@ export function initialVoiceTurns(): VoiceTurnsState {
 		announced: [],
 		pendingApproval: null,
 		pendingCard: null,
+		pendingCardKind: null,
+		queuedEngine: false,
 	};
 }
 
@@ -365,7 +387,28 @@ export function stepVoiceTurns(
 				...state,
 				pendingApproval: null,
 				pendingCard: null,
+				pendingCardKind: null,
+				queuedEngine: false,
 				inFlight: false,
+			},
+			speak: [],
+		};
+	}
+	if (input.kind === "queued_engine") {
+		if (state.queuedEngine && state.pendingCardKind !== "ask")
+			return { state, speak: [] };
+		/*
+		 * Learning the engine AFTER an ask-kind gate arrived (a frame that said
+		 * nothing about asks came first): that gate was only the mirror of a queued
+		 * ask, so the card it set is dropped. An approval is never touched.
+		 */
+		const dropMirror = state.pendingCardKind === "ask";
+		return {
+			state: {
+				...state,
+				queuedEngine: true,
+				pendingCard: dropMirror ? null : state.pendingCard,
+				pendingCardKind: dropMirror ? null : state.pendingCardKind,
 			},
 			speak: [],
 		};
@@ -374,9 +417,18 @@ export function stepVoiceTurns(
 		const gate = input.gate;
 		const cardId =
 			gate && typeof gate.request_id === "string" ? gate.request_id : "";
+		const cardKind = typeof gate?.kind === "string" ? gate.kind : null;
+		/*
+		 * A QUEUED ask's mirrored gate parks nothing (the agent is continuing), so
+		 * it is not a card; an approval, and a BLOCKING ask (no queued engine seen),
+		 * still are (V13).
+		 */
+		const mirrorOnly = cardKind === "ask" && state.queuedEngine;
+		const isCard = cardId !== "" && !mirrorOnly;
 		const carded = {
 			...state,
-			pendingCard: cardId === "" ? null : cardId,
+			pendingCard: isCard ? cardId : null,
+			pendingCardKind: isCard ? cardKind : null,
 		};
 		const requestId = gate?.kind === "approval" ? cardId : "";
 		if (requestId === "") {
@@ -536,6 +588,36 @@ export function gateOfFrame(
 		);
 	}
 	if (frame.type === "frontend.replace") {
+		return read(
+			(payload.frontend as { snapshot?: unknown } | undefined)?.snapshot,
+		);
+	}
+	if (frame.type === "frontend.update") return read(payload.changes);
+	return undefined;
+}
+
+/**
+ * `true` when a frame states the queued-ask engine is live - `asks` as a list,
+ * or `asks_open` present (zero is a value) - else `undefined`: a frame with
+ * neither says nothing and never means "the engine is off" (the wire's own rule,
+ * `desktop-session-contract.ts`; `transcript-reducer.ts`'s `queuedAskEngineLive`
+ * spells the same read, kept apart here because this module bundles standalone
+ * in `scripts/voice-turns.test.mjs`).
+ */
+export function queuedEngineOfFrame(
+	frame: { type?: unknown; payload?: unknown } | null | undefined,
+): true | undefined {
+	if (!frame || typeof frame.payload !== "object" || frame.payload === null)
+		return undefined;
+	const payload = frame.payload as Record<string, unknown>;
+	const read = (snapshot: unknown): true | undefined => {
+		if (!snapshot || typeof snapshot !== "object") return undefined;
+		const fields = snapshot as { asks?: unknown; asks_open?: unknown };
+		return Array.isArray(fields.asks) || fields.asks_open != null
+			? true
+			: undefined;
+	};
+	if (frame.type === "snapshot" || frame.type === "frontend.replace") {
 		return read(
 			(payload.frontend as { snapshot?: unknown } | undefined)?.snapshot,
 		);
