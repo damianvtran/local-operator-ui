@@ -467,7 +467,7 @@
 	"ui.chat.canonical.working_line.running_tool": "exécution de {tool}",
 	"ui.chat.canonical.working_line.running_tools": "{count, plural, one {exécution de {count_display} outil} many {exécution de {count_display} d’outils} other {exécution de {count_display} outils}}",
 	"ui.chat.canonical.working_line.composing": "{count, plural, one {rédaction de {count_display} appel} many {rédaction de {count_display} d’appels} other {rédaction de {count_display} appels}}",
-	"ui.chat.canonical.working_line.queued": "{count, plural, one {{count_display} appel en attente d’exécution} many {{count_display} d’appels en attente d’exécution} other {{count_display} appels en attente d’exécution}}",
+	"ui.chat.canonical.working_line.queued": "{count, plural, =1 {appel en attente} one {{count_display} appel en attente} many {{count_display} d’appels en attente} other {{count_display} appels en attente}}",
 	"ui.chat.canonical.link_actions.quote": "Citer",
 	"ui.chat.canonical.link_actions.copy_link": "Copier le lien",
 	"ui.chat.canonical.link_actions.open_in_browser": "Ouvrir dans le navigateur",

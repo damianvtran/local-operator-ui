@@ -478,7 +478,7 @@
 	"ui.chat.canonical.link_actions.open_folder": "फ़ोल्डर खोलें",
 	"ui.chat.canonical.link_actions.too_large_note": "कैनवस में पूर्वावलोकन के लिए बहुत बड़ी है",
 	"ui.chat.canonical.link_actions.too_large_title": "कैनवस में पूर्वावलोकन के लिए बहुत बड़ी है, इसलिए “खोलें” बटन डिफ़ॉल्ट ऐप में खोलेगा",
-	"ui.chat.canonical.link_actions.missing_file": "{path} पर फ़ाइल नहीं",
+	"ui.chat.canonical.link_actions.missing_file": "फ़ाइल नहीं मिली: {path}",
 	"ui.chat.canonical.tool.never_sent_composed": "नहीं भेजा गया · {size} लिखा गया",
 	"ui.chat.canonical.tool.never_sent_empty": "नहीं भेजा गया · कुछ नहीं लिखा गया",
 	"ui.chat.canonical.tool.composing_sized": "लिखा जा रहा है · {size}",
