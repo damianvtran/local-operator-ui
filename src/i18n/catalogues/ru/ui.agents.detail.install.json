@@ -1,4 +1,5 @@
 {
 	"ui.agents.detail.install.action.install_to_edit": "Установить для правки",
-	"ui.agents.detail.install.action.installing": "Установка…"
+	"ui.agents.detail.install.action.installing": "Установка…",
+	"ui.agents.detail.install.error_generic": "Не удалось установить агента."
 }

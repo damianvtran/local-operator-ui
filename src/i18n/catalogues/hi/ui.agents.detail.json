@@ -74,5 +74,9 @@
 	"ui.agents.detail.create.error_name_required": "एजेंट का नाम लिखें।",
 	"ui.agents.detail.create.error_name_taken": "“{name}” नाम का एजेंट पहले से मौजूद है। दूसरा नाम चुनें या मौजूदा एजेंट खोलकर उसका नाम बदलें।",
 	"ui.agents.detail.create.title_duplicate": "नए एजेंट के रूप में कॉपी करें",
-	"ui.agents.detail.create.title_new": "नया एजेंट"
+	"ui.agents.detail.create.title_new": "नया एजेंट",
+	"ui.agents.detail.edit.error_generic": "एजेंट सहेजा नहीं जा सका।",
+	"ui.agents.detail.tools.error_grammar": "टूल के नाम में अक्षर, अंक, बिंदु (.), अंडरस्कोर (_), हाइफ़न (-) या कोलन (:) हो सकते हैं।",
+	"ui.agents.detail.tools.error_duplicate": "यह टूल पहले से सूचीबद्ध है।",
+	"ui.agents.detail.ask_change_prefill": "“{name}” एजेंट में बदलाव करें: "
 }

@@ -74,5 +74,9 @@
 	"ui.agents.detail.create.error_name_required": "请为智能体填写名称。",
 	"ui.agents.detail.create.error_name_taken": "已存在名为“{name}”的智能体。请换一个名称，或打开现有智能体后修改其名称。",
 	"ui.agents.detail.create.title_duplicate": "复制为新智能体",
-	"ui.agents.detail.create.title_new": "新建智能体"
+	"ui.agents.detail.create.title_new": "新建智能体",
+	"ui.agents.detail.edit.error_generic": "无法保存该智能体。",
+	"ui.agents.detail.tools.error_grammar": "工具名称只能包含字母、数字、点号、下划线、连字符或冒号。",
+	"ui.agents.detail.tools.error_duplicate": "列表中已有该工具。",
+	"ui.agents.detail.ask_change_prefill": "修改智能体“{name}”："
 }

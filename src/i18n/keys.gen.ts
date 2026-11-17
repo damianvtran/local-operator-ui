@@ -2981,6 +2981,7 @@ export type MessageParams = {
 	"ui.agents.descriptions.ux_reviewer": undefined;
 	"ui.agents.detail.install.action.install_to_edit": undefined;
 	"ui.agents.detail.install.action.installing": undefined;
+	"ui.agents.detail.install.error_generic": undefined;
 	"ui.agents.detail.action.ask_change": undefined;
 	"ui.agents.detail.action.create_copy": undefined;
 	"ui.agents.detail.action.creating": undefined;
@@ -3003,6 +3004,7 @@ export type MessageParams = {
 	"ui.agents.detail.alert.save_failed_title": undefined;
 	"ui.agents.detail.alert.unconfirmed_body": undefined;
 	"ui.agents.detail.alert.unconfirmed_title": undefined;
+	"ui.agents.detail.ask_change_prefill": { name: string };
 	"ui.agents.detail.badge.modified": undefined;
 	"ui.agents.detail.class.error_title": undefined;
 	"ui.agents.detail.class.label": undefined;
@@ -3017,6 +3019,7 @@ export type MessageParams = {
 	"ui.agents.detail.create.title_new": undefined;
 	"ui.agents.detail.delegate.aria": undefined;
 	"ui.agents.detail.delegate.label": undefined;
+	"ui.agents.detail.edit.error_generic": undefined;
 	"ui.agents.detail.empty.description": undefined;
 	"ui.agents.detail.empty.instructions": undefined;
 	"ui.agents.detail.empty.used_by": undefined;
@@ -3053,6 +3056,8 @@ export type MessageParams = {
 	"ui.agents.detail.tools.add_label": undefined;
 	"ui.agents.detail.tools.all_label": undefined;
 	"ui.agents.detail.tools.empty": undefined;
+	"ui.agents.detail.tools.error_duplicate": undefined;
+	"ui.agents.detail.tools.error_grammar": undefined;
 	"ui.agents.detail.tools.every_tool_aria": undefined;
 	"ui.agents.detail.tools.may_use_any": undefined;
 	"ui.agents.detail.tools.placeholder": undefined;

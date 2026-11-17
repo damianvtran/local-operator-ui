@@ -74,5 +74,9 @@
 	"ui.agents.detail.create.error_name_required": "Donnez un nom à l’agent.",
 	"ui.agents.detail.create.error_name_taken": "Un agent nommé « {name} » existe déjà. Choisissez un autre nom, ou ouvrez l’existant pour le modifier.",
 	"ui.agents.detail.create.title_duplicate": "Dupliquer en nouvel agent",
-	"ui.agents.detail.create.title_new": "Nouvel agent"
+	"ui.agents.detail.create.title_new": "Nouvel agent",
+	"ui.agents.detail.edit.error_generic": "Impossible d’enregistrer l’agent.",
+	"ui.agents.detail.tools.error_grammar": "Les noms d’outils peuvent contenir des lettres, des chiffres, un point, un tiret bas, un trait d’union ou deux-points.",
+	"ui.agents.detail.tools.error_duplicate": "Cet outil est déjà répertorié.",
+	"ui.agents.detail.ask_change_prefill": "Modifiez l’agent « {name} » : "
 }

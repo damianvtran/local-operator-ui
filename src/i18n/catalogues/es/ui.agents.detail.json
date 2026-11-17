@@ -74,5 +74,9 @@
 	"ui.agents.detail.create.error_name_required": "Ponle un nombre al agente.",
 	"ui.agents.detail.create.error_name_taken": "Ya existe un agente llamado “{name}”. Elige otro nombre o abre el existente para cambiárselo.",
 	"ui.agents.detail.create.title_duplicate": "Duplicar como agente nuevo",
-	"ui.agents.detail.create.title_new": "Nuevo agente"
+	"ui.agents.detail.create.title_new": "Nuevo agente",
+	"ui.agents.detail.edit.error_generic": "No se pudo guardar el agente.",
+	"ui.agents.detail.tools.error_grammar": "Los nombres de herramientas solo admiten letras, dígitos, punto, guion bajo, guion o dos puntos.",
+	"ui.agents.detail.tools.error_duplicate": "Esa herramienta ya está en la lista.",
+	"ui.agents.detail.ask_change_prefill": "Cambia el agente “{name}”: "
 }
