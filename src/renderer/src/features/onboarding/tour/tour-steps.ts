@@ -1,4 +1,3 @@
-import { trackProductEvent } from "@shared/analytics/product-events";
 import { currentLocale, t, textDirectionFor } from "@shared/i18n";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Step, StepOptions, Tour } from "shepherd.js";
@@ -344,6 +343,9 @@ export const guardTourTargets = (
 	present: (selector: string) => boolean = (selector) =>
 		typeof document !== "undefined" &&
 		document.querySelector(selector) !== null,
+	/* The reporter is injected (the hook passes the analytics call) so this
+	   module stays free of the telemetry config, which only a renderer loads. */
+	onSkipped?: (stepId: string) => void,
 ): StepOptions[] =>
 	steps.map((step) => {
 		const element = step.attachTo?.element;
@@ -354,10 +356,7 @@ export const guardTourTargets = (
 			showOn: () => {
 				if (previous && !previous()) return false;
 				if (present(element)) return true;
-				trackProductEvent("onboarding_tour_step", {
-					step: step.id ?? "unknown",
-					outcome: "skipped_missing_target",
-				});
+				onSkipped?.(step.id ?? "unknown");
 				return false;
 			},
 		};
@@ -426,8 +425,9 @@ const commandPaletteStep = (): StepOptions => {
  * The copy and body structure live in `./tour-copy`; this module owns the
  * mechanics — spotlights, navigation, and the action each step's buttons run.
  */
-export const createTourSteps = (): StepOptions[] =>
-	guardTourTargets(buildTourSteps());
+export const createTourSteps = (
+	onSkipped?: (stepId: string) => void,
+): StepOptions[] => guardTourTargets(buildTourSteps(), undefined, onSkipped);
 
 const buildTourSteps = (): StepOptions[] => [
 	{
@@ -942,19 +942,9 @@ const buildTourSteps = (): StepOptions[] => [
 				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
-					// We are on the main page (agent list/chat). Need to go to agent settings page.
-					// This assumes an agent is selected and we can navigate to its settings.
-					// Attempt to click the first agent to ensure context, then options, then settings.
-					const agentButton = document.querySelector(
-						'[data-tour-tag="agent-list-item-button-0"]',
-					);
-					if (agentButton) {
-						// Check if we are already on the chat page for this agent, if not, click it.
-						// This logic might need refinement based on actual app state management.
-						// For now, we assume clicking it is safe or sets the context.
-						(agentButton as HTMLButtonElement).click();
-					}
-
+					// Back to the agent settings step: open the agent options menu. (This
+					// used to click `agent-list-item-button-0` first, a target the app no
+					// longer renders - PostHog D5.)
 					setTimeout(() => {
 						const agentOptionsButton = document.querySelector(
 							'button[data-tour-tag="agent-options-button"]',

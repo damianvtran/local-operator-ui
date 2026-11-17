@@ -145,6 +145,30 @@ globalThis.document = dom.window.document;
 globalThis.CSS = { escape: (value) => String(value) };
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 dom.window.Element.prototype.scrollIntoView = () => {};
+/*
+ * The app's tour targets, planted once (PostHog D5). `guardTourTargets` now
+ * SKIPS a step whose target is not on screen, which is what a running app with
+ * a retired target needs - but this harness renders no app, so without stand-ins
+ * every attached step would be skipped and the mechanics below (locale repaint,
+ * the palette hop) would be measured on a different step. Each tag the tour
+ * names gets a hidden element, exactly as the app renders one; the palette
+ * anchor is left to `paletteAnchorStub`, whose presence several cases vary.
+ */
+for (const [, tag] of readFileSync(
+	"src/renderer/src/features/onboarding/tour/tour-steps.ts",
+	"utf8",
+).matchAll(/data-tour-tag="([^"$]+)"/g)) {
+	if (tag === "command-palette-dialog") continue;
+	if (document.querySelector(`[data-tour-tag="${tag}"]`)) continue;
+	const stand = document.createElement(
+		tag.endsWith("button") || tag.includes("button") ? "button" : "div",
+	);
+	stand.setAttribute("data-tour-tag", tag);
+	if (tag === "view-agent-settings-menu-item")
+		stand.setAttribute("role", "menuitem");
+	stand.hidden = true;
+	document.body.appendChild(stand);
+}
 const storage = new Map();
 Object.defineProperty(globalThis, "localStorage", {
 	configurable: true,
@@ -620,7 +644,7 @@ test("an open tour follows locale changes without restarting or losing focus", a
 		);
 		assert.equal(
 			tour.steps[1].options.title,
-			mod.t("ui.onboarding.tour.agent_list.title"),
+			mod.t("ui.onboarding.tour.chat_input.title"),
 		);
 		assert.equal(
 			document.activeElement,
@@ -1591,4 +1615,52 @@ test("cancelling during the step 7 -> 8 wait keeps the tour closed", async () =>
 		await started.stop();
 		window.innerWidth = original;
 	}
+});
+
+/*
+ * PostHog D5: a step whose target is missing is SKIPPED in the direction of
+ * travel - no Shepherd "element ... was not found" console error, no centred
+ * panel pointing at nothing, no stuck tour - and the skip is reported.
+ */
+test("a step whose target is missing is skipped and reported, without a console error", async () => {
+	const target = document.querySelector(
+		'[data-tour-tag="chat-input-textarea"]',
+	);
+	assert.ok(target, "the harness planted the chat input target");
+	target.remove();
+	const errors = [];
+	const originalError = console.error;
+	console.error = (...args) => errors.push(args.join(" "));
+	const skipped = [];
+	try {
+		const tour = new mod.Shepherd.Tour({ useModalOverlay: true });
+		tour.addSteps(mod.createTourSteps((step) => skipped.push(step)));
+		tour.start();
+		await tick();
+		assert.equal(tour.getCurrentStep()?.id, "welcome");
+		tour.next();
+		await tick();
+		assert.equal(
+			tour.getCurrentStep()?.id,
+			"attachments",
+			"moved past the missing target",
+		);
+		assert.deepEqual(skipped, ["chat-input"]);
+		tour.back();
+		await tick();
+		assert.equal(
+			tour.getCurrentStep()?.id,
+			"welcome",
+			"Back skips it too, in its direction",
+		);
+		tour.cancel();
+	} finally {
+		console.error = originalError;
+		document.body.appendChild(target);
+	}
+	assert.deepEqual(
+		errors.filter((line) => line.includes("was not found")),
+		[],
+		"no Shepherd missing-element error",
+	);
 });

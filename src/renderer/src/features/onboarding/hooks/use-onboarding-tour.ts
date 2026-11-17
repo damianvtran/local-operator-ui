@@ -208,7 +208,12 @@ export const useOnboardingTour = () => {
 		}
 
 		// Resolve the copy in the language active at start (see ./tour/tour-steps).
-		const tourSteps = createTourSteps();
+		const tourSteps = createTourSteps((step) =>
+			trackProductEvent("onboarding_tour_step", {
+				step,
+				outcome: "skipped_missing_target",
+			}),
+		);
 
 		// Manage steps:
 		// If forcing (e.g., "Resume Tour" button) or if the tour isn't active (fresh start),

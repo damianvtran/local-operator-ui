@@ -31,7 +31,6 @@ import type {
 	BackendStartupCategory,
 	BackendStartupPhase,
 } from "../../../../shared/backend-startup";
-import { telemetryEnabled } from "../config/telemetry";
 import type {
 	LocalModelCheckReason,
 	LocalModelCheckResult,
@@ -74,15 +73,28 @@ type Sink = (name: string, properties: Record<string, unknown>) => void;
 const defaultSink: Sink = (name, properties) => {
 	// `__loaded` is posthog-js's own "init has run" flag: before it, a capture
 	// would build state on a client the gate may never initialise.
+	if (!launchMayReport()) return;
 	if (!(posthog as { __loaded?: boolean }).__loaded) return;
 	posthog.capture(name, properties);
 };
 
-let sink: Sink | null = telemetryEnabled ? defaultSink : null;
+/*
+ * WHY NOT `telemetryEnabled` DIRECTLY: that module reads the build config at
+ * import, and this one is imported by the onboarding tour, which tests bundle
+ * without a config. The gate is the same fact read at capture time: the bridge's
+ * explicit `true` (the half `telemetry.ts` reads from the launch) AND an
+ * initialised client - which only the gated `PostHogProvider` ever creates.
+ */
+const launchMayReport = (): boolean =>
+	typeof window !== "undefined" &&
+	(window as { api?: { telemetryEnabled?: boolean } }).api?.telemetryEnabled ===
+		true;
+
+let sink: Sink | null = defaultSink;
 
 /** Test seam: route captures to `next` (or restore the gated default). */
 export function setProductEventSink(next: Sink | null | "default"): void {
-	sink = next === "default" ? (telemetryEnabled ? defaultSink : null) : next;
+	sink = next === "default" ? defaultSink : next;
 }
 
 /** Report one product event. A no-op when this launch may not report. */
