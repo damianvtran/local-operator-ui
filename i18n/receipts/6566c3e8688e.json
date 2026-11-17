@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Every read, render and verdict in this receipt ran in session ac4e9342ba9d on anthropic/claude-opus-5-5 (session model header); no fallback observed.",
+  "fallback": "none",
+  "independence": "Fresh i18n-auditor instance on team lopdev (if-au-zh-CN); not the translator session; no catalogue edits; no MT service used.",
+  "instance": "6566c3e8688e",
+  "session": "ac4e9342ba9d",
+  "locale": "zh-CN",
+  "branch": "feat/i18n-identity-footer",
+  "head": "fdf96a7e2e986f4ccef207fa28ee7da7a98ee1f6",
+  "head_note": "zh-CN catalogue bytes audited are UNCOMMITTED working-tree files on top of HEAD (git diff: +18/-0 over three files).",
+  "date": "2026-11-17",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "scope": "18 keys added by the English commit: ui.chat.header_identity.{footer_all_agents,footer_all_teams,footer_match_agents,footer_match_teams,footer_partial_agents,footer_partial_teams,no_settable_typed,no_settable,cannot_take_seat,needs_delegating_profile,team_led_by_manager,agent_seat_closed_title,its_manager_label,switch_team_failed,switch_agent_failed}, ui.chat.canonical.transcript.took_duration, ui.chat.slash.arg.{kind_role,kind_specialist}. LLM audit, not a native-speaker review.",
+  "verified": [
+    "git diff -- src/i18n/catalogues/zh-CN/: exactly 18 added lines, 0 removed (ui.chat 15, ui.chat.canonical 1, ui.chat.slash 2)",
+    "JSON parses for all three zh-CN files",
+    "@formatjs/icu-messageformat-parser parses all 18; argument names/types identical to English",
+    "Intl.PluralRules('zh-CN') categories = [other]; all 6 plural messages carry other only",
+    "intl-messageformat renders counts 0..1000000 with Latin ungrouped digits (e.g. 共1000000个智能体；滚动查看或输入筛选)",
+    "node --test locale-parity, catalogue-locale, took-duration-key, context-parity: 62 pass, 0 fail"
+  ],
+  "namespaces": {
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "delta_keys_audited": ["ui.chat.header_identity.footer_all_agents","ui.chat.header_identity.footer_all_teams","ui.chat.header_identity.footer_match_agents","ui.chat.header_identity.footer_match_teams","ui.chat.header_identity.footer_partial_agents","ui.chat.header_identity.footer_partial_teams","ui.chat.header_identity.no_settable_typed","ui.chat.header_identity.no_settable","ui.chat.header_identity.cannot_take_seat","ui.chat.header_identity.needs_delegating_profile","ui.chat.header_identity.team_led_by_manager","ui.chat.header_identity.agent_seat_closed_title","ui.chat.header_identity.its_manager_label","ui.chat.header_identity.switch_team_failed","ui.chat.header_identity.switch_agent_failed"],
+      "sha256": {
+        "zh-CN": "07c2f6cae3e44c4b1169ea83026d3e8449afc9e605e857e55bdaebe481effb85",
+        "en": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a"
+      },
+      "context_sha256": "6d5689ad63e462ba13be05fc16e9d45d2e60aa2d592b9cba0feb8ab456753d33",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.json",
+        "target": "src/i18n/catalogues/zh-CN/ui.chat.json",
+        "context": "src/i18n/catalogues/en/ui.chat.context.json"
+      },
+      "findings": [
+        {"id": "ZH-1", "severity": "MINOR", "key": "ui.chat.header_identity.no_settable_typed", "note": "Renders 没有可担任此席位的配置；清空搜索或切换团队。 English 'here' dropped: reads as no profile at all, yet offers clearing the search; bare imperatives read like button labels. Suggest 当前结果中没有可担任此席位的配置；可清空搜索或切换团队。"},
+        {"id": "ZH-2", "severity": "MINOR", "key": "ui.chat.header_identity.no_settable", "note": "Renders 没有可担任此席位的配置；切换团队。 Bare 切换团队 after ； reads as a command label. Parallel to ZH-1 suggest 没有可担任此席位的配置；可切换团队。"},
+        {"id": "ZH-3", "severity": "MINOR", "key": "ui.chat.header_identity.its_manager_label", "note": "Chip renders 其管理者 (4 chars, 8 cells, fits ~14). Standalone 其 has no antecedent in a chip and is literary; a calque of 'its'. Suggest 团队管理者 (5 chars, 10 cells)."},
+        {"id": "ZH-4", "severity": "NIT", "key": "ui.chat.header_identity.footer_match_agents", "note": "Renders 12个智能体匹配; grammatical but slightly translated. Optional 匹配到12个智能体 (teams twin footer_match_teams: 匹配到12个团队)."}
+      ]
+    },
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "result": "clean",
+      "delta_keys_audited": ["ui.chat.canonical.transcript.took_duration"],
+      "sha256": {
+        "zh-CN": "a03ab176aaa6cd54664b07af555d3292ee2de055f424faa17fb942344e1a52d0",
+        "en": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49"
+      },
+      "context_sha256": "883ff56261f5b79b63322d3a34f914ce2459a5ff4280336089c183ae7e4273ec",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "target": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "findings": []
+    },
+    "ui.chat.slash": {
+      "namespace": "ui.chat.slash",
+      "status": "passed",
+      "result": "clean",
+      "delta_keys_audited": ["ui.chat.slash.arg.kind_role","ui.chat.slash.arg.kind_specialist"],
+      "sha256": {
+        "zh-CN": "a1cf13fbd8b1e0de74a54dde5e7d5a7165d8e7972779550d46fbcee9251fba22",
+        "en": "07ce26b0ac3f051f1fe3704f4d13f0e6cfd9bd1d4482fed6615a39ff1daf8710"
+      },
+      "context_sha256": "9806ae2b7ebeb26b021e654ebd651ba44d54cb5a92e69f018fae92ae79581ae7",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.slash.json",
+        "target": "src/i18n/catalogues/zh-CN/ui.chat.slash.json",
+        "context": "src/i18n/catalogues/en/ui.chat.slash.context.json"
+      },
+      "findings": []
+    }
+  }
+}
