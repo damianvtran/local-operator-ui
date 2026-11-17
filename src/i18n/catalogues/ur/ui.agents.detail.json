@@ -74,5 +74,9 @@
 	"ui.agents.detail.create.error_name_required": "ایجنٹ کا نام درج کریں۔",
 	"ui.agents.detail.create.error_name_taken": "“{name}” نام کا ایجنٹ پہلے سے موجود ہے۔ کوئی اور نام چنیں، یا موجودہ ایجنٹ کھول کر اس کا نام بدل دیں۔",
 	"ui.agents.detail.create.title_duplicate": "نئے ایجنٹ کے طور پر نقل بنائیں",
-	"ui.agents.detail.create.title_new": "نیا ایجنٹ"
+	"ui.agents.detail.create.title_new": "نیا ایجنٹ",
+	"ui.agents.detail.edit.error_generic": "ایجنٹ محفوظ نہیں کیا جا سکا۔",
+	"ui.agents.detail.tools.error_grammar": "ٹول کے نام میں صرف حروف، ہندسے، نقطہ (.)، انڈر اسکور (_)، ہائفن (-) یا کولن (:) ہو سکتے ہیں۔",
+	"ui.agents.detail.tools.error_duplicate": "یہ ٹول پہلے سے درج ہے۔",
+	"ui.agents.detail.ask_change_prefill": "“{name}” نام کے ایجنٹ میں تبدیلی کریں: "
 }

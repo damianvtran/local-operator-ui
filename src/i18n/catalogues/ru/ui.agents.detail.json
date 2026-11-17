@@ -74,5 +74,9 @@
 	"ui.agents.detail.create.error_name_required": "Укажите название агента.",
 	"ui.agents.detail.create.error_name_taken": "Агент «{name}» уже существует. Выберите другое название или откройте существующего агента, чтобы изменить его.",
 	"ui.agents.detail.create.title_duplicate": "Дублирование агента",
-	"ui.agents.detail.create.title_new": "Новый агент"
+	"ui.agents.detail.create.title_new": "Новый агент",
+	"ui.agents.detail.edit.error_generic": "Не удалось сохранить агента.",
+	"ui.agents.detail.tools.error_grammar": "В именах инструментов допустимы буквы, цифры, точка, подчёркивание, дефис и двоеточие.",
+	"ui.agents.detail.tools.error_duplicate": "Этот инструмент уже есть в списке.",
+	"ui.agents.detail.ask_change_prefill": "Измените агента «{name}»: "
 }

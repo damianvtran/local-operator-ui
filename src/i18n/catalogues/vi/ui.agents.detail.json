@@ -74,5 +74,9 @@
 	"ui.agents.detail.create.error_name_required": "Hãy đặt tên cho tác nhân.",
 	"ui.agents.detail.create.error_name_taken": "Đã có tác nhân tên “{name}”. Hãy chọn tên khác, hoặc mở tác nhân hiện có để đổi tên.",
 	"ui.agents.detail.create.title_duplicate": "Nhân bản thành tác nhân mới",
-	"ui.agents.detail.create.title_new": "Tác nhân mới"
+	"ui.agents.detail.create.title_new": "Tác nhân mới",
+	"ui.agents.detail.edit.error_generic": "Không thể lưu tác nhân.",
+	"ui.agents.detail.tools.error_grammar": "Tên công cụ chỉ gồm chữ cái, chữ số, dấu chấm, dấu gạch dưới, dấu gạch nối hoặc dấu hai chấm.",
+	"ui.agents.detail.tools.error_duplicate": "Công cụ này đã có trong danh sách.",
+	"ui.agents.detail.ask_change_prefill": "Thay đổi tác nhân “{name}”: "
 }
