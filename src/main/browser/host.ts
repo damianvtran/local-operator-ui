@@ -965,6 +965,12 @@ export class BrowserHost implements BrowserActionContext {
 	 * Add `opened_tab: true` to an `allowed` access answer when the operator's
 	 * Allow opened the page for this requester and that tab is still waiting.
 	 *
+	 * Also to a `pending` answer that opens on approval: a re-request after the
+	 * `once` grant lapsed, while the operator's signed-in page is still open. A
+	 * re-approval brings that same tab back (`openApprovedRequest`), so the session
+	 * can tell the operator they need not sign in again. Not on an opted-out
+	 * request, whose Allow opens (and brings back) nothing.
+	 *
 	 * Additive and handle-free on purpose: the session learns that a page is open
 	 * for the operator (so it can say "sign in there, then reply" instead of
 	 * opening a second tab), but no capability crosses until its own `open` picks
@@ -975,7 +981,8 @@ export class BrowserHost implements BrowserActionContext {
 		requester: string,
 	): Record<string, unknown> {
 		if (
-			result.state === "allowed" &&
+			(result.state === "allowed" ||
+				(result.state === "pending" && result.opens_on_approval === true)) &&
 			typeof result.origin === "string" &&
 			this.registry.approvalPickupTab(requester, result.origin, Date.now())
 		)
@@ -2285,6 +2292,12 @@ export class BrowserHost implements BrowserActionContext {
 		return this.chromeState();
 	}
 
+	/** `BrowserActionContext.prepareAgent`: the action-side hand-over (the approval
+	 * pickup) runs the same preparation `handOver` below does. */
+	prepareAgent(record: TabRecord): void {
+		this.pageControls.prepareAgent(record);
+	}
+
 	/** Hand a user tab to a session, minting the capability. The RENDERER never
 	 * sees the nonce: it travels to the session through `tabs`, which is what keeps
 	 * this the one authority transfer rather than an exposure (design 6.3, 11.7). */
@@ -2380,6 +2393,7 @@ export class BrowserHost implements BrowserActionContext {
 		// The error's CODE only, never its message: Electron's `loadURL` rejection
 		// embeds the URL it was loading, which is exactly what `[URL omitted]` keeps
 		// out of the log.
+		let created: TabRecord | null = null;
 		const fail = (error: unknown) => {
 			const code =
 				error && typeof error === "object" && "code" in error
@@ -2387,6 +2401,19 @@ export class BrowserHost implements BrowserActionContext {
 					: error instanceof Error
 						? error.name
 						: "unknown";
+			// `loadURL` rejects with ERR_ABORTED when the page replaces its own first
+			// navigation (an SPA or identity-provider redirect before load). The tab
+			// is open and still marked, so this is not a failure to report; only the
+			// strip refresh `createUserTab` skipped is owed (review round 1, R3).
+			if (
+				code === "ERR_ABORTED" &&
+				created &&
+				this.registry.approvalPickupTab(requester, origin, Date.now()) ===
+					created
+			) {
+				this.onChanged();
+				return;
+			}
 			this.log(
 				`[browser] could not open the approved page on ${origin} for ${requester} [URL omitted]: ${code}`,
 			);
@@ -2413,6 +2440,7 @@ export class BrowserHost implements BrowserActionContext {
 			this.createUserTab(sessionIdOf(requester), url.href, (record) => {
 				// Marked synchronously at creation, before the first await, so a pickup
 				// or an `await_access` that races the page load already sees it.
+				created = record;
 				record.approvalPickup = pickup;
 			}).catch(fail);
 		} catch (error) {

@@ -1,3 +1,4 @@
+import type { ApprovalStore } from "../approvals";
 import { BrowserHostError } from "../errors";
 import {
 	MAX_AGENT_TABS,
@@ -93,7 +94,7 @@ export async function open(
 		const adopted = await adoptApprovalPickup(ctx, params, requester, url);
 		if (adopted) return adopted;
 	}
-	const admission = url ? ctx.approvals.admit(url, requester) : null;
+	const admission = url ? admitFlaggingWaitingTab(ctx, url, requester) : null;
 	const approved =
 		admission?.approved ??
 		((candidate: URL) => ctx.approvals.originAllowed(candidate));
@@ -240,7 +241,26 @@ async function adoptApprovalPickup(
 	}
 	if (current.origin !== url.origin) return null;
 	ctx.registry.assertAgentCapacity();
-	const permission = ctx.approvals.admit(current, requester);
+	let permission: ReturnType<ApprovalStore["admit"]>;
+	try {
+		permission = ctx.approvals.admit(current, requester);
+	} catch (error) {
+		// A refusal here (the `once` grant lapsed while the 15-minute marker is still
+		// live, it was spent elsewhere, or it was revoked) must NOT surface: its
+		// `data.url` would be the operator's CURRENT URL, which can be a post-login
+		// callback carrying a code in its query. Falling through lets `open` refuse
+		// with the URL the agent itself asked for (review round 1, R1).
+		if (
+			error instanceof BrowserHostError &&
+			error.code === "origin_not_allowed"
+		)
+			return null;
+		throw error;
+	}
+	// The same preparation the app's own hand-over runs BEFORE a capability
+	// transfer (`BrowserHost.handOver`): the operator's find bar and zoom on the
+	// sign-in page do not travel to the agent (review round 1, R2).
+	ctx.prepareAgent?.(record);
 	ctx.registry.handOver(record.tabId, requester);
 	// `handOver` clears the marker and the allocation; the allocation is set after
 	// it so the ownership journal's `owner_*` methods find this tab.
@@ -266,6 +286,35 @@ async function adoptApprovalPickup(
 		adopted: "approval",
 		requested_url: url.href,
 	});
+}
+
+/**
+ * `open`'s single admission, with one addition to its refusal: `opened_tab: true`
+ * when the Allow already opened a page for this requester and origin and that
+ * tab is still waiting (typically the `once` grant lapsed before the agent came
+ * back). The session then tells the operator that approving again brings that
+ * same page back, so they need not sign in again. Additive; the refusal's `url`
+ * stays the one the agent asked for.
+ */
+function admitFlaggingWaitingTab(
+	ctx: BrowserActionContext,
+	url: URL,
+	requester: string,
+): ReturnType<ApprovalStore["admit"]> {
+	try {
+		return ctx.approvals.admit(url, requester);
+	} catch (error) {
+		if (
+			error instanceof BrowserHostError &&
+			error.code === "origin_not_allowed" &&
+			ctx.registry.approvalPickupTab(requester, url.origin, Date.now())
+		)
+			throw new BrowserHostError(error.code, error.message, {
+				...error.data,
+				opened_tab: true,
+			});
+		throw error;
+	}
 }
 
 /**

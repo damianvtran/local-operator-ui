@@ -13655,6 +13655,12 @@ test("approval pickup: a re-approval brings back the waiting tab instead of open
 	await host.newTab(null);
 	assert.notEqual(registry.activeTabId, tab.tabId);
 	clock.now += 11 * 60_000;
+	// The operator finished on a post-login callback whose query carries a code.
+	tab.view.webContents.url =
+		"https://approved.example/callback?code=OPERATOR-SECRET";
+	// R1: the pickup's own refusal falls through, so the agent is refused with the
+	// URL it asked for (never the operator's callback URL) and is told the page is
+	// still waiting (U1).
 	await assert.rejects(
 		() =>
 			host.dispatch(
@@ -13662,9 +13668,32 @@ test("approval pickup: a re-approval brings back the waiting tab instead of open
 				{ requester: "session:alice", url: PICKUP_URL },
 				"late",
 			),
-		{ code: "origin_not_allowed" },
+		(error) =>
+			error.code === "origin_not_allowed" &&
+			error.data.url === PICKUP_URL &&
+			error.data.opened_tab === true &&
+			!JSON.stringify(error.data).includes("OPERATOR-SECRET"),
 	);
-	host.respondToConsent(await raisePickup(host), "once");
+	assert.equal(tab.owner, "user", "the refused pickup left the tab alone");
+	assert.ok(tab.approvalPickup, "and its marker live");
+	// U1: the re-request's pending answer says the page is already open.
+	const pending = await host.dispatch(
+		"request_access",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"re-request",
+	);
+	assert.equal(pending.state, "pending");
+	assert.equal(pending.opens_on_approval, true);
+	assert.equal(pending.opened_tab, true);
+	// Another session's pending request for the same origin has no tab waiting.
+	const bobs = await host.dispatch(
+		"request_access",
+		{ requester: "session:bob", url: PICKUP_URL },
+		"bob-request",
+	);
+	assert.equal(bobs.state, "pending");
+	assert.equal(bobs.opened_tab, undefined);
+	host.respondToConsent(pending.entry_id, "once");
 	assert.equal(registry.count(), 2, "no second sign-in tab");
 	assert.equal(
 		registry.activeTabId,
@@ -13678,6 +13707,79 @@ test("approval pickup: a re-approval brings back the waiting tab instead of open
 	);
 	assert.equal(opened.tab, surfaceToken(tab));
 	assert.equal(opened.adopted, "approval");
+});
+
+test("approval pickup: an opted-out re-request is not told a page will come back", async () => {
+	const { approvals, clock } = clockedApprovals();
+	const { host } = makeHost({ approvals });
+	host.respondToConsent(await raisePickup(host), "once");
+	clock.now += 11 * 60_000;
+	// The waiting tab is live, but this request's Allow opens (and brings back)
+	// nothing, so the pending answer must not promise it.
+	const optedOut = await host.dispatch(
+		"request_access",
+		{ requester: "session:alice", url: PICKUP_URL, open_on_approval: false },
+		"opt-out",
+	);
+	assert.equal(optedOut.state, "pending");
+	assert.equal(optedOut.opens_on_approval, undefined);
+	assert.equal(optedOut.opened_tab, undefined);
+});
+
+test("approval pickup: the operator's find bar and zoom are reset before the tab passes to the agent", async () => {
+	const { host, registry } = makeHost();
+	host.respondToConsent(await raisePickup(host), "once");
+	const [tab] = registry.list();
+	const calls = [];
+	const prepare = host.pageControls.prepareAgent.bind(host.pageControls);
+	host.pageControls.prepareAgent = (record) => {
+		// Recorded with the owner AT THE CALL: the app's own hand-over prepares
+		// while the tab is still the operator's, before `registry.handOver`.
+		calls.push([record.tabId, record.owner, record.nonce]);
+		prepare(record);
+	};
+	const opened = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"pickup",
+	);
+	assert.equal(opened.adopted, "approval");
+	assert.deepEqual(calls, [[tab.tabId, "user", null]]);
+});
+
+test("approval pickup: a redirect that aborts the first load is not logged as a failed open", async () => {
+	const logs = [];
+	const { host, registry } = makeHost({ log: (m) => logs.push(m) });
+	const create = registry.create.bind(registry);
+	registry.create = (options) => {
+		const record = create(options);
+		record.view.webContents.loadURL = async (url) => {
+			// The page replaced its own navigation before load (an IdP redirect).
+			record.view.webContents.url = "https://approved.example/sso";
+			throw Object.assign(new Error(`ERR_ABORTED (-3) loading '${url}'`), {
+				code: "ERR_ABORTED",
+				errno: -3,
+			});
+		};
+		return record;
+	};
+	const answer = host.respondToConsent(await raisePickup(host), "once");
+	assert.equal(answer.state, "allowed");
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(
+		logs.filter((m) => m.includes("could not open the approved page")).length,
+		0,
+		"the page did open",
+	);
+	const [tab] = registry.list();
+	assert.ok(tab.approvalPickup, "still waiting for the requester");
+	const opened = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"pickup",
+	);
+	assert.equal(opened.adopted, "approval");
+	assert.equal(opened.tab, surfaceToken(tab));
 });
 
 test("approval pickup: the cap is checked before admission, so a full host does not spend a once grant", async () => {
@@ -13749,7 +13851,8 @@ test("approval pickup: the refusal and the pending answer advertise it, only for
 		(error) =>
 			error.code === "origin_not_allowed" &&
 			error.data.url === PICKUP_URL &&
-			error.data.opens_on_approval === true,
+			error.data.opens_on_approval === true &&
+			error.data.opened_tab === undefined,
 	);
 	const pending = await host.dispatch(
 		"request_access",
@@ -13757,6 +13860,7 @@ test("approval pickup: the refusal and the pending answer advertise it, only for
 		"r",
 	);
 	assert.equal(pending.opens_on_approval, true);
+	assert.equal(pending.opened_tab, undefined, "no tab is waiting yet");
 	// A `call:*` requester (no session) can never pick a tab up: it is not told one
 	// opens, and its Allow opens nothing.
 	await assert.rejects(
