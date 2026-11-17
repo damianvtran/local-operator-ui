@@ -1,0 +1,41 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "6c1c943d8edd",
+  "locale": "vi",
+  "status": "passed",
+  "audit_date": "2026-11-17",
+  "translator_session_label": "prB1-tr-vi",
+  "independent_from_translator_session": true,
+  "actual_model_source": "session system prompt (Model: anthropic/claude-opus-5-5); no fallback observed",
+  "scope": "24 keys added by en commit 88d2ad3b7d (6e4ab9403c..88d2ad3b7d): ui.chat.canonical.working_line.* (10), ui.chat.canonical.link_actions.* (11), ui.chat.attachments.broken_* (3); every other key verified unchanged vs base",
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "key_count": 21,
+      "sha256": {
+        "vi": "ff746954df064527d810fb3965065268d043a85edad1446f40cf85d40033e3fd",
+        "en": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5"
+      },
+      "findings": [
+        {"id": "M1", "severity": "MINOR", "key": "ui.chat.canonical.link_actions.too_large_title", "current": "Quá lớn để xem trước trong Canvas, nên Mở sẽ dùng ứng dụng mặc định", "problem": "'Mở' names the Open button but mid-sentence reads as a bare verb ('so open will use…'); the button reference is unclear", "suggested": "Quá lớn để xem trước trong Canvas, nên nút Mở sẽ dùng ứng dụng mặc định"},
+        {"id": "M2", "severity": "MINOR", "key": "ui.chat.canonical.link_actions.open_in_canvas", "current": "Mở trong Canvas", "problem": "Pre-existing vi catalogue split for the canvas pane: Latin 'Canvas' in 19 values (15 pane-sense pre-existing + 3 new + 1 theme text), lowercase 'canvas' 3, 'khung vẽ' 9 keys/11 occurrences (rail, header menu, palette, mesh). New keys (open_in_canvas, too_large_note, too_large_title) follow the majority and the same-file sibling supplement.file_actions.open_in_canvas; no change to these keys; programme glossary should record the vi call", "suggested": "no change here; settle 'Canvas' vs 'khung vẽ' in glossary/vi style guide"},
+        {"id": "N1", "severity": "NIT", "key": "ui.chat.canonical.link_actions.missing_file", "current": "Không có tệp: {path}", "problem": "colon-label form reads 'No file: …'; a locative reads more naturally and still fits the ~16-char frame (17)", "suggested": "Không có tệp tại {path}"}
+      ]
+    },
+    "ui.chat.attachments": {
+      "status": "passed",
+      "key_count": 3,
+      "sha256": {
+        "vi": "571a42951e76433370682d32c9e692d98ba098a407f72985f10fac642cfc7f2e",
+        "en": "1a5709a63c44655e0d96ec39ef87ddfd4715a811b6de2f29e851080a10dd42e7"
+      },
+      "findings": []
+    }
+  },
+  "context_sidecars_sha256": {
+    "en/ui.chat.canonical.context.json": "a67abe26c757c3a5b514136d61d2223b4a17521b7b5ede4f815a7771b3a4b420",
+    "en/ui.chat.attachments.context.json": "d10bc98fc6f0b3337dff3b08f06798d87eb1cdd3fa15c4a85e4fcedf05559c3f"
+  },
+  "limits": "no rendered UI frames; not a native-speaker review; ICU rendered with repo node_modules intl-messageformat (vi plural categories: other)"
+}

@@ -25,5 +25,8 @@
 	"ui.chat.attachments.owner_unreachable": "इसे रखने वाले डिवाइस से प्राप्त नहीं की जा सकी।",
 	"ui.chat.attachments.retry_fetch": "फिर से कोशिश करें",
 	"ui.chat.attachments.not_viewable_detail": "फ़ाइल {name} देखी नहीं जा सकती (शायद अधूरी हो, हटा दी गई हो या कहीं और ले जाई गई हो)",
-	"ui.chat.attachments.not_viewable_too_large": "फ़ाइल {name} पूर्वावलोकन के लिए बहुत बड़ी है"
+	"ui.chat.attachments.not_viewable_too_large": "फ़ाइल {name} पूर्वावलोकन के लिए बहुत बड़ी है",
+	"ui.chat.attachments.broken_moved": "{name} को दिखाया नहीं जा सका। शायद इसे कहीं और ले जाया गया हो, इसका नाम बदल दिया गया हो या इसे हटा दिया गया हो।",
+	"ui.chat.attachments.broken_unavailable": "{name} को दिखाया नहीं जा सका। सहेजी गई प्रति इस ऐप के लिए उपलब्ध नहीं है।",
+	"ui.chat.attachments.broken_media_unavailable": "{name} को चलाया नहीं जा सका। सहेजी गई प्रति इस ऐप के लिए उपलब्ध नहीं है।"
 }

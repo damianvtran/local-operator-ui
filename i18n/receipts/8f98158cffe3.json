@@ -1,0 +1,65 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "8f98158cffe3",
+ "locale": "ru",
+ "round": 2,
+ "actual_model_source": "served model named in this session's system prompt (anthropic/claude-opus-5-5); no fallback observed",
+ "independent_from_translator_session": true,
+ "translator_session_label": "prB1-tr-ru",
+ "translator_model": "openai/gpt-6.1-sol",
+ "audit_date": "2026-11-17",
+ "task": "prB1-au-ru round 2",
+ "previous_receipt": {
+  "path": "audit-ru-r1.json",
+  "sha256": "a90ff2ed89ead96439688fe81c26a98767fd7b4a720fef19dc3dc4545054d226"
+ },
+ "scope": "24 new keys (21 ui.chat.canonical, 3 ui.chat.attachments) on final translator bytes, worktree i18n-canonical-transcript @ 88d2ad3b7d + uncommitted edits",
+ "status": "passed",
+ "dispositions": {
+  "RU-B1-M1": "fixed — Открыть на холсте / Слишком большой для холста (26 chars) / title; 0 Latin Canvas in new keys",
+  "RU-B1-m1": "fixed — =1 arms added, one/few/many/other kept; rendered 0..25",
+  "RU-B1-n1": "fixed — выполняется {tool}",
+  "RU-B1-n2": "fixed — Сохранённая копия здесь недоступна."
+ },
+ "namespaces": {
+  "ui.chat.canonical": {
+   "status": "passed",
+   "key_count": 21,
+   "sha256": {
+    "target": "ca6151e80c5ef734db81f71cb91a2503243533901d0b73ffe0805af8efe40766",
+    "source": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5"
+   },
+   "context_sha256": "a67abe26c757c3a5b514136d61d2223b4a17521b7b5ede4f815a7771b3a4b420",
+   "findings": [
+    {
+     "id": "RU-B1-I1",
+     "severity": "INFO",
+     "key": "ui.chat.canonical.supplement.file_actions.open_in_canvas",
+     "problem": "pre-existing, out of scope: this key and ui.common.file_actions.show_in_canvas still say Latin 'Canvas' (2 values); established ru name is холст",
+     "suggested": "Открыть на холсте / Показать на холсте in a follow-up"
+    }
+   ]
+  },
+  "ui.chat.attachments": {
+   "status": "passed",
+   "key_count": 3,
+   "sha256": {
+    "target": "ed91cd38b87dbdf73710e70850b767a774a4f2aaca00b2a6f921abbe07ede489",
+    "source": "1a5709a63c44655e0d96ec39ef87ddfd4715a811b6de2f29e851080a10dd42e7"
+   },
+   "context_sha256": "d10bc98fc6f0b3337dff3b08f06798d87eb1cdd3fa15c4a85e4fcedf05559c3f",
+   "findings": []
+  }
+ },
+ "checks_run": [
+  "sha256 of 4 files matched brief",
+  "check-coverage: ok",
+  "context-parity: ok",
+  "JSON parse + key set == en; +21/+3, 0 changed vs HEAD",
+  "placeholder sets == en",
+  "rg bidi controls: no match",
+  "intl-messageformat ru render 0,1,2,3,5,11,21,22,25"
+ ],
+ "not_verified": "no rendered UI frame; no native-speaker review (model judgement only)"
+}

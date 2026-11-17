@@ -686,7 +686,7 @@ is drawn:
   sentence — a claim the review round was right to refuse. The failure copy is
   now honest in its own right rather than as a substitute for the route: a digest
   row that cannot be read says its stored copy is not available to this reader
-  (`ATTACHMENT_UNAVAILABLE_COPY` in `attachment-frame.tsx`), because the two
+  (`kind="unavailable"` of `BrokenAttachment` in `attachment-frame.tsx`), because the two
   causes a 404 can have — an entry the store never wrote and one it pruned — are
   indistinguishable from here, and the file-path sentence belongs to the legacy
   view that really does read paths.

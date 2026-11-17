@@ -211,7 +211,7 @@ import {
 } from "./image-gen-card-model";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
-import { imageLabel, soundLabel } from "./media-label";
+import { attachedImageLabel, imageLabel, soundLabel } from "./media-label";
 import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
 import {
@@ -1071,9 +1071,7 @@ const userImageLabel = (
 	image: TranscriptImage,
 	index: number,
 	count: number,
-): string =>
-	image.name ??
-	(count === 1 ? "Attached image" : `Attached image ${index + 1}`);
+): string => attachedImageLabel(image.name, index, count);
 
 /**
  * The tool row's rule, which differs from the user row's in the NOUN only: an

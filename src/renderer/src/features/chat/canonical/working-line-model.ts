@@ -63,8 +63,44 @@ import type { TranscriptRecord } from "./transcript-reducer";
 import { paintsSomething } from "./transcript-rows";
 import { isCompletionMarker } from "./turn-segments";
 
+/**
+ * WHAT THE WORKING LINE SAYS, AS DATA RATHER THAN ENGLISH.
+ *
+ * The ladder used to build its sentence here (`running ${n} tools`), which made
+ * the transcript's one live line print English in every language: this file had
+ * no i18n import, and the string ratchet cannot see a template literal. The
+ * ladder now answers WHICH rung and with WHAT ARGUMENTS, and the one place that
+ * turns that into words is `workingActivityText` (`working-line-copy.ts`), called
+ * by `WorkingLine` at render under `useI18nLocale()` so a live language switch
+ * repaints a line that is already on screen. Two consequences are the point:
+ *
+ * - the value is stable under a locale change, so everything that compares or
+ *   memoises it (the clock's phase key, the tests' deep equality, the composer's
+ *   hint) is locale-independent; and
+ * - nothing downstream may read English back out of it. The child-run reader's
+ *   classification, which used to compare the label to the words `thinking` and
+ *   `responding`, reads `kind` instead.
+ *
+ * `text` is the ONE arm that carries words, and they are not ours to key: the
+ * model's own stated intent for a single running call, or a subagent relay's
+ * progress string, shown exactly as written.
+ */
+export type WorkingActivity =
+	| { kind: "thinking" }
+	| { kind: "responding" }
+	| { kind: "waiting_for_agent" }
+	| { kind: "starting_session" }
+	| { kind: "compacting" }
+	| { kind: "stopping" }
+	/** `tool` is the display name, a machine identifier that stays as written. */
+	| { kind: "running_tool"; tool: string }
+	| { kind: "running_tools"; count: number }
+	| { kind: "composing"; count: number }
+	| { kind: "queued"; count: number }
+	| { kind: "text"; text: string };
+
 export type WorkingLineState = {
-	activity: string;
+	activity: WorkingActivity;
 	phase: string;
 	/**
 	 * When this PHASE began, when the state knows it.
@@ -99,7 +135,9 @@ export type WorkingLineState = {
  * harness reporting. It states the waiting and nothing else; see the file
  * comment for why it does not name the runtime or the model.
  */
-export const ADMITTED_SEND_ACTIVITY = "waiting for the agent";
+export const ADMITTED_SEND_ACTIVITY: WorkingActivity = {
+	kind: "waiting_for_agent",
+};
 
 /**
  * The label for a send whose SESSION does not exist yet - the create hop.
@@ -118,7 +156,9 @@ export const ADMITTED_SEND_ACTIVITY = "waiting for the agent";
  * comment above calls out for every label change in this row, and the reason
  * the two labels cannot be made different phases that happen to read alike.
  */
-export const STARTING_SESSION_ACTIVITY = "starting the session";
+export const STARTING_SESSION_ACTIVITY: WorkingActivity = {
+	kind: "starting_session",
+};
 
 /**
  * The label for a compaction pass in flight, and the phase its clock runs in.
@@ -149,7 +189,7 @@ export const STARTING_SESSION_ACTIVITY = "starting the session";
  * rejected because it makes the row's duration report the TURN while claiming
  * to report the pass.
  */
-export const COMPACTING_ACTIVITY = "compacting context";
+export const COMPACTING_ACTIVITY: WorkingActivity = { kind: "compacting" };
 
 /**
  * The label for the window between a Stop press and its answer, and the reason
@@ -173,7 +213,7 @@ export const COMPACTING_ACTIVITY = "compacting context";
  * nor jumps if the receipt turns out to say nothing was running. The copy is
  * provisional, pending the design round.
  */
-export const STOPPING_ACTIVITY = "stopping the turn";
+export const STOPPING_ACTIVITY: WorkingActivity = { kind: "stopping" };
 
 /**
  * The send a pane has admitted, read from the store's own draft row.
@@ -694,11 +734,18 @@ function deriveLiveWorkingLine({
 			// one call's intent as the whole batch's activity is a claim the rows
 			// above it immediately contradict, and the count is the one fact this
 			// line has that appears nowhere else on screen.
-			const activity =
+			// The model's own stated intent, when the single call has one, is shown as
+			// written and never keyed; `!= null` is the old `??` (null and undefined both fall through).
+			const intent = runningTools.length === 1 ? runningTools[0].intent : null;
+			const activity: WorkingActivity =
 				runningTools.length === 1
-					? (runningTools[0].intent ??
-						`running ${displayName(runningTools[0].toolName)}`)
-					: `running ${runningTools.length} tools`;
+					? intent != null
+						? { kind: "text", text: intent }
+						: {
+								kind: "running_tool",
+								tool: displayName(runningTools[0].toolName),
+							}
+					: { kind: "running_tools", count: runningTools.length };
 			/*
 			 * A running batch is measured from the OLDEST running card's own start,
 			 * never from the folded phase edge: the phase restarts on every call
@@ -735,7 +782,7 @@ function deriveLiveWorkingLine({
 			// `composing wr` reads as a typo rather than as a state.
 			const since = foldedSeed("composing");
 			return {
-				activity: `composing ${composing === 1 ? "a call" : `${composing} calls`}`,
+				activity: { kind: "composing", count: composing },
 				phase: "composing",
 				...(since === null ? {} : { startedAt: since }),
 			};
@@ -760,7 +807,7 @@ function deriveLiveWorkingLine({
 		).length;
 		if (queued > 0) {
 			return {
-				activity: `waiting to run ${queued === 1 ? "a call" : `${queued} calls`}`,
+				activity: { kind: "queued", count: queued },
 				phase: "queued",
 				// The TUI's `clock=False` for this arm, and the reason is stated there:
 				// the dictation clock these rows carried has ENDED, the call has no
@@ -780,7 +827,7 @@ function deriveLiveWorkingLine({
 			if (tail.text) {
 				const since = foldedSeed("responding");
 				return {
-					activity: "responding",
+					activity: { kind: "responding" },
 					phase: "responding",
 					...(since === null ? {} : { startedAt: since }),
 				};
@@ -793,7 +840,7 @@ function deriveLiveWorkingLine({
 		// resumed start counting from its own arrival.
 		const since = foldedSeed("thinking");
 		return {
-			activity: "thinking",
+			activity: { kind: "thinking" },
 			phase: "thinking",
 			...(since === null ? {} : { startedAt: since }),
 		};

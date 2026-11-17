@@ -31,7 +31,11 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
-			'export { deriveWorkingLine } from "./src/renderer/src/features/chat/canonical/working-line-model";',
+			// The ladder answers a rung plus arguments now; this suite pins its ENGLISH,
+			// so it reads the state through the shipped resolver (see the shim's note).
+			'import { deriveWorkingLine as rawDeriveWorkingLine } from "./src/renderer/src/features/chat/canonical/working-line-model";',
+			'import { englishState } from "./scripts/working-line-english";',
+			"export const deriveWorkingLine = (...args) => englishState(rawDeriveWorkingLine(...args));",
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -39,8 +43,11 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	alias: {
+		/*
+		 * The renderer's own `@shared/i18n` (the barrel that carries `isolateLtr`),
+		 * not the core catalogue: the working line's resolver imports it.
+		 */
 		"@shared": "./src/renderer/src/shared",
-		"@shared/i18n": "./src/i18n",
 	},
 	write: false,
 });

@@ -25,5 +25,8 @@
 	"ui.chat.attachments.owner_unreachable": "无法从存有它的设备获取。",
 	"ui.chat.attachments.retry_fetch": "重试",
 	"ui.chat.attachments.not_viewable_detail": "无法查看{name}（文件可能不完整、已被删除或已被移动）",
-	"ui.chat.attachments.not_viewable_too_large": "{name}过大，无法预览"
+	"ui.chat.attachments.not_viewable_too_large": "{name}过大，无法预览",
+	"ui.chat.attachments.broken_moved": "无法显示{name}。文件可能已被移动、重命名或删除。",
+	"ui.chat.attachments.broken_unavailable": "无法显示{name}。此设备上的应用无法访问保存的副本。",
+	"ui.chat.attachments.broken_media_unavailable": "无法播放{name}。此设备上的应用无法访问保存的副本。"
 }

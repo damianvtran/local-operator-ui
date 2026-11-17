@@ -13,7 +13,7 @@
  * that is the same argument the TUI makes for its own `▨ image unavailable`
  * receipt (`tui/widgets/image_block.py:24-29`): "the reader learns an image WAS
  * here, which is the fact the empty space would have hidden." It carries
- * `ATTACHMENT_UNAVAILABLE_COPY` rather than that component's default sentence:
+ * `kind="unavailable"` rather than that component's default sentence:
  * a canonical image is a digest in the app's own store, not a path on disk, so
  * the moved/renamed/deleted cause is one this row cannot know — see the copy's
  * own comment in `attachment-frame.tsx`.
@@ -29,7 +29,6 @@
 import { cn } from "@shared/lib/utils";
 import { useState } from "react";
 import {
-	ATTACHMENT_UNAVAILABLE_COPY,
 	AttachmentFrame,
 	BrokenAttachment,
 	PendingAttachment,
@@ -201,7 +200,7 @@ export const CanonicalImage = ({
 			<BrokenAttachment
 				name={label}
 				compact={size === "thumbnail"}
-				detail={ATTACHMENT_UNAVAILABLE_COPY}
+				kind="unavailable"
 			/>
 		);
 	}

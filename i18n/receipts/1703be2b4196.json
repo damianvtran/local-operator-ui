@@ -1,0 +1,100 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "1703be2b4196",
+  "locale": "ur",
+  "status": "passed",
+  "independent_from_translator_session": "prB1-tr-ur (openai/gpt-6.1-sol)",
+  "scope": "24 keys added by en commit 88d2ad3b7d (working_line.*, link_actions.*, attachments.broken_*); other keys checked byte-identical to HEAD",
+  "native_speaker_review": false,
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "sha256": {
+        "ur": "b0ea23cd97a1423e40bc0378cdb83b1a0795f8c1222ca1deb4f4440eadab0e3a",
+        "en": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5"
+      },
+      "findings": [
+        {
+          "id": "UR-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.working_line.compacting",
+          "current": "سیاق کی کمپریشن کر رہا",
+          "problem": "Treats کمپریشن as feminine (کی), but every other ur use is masculine (notice.compaction_not_run 'کمپریشن نہیں چلا'; TUI 'کمپریشن ... استعمال کرتا ہے'); bare سیاق vs established سیاق و سباق",
+          "suggestion": "سیاق و سباق کمپریس کر رہا (matches TUI verb کمپریس کریں) or shorter سیاق کمپریس کر رہا"
+        },
+        {
+          "id": "UR-2",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.working_line.running_tools",
+          "current": "{count_display} ٹول ... / {count_display} کالیں ...",
+          "problem": "Plural noun forms differ from the locale's own: call plural is کالز in 14 places (e.g. 'نیٹ ورک کالز' in this file), new keys use کالیں; tool plural is ٹولز (22x, incl. run_details.mcp.tool_count other arm), running_tools other arm keeps ٹول",
+          "suggestion": "other arms: {count_display} ٹولز چلا رہا / {count_display} کالز لکھ رہا / {count_display} کالز چلانے کا انتظار",
+          "keys": [
+            "ui.chat.canonical.working_line.running_tools",
+            "ui.chat.canonical.working_line.composing",
+            "ui.chat.canonical.working_line.queued"
+          ]
+        },
+        {
+          "id": "UR-3",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.working_line.running_tools",
+          "current": "{count, plural, one {...} other {...}}",
+          "problem": "English =1 arm replaced by one; the locale's existing =1 keys (fold.images_aria, fold.more_images, asks.outstanding_count, run_details.wake.more, mcp.tool_count) keep =1. No rendered difference for counts >=0 (Intl ur: -1 -> one only)",
+          "suggestion": "Keep =1 like the locale's siblings: {count, plural, =1 {...} other {...}}",
+          "keys": [
+            "ui.chat.canonical.working_line.running_tools",
+            "ui.chat.canonical.working_line.composing",
+            "ui.chat.canonical.working_line.queued"
+          ]
+        },
+        {
+          "id": "UR-4",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.link_actions.open_in_canvas",
+          "current": "Canvas (Latin)",
+          "problem": "Mixed-script surface name; consistent with locale (29 pre-existing Latin 'Canvas' pane-name uses in 12 files, 0 translated; the one کینوس is a theme description). Glossary has no canvas row",
+          "suggestion": "No change to these keys; programme glossary to record the call",
+          "keys": [
+            "ui.chat.canonical.link_actions.open_in_canvas",
+            "ui.chat.canonical.link_actions.too_large_note",
+            "ui.chat.canonical.link_actions.too_large_title"
+          ]
+        },
+        {
+          "id": "UR-N1",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.working_line.queued",
+          "current": "ایک کال چلانے کا انتظار",
+          "problem": "Nominal shape while siblings are progressive ...رہا",
+          "suggestion": "optional: ایک کال چلانے کا انتظار کر رہا"
+        },
+        {
+          "id": "UR-N2",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.link_actions.too_large_note",
+          "current": "Canvas کے پیش منظر کے لیے بہت بڑی فائل",
+          "problem": "38 chars, at the ~38-char strip budget",
+          "suggestion": "Canvas پیش منظر کے لیے بہت بڑی (29; mirrors common.errors.file_too_large)"
+        },
+        {
+          "id": "UR-N3",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.link_actions.open_in_default_app",
+          "current": "ڈیفالٹ ایپ میں کھولیں",
+          "problem": "Matches supplement sibling but not ui.canvas.file_viewer_state.open_in_default_app 'پہلے سے مقرر ایپ میں کھولیں' the context names as same meaning (pre-existing split)",
+          "suggestion": "Settle one term locale-wide; no change required here"
+        }
+      ]
+    },
+    "ui.chat.attachments": {
+      "status": "passed",
+      "sha256": {
+        "ur": "755a3f8a3a674030fb178d6c555e7fe019da0e21ff40413b2e94c3b1e5f3c773",
+        "en": "1a5709a63c44655e0d96ec39ef87ddfd4715a811b6de2f29e851080a10dd42e7"
+      },
+      "findings": []
+    }
+  }
+}

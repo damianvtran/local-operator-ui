@@ -30,6 +30,12 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/components/run-details/run-detail-model";',
+			// The child's line answers a rung plus arguments now (`WorkingActivity`); this
+			// suite pins its ENGLISH, so it reads the state through the shipped
+			// resolver. The explicit export outranks the `export *` above.
+			'import { deriveChildWorkingLine as rawDeriveChildWorkingLine } from "./src/renderer/src/features/chat/components/run-details/run-detail-model";',
+			'import { englishState } from "./scripts/working-line-english";',
+			"export const deriveChildWorkingLine = (...args) => englishState(rawDeriveChildWorkingLine(...args));",
 			'export * as fixtures from "./src/renderer/src/features/chat/components/run-details/run-details.fixtures";',
 		].join("\n"),
 		resolveDir: process.cwd(),

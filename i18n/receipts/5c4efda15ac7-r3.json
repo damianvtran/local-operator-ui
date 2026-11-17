@@ -1,0 +1,84 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "5c4efda15ac7-r3",
+  "locale": "hi",
+  "round": 3,
+  "status": "passed",
+  "audit_date": "2026-11-17",
+  "actual_model_source": "session system prompt (Model: anthropic/claude-opus-5-5); no fallback observed",
+  "independent_from_translator_session": true,
+  "translator_session_label": "prB1-tr-hi",
+  "previous_receipts": [
+    {
+      "path": "audit-hi-r1.json",
+      "sha256": "8e3edc70be080d27be724b8206f1603a21bfb4538371879049c675f9183150c4",
+      "status": "changes_requested"
+    },
+    {
+      "path": "audit-hi-r2.json",
+      "sha256": "d79aee43b78e9d8e456255625cab2fce87cd36c26b352c2a4bd984881dc1720f",
+      "status": "passed"
+    }
+  ],
+  "round3_delta": "vs f132aad424: only ui.chat.canonical.link_actions.missing_file '{path} पर फ़ाइल नहीं' -> 'फ़ाइल नहीं मिली: {path}' (D2: negation no longer clipped at sentence end); accepted",
+  "round1_dispositions": {
+    "HI-1": "fixed",
+    "HI-2": "fixed",
+    "HI-3": "fixed",
+    "HI-4": "fixed",
+    "HI-5": "fixed"
+  },
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "sha256": {
+        "hi": "bfc4c0e06e3fae3d2bf63580a31a4768e799ad545e3f04ea635c63e724fb5096",
+        "en": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5"
+      },
+      "context_sha256": "a67abe26c757c3a5b514136d61d2223b4a17521b7b5ede4f815a7771b3a4b420",
+      "findings": [
+        {
+          "id": "HI-I1",
+          "severity": "INFO",
+          "key": "ui.chat.canonical.supplement.file_actions.open_in_canvas",
+          "note": "Pre-existing Latin 'Canvas' outside scope (also ui.chat.composer.tip.canvas, ui.common.file_actions.show_in_canvas); non-gating."
+        }
+      ]
+    },
+    "ui.chat.attachments": {
+      "status": "passed",
+      "sha256": {
+        "hi": "8c936eeb18d43d51c83070dde4e080bf1c0b07327f06147f74ac16a075531dbd",
+        "en": "1a5709a63c44655e0d96ec39ef87ddfd4715a811b6de2f29e851080a10dd42e7"
+      },
+      "context_sha256": "d10bc98fc6f0b3337dff3b08f06798d87eb1cdd3fa15c4a85e4fcedf05559c3f",
+      "findings": [
+        {
+          "id": "HI-6",
+          "severity": "MINOR",
+          "key": "ui.chat.attachments.broken_media_unavailable",
+          "also_keys": [
+            "ui.chat.attachments.broken_unavailable",
+            "ui.chat.attachments.broken_moved"
+          ],
+          "current": "{name} चलाई नहीं जा सकी। …",
+          "problem": "Verb is fixed feminine. Correct for file names (implied फ़ाइल), अटैच की गई तस्वीर, ध्वनि, बनाई गई ध्वनि; wrong for masculine labels reachable via image-gen-card → canonical-video.tsx:105 (वीडियो/वॉइसओवर/साउंड इफ़ेक्ट), rendered: 'वीडियो बन गया चलाई नहीं जा सकी।'",
+          "suggestion": "Gender-neutral को-passive: '{name} को चलाया नहीं जा सका। इसकी सहेजी गई प्रति इस ऐप के लिए उपलब्ध नहीं है।' (and '{name} को दिखाया नहीं जा सका।' in the two picture keys for parallelism)"
+        },
+        {
+          "id": "HI-I2",
+          "severity": "INFO",
+          "key": "ui.chat.canonical.image_gen.state.done",
+          "note": "Out of scope, pre-existing: image-gen-card.tsx:877 reuses this status message as a media NAME; hi value is a clause ('वीडियो बन गया'), so any broken_* sentence built on it is garbled even with correct agreement. Needs a noun label (code/key), not a fix in these 24 keys."
+        }
+      ]
+    }
+  },
+  "not_verified": [
+    "no rendered frame of the app",
+    "no native-speaker review",
+    "terminal cell width estimated by grapheme count only"
+  ],
+  "reissue_note": "Content identical to round-3 audit-hi.json except instance suffix -r3: ledger refuses a different receipt under instance 5c4efda15ac7 (bound to round 2). Same auditor session 5c4efda15ac7."
+}

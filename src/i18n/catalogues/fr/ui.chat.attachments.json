@@ -25,5 +25,8 @@
 	"ui.chat.attachments.owner_unreachable": "n’a pas pu être récupéré depuis l’appareil qui le contient.",
 	"ui.chat.attachments.retry_fetch": "Réessayer",
 	"ui.chat.attachments.not_viewable_detail": "{name} ne peut pas être affiché (fichier peut-être incomplet, supprimé ou déplacé)",
-	"ui.chat.attachments.not_viewable_too_large": "{name} est trop volumineux pour être prévisualisé"
+	"ui.chat.attachments.not_viewable_too_large": "{name} est trop volumineux pour être prévisualisé",
+	"ui.chat.attachments.broken_moved": "Impossible d’afficher {name}. Le fichier a peut-être été déplacé, renommé ou supprimé.",
+	"ui.chat.attachments.broken_unavailable": "Impossible d’afficher {name}. La copie conservée n’est pas accessible dans cette application sur cet appareil.",
+	"ui.chat.attachments.broken_media_unavailable": "Impossible de lire {name}. La copie conservée n’est pas accessible dans cette application sur cet appareil."
 }

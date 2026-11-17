@@ -163,5 +163,32 @@
 		"placeholders": {
 			"name": "the attachment's file name (last path segment), never translated"
 		}
+	},
+	"ui.chat.attachments.broken_moved": {
+		"role": "whole-sentence receipt in place of an attachment (picture or file) the app could not read from disk",
+		"tone": "plain statement, sentence case, full stops",
+		"length": "One sentence; it is the card's whole text, the tooltip and the accessible name, and truncates with an ellipsis on a narrow card.",
+		"note": "Says what happened, what it probably means, and nothing the app cannot know. The three causes are guesses about a file path, so keep 'may have been'. The name opens the sentence; a language that cannot start with a name may reorder it. The same message is the visible text, the tooltip and the accessible name.",
+		"placeholders": {
+			"name": "the attachment's file name, shown verbatim and never translated; the code wraps it in a directional isolate"
+		}
+	},
+	"ui.chat.attachments.broken_unavailable": {
+		"role": "whole-sentence receipt in place of a picture whose stored copy did not arrive",
+		"tone": "plain statement, sentence case, full stops",
+		"length": "One sentence; it is the card's whole text, the tooltip and the accessible name, and truncates with an ellipsis on a narrow card.",
+		"note": "States the fact (the read failed) and stops; it deliberately names no cause, because 'never stored' and 'pruned' cannot be told apart. 'this reader' is this app on this device. The name opens the sentence; a language that cannot start with a name may reorder it. Same message for the visible text, tooltip and accessible name.",
+		"placeholders": {
+			"name": "the attachment's file name, shown verbatim and never translated; the code wraps it in a directional isolate"
+		}
+	},
+	"ui.chat.attachments.broken_media_unavailable": {
+		"role": "whole-sentence receipt in place of a video or audio clip whose stored copy did not arrive or could not be decoded",
+		"tone": "plain statement, sentence case, full stops",
+		"length": "One sentence; it is the card's whole text, the tooltip and the accessible name, and truncates with an ellipsis on a narrow card.",
+		"note": "The same fact as `broken_unavailable` with the verb of a player ('played') instead of a picture's ('displayed'); keep the two sentences parallel. Same message for the visible text, tooltip and accessible name.",
+		"placeholders": {
+			"name": "the attachment's file name, shown verbatim and never translated; the code wraps it in a directional isolate"
+		}
 	}
 }

@@ -1,0 +1,55 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "8ea83141eaec-r3",
+  "locale": "fr",
+  "status": "passed",
+  "round": 3,
+  "translator_session_label": "prB1-tr-fr",
+  "independent_from_translator_session": true,
+  "actual_model_source": "served model named in this session's system prompt (Model: anthropic/claude-opus-5-5); no fallback observed",
+  "audit_date": "2026-11-17",
+  "scope": "Round 3 re-audit of ui.chat.attachments on final bytes (HEAD 6aebbce40c + uncommitted fr edit of broken_moved, broken_unavailable, broken_media_unavailable after design r2 D6). ui.chat.canonical unchanged (b2be5e35…) and stays bound to receipt 8ea83141eaec-r2.",
+  "previous_receipt": {
+    "path": "audit-fr-r2-reissue.json",
+    "instance": "8ea83141eaec-r2",
+    "sha256": "ef68c4d70cd0071bd56c147887c39b3abcddd4654488e6c3f519ba49dc3b45f2"
+  },
+  "context_sha256": {
+    "ui.chat.attachments": "d10bc98fc6f0b3337dff3b08f06798d87eb1cdd3fa15c4a85e4fcedf05559c3f"
+  },
+  "namespaces": {
+    "ui.chat.attachments": {
+      "status": "passed",
+      "key_count_audited": 3,
+      "sha256": {
+        "fr": "70d62cf4efd6446fc0797a22794a8191b47d699f94433eb0c332f2abeab647a3",
+        "en": "1a5709a63c44655e0d96ec39ef87ddfd4715a811b6de2f29e851080a10dd42e7"
+      },
+      "findings": [
+        {
+          "id": "F6",
+          "severity": "NIT",
+          "key": "ui.chat.attachments.broken_unavailable",
+          "current": "Impossible d’afficher {name}. La copie conservée n’est pas accessible dans cette application sur cet appareil. (same tail in broken_media_unavailable)",
+          "problem": "Still stands from r1: 'accessible depuis' reads more natural than 'accessible dans' for access from an app. The r3 tail also grows the sentence to 110/107 chars (en ~80); accurate to 'this reader' (= this app on this device) and the card truncates by design with the full text in the tooltip, so fit is not a defect.",
+          "suggestion": "La copie conservée n’est pas accessible depuis cette application sur cet appareil. (both keys, keep parallel)",
+          "disposition_r3": "unchanged (NIT, not gating)"
+        }
+      ],
+      "resolved_or_checked": [
+        {
+          "key": "broken_moved/broken_unavailable/broken_media_unavailable",
+          "result": "D6 agreement fixed: no word agrees with {name}; rendered with 'Image jointe' (f), 'Vidéo' (f/neutral), 'photos-vacances.zip' all grammatical; meaning parity kept (peut-être for the guessed causes; no cause named for unavailable; lire vs afficher parallel)"
+        }
+      ],
+      "info_not_counted": [
+        {
+          "key": "ui.chat.attachments.file_missing_recovery",
+          "note": "pre-existing, outside scope (unchanged vs HEAD): straight apostrophe in n'est; style guide wants U+2019"
+        }
+      ]
+    }
+  },
+  "not_verified": "no rendered UI frame; no native-speaker review; judged by reasoning only, no MT"
+}

@@ -24,7 +24,7 @@
  * THE THREE FAILURES ARE ONE RECEIPT. A digest that resolves to nothing and a
  * resolved blob that will not DECODE are the same fact to the reader — this
  * copy cannot be played — so both render the same `BrokenAttachment`-class
- * receipt with `VIDEO_UNAVAILABLE_COPY`; only the trigger differs (the
+ * receipt with `kind="media_unavailable"`; only the trigger differs (the
  * resolver's `missing` state, or the element's own `onError`).
  *
  * SIZING follows the image ledger's rule: a shared height ceiling
@@ -43,7 +43,6 @@ import {
 	BrokenAttachment,
 	PendingAttachment,
 	RetryableAttachment,
-	VIDEO_UNAVAILABLE_COPY,
 } from "../components/message-item/attachment-frame";
 import type { TranscriptImage } from "./transcript-reducer";
 import {
@@ -103,7 +102,7 @@ export const CanonicalVideo = ({
 		);
 	}
 	if (source.state === "missing" || decodeFailed) {
-		return <BrokenAttachment name={label} detail={VIDEO_UNAVAILABLE_COPY} />;
+		return <BrokenAttachment name={label} kind="media_unavailable" />;
 	}
 	if (source.state === "resolving") {
 		/*

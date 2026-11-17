@@ -3394,9 +3394,19 @@ test("a wake receipt is the headline, and its prompt is the part behind the enve
  */
 const workingLineBundle = await build({
 	stdin: {
-		contents:
-			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, STARTING_SESSION_ACTIVITY, COMPACTING_ACTIVITY, sendUnsettledForSession, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";\n' +
+		contents: [
+			'import { deriveWorkingLine as rawDeriveWorkingLine, ADMITTED_SEND_ACTIVITY as ADMITTED_RUNG, STARTING_SESSION_ACTIVITY as STARTING_RUNG, COMPACTING_ACTIVITY as COMPACTING_RUNG } from "./src/renderer/src/features/chat/canonical/working-line-model";',
+			'import { english, englishState } from "./scripts/working-line-english";',
+			// The ladder answers a rung plus arguments now; this suite pins its
+			// ENGLISH, so it reads the state and the three rungs through the shipped
+			// resolver (see the shim's note). Every literal below is unchanged.
+			"export const deriveWorkingLine = (...args) => englishState(rawDeriveWorkingLine(...args));",
+			"export const ADMITTED_SEND_ACTIVITY = english(ADMITTED_RUNG);",
+			"export const STARTING_SESSION_ACTIVITY = english(STARTING_RUNG);",
+			"export const COMPACTING_ACTIVITY = english(COMPACTING_RUNG);",
+			'export { sendUnsettledForSession, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";',
 			'export { visibleRecords } from "./src/renderer/src/features/chat/canonical/cross-session-visibility";',
+		].join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,

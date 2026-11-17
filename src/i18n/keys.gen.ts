@@ -4828,6 +4828,9 @@ export type MessageParams = {
 	"ui.chat.attachment_refusal.read_one": { name: string };
 	"ui.chat.attachment_refusal.remote_many": { names: string };
 	"ui.chat.attachment_refusal.remote_one": { name: string };
+	"ui.chat.attachments.broken_media_unavailable": { name: string };
+	"ui.chat.attachments.broken_moved": { name: string };
+	"ui.chat.attachments.broken_unavailable": { name: string };
 	"ui.chat.attachments.copy_path": undefined;
 	"ui.chat.attachments.copy_saved_path": undefined;
 	"ui.chat.attachments.expand_aria": { name: string };
@@ -4965,6 +4968,17 @@ export type MessageParams = {
 		count_display: string;
 	};
 	"ui.chat.canonical.lightbox.show_image": { index: number; count: number };
+	"ui.chat.canonical.link_actions.copy_link": undefined;
+	"ui.chat.canonical.link_actions.copy_path": undefined;
+	"ui.chat.canonical.link_actions.missing_file": { path: string };
+	"ui.chat.canonical.link_actions.open": undefined;
+	"ui.chat.canonical.link_actions.open_folder": undefined;
+	"ui.chat.canonical.link_actions.open_in_browser": undefined;
+	"ui.chat.canonical.link_actions.open_in_canvas": undefined;
+	"ui.chat.canonical.link_actions.open_in_default_app": undefined;
+	"ui.chat.canonical.link_actions.quote": undefined;
+	"ui.chat.canonical.link_actions.too_large_note": undefined;
+	"ui.chat.canonical.link_actions.too_large_title": undefined;
 	"ui.chat.canonical.link_toolkit.actions_for": { name: string };
 	"ui.chat.canonical.loading.cold": undefined;
 	"ui.chat.canonical.loading.older": undefined;
@@ -5417,6 +5431,25 @@ export type MessageParams = {
 	"ui.chat.canonical.turn_summary.completed": undefined;
 	"ui.chat.canonical.turn_summary.took": { duration: string };
 	"ui.chat.canonical.untitled": undefined;
+	"ui.chat.canonical.working_line.compacting": undefined;
+	"ui.chat.canonical.working_line.composing": {
+		count: number;
+		count_display: string;
+	};
+	"ui.chat.canonical.working_line.queued": {
+		count: number;
+		count_display: string;
+	};
+	"ui.chat.canonical.working_line.responding": undefined;
+	"ui.chat.canonical.working_line.running_tool": { tool: string };
+	"ui.chat.canonical.working_line.running_tools": {
+		count: number;
+		count_display: string;
+	};
+	"ui.chat.canonical.working_line.starting_session": undefined;
+	"ui.chat.canonical.working_line.stopping": undefined;
+	"ui.chat.canonical.working_line.thinking": undefined;
+	"ui.chat.canonical.working_line.waiting_for_agent": undefined;
 	"ui.chat.commentary_actions.label": undefined;
 	"ui.chat.composer.ask_aside": undefined;
 	"ui.chat.composer.attach_file": undefined;

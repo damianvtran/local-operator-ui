@@ -38,7 +38,6 @@
 import { cn } from "@shared/lib/utils";
 import { useState } from "react";
 import {
-	AUDIO_UNAVAILABLE_COPY,
 	AttachmentFrame,
 	BrokenAttachment,
 	PendingAttachment,
@@ -84,7 +83,7 @@ export const CanonicalAudio = ({
 	// Set by this well's Retry press, so focus stays with it (U2-2).
 	const [retried, setRetried] = useState(false);
 	if (source.state === "missing") {
-		return <BrokenAttachment name={label} detail={AUDIO_UNAVAILABLE_COPY} />;
+		return <BrokenAttachment name={label} kind="media_unavailable" />;
 	}
 	if (source.state === "retryable") {
 		return (
