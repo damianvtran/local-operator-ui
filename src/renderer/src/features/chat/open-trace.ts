@@ -354,18 +354,18 @@ export function formatOpenTraceLine(
 		 * `paintFills` is answered only for a seeded paint - a cold pane's first rows
 		 * come from the snapshot, so "did the seed fill the pane" has no answer there.
 		 */
-		`paint=${paint?.source ?? "-"}`,
-		`paintAt=${ms(paint?.at)}`,
-		`paintRows=${count(paint?.rows)}`,
-		`paintBytes=${count(paint?.bytes)}`,
-		`paintReason=${paint?.source === "cache" ? "-" : (paint?.reason ?? "-")}`,
+		`paint=${paint?.source ?? "-"}`, // i18n: ignore developer trace field; paint source kind in the open-trace log line, never rendered as copy
+		`paintAt=${ms(paint?.at)}`, // i18n: ignore developer trace field; paint stage offset in the open-trace log line, never rendered as copy
+		`paintRows=${count(paint?.rows)}`, // i18n: ignore developer trace field; seeded row count in the open-trace log line, never rendered as copy
+		`paintBytes=${count(paint?.bytes)}`, // i18n: ignore developer trace field; seeded byte count in the open-trace log line, never rendered as copy
+		`paintReason=${paint?.source === "cache" ? "-" : (paint?.reason ?? "-")}`, // i18n: ignore developer trace field; cache-miss kind in the open-trace log line, never rendered as copy
 		`paintFills=${
 			paint?.source === "cache" && paint.fills !== undefined
 				? paint.fills
 					? "1"
 					: "0"
 				: "-"
-		}`,
+		}`, // i18n: ignore developer trace field; fill bit in the open-trace log line, never rendered as copy
 	];
 	if (supersededBy !== undefined) parts.push(`by=t${supersededBy}`);
 	return parts.join(" ");
