@@ -2200,8 +2200,7 @@ function isRateLimitedCode(code: unknown): boolean {
  * The shortest wait honoured. A stated wait of 0 (or anything under a second)
  * must still schedule a read: query-core treats a `refetchInterval` of 0 as "no
  * interval", so an unfloored 0 would leave the page saying "Retrying
- * automatically" and never retry (agent review round 1, M3). One second matches
- * agent-server's own floor (`ratelimit.RetryAfterSeconds` never names less).
+ * automatically" and never retry (agent review round 1, M3).
  */
 export const TEAM_BRIDGE_RATE_LIMIT_MIN_MS = 1_000;
 

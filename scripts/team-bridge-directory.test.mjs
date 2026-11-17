@@ -2046,7 +2046,9 @@ test("re-rendering an observer does not postpone the throttled retry (real query
 		const observer = new QueryObserver(client, options);
 		const unsubscribe = observer.subscribe(() => {});
 		// A "render" every 100 ms for 4.5 s: a 1 s wait plus at most 1 s jitter
-		// must land at least twice more in that window.
+		// lands its first retry by ~2 s. The assert below asks for that ONE retry
+		// only (2.5 s of slack), not two: a third read can land as late as ~4 s,
+		// which flakes on a loaded CI runner (agent review round 2, R2-1).
 		const renders = setInterval(() => observer.setOptions({ ...options }), 100);
 		await new Promise((resolve) => setTimeout(resolve, 4_500));
 		clearInterval(renders);
@@ -2057,7 +2059,7 @@ test("re-rendering an observer does not postpone the throttled retry (real query
 	const stable = await run((query) =>
 		model.teamBridgeStatusRefetchInterval(query.state),
 	);
-	assert.ok(stable >= 3, `stable jitter: ${stable} reads in 4.5 s`);
+	assert.ok(stable >= 2, `stable jitter: ${stable} reads in 4.5 s`);
 	// Negative control: the round-1 shape (fresh random per call) stalls.
 	const fresh = await run((query) => {
 		const limit = model.teamBridgeRateLimit(
@@ -2069,6 +2071,8 @@ test("re-rendering an observer does not postpone the throttled retry (real query
 	t.diagnostic(
 		`reads in 4.5 s: stable jitter ${stable}, fresh jitter ${fresh}`,
 	);
+	// The stalled shape never retries at all: only the mount read happens.
+	assert.equal(fresh, 1, `control: fresh jitter ${fresh} vs ${stable}`);
 	assert.ok(fresh < stable, `control: fresh jitter ${fresh} vs ${stable}`);
 });
 
