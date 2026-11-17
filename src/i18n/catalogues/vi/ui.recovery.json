@@ -27,6 +27,6 @@
 	"ui.recovery.local.checked_at": "Đã kiểm tra lúc {time}",
 	"ui.recovery.local.still_not_found": "Vẫn chưa tìm thấy · đã kiểm tra lúc {time}",
 	"ui.recovery.local.copy": "Sao chép",
-	"ui.recovery.local.alternative_body": "Không muốn chạy mô hình trên máy tính này? Tài khoản Radient không cần cài đặt.",
-	"ui.recovery.local.use_radient": "Dùng tài khoản Radient thay thế"
+	"ui.recovery.local.alternative_body": "Không muốn chạy mô hình trên máy tính này? Tài khoản Radient không cần thiết lập.",
+	"ui.recovery.local.use_radient": "Dùng tài khoản Radient thay vào đó"
 }

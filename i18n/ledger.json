@@ -115737,6 +115737,223 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.recovery",
+			"source_sha256": "938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9",
+			"target_sha256": "21ee2da6c3c9aba3875d0436fb8d7be72abf9bbc5fde5b3f7ac5f9e9a5c078e1",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "fefddad98e83-recovery-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/fefddad98e83-recovery-fr.json",
+					"receipt_sha256": "f81aa64296106297501d5f02a3b9472294897010ac59e873d409bbe8eea2e26e",
+					"scope": "PR #1962 round 1: all 30 ui.recovery keys (af3ea44614 + auditor locale fixes)",
+					"note": "PR #1962: translator coder (anthropic/claude-opus-5-5); independent audit task session fefddad98e83 (lopdev UI-1 i18n audit r1)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.recovery",
+			"source_sha256": "938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9",
+			"target_sha256": "48a6d6ca0caf53bc51c5e440bc96b64863e98b251314767bae7c817226ab0123",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "fefddad98e83-recovery-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/fefddad98e83-recovery-es.json",
+					"receipt_sha256": "83e2ff01bb170c45b20da20175f1f9bf5ff05064426880bc057cd4be78d83420",
+					"scope": "PR #1962 round 1: all 30 ui.recovery keys (af3ea44614 + auditor locale fixes)",
+					"note": "PR #1962: translator coder (anthropic/claude-opus-5-5); independent audit task session fefddad98e83 (lopdev UI-1 i18n audit r1)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.recovery",
+			"source_sha256": "938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9",
+			"target_sha256": "82802ffe4612919157a21b4dd2d53300111422e797cba6fc3d83966173a72f95",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "fefddad98e83-recovery-zh-CN",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/fefddad98e83-recovery-zh-CN.json",
+					"receipt_sha256": "97dcc8151ba32785e3a987f29352148963115fe16eff4a4f929b7d7bdd1c3384",
+					"scope": "PR #1962 round 1: all 30 ui.recovery keys (af3ea44614 + auditor locale fixes)",
+					"note": "PR #1962: translator coder (anthropic/claude-opus-5-5); independent audit task session fefddad98e83 (lopdev UI-1 i18n audit r1)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.recovery",
+			"source_sha256": "938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9",
+			"target_sha256": "ffa27f13e33b488c16706b1b6f884b7c628f908e40f45e2540c28c614a0f6a9f",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "fefddad98e83-recovery-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/fefddad98e83-recovery-ru.json",
+					"receipt_sha256": "a3618640e92ab2f911b82f5596eb342dc645cee530db5658f0cb484416da78be",
+					"scope": "PR #1962 round 1: all 30 ui.recovery keys (af3ea44614 + auditor locale fixes)",
+					"note": "PR #1962: translator coder (anthropic/claude-opus-5-5); independent audit task session fefddad98e83 (lopdev UI-1 i18n audit r1)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.recovery",
+			"source_sha256": "938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9",
+			"target_sha256": "47f99df1f7352d77cb64ac54954eaae496cf3330a8f6bbd79755458790b17833",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "fefddad98e83-recovery-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/fefddad98e83-recovery-vi.json",
+					"receipt_sha256": "a4472d0876ed9d5364f02273157936f952f59b703c9773a9acd6d4a0ef856a7d",
+					"scope": "PR #1962 round 1: all 30 ui.recovery keys (af3ea44614 + auditor locale fixes)",
+					"note": "PR #1962: translator coder (anthropic/claude-opus-5-5); independent audit task session fefddad98e83 (lopdev UI-1 i18n audit r1)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.recovery",
+			"source_sha256": "938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9",
+			"target_sha256": "02cb86856ee131edbed0347d805d9f62a0691b3127cd9d90a40785d62eed2b42",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "fefddad98e83-recovery-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/fefddad98e83-recovery-ur.json",
+					"receipt_sha256": "39d58dafe596bff06158d1fa8045e63683b72eff0c382d7dc3f9158c85701eb5",
+					"scope": "PR #1962 round 1: all 30 ui.recovery keys (af3ea44614 + auditor locale fixes)",
+					"note": "PR #1962: translator coder (anthropic/claude-opus-5-5); independent audit task session fefddad98e83 (lopdev UI-1 i18n audit r1)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.recovery",
+			"source_sha256": "938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9",
+			"target_sha256": "78799e644bf7af379b2d7bfce1263b670ea2cba0fb8cce46682f00ed01ecdcd8",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-17"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "fefddad98e83-recovery-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/fefddad98e83-recovery-hi.json",
+					"receipt_sha256": "36def2bacbf375a4401e1db716d577e99cfd82f30ed5fc93c72ab36357769c35",
+					"scope": "PR #1962 round 1: all 30 ui.recovery keys (af3ea44614 + auditor locale fixes)",
+					"note": "PR #1962: translator coder (anthropic/claude-opus-5-5); independent audit task session fefddad98e83 (lopdev UI-1 i18n audit r1)"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

@@ -1,11 +1,11 @@
 {
-	"ui.recovery.approval.setting_auto": "Включаем авто…",
-	"ui.recovery.approval.all_done": "Авто включено для всех сеансов",
-	"ui.recovery.approval.session_done": "Авто включено для этого сеанса",
-	"ui.recovery.composer.no_provider": "Поставщик моделей не подключён, поэтому сообщения пока нельзя отправить.",
+	"ui.recovery.approval.setting_auto": "Включение «Авто»…",
+	"ui.recovery.approval.all_done": "«Авто» включено для всех сессий",
+	"ui.recovery.approval.session_done": "«Авто» включено для этой сессии",
+	"ui.recovery.composer.no_provider": "Провайдер моделей не подключён, поэтому сообщения пока нельзя отправить.",
 	"ui.recovery.composer.no_model": "Для этого разговора не выбрана модель, поэтому сообщения пока нельзя отправить.",
 	"ui.recovery.composer.offline": "Фоновая служба Local Operator не отвечает, поэтому сейчас сообщения нельзя отправить.",
-	"ui.recovery.send.connect_provider": "Подключить поставщика",
+	"ui.recovery.send.connect_provider": "Подключить провайдера",
 	"ui.recovery.send.choose_model": "Выбрать модель",
 	"ui.recovery.send.reconnect": "Переподключиться",
 	"ui.recovery.send.reconnecting": "Переподключение…",
@@ -22,11 +22,11 @@
 	"ui.recovery.local.start_ollama": "Уже установлен? Запустите его в терминале:",
 	"ui.recovery.local.no_answer_title": "По адресу {address} ничего не ответило",
 	"ui.recovery.local.no_answer_body": "Убедитесь, что {brand} запущен, а адрес и порт указаны верно, и проверьте снова.",
-	"ui.recovery.local.wrong_server_title": "По адресу {address} что-то ответило, но не как {brand} (HTTP {status})",
+	"ui.recovery.local.wrong_server_title": "По адресу {address} что-то ответило, но это не {brand} (HTTP {status})",
 	"ui.recovery.local.wrong_server_body": "Возможно, этот порт занят другой программой или адрес неверен. Проверьте адрес и порт {brand} и проверьте снова.",
 	"ui.recovery.local.checked_at": "Проверено в {time}",
 	"ui.recovery.local.still_not_found": "По-прежнему не найден · проверено в {time}",
 	"ui.recovery.local.copy": "Копировать",
-	"ui.recovery.local.alternative_body": "Не хотите запускать модели на этом компьютере? Аккаунт Radient не требует настройки.",
-	"ui.recovery.local.use_radient": "Использовать аккаунт Radient"
+	"ui.recovery.local.alternative_body": "Не хотите запускать модели на этом компьютере? Учётная запись Radient не требует настройки.",
+	"ui.recovery.local.use_radient": "Использовать учётную запись Radient"
 }
