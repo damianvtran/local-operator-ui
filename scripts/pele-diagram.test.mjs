@@ -212,6 +212,40 @@ test("the fullscreen dialog zooms on the plain wheel", async () => {
 	assert.equal(event.defaultPrevented, true);
 });
 
+test("a ctrl wheel with no vertical delta is left to the page", async () => {
+	const { diagramWheelZoomFactor } = await bundle("diagram-wheel-zoom.ts");
+	for (const isFullscreen of [false, true]) {
+		const event = wheelEvent({ ctrlKey: true, deltaY: 0 });
+		assert.equal(diagramWheelZoomFactor(event, isFullscreen), null);
+		assert.equal(event.defaultPrevented, false);
+	}
+});
+
+test("the inline container takes the modifier-gated wheel and the dialog the plain one", () => {
+	const viewer = read("diagram-viewer.tsx");
+	assert.match(
+		viewer,
+		/inlineContainerRef = useMemo\(\s*\(\) => bindWheelZoom\(false\)/,
+	);
+	assert.match(
+		viewer,
+		/fullscreenContainerRef = useMemo\(\s*\(\) => bindWheelZoom\(true\)/,
+	);
+	assert.match(viewer, /diagramWheelZoomFactor\(e, isFullscreenMode\)/);
+	assert.match(
+		viewer,
+		/isFullscreenMode\s*\? fullscreenContainerRef\s*: inlineContainerRef/,
+	);
+});
+
+test("both diagram views reserve the floating toolbar's band", () => {
+	const viewer = read("diagram-viewer.tsx");
+	assert.match(viewer, /overflow-hidden rounded-md bg-surface pt-11"/);
+	assert.match(viewer, /overflow-hidden pt-13"/);
+	assert.match(viewer, /className="top-2 right-2"/);
+	assert.match(viewer, /className="top-4 right-4"/);
+});
+
 test("the viewer binds a non-passive native wheel listener instead of onWheel", () => {
 	const viewer = read("diagram-viewer.tsx");
 	assert.ok(viewer.includes('addEventListener("wheel"'));

@@ -12,6 +12,7 @@ export const diagramWheelZoomFactor = (
 	isFullscreenMode: boolean,
 ): number | null => {
 	if (!isFullscreenMode && !event.ctrlKey && !event.metaKey) return null;
+	if (event.deltaY === 0) return null;
 	event.preventDefault();
 	const factor = Math.exp(-event.deltaY * WHEEL_ZOOM_SENSITIVITY);
 	return Math.min(

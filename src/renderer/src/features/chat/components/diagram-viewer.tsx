@@ -618,7 +618,7 @@ export const DiagramViewer: FC<DiagramViewerProps> = memo(
 			<>
 				<div
 					className={cn(
-						"relative flex items-center justify-center overflow-hidden rounded-md bg-surface",
+						"relative flex items-center justify-center overflow-hidden rounded-md bg-surface pt-11",
 						inlineSvgClassName,
 						"[&_svg]:max-w-none [&_svg]:bg-transparent",
 					)}
@@ -657,7 +657,7 @@ export const DiagramViewer: FC<DiagramViewerProps> = memo(
 				>
 					<div
 						className={cn(
-							"relative flex h-[80vh] w-full items-center justify-center overflow-hidden",
+							"relative flex h-[80vh] w-full items-center justify-center overflow-hidden pt-13",
 							"[&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-auto [&_svg]:max-w-full [&_svg]:bg-transparent",
 						)}
 					>

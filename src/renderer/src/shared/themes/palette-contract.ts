@@ -698,8 +698,10 @@ export type ThemePalette = {
 	 *
 	 * Pele is the default diagram renderer and it does not spend the `fillType0..7`
 	 * wash ramp. Its actor legend and its pie and series colours map to the six
-	 * solid roles (`accent`, `accentAlt`, `info`, `success`, `warning`, `danger`,
-	 * through `--pele-series-1..8`), and a journey's SECTION fills are not themed
+	 * solid roles (`accent`, `accentAlt`, `warning`, `danger`, `info`, `success`,
+	 * through `--pele-series-1..8`; that order keeps the first four slots at least
+	 * ΔE00 10.08 apart in all 59 themes, including the seven where `accent`
+	 * equals `info` or `success`), and a journey's SECTION fills are not themed
 	 * as a ramp: Pele has no section-fill variable, so every section header takes
 	 * the one `--pele-surface-alt` fill (`sunken`). Only Mermaid, selected through
 	 * the flag, still paints sections from the wash ramp.
