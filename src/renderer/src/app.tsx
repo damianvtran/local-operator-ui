@@ -1206,8 +1206,10 @@ const App: FC = () => {
 				    local process can raise the prompt, so the person must see what
 				    it is for - and that it was not started here - wherever they
 				    are. Renders nothing while no prompt is up; a backend without
-				    the frame never publishes one. */}
-				{bridgeState === "enabled" && <TeamBridgeAuthorizeNotices />}
+				    the frame never publishes one. Mounted unconditionally (security
+				    S-5): the authorize route is gated by a different flag than the
+				    Team Bridge page, and an idle host costs nothing. */}
+				<TeamBridgeAuthorizeNotices />
 			</div>
 		</OnboardingProvider>
 	);

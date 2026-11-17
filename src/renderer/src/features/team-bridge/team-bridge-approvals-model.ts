@@ -20,14 +20,16 @@
  *   signed answer is exactly what that refusal prevents.
  * - The Touch ID prompt is raised by the daemon, and any local process holding
  *   the bearer can ask for one. The daemon publishes what each prompt would sign
- *   on the feed; this renderer labels a prompt whose `client_ref` it did not
- *   generate "not started by you". That label is the security control
- *   (security S-6), so the set of refs is module state in THIS renderer only and
- *   is never persisted or shared.
+ *   on the feed; this renderer labels a prompt it did not start "not started in
+ *   this window". That label is the security control (security S-6). A
+ *   `client_ref` counts as ours only while OUR authorize call is in flight and
+ *   only for the first prompt that carries it (see `beginOwnPrompt`), because
+ *   the ref is published on a feed any bearer holder can read and replay.
  * - No message body or screening rationale is ever shown: rows carry only the
  *   already-screened card `excerpt`, and refusals map to fixed copy rather than
  *   the daemon's sentence.
  */
+import { currentLocale } from "../../../../i18n/locale";
 import { t } from "../../../../i18n/messages";
 import { TEAM_BRIDGE_APPROVAL_BATCH_MAX } from "../../../../shared/desktop-contract";
 import type { TeamBridgeAuthorizeFramePayload } from "../../../../shared/desktop-session-contract";
@@ -212,40 +214,85 @@ export function buildSelection(
 // -- client_ref: which prompts THIS renderer started --------------------------
 
 /*
- * Refs this renderer generated, newest last. Bounded so a long session cannot
- * grow it without limit; 32 outstanding prompts is far beyond the daemon's own
- * one-at-a-time gate, so an evicted ref is long settled.
+ * WHY A REF IS OURS ONLY WHILE OUR CALL IS IN FLIGHT, AND ONLY ONCE (security
+ * S-1, agent review R1-01). The daemon echoes each `client_ref` verbatim on
+ * `/v1/desktop/events`, which any local process holding the desktop bearer can
+ * read, and the authorize route accepts any hex ref without checking it is
+ * unique. A ref that stayed "ours" after its prompt (the earlier design kept
+ * the last 32) could therefore be read off the feed and replayed with an
+ * attacker's selection, and the notice would show no warning.
+ *
+ * So a ref is PENDING from just before our authorize call until that call
+ * answers (`runApprovalFlow`'s `finally`), and the FIRST `prompting` frame that
+ * carries it BINDS it to that frame's `authorize_id`. A frame is ours only if
+ * its ref is pending and either unbound or bound to this same `authorize_id`.
+ * The daemon's single-flight prompt gate means no other prompt can be up while
+ * ours is pending, and the ref is not public until our own `prompting` frame
+ * is published, so our frame is always the first to carry it; any later
+ * prompt with that ref - before or after ours settles - is foreign.
+ *
+ * Failure direction: if a feed lag delivered our own `prompting` frame after
+ * the call had answered, it would be labelled foreign. That errs toward the
+ * warning, never toward silence. The ref is module state in THIS renderer,
+ * never persisted or shared: a prompt started in another window is labelled
+ * foreign there (known decision (b); moving it to main is a follow-up).
  */
-const OWN_REF_LIMIT = 32;
-const ownRefs: string[] = [];
+const pendingRefs = new Map<string, string | null>();
 
-/**
- * A fresh random `client_ref`: 16 random bytes as 32 lowercase hex, the route's
- * own grammar (`^[0-9a-f]{1,32}$`). Random rather than a counter so another
- * local process cannot predict the next one and claim a prompt as ours.
- */
-export function newClientRef(): string {
+function randomRef(): string {
 	const bytes = new Uint8Array(16);
 	globalThis.crypto.getRandomValues(bytes);
-	const ref = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(
-		"",
-	);
-	ownRefs.push(ref);
-	if (ownRefs.length > OWN_REF_LIMIT) ownRefs.shift();
+	return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * A fresh random `client_ref` (16 random bytes as 32 lowercase hex, the route's
+ * own grammar `^[0-9a-f]{1,32}$`), registered as pending until `endOwnPrompt`.
+ * Random rather than a counter so another process cannot predict the next one.
+ */
+export function beginOwnPrompt(): string {
+	const ref = randomRef();
+	pendingRefs.set(ref, null);
 	return ref;
 }
 
-/** Whether a prompt frame's `client_ref` is one this renderer generated. */
-export function isOwnClientRef(ref: string | null | undefined): boolean {
-	return typeof ref === "string" && ownRefs.includes(ref);
+/** Retire a ref: no frame carrying it is ours from now on. */
+export function endOwnPrompt(ref: string): void {
+	pendingRefs.delete(ref);
 }
 
-/** Test seam: forget every generated ref. */
+/**
+ * Whether the prompt `authorizeId` carrying `ref` is one this renderer
+ * started. Binds a pending, unbound ref to the first `authorizeId` asked about,
+ * which is why only `applyAuthorizeFrame` calls it, for `prompting` frames.
+ */
+function claimOwnPrompt(
+	ref: string | null | undefined,
+	authorizeId: string,
+): boolean {
+	if (typeof ref !== "string" || !pendingRefs.has(ref)) return false;
+	const bound = pendingRefs.get(ref);
+	if (bound === null) {
+		pendingRefs.set(ref, authorizeId);
+		return true;
+	}
+	return bound === authorizeId;
+}
+
+/** Test seam: forget every pending ref. */
 export function resetClientRefsForTests(): void {
-	ownRefs.length = 0;
+	pendingRefs.clear();
 }
 
 // -- the prompt notice: live `team_bridge_authorize` frames -------------------
+
+/** A frame item as the notice renders it; `word` is null when unrecognised. */
+export type AuthorizeNoticeItem = {
+	message_id: string;
+	word: ApprovalWord | null;
+	sender: string | null;
+	excerpt: string | null;
+};
 
 export type AuthorizePromptNotice = {
 	authorizeId: string;
@@ -253,21 +300,92 @@ export type AuthorizePromptNotice = {
 	foreign: boolean;
 	approveCount: number;
 	denyCount: number;
-	items: TeamBridgeAuthorizeFramePayload["items"];
+	items: AuthorizeNoticeItem[];
 };
+
+/** How a prompt this window did not start ended (UX review U7). */
+export type ForeignPromptTrace = {
+	authorizeId: string;
+	count: number;
+	ended: "signed" | "dismissed" | "refused";
+	at: number;
+};
+
+const AUTHORIZE_STATES = new Set([
+	"prompting",
+	"signed",
+	"dismissed",
+	"refused",
+]);
+const ID_PATTERN = /^[A-Za-z0-9_.:-]{1,128}$/;
+
+function textOrNull(value: unknown): string | null {
+	return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+/**
+ * Parse a `team_bridge_authorize` payload at the feed boundary (security S-5):
+ * the rest of this surface is "parsed, not cast", and the notice is the one
+ * place a mis-read word would tell the person the opposite of what Touch ID
+ * signs. A frame without a usable `authorize_id` or `state` is dropped (it
+ * names no prompt). An item whose `word` is neither `approve` nor `deny` is
+ * KEPT with `word: null` and rendered as an unrecognised decision, never
+ * guessed: dropping it would hide something the sheet is about to sign.
+ */
+export type ParsedAuthorizeFrame = Omit<
+	TeamBridgeAuthorizeFramePayload,
+	"items"
+> & { items: AuthorizeNoticeItem[] };
+
+export function parseAuthorizeFrame(raw: unknown): ParsedAuthorizeFrame | null {
+	if (!raw || typeof raw !== "object") return null;
+	const frame = raw as Record<string, unknown>;
+	const id = frame.authorize_id;
+	const state = frame.state;
+	if (typeof id !== "string" || !ID_PATTERN.test(id)) return null;
+	if (typeof state !== "string" || !AUTHORIZE_STATES.has(state)) return null;
+	const items = Array.isArray(frame.items) ? frame.items : [];
+	return {
+		authorize_id: id,
+		client_ref: textOrNull(frame.client_ref),
+		state: state as TeamBridgeAuthorizeFramePayload["state"],
+		items: items
+			.filter(
+				(item): item is Record<string, unknown> =>
+					!!item && typeof item === "object",
+			)
+			.map((item) => ({
+				message_id: textOrNull(item.message_id) ?? "",
+				word:
+					item.word === "approve" || item.word === "deny" ? item.word : null,
+				sender: textOrNull(item.sender),
+				excerpt: textOrNull(item.excerpt),
+			})),
+	};
+}
 
 const prompting = new Map<string, AuthorizePromptNotice>();
 let snapshot: AuthorizePromptNotice[] = [];
+/*
+ * Ended foreign prompts, newest first. A person who glanced away, or touched
+ * the sensor out of habit, otherwise has nothing to show a prompt happened
+ * (UX review U7). Five is a display ceiling: the panel shows them as lines,
+ * and a burst beyond that is already the story.
+ */
+const TRACE_LIMIT = 5;
+let traces: ForeignPromptTrace[] = [];
 const listeners = new Set<() => void>();
 let lastFrameKey: string | null = null;
 
-export function noticeFromFrame(
-	payload: TeamBridgeAuthorizeFramePayload,
-): AuthorizePromptNotice {
-	const items = Array.isArray(payload.items) ? payload.items : [];
+function notify() {
+	for (const listener of listeners) listener();
+}
+
+function noticeFromFrame(payload: ParsedAuthorizeFrame): AuthorizePromptNotice {
+	const { items } = payload;
 	return {
 		authorizeId: payload.authorize_id,
-		foreign: !isOwnClientRef(payload.client_ref),
+		foreign: !claimOwnPrompt(payload.client_ref, payload.authorize_id),
 		approveCount: items.filter((item) => item.word === "approve").length,
 		denyCount: items.filter((item) => item.word === "deny").length,
 		items,
@@ -276,38 +394,54 @@ export function noticeFromFrame(
 
 /**
  * Apply one feed frame. `prompting` shows a notice; every other state clears
- * the notice for that `authorize_id`. `frameKey` (`epoch:seq`) collapses the
- * one delivery per mounted feed hook into a single application, the way the
- * avatar frame is applied.
+ * the notice for that `authorize_id` (leaving a trace if it was foreign).
+ * `frameKey` (`epoch:seq`) collapses the one delivery per mounted feed hook
+ * into a single application, the way the avatar frame is applied. The raw
+ * payload is parsed here, so a caller cannot skip the boundary check.
  */
-export function applyAuthorizeFrame(
-	payload: TeamBridgeAuthorizeFramePayload,
-	frameKey?: string,
-): void {
+export function applyAuthorizeFrame(raw: unknown, frameKey?: string): void {
 	if (frameKey !== undefined) {
 		if (frameKey === lastFrameKey) return;
 		lastFrameKey = frameKey;
 	}
-	if (!payload || typeof payload.authorize_id !== "string") return;
+	const payload = parseAuthorizeFrame(raw);
+	if (!payload) return;
 	if (payload.state === "prompting") {
-		prompting.set(payload.authorize_id, noticeFromFrame(payload));
-	} else if (!prompting.delete(payload.authorize_id)) {
-		return;
+		// A repeated `prompting` for a prompt already shown keeps its label: the
+		// claim happened once, on first sight.
+		if (!prompting.has(payload.authorize_id))
+			prompting.set(payload.authorize_id, noticeFromFrame(payload));
+	} else {
+		const closed = prompting.get(payload.authorize_id);
+		if (!closed) return;
+		prompting.delete(payload.authorize_id);
+		if (closed.foreign) {
+			traces = [
+				{
+					authorizeId: closed.authorizeId,
+					count: closed.items.length,
+					ended: payload.state,
+					at: Date.now(),
+				},
+				...traces,
+			].slice(0, TRACE_LIMIT);
+		}
 	}
 	snapshot = Array.from(prompting.values());
-	for (const listener of listeners) listener();
+	notify();
 }
 
 /**
  * Feed reconnect: the feed is live-only and a prompt lasts seconds, so a
  * notice whose closing frame was lost would otherwise stand forever. The
- * caller clears on a dropped transport.
+ * caller clears on a dropped transport. No trace is left: how it ended is
+ * unknown, and a guess would be a false record.
  */
 export function clearAuthorizeNotices(): void {
 	if (prompting.size === 0) return;
 	prompting.clear();
 	snapshot = [];
-	for (const listener of listeners) listener();
+	notify();
 }
 
 export function subscribeAuthorizeNotices(listener: () => void): () => void {
@@ -317,6 +451,25 @@ export function subscribeAuthorizeNotices(listener: () => void): () => void {
 
 export function authorizeNoticesSnapshot(): AuthorizePromptNotice[] {
 	return snapshot;
+}
+
+export function foreignPromptTraces(): ForeignPromptTrace[] {
+	return traces;
+}
+
+export function dismissForeignPromptTrace(authorizeId: string): void {
+	const next = traces.filter((trace) => trace.authorizeId !== authorizeId);
+	if (next.length === traces.length) return;
+	traces = next;
+	notify();
+}
+
+/** Test seam: forget notices, traces and the dedupe key. */
+export function resetAuthorizeNoticesForTests(): void {
+	prompting.clear();
+	snapshot = [];
+	traces = [];
+	lastFrameKey = null;
 }
 
 // -- refusals -> calm copy -----------------------------------------------------
@@ -332,6 +485,8 @@ export type ApprovalRefusal =
 	| { kind: "presence_required"; message: string }
 	| { kind: "dismissed"; message: string }
 	| { kind: "expired"; message: string }
+	| { kind: "challenge_limit"; message: string }
+	| { kind: "unconfirmed"; message: string }
 	| { kind: "other"; message: string };
 
 type RefusalLike = {
@@ -357,15 +512,28 @@ function refusalDetails(error: RefusalLike): Record<string, unknown> {
  * surface promises "nothing was decided" in one register. `names` resolves a
  * locked item's id to the sender shown on its row, so the copy can say WHICH
  * requests are locked rather than how many.
+ *
+ * `stage` says which call failed. A server or transport failure of the DECIDE
+ * call (after Touch ID confirmed) may have reached the hub or not, and the row
+ * re-reads as "not sent yet" if it did not: the copy says so (QA Q4) instead of
+ * the generic line, which is for failures before anything could be sent.
  */
 export function mapApprovalRefusal(
 	error: unknown,
 	names: (messageId: string) => string | null = () => null,
+	stage: "authorize" | "decide" = "authorize",
 ): ApprovalRefusal {
 	const e = (error ?? {}) as RefusalLike;
 	const code = typeof e.code === "string" ? e.code : "";
 	const details = refusalDetails(e);
 	switch (code) {
+		/* Refused before any prompt (#4099's per-process challenge ceiling), so
+		   nothing was signed or sent (agent review R1-04). */
+		case "operator_challenge_limit":
+			return {
+				kind: "challenge_limit",
+				message: t("ui.teamBridge.approvals.refusal.challenge_limit"),
+			};
 		case "operator_prompt_in_flight":
 			return {
 				kind: "in_flight",
@@ -406,16 +574,21 @@ export function mapApprovalRefusal(
 					message_id: item.message_id,
 					unsent_decision: item.unsent_decision,
 				}));
-			const named = items
-				.map((item) => names(item.message_id))
-				.filter((name): name is string => !!name);
+			const named = Array.from(
+				new Set(
+					items
+						.map((item) => names(item.message_id))
+						.filter((name): name is string => !!name),
+				),
+			);
 			return {
 				kind: "locked",
 				items,
 				message:
 					named.length > 0
 						? t("ui.teamBridge.approvals.refusal.locked_named", {
-								names: Array.from(new Set(named)).join(", "),
+								count: items.length,
+								names: joinNames(named),
 							})
 						: t("ui.teamBridge.approvals.refusal.locked"),
 			};
@@ -437,11 +610,18 @@ export function mapApprovalRefusal(
 				kind: "expired",
 				message: t("ui.teamBridge.approvals.refusal.expired"),
 			};
-		default:
+		default: {
+			const status = typeof e.status === "number" ? e.status : null;
+			if (stage === "decide" && (status === null || status >= 500))
+				return {
+					kind: "unconfirmed",
+					message: t("ui.teamBridge.approvals.refusal.unconfirmed"),
+				};
 			return {
 				kind: "other",
 				message: t("ui.teamBridge.approvals.refusal.other"),
 			};
+		}
 	}
 }
 
@@ -483,6 +663,28 @@ export function resultLine(result: ApprovalDecideResult): {
 				tone: "not_sent",
 				label: t("ui.teamBridge.approvals.result.unconfirmed"),
 			};
+		/* The local authority fence refused the item before it was sent (#4099
+		   `authority_fence`); each says what changed (QA Q5). */
+		case "not_designated":
+			return {
+				tone: "not_sent",
+				label: t("ui.teamBridge.approvals.result.not_designated"),
+			};
+		case "owner_changed":
+			return {
+				tone: "not_sent",
+				label: t("ui.teamBridge.approvals.result.owner_changed"),
+			};
+		case "feature_off":
+			return {
+				tone: "not_sent",
+				label: t("ui.teamBridge.approvals.result.feature_off"),
+			};
+		case "consent_revoked":
+			return {
+				tone: "not_sent",
+				label: t("ui.teamBridge.approvals.result.consent_revoked"),
+			};
 		default:
 			return {
 				tone: "not_sent",
@@ -499,4 +701,163 @@ export function senderLabel(sender: {
 	return (
 		sender.name || sender.email || t("ui.teamBridge.approvals.unknown_sender")
 	);
+}
+
+/*
+ * The renderer's TypeScript lib predates `Intl.ListFormat` (the same cast
+ * `team-bridge-reactions.tsx` makes); Chromium has shipped it for years.
+ */
+type ListFormatCtor = new (
+	locale: string,
+	options: { style: "long"; type: "conjunction" },
+) => { format: (items: readonly string[]) => string };
+
+/**
+ * Names joined the way a sentence lists people: "Lena and Omar", "Lena, Omar,
+ * and Sam" in en, with each locale's own conjunction (copy review C6: a bare
+ * ", " join read "the request from Lena, Omar").
+ */
+export function joinNames(names: readonly string[]): string {
+	const ListFormat = (Intl as unknown as { ListFormat?: ListFormatCtor })
+		.ListFormat;
+	if (!ListFormat) return names.join(", ");
+	return new ListFormat(currentLocale(), {
+		style: "long",
+		type: "conjunction",
+	}).format(names);
+}
+
+// -- what this machine remembers about its own decisions ----------------------
+
+/**
+ * What the panel captured about a request at the moment the person decided it:
+ * the sender as their row showed them, the card's already-screened excerpt and
+ * the chat session holding the card. Never a body or a rationale - the row
+ * never had either.
+ */
+export type DecidedSnapshot = {
+	sender: string;
+	excerpt: string | null;
+	sessionId: string | null;
+};
+
+/*
+ * WHY THIS EXISTS (UX review U2). The hub's decision ledger carries who, which
+ * word and when, but not WHAT was decided (by design: the ledger holds
+ * references, never content), so two decisions on requests from one teammate
+ * read identically. This renderer saw the excerpt when the person decided, so
+ * it keeps it for the history rows of decisions made here.
+ *
+ * In memory only, for the life of this renderer: the excerpt is chat content,
+ * and persisting it would put request text on disk outside the session log
+ * that already owns it. A reload therefore shows history without excerpts,
+ * which is the same as a decision made on another device. The bound is a
+ * memory ceiling, not a behaviour: the history page shows at most 50 rows, so
+ * 200 decisions in one sitting keep every visible row covered.
+ */
+const DECIDED_LIMIT = 200;
+const decided = new Map<string, DecidedSnapshot>();
+
+export function rememberDecided(
+	messageId: string,
+	snapshot: DecidedSnapshot,
+): void {
+	decided.delete(messageId);
+	decided.set(messageId, snapshot);
+	while (decided.size > DECIDED_LIMIT) {
+		const oldest = decided.keys().next().value;
+		if (oldest === undefined) break;
+		decided.delete(oldest);
+	}
+}
+
+export function decidedSnapshot(messageId: string): DecidedSnapshot | null {
+	return decided.get(messageId) ?? null;
+}
+
+/** Test seam. */
+export function resetDecidedForTests(): void {
+	decided.clear();
+}
+
+// -- the authorize -> decide flow, without React ------------------------------
+
+export type ApprovalFlowOutcome<P> =
+	| { ok: true; results: ApprovalDecideResult[]; proof?: P }
+	| { ok: false; error: unknown; stage: "authorize" | "decide" };
+
+/**
+ * Authorize once, then decide once with EXACTLY the proof the daemon returned.
+ *
+ * Kept out of the hook so the two properties a person relies on are testable
+ * from the shipped source (agent review R1-05): nothing is retried (a second
+ * Touch ID sheet must never appear that the person did not ask for), and the
+ * proof is passed through untouched, with the same items and account the
+ * authorize signed. The `client_ref` is registered as ours for exactly the
+ * span of the authorize call and retired in `finally`, whatever happens
+ * (security S-1).
+ */
+export async function runApprovalFlow<P>(deps: {
+	accountId: string;
+	items: ApprovalSelectionItem[];
+	authorize: (
+		accountId: string,
+		items: ApprovalSelectionItem[],
+		clientRef: string,
+	) => Promise<{ operator_proof: P }>;
+	decide: (
+		accountId: string,
+		items: ApprovalSelectionItem[],
+		proof: P,
+	) => Promise<ApprovalDecideResult[]>;
+	onDeciding?: () => void;
+}): Promise<ApprovalFlowOutcome<P>> {
+	const { accountId, items } = deps;
+	const clientRef = beginOwnPrompt();
+	let proof: P;
+	try {
+		proof = (await deps.authorize(accountId, items, clientRef)).operator_proof;
+	} catch (error) {
+		return { ok: false, error, stage: "authorize" };
+	} finally {
+		// The prompt is over once authorize answers: the ref is never ours again.
+		endOwnPrompt(clientRef);
+	}
+	deps.onDeciding?.();
+	try {
+		const results = await deps.decide(accountId, items, proof);
+		return { ok: true, results };
+	} catch (error) {
+		return { ok: false, error, stage: "decide" };
+	}
+}
+
+// -- the batch bar's preview ---------------------------------------------------
+
+/**
+ * What each batch button would send from the current selection, BEFORE the
+ * person presses it (UX review U6): a locked row selected beside others is
+ * left out of the other word, and the button says so ("Deny 1 of 2") rather
+ * than reporting it afterwards.
+ */
+export function selectionPreview(
+	rows: readonly ApprovalRequestRow[],
+	selected: ReadonlySet<string>,
+): Record<ApprovalWord, { send: number; left: number }> {
+	const approve = buildSelection(rows, selected, "approve");
+	const deny = buildSelection(rows, selected, "deny");
+	return {
+		approve: { send: approve.items.length, left: approve.excluded.length },
+		deny: { send: deny.items.length, left: deny.excluded.length },
+	};
+}
+
+/** "2 sent · 1 not sent": the counts for the Results heading (design D7). */
+export function resultsSummary(results: readonly ApprovalDecideResult[]): {
+	done: number;
+	notSent: number;
+} {
+	let done = 0;
+	for (const result of results) if (resultLine(result).tone === "done") done++;
+	return { done, notSent: results.length - done };
 }

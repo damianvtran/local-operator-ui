@@ -7,10 +7,8 @@ import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
  * The rules live in `team-bridge-approvals-model.ts`; this file only owns the
  * query keys, the account fence and the flow's state.
  */
-import {
-	type ApprovalOperatorProof,
-	TeamBridgeApprovalsApi,
-} from "@shared/api/local-operator/team-bridge-approvals-api";
+import { TeamBridgeApprovalsApi } from "@shared/api/local-operator/team-bridge-approvals-api";
+import { t } from "@shared/i18n";
 import {
 	type QueryClient,
 	useQuery,
@@ -27,9 +25,13 @@ import {
 	type ApprovalDecideResult,
 	type ApprovalRefusal,
 	type ApprovalSelectionItem,
+	type DecidedSnapshot,
 	authorizeNoticesSnapshot,
+	foreignPromptTraces,
 	mapApprovalRefusal,
-	newClientRef,
+	rememberDecided,
+	resultLine,
+	runApprovalFlow,
 	subscribeAuthorizeNotices,
 } from "./team-bridge-approvals-model";
 import { teamBridgeKeys } from "./team-bridge-keys";
@@ -110,34 +112,65 @@ export type ApprovalFlowState =
 	/* Touch ID is up (or about to be); the daemon holds the request open. */
 	| { phase: "authorizing"; items: ApprovalSelectionItem[] }
 	| { phase: "deciding"; items: ApprovalSelectionItem[] }
-	| { phase: "done"; results: ApprovalDecideResult[] }
+	/*
+	 * `labels` is each item's sender as its row showed them WHEN THE PERSON
+	 * PRESSED, captured at the start: the decide's refetch drops every decided
+	 * row from the list, so the results cannot be read off live rows (agent
+	 * review R1-02, QA Q1). They stay until Dismiss.
+	 */
+	| {
+			phase: "done";
+			results: ApprovalDecideResult[];
+			labels: Record<string, string>;
+	  }
 	| { phase: "refused"; refusal: ApprovalRefusal };
+
+/** What the container knows about a listed request at decide time. */
+export type ApprovalRowLookup = (messageId: string) => DecidedSnapshot | null;
 
 /**
  * Authorize, then decide. One flow at a time: a second press while a prompt is
  * up is ignored here, and the daemon would refuse it anyway
  * (`operator_prompt_in_flight`). Nothing retries on its own - a dismissed or
  * expired confirmation is the person's to repeat, so a second Touch ID sheet
- * never appears that they did not ask for.
+ * never appears that they did not ask for (`runApprovalFlow`).
  */
-export function useApprovalDecide(names: (messageId: string) => string | null) {
+export function useApprovalDecide(lookup: ApprovalRowLookup) {
 	const client = useQueryClient();
 	const { accountId } = useTeamBridgeAccount();
 	const [state, setState] = useState<ApprovalFlowState>({ phase: "idle" });
 	const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+	/*
+	 * PRESENCE-REQUIRED IS A PROPERTY OF THIS MAC, NOT AN EVENT (design D5). Once
+	 * the daemon says batch deciding needs Touch ID it does not have, every
+	 * further press is certain to be refused the same way, so Dismiss must not
+	 * bring the batch controls back. It holds for the life of the panel; a
+	 * remount (the person came back later, perhaps with the key enrolled) asks
+	 * again.
+	 */
+	const [presenceRequired, setPresenceRequired] = useState(false);
 	const busy = useRef(false);
-	const namesRef = useRef(names);
-	namesRef.current = names;
+	const lookupRef = useRef(lookup);
+	lookupRef.current = lookup;
 
-	// Re-render once the cooldown elapses so the confirm actions re-enable.
+	// Clear the cooldown when it elapses so the actions re-enable, and retire a
+	// cooldown banner with it: its countdown has nothing left to say (D4, Q3).
 	useEffect(() => {
 		if (cooldownUntil === null) return;
+		const end = () => {
+			setCooldownUntil(null);
+			setState((current) =>
+				current.phase === "refused" && current.refusal.kind === "cooldown"
+					? { phase: "idle" }
+					: current,
+			);
+		};
 		const wait = cooldownUntil - Date.now();
 		if (wait <= 0) {
-			setCooldownUntil(null);
+			end();
 			return;
 		}
-		const timer = setTimeout(() => setCooldownUntil(null), wait);
+		const timer = setTimeout(end, wait);
 		return () => clearTimeout(timer);
 	}, [cooldownUntil]);
 
@@ -145,26 +178,45 @@ export function useApprovalDecide(names: (messageId: string) => string | null) {
 		async (items: ApprovalSelectionItem[]) => {
 			if (busy.current || items.length === 0 || !accountId) return;
 			busy.current = true;
+			// Captured BEFORE anything can refetch the list.
+			const snapshots = new Map(
+				items.map((item) => [
+					item.message_id,
+					lookupRef.current(item.message_id),
+				]),
+			);
+			const nameOf = (id: string) => snapshots.get(id)?.sender ?? null;
 			setState({ phase: "authorizing", items });
 			try {
-				const clientRef = newClientRef();
-				const authorized = await TeamBridgeApprovalsApi.authorize(
+				const outcome = await runApprovalFlow({
 					accountId,
 					items,
-					clientRef,
+					authorize: TeamBridgeApprovalsApi.authorize,
+					decide: TeamBridgeApprovalsApi.decide,
+					onDeciding: () => setState({ phase: "deciding", items }),
+				});
+				if (outcome.ok) {
+					const labels: Record<string, string> = {};
+					for (const item of items)
+						labels[item.message_id] =
+							nameOf(item.message_id) ??
+							t("ui.teamBridge.approvals.unknown_sender");
+					for (const result of outcome.results) {
+						const snap = snapshots.get(result.message_id);
+						if (snap && resultLine(result).tone === "done")
+							rememberDecided(result.message_id, snap);
+					}
+					setState({ phase: "done", results: outcome.results, labels });
+					return;
+				}
+				const refusal = mapApprovalRefusal(
+					outcome.error,
+					nameOf,
+					outcome.stage,
 				);
-				setState({ phase: "deciding", items });
-				const proof: ApprovalOperatorProof = authorized.operator_proof;
-				const results = await TeamBridgeApprovalsApi.decide(
-					accountId,
-					items,
-					proof,
-				);
-				setState({ phase: "done", results });
-			} catch (error) {
-				const refusal = mapApprovalRefusal(error, namesRef.current);
 				if (refusal.kind === "cooldown")
 					setCooldownUntil(Date.now() + refusal.retryAfterS * 1000);
+				if (refusal.kind === "presence_required") setPresenceRequired(true);
 				setState({ phase: "refused", refusal });
 			} finally {
 				busy.current = false;
@@ -175,7 +227,14 @@ export function useApprovalDecide(names: (messageId: string) => string | null) {
 	);
 
 	const reset = useCallback(() => setState({ phase: "idle" }), []);
-	return { state, run, reset, coolingDown: cooldownUntil !== null };
+	return {
+		state,
+		run,
+		reset,
+		coolingDown: cooldownUntil !== null,
+		cooldownUntil,
+		presenceRequired,
+	};
 }
 
 /** The live Touch ID prompt notices (see `applyAuthorizeFrame`). */
@@ -184,5 +243,14 @@ export function useAuthorizeNotices() {
 		subscribeAuthorizeNotices,
 		authorizeNoticesSnapshot,
 		authorizeNoticesSnapshot,
+	);
+}
+
+/** Ended prompts this window did not start (UX review U7). */
+export function useForeignPromptTraces() {
+	return useSyncExternalStore(
+		subscribeAuthorizeNotices,
+		foreignPromptTraces,
+		foreignPromptTraces,
 	);
 }

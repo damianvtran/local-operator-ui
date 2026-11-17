@@ -201,6 +201,7 @@ import {
 	unmatchedDirects,
 	visibleConversationRows,
 } from "./team-bridge-model";
+import { TEAM_BRIDGE_REQUESTS_VIEW_PARAM } from "./team-bridge-nav";
 import {
 	looseDirectsFor,
 	orgGroupHeadingId,
@@ -328,7 +329,10 @@ import {
 	useUnarchiveTeamBridgeConversation,
 	useWithdrawTeamBridgeAgent,
 } from "./use-team-bridge";
-import { useApprovalRequests } from "./use-team-bridge-approvals";
+import {
+	approvalsUnsupported,
+	useApprovalRequests,
+} from "./use-team-bridge-approvals";
 import { useTeamBridgeDrafts } from "./use-team-bridge-drafts";
 import { type FileSend, filesCapability } from "./use-team-bridge-files";
 
@@ -688,6 +692,14 @@ export type TeamBridgePageViewProps = {
 	 * Requests view, passed in so this props-only view never starts a query.
 	 */
 	requests?: { waiting: number; panel: ReactNode };
+	/**
+	 * Set while the address asks for the Requests view (`?view=requests`, the
+	 * nav row's landing while it counts requests - UX review U1). The view opens
+	 * Requests once and calls `onRequestsViewConsumed` so the parameter is
+	 * cleared and a later refetch cannot pull the reader back.
+	 */
+	requestsViewRequested?: boolean;
+	onRequestsViewConsumed?: () => void;
 	/** Page-lifetime data journal; no live mutation closure survives an auth epoch. */
 	draftJournal?: OwnedDraft;
 	isDraftCurrent?: () => boolean;
@@ -1035,6 +1047,8 @@ export type TeamBridgePageViewProps = {
 export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	ownerAudit,
 	requests,
+	requestsViewRequested = false,
+	onRequestsViewConsumed,
 	renderThreadPane,
 	threadLink,
 	onCloseThread,
@@ -1648,6 +1662,20 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		ownerAudit?.clear();
 		setQuickView(next);
 	};
+	/*
+	 * `?view=requests` opens Requests once the slot exists (the requests read
+	 * may still be in flight on a cold open), then hands the parameter back.
+	 * Kept in a ref so the effect runs on the two facts that matter, not on
+	 * every render's new `openQuickView` closure.
+	 */
+	const openQuickViewRef = useRef(openQuickView);
+	openQuickViewRef.current = openQuickView;
+	const requestsSlotReady = Boolean(requests);
+	useEffect(() => {
+		if (!requestsViewRequested || !requestsSlotReady) return;
+		openQuickViewRef.current("requests");
+		onRequestsViewConsumed?.();
+	}, [requestsViewRequested, requestsSlotReady, onRequestsViewConsumed]);
 	/*
 	 * THE PANEL BELONGS TO THE ROOM IT WAS OPENED FOR (review round 1, R1). The
 	 * panel is keyed by conversation, so a selection change while it is open
@@ -5701,13 +5729,33 @@ const TeamBridgeOwnedPage: FC<{
 	 * slot stays absent, so an older backend shows no Requests entry at all.
 	 */
 	const approvalRequests = useApprovalRequests(readsEnabled);
+	/*
+	 * A failed read that is NOT a 404 still draws the entry (QA Q2): requests
+	 * may exist that could not be read, and the panel says so with Retry. Only
+	 * "this daemon has no approvals routes" hides it.
+	 */
 	const requestsSlot =
-		readsEnabled && approvalRequests.data
+		readsEnabled &&
+		(approvalRequests.data ||
+			(approvalRequests.isError &&
+				!approvalsUnsupported(approvalRequests.error)))
 			? {
-					waiting: approvalRequests.data.pending_count,
+					waiting: approvalRequests.data?.pending_count ?? 0,
 					panel: <TeamBridgeRequests />,
 				}
 			: undefined;
+	const requestsViewRequested =
+		searchParams.get(TEAM_BRIDGE_REQUESTS_VIEW_PARAM) === "requests";
+	const consumeRequestsView = useCallback(() => {
+		setSearchParams(
+			(current) => {
+				const next = new URLSearchParams(current);
+				next.delete(TEAM_BRIDGE_REQUESTS_VIEW_PARAM);
+				return next;
+			},
+			{ replace: true },
+		);
+	}, [setSearchParams]);
 
 	useEffect(() => {
 		if (!(requestedConversation || requestedRowType) || !requestedTenant)
@@ -6797,6 +6845,8 @@ const TeamBridgeOwnedPage: FC<{
 			<TeamBridgePageView
 				ownerAudit={ownerAudit}
 				requests={requestsSlot}
+				requestsViewRequested={requestsViewRequested}
+				onRequestsViewConsumed={consumeRequestsView}
 				key={viewKey}
 				draftJournal={draftJournal}
 				isDraftCurrent={isCurrentOwner}

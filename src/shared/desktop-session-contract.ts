@@ -2263,6 +2263,21 @@ export type DesktopSessionFrame =
 	| Receipt<"aside_delta", { aside_id: string; delta: string }>
 	| { session_id: CanonicalSessionId; type: "heartbeat" | "gap" };
 
+/** The `team_bridge_authorize` frame's payload, as the daemon publishes it
+ * (local-operator #4099). The renderer parses it at the feed boundary
+ * (`parseAuthorizeFrame`) rather than trusting this shape. */
+export type TeamBridgeAuthorizeFramePayload = {
+	authorize_id: string;
+	client_ref: string | null;
+	state: "prompting" | "signed" | "dismissed" | "refused";
+	items: Array<{
+		message_id: string;
+		word: "approve" | "deny";
+		sender: string | null;
+		excerpt: string | null;
+	}>;
+};
+
 /**
  * The machine-wide feed's frame family (`GET /v1/desktop/events`).
  *
@@ -2289,19 +2304,6 @@ export type DesktopSessionFrame =
  * connection, and only meaningful for dedupe — never for deciding what is
  * newer paint state.
  */
-/** The `team_bridge_authorize` frame's payload, as the daemon publishes it. */
-export type TeamBridgeAuthorizeFramePayload = {
-	authorize_id: string;
-	client_ref: string | null;
-	state: "prompting" | "signed" | "dismissed" | "refused";
-	items: Array<{
-		message_id: string;
-		word: "approve" | "deny";
-		sender: string | null;
-		excerpt: string | null;
-	}>;
-};
-
 export type DesktopFeedFrame =
 	| {
 			epoch: string;

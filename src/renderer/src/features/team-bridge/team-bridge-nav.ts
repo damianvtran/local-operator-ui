@@ -31,6 +31,10 @@ import { useApprovalRequests } from "./use-team-bridge-approvals";
  * destination whose every call 404s is worse than no destination.
  */
 export const TEAM_BRIDGE_PATH = "/team-bridge";
+
+/** The query parameter that opens the Team Bridge page on its Requests view. */
+export const TEAM_BRIDGE_REQUESTS_VIEW_PARAM = "view";
+export const TEAM_BRIDGE_REQUESTS_PATH = `${TEAM_BRIDGE_PATH}?${new URLSearchParams({ [TEAM_BRIDGE_REQUESTS_VIEW_PARAM]: "requests" })}`;
 export const TEAM_BRIDGE_TOUR_TAG = "nav-team-bridge";
 export const TEAM_BRIDGE_BADGE_TAG = "nav-team-bridge-badge";
 
@@ -82,7 +86,13 @@ export function useTeamBridgeNavItem(
 	return {
 		icon: MessagesSquare,
 		label: t("ui.teamBridge.nav.label"),
-		path: TEAM_BRIDGE_PATH,
+		/*
+		 * The badge and the landing agree (UX review U1): while the badge counts
+		 * requests, the row opens Requests -> Waiting, not the conversations a
+		 * person would have to leave to find them. The page consumes `view` once
+		 * and clears it (`TEAM_BRIDGE_REQUESTS_VIEW_PARAM`).
+		 */
+		path: waiting > 0 ? TEAM_BRIDGE_REQUESTS_PATH : TEAM_BRIDGE_PATH,
 		tourTag: TEAM_BRIDGE_TOUR_TAG,
 		attention: waiting > 0 ? waiting : unreadTotal,
 		attentionTag: TEAM_BRIDGE_BADGE_TAG,

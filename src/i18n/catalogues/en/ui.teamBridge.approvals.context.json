@@ -199,8 +199,11 @@
 		"role": "heading",
 		"tone": "neutral",
 		"length": "1 word",
-		"placeholders": {},
-		"note": "Per-request outcome of the decision that was just sent."
+		"placeholders": {
+			"done": "number of requests now decided",
+			"notSent": "number not sent; the second part disappears at zero"
+		},
+		"note": "Heading above the list of results after a decision, e.g. \"2 decided · 1 not sent\"."
 	},
 	"ui.teamBridge.approvals.result.approved": {
 		"role": "result label",
@@ -272,7 +275,8 @@
 		"tone": "calm",
 		"length": "two or three sentences",
 		"placeholders": {
-			"names": "comma-separated display names"
+			"count": "number of affected requests",
+			"names": "Display names already joined into one list by Intl.ListFormat (conjunction); never inflected or split"
 		},
 		"note": "{names} is a comma-separated list of display names."
 	},
@@ -369,15 +373,6 @@
 		},
 		"note": "{name} is the teammate or agent who asked."
 	},
-	"ui.teamBridge.approvals.history.decided_by": {
-		"role": "row meta",
-		"tone": "neutral",
-		"length": "short",
-		"placeholders": {
-			"name": "display name"
-		},
-		"note": "{name} is who decided."
-	},
 	"ui.teamBridge.approvals.notice.title": {
 		"role": "notice heading",
 		"tone": "calm",
@@ -392,7 +387,7 @@
 		"tone": "plain, cautionary",
 		"length": "3-4 words",
 		"placeholders": {},
-		"note": "Security label: another program on this machine asked for this Touch ID prompt, not this window."
+		"note": "Security label on a Touch ID notice this window did not start. It may come from another program or another Local Operator window, so do not say \"another program\"."
 	},
 	"ui.teamBridge.approvals.notice.foreign_help": {
 		"role": "notice helper text",
@@ -419,18 +414,160 @@
 		},
 		"note": "{sender} is a display name."
 	},
-	"ui.teamBridge.approvals.notice.unknown_item": {
-		"role": "fallback in a notice list item",
-		"tone": "neutral",
-		"length": "short",
-		"placeholders": {},
-		"note": "Replaces the sender name when the request has no local card."
-	},
 	"ui.teamBridge.approvals.notice.label": {
 		"role": "accessible name of the notice region",
 		"tone": "neutral",
 		"length": "short",
 		"placeholders": {},
 		"note": "Team Bridge approvals panel."
+	},
+	"ui.teamBridge.approvals.approve_selected_partial": {
+		"role": "batch button label",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"send": "how many selected requests this button would send",
+			"total": "how many requests are selected"
+		},
+		"note": "Replaces \"Approve selected\" when some selected requests already carry an unsent Deny and so cannot be approved. Says up front how many will actually be sent."
+	},
+	"ui.teamBridge.approvals.deny_selected_partial": {
+		"role": "batch button label",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"send": "how many selected requests this button would send",
+			"total": "how many requests are selected"
+		},
+		"note": "Replaces \"Deny selected\" when some selected requests already carry an unsent Approve and so cannot be denied."
+	},
+	"ui.teamBridge.approvals.expires": {
+		"role": "row metadata",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"time": "localized date and time the request expires"
+		},
+		"note": "Shown after \"Received …\" on a waiting request."
+	},
+	"ui.teamBridge.approvals.open_card": {
+		"role": "button label",
+		"tone": "neutral",
+		"length": "1-3 words",
+		"placeholders": {},
+		"note": "Opens the chat conversation that holds this request's approval card, where it can also be answered."
+	},
+	"ui.teamBridge.approvals.open_card_named": {
+		"role": "accessible name of the Open in chat button",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"sender": "teammate display name"
+		},
+		"note": "Screen-reader name, so several \"Open in chat\" buttons can be told apart."
+	},
+	"ui.teamBridge.approvals.refusal.challenge_limit": {
+		"role": "refusal message",
+		"tone": "calm",
+		"length": "two sentences",
+		"placeholders": {},
+		"note": "The app refused before showing Touch ID because too many confirmations were requested at once."
+	},
+	"ui.teamBridge.approvals.refusal.unconfirmed": {
+		"role": "refusal message",
+		"tone": "calm, reassuring",
+		"length": "two sentences",
+		"placeholders": {},
+		"note": "Touch ID succeeded but sending to the teammate failed. Rows that did not go out reappear with a \"Send approval/Send denial\" button."
+	},
+	"ui.teamBridge.approvals.result.not_designated": {
+		"role": "per-request result line",
+		"tone": "neutral",
+		"length": "one line",
+		"placeholders": {},
+		"note": "The chat that raised the card is no longer the one that answers teammate requests."
+	},
+	"ui.teamBridge.approvals.result.owner_changed": {
+		"role": "per-request result line",
+		"tone": "neutral",
+		"length": "one line",
+		"placeholders": {},
+		"note": "The Radient account bound to the chat changed since the card was raised."
+	},
+	"ui.teamBridge.approvals.result.feature_off": {
+		"role": "per-request result line",
+		"tone": "neutral",
+		"length": "one line",
+		"placeholders": {},
+		"note": "\"Agent messages\" is the setting name."
+	},
+	"ui.teamBridge.approvals.result.consent_revoked": {
+		"role": "per-request result line",
+		"tone": "neutral",
+		"length": "one line",
+		"placeholders": {},
+		"note": "The person withdrew consent for agent messages; nothing is sent until they give it again."
+	},
+	"ui.teamBridge.approvals.result.item": {
+		"role": "one line of the results list after a decision",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"sender": "teammate display name",
+			"word": "the translated button word, Approve or Deny",
+			"outcome": "the translated per-request result, e.g. Approved or Not sent: …"
+		},
+		"note": "Keep the separators; reorder only if the language needs it."
+	},
+	"ui.teamBridge.approvals.notice.item_approve_unlisted": {
+		"role": "Touch ID notice list item",
+		"tone": "plain, slightly cautionary",
+		"length": "short",
+		"placeholders": {},
+		"note": "The prompt includes a request this Mac has no record of. The reader most needs to notice this line."
+	},
+	"ui.teamBridge.approvals.notice.item_deny_unlisted": {
+		"role": "Touch ID notice list item",
+		"tone": "plain, slightly cautionary",
+		"length": "short",
+		"placeholders": {},
+		"note": "As item_approve_unlisted, for a denial."
+	},
+	"ui.teamBridge.approvals.notice.item_unrecognised": {
+		"role": "Touch ID notice list item",
+		"tone": "plain, cautionary",
+		"length": "short",
+		"placeholders": {},
+		"note": "The prompt carries a decision word the app does not recognise. Never guess approve or deny."
+	},
+	"ui.teamBridge.approvals.trace.signed": {
+		"role": "security notice line, dismissible",
+		"tone": "calm, factual",
+		"length": "two sentences",
+		"placeholders": {
+			"count": "number of decisions in that check",
+			"time": "localized date and time it ended"
+		},
+		"note": "A record left after a Touch ID check this window did not start was confirmed."
+	},
+	"ui.teamBridge.approvals.trace.dismissed": {
+		"role": "security notice line, dismissible",
+		"tone": "calm, factual",
+		"length": "two sentences",
+		"placeholders": {
+			"count": "number of decisions in that check",
+			"time": "localized date and time it ended"
+		},
+		"note": "As trace.signed, when the person cancelled the Touch ID prompt."
+	},
+	"ui.teamBridge.approvals.trace.refused": {
+		"role": "security notice line, dismissible",
+		"tone": "calm, factual",
+		"length": "two sentences",
+		"placeholders": {
+			"count": "number of decisions in that check",
+			"time": "localized date and time it ended"
+		},
+		"note": "As trace.signed, when the app refused the check."
 	}
 }

@@ -13,8 +13,10 @@
  *    requests - and the daemon's own sentence is never shown.
  * 2. A row with an unsent earlier decision allows ONLY that word, and a batch
  *    of the other word leaves it out rather than re-wording it.
- * 3. A Touch ID prompt whose `client_ref` this renderer did not generate is
- *    labelled foreign (the S-6 security control), and a closing frame clears it.
+ * 3. A Touch ID prompt is labelled ours ONLY while our authorize call is in
+ *    flight and only for the first prompt carrying our `client_ref`; every
+ *    replay of the ref is foreign (S-6 / S-1). A closing frame clears it and a
+ *    foreign one leaves a trace; the frame is parsed at the boundary (S-5).
  * 4. A selection never exceeds 50 items, however it is built.
  *
  * WHAT IT DOES NOT PROVE: that the routes answer, or any pixel. Those are the
@@ -53,9 +55,14 @@ const RE_1 = /7 seconds/;
 const RE_2 = /DAEMON SENTENCE/;
 const RE_3 = /DAEMON SENTENCE|boom/;
 const RE_4 = /Nothing was decided/;
-const RE_5 = /Priya, Omar/;
+const RE_5 = /Priya and Omar/;
 const RE_6 = /^[0-9a-f]{32}$/;
 const RE_7 = /card/;
+const RE_FEED_DROP = /if \(!nextConnected\) clearAuthorizeNotices\(\);/;
+const RE_FEED_APPLY =
+	/frame\.type === "team_bridge_authorize"\)[\s\S]{0,40}applyAuthorizeFrame\(frame\.payload, `\$\{frame\.epoch\}:\$\{frame\.seq\}`\)/;
+const RE_WAIT = /\bwait\b/i;
+const RE_UNCONFIRMED = /couldn't be reached/;
 
 const row = (over = {}) => ({
 	message_id: "bcmsg_1",
@@ -206,41 +213,205 @@ test("a batch never re-words a locked row: it is left out and reported", () => {
 
 // -- 3. foreign client_ref -----------------------------------------------------
 
-test("a prompt with our client_ref is ours; any other ref, or none, is foreign", () => {
-	m.resetClientRefsForTests();
-	m.clearAuthorizeNotices();
-	const ours = m.newClientRef();
-	assert.match(ours, RE_6);
-	const item = {
-		message_id: "a",
-		word: "approve",
-		sender: "Priya",
-		excerpt: "x",
-	};
-	m.applyAuthorizeFrame(
-		{ authorize_id: "p1", client_ref: ours, state: "prompting", items: [item] },
-		"e:1",
-	);
-	m.applyAuthorizeFrame(
-		{
-			authorize_id: "p2",
-			client_ref: "deadbeef",
-			state: "prompting",
-			items: [item],
-		},
-		"e:2",
-	);
-	m.applyAuthorizeFrame(
-		{ authorize_id: "p3", client_ref: null, state: "prompting", items: [] },
-		"e:3",
-	);
-	const byId = Object.fromEntries(
+const promptItem = {
+	message_id: "a",
+	word: "approve",
+	sender: "Priya",
+	excerpt: "x",
+};
+const prompt = (authorize_id, client_ref, state = "prompting") => ({
+	authorize_id,
+	client_ref,
+	state,
+	items: [promptItem],
+});
+const noticeById = () =>
+	Object.fromEntries(
 		m.authorizeNoticesSnapshot().map((n) => [n.authorizeId, n]),
 	);
+let frameSeq = 0;
+const apply = (frame) => m.applyAuthorizeFrame(frame, `t:${++frameSeq}`);
+
+test("a prompt carrying our pending client_ref is ours; any other ref, or none, is foreign", () => {
+	m.resetClientRefsForTests();
+	m.resetAuthorizeNoticesForTests();
+	const ours = m.beginOwnPrompt();
+	assert.match(ours, RE_6);
+	apply(prompt("p1", ours));
+	apply(prompt("p2", "deadbeef"));
+	apply({ ...prompt("p3", null), items: [] });
+	const byId = noticeById();
 	assert.equal(byId.p1.foreign, false);
 	assert.equal(byId.p2.foreign, true);
 	assert.equal(byId.p3.foreign, true);
 	assert.equal(byId.p1.approveCount, 1);
+	m.endOwnPrompt(ours);
+});
+
+test("S-1: a replayed client_ref is foreign - second prompt, after signed, after the call settled", () => {
+	m.resetClientRefsForTests();
+	m.resetAuthorizeNoticesForTests();
+	const ours = m.beginOwnPrompt();
+	apply(prompt("own", ours));
+	// (a) another prompt with the same ref while ours is still up.
+	apply(prompt("replay_a", ours));
+	assert.equal(noticeById().own.foreign, false);
+	assert.equal(noticeById().replay_a.foreign, true);
+	// (b) our prompt is signed; the call has not answered yet; a replay lands.
+	apply(prompt("own", ours, "signed"));
+	apply(prompt("replay_b", ours));
+	assert.equal(noticeById().replay_b.foreign, true);
+	// A repeated delivery of OUR prompting frame keeps its label.
+	apply(prompt("own", ours));
+	assert.equal(noticeById().own.foreign, false);
+	// (c) the call has answered: the ref is retired for good.
+	m.endOwnPrompt(ours);
+	apply(prompt("replay_c", ours));
+	assert.equal(noticeById().replay_c.foreign, true);
+});
+
+test("S-1: a ref is ours only while pending - a ref never begun, or ended before its frame, is foreign", () => {
+	m.resetClientRefsForTests();
+	m.resetAuthorizeNoticesForTests();
+	const early = m.beginOwnPrompt();
+	m.endOwnPrompt(early);
+	apply(prompt("late", early));
+	assert.equal(noticeById().late.foreign, true);
+});
+
+test("runApprovalFlow: one authorize, one decide, the proof passed through untouched", async () => {
+	m.resetClientRefsForTests();
+	m.resetAuthorizeNoticesForTests();
+	const proof = { challenge: "c".repeat(64), sig: "ab", key_id: "k1" };
+	const items = [{ message_id: "a", decision: "approve" }];
+	const calls = [];
+	let refDuringAuthorize = null;
+	const out = await m.runApprovalFlow({
+		accountId: "acct_1",
+		items,
+		authorize: async (account, sent, ref) => {
+			calls.push(["authorize", account, sent]);
+			refDuringAuthorize = ref;
+			// The daemon publishes our prompt while the call is pending.
+			apply(prompt("flow_own", ref));
+			return { operator_proof: proof };
+		},
+		decide: async (account, sent, gotProof) => {
+			calls.push(["decide", account, sent, gotProof]);
+			return [
+				{ ...items[0], sent: true, ask_settled: true, status: "approved" },
+			];
+		},
+	});
+	assert.equal(out.ok, true);
+	assert.deepEqual(
+		calls.map((c) => c[0]),
+		["authorize", "decide"],
+	);
+	assert.equal(calls[1][1], "acct_1");
+	assert.equal(calls[1][2], items);
+	assert.equal(calls[1][3], proof, "the exact proof object, not a copy");
+	assert.equal(noticeById().flow_own.foreign, false);
+	// After the flow, the same ref is foreign.
+	apply(prompt("flow_replay", refDuringAuthorize));
+	assert.equal(noticeById().flow_replay.foreign, true);
+});
+
+test("runApprovalFlow: a refused authorize never decides and never retries", async () => {
+	m.resetClientRefsForTests();
+	let authorizes = 0;
+	let decides = 0;
+	let ref = null;
+	const out = await m.runApprovalFlow({
+		accountId: "acct_1",
+		items: [{ message_id: "a", decision: "deny" }],
+		authorize: async (_a, _i, clientRef) => {
+			authorizes++;
+			ref = clientRef;
+			throw refusal("operator_signature_unavailable");
+		},
+		decide: async () => {
+			decides++;
+			return [];
+		},
+	});
+	assert.equal(out.ok, false);
+	assert.equal(out.stage, "authorize");
+	assert.equal(authorizes, 1);
+	assert.equal(decides, 0);
+	m.resetAuthorizeNoticesForTests();
+	apply(prompt("after_refusal", ref));
+	assert.equal(noticeById().after_refusal.foreign, true);
+	// A failed decide is reported at its stage, once.
+	const failed = await m.runApprovalFlow({
+		accountId: "acct_1",
+		items: [{ message_id: "a", decision: "deny" }],
+		authorize: async () => ({ operator_proof: {} }),
+		decide: async () => {
+			decides++;
+			throw new m.DesktopControlError(503, "x");
+		},
+	});
+	assert.equal(failed.stage, "decide");
+	assert.equal(decides, 1);
+	assert.equal(
+		m.mapApprovalRefusal(failed.error, undefined, "decide").kind,
+		"unconfirmed",
+	);
+});
+
+test("S-5: the frame is parsed - an unknown word is kept as unrecognised, a bad frame is dropped", () => {
+	m.resetAuthorizeNoticesForTests();
+	apply({ ...prompt("w1", null), items: [{ ...promptItem, word: "maybe" }] });
+	const n = noticeById().w1;
+	assert.equal(n.items[0].word, null);
+	assert.equal(n.approveCount, 0);
+	assert.equal(n.denyCount, 0);
+	apply({ authorize_id: "w2", client_ref: null, state: "exploded", items: [] });
+	apply({ authorize_id: 7, state: "prompting" });
+	apply(null);
+	assert.deepEqual(Object.keys(noticeById()), ["w1"]);
+});
+
+test("U7: an ended foreign prompt leaves a dismissible trace; our own leaves none", () => {
+	m.resetClientRefsForTests();
+	m.resetAuthorizeNoticesForTests();
+	const ours = m.beginOwnPrompt();
+	apply(prompt("mine", ours));
+	apply(prompt("mine", ours, "signed"));
+	apply(prompt("theirs", null));
+	apply(prompt("theirs", null, "dismissed"));
+	const traces = m.foreignPromptTraces();
+	assert.equal(traces.length, 1);
+	assert.equal(traces[0].authorizeId, "theirs");
+	assert.equal(traces[0].ended, "dismissed");
+	assert.equal(traces[0].count, 1);
+	m.dismissForeignPromptTrace("theirs");
+	assert.equal(m.foreignPromptTraces().length, 0);
+	m.endOwnPrompt(ours);
+});
+
+test("a dropped feed clears every standing notice and leaves no guessed trace", () => {
+	m.resetAuthorizeNoticesForTests();
+	apply(prompt("d1", null));
+	apply(prompt("d2", null));
+	let calls = 0;
+	const off = m.subscribeAuthorizeNotices(() => calls++);
+	m.clearAuthorizeNotices();
+	assert.equal(m.authorizeNoticesSnapshot().length, 0);
+	assert.equal(m.foreignPromptTraces().length, 0);
+	assert.equal(calls, 1);
+	off();
+});
+
+test("the feed hook clears notices when the transport drops (wiring)", async () => {
+	const { readFile } = await import("node:fs/promises");
+	const src = await readFile(
+		"src/renderer/src/shared/hooks/use-desktop-feed.ts",
+		"utf8",
+	);
+	assert.match(src, RE_FEED_DROP);
+	assert.match(src, RE_FEED_APPLY);
 });
 
 test("a closing frame clears its notice; a repeated delivery is applied once", () => {
@@ -263,14 +434,6 @@ test("a closing frame clears its notice; a repeated delivery is applied once", (
 		assert.equal(m.authorizeNoticesSnapshot().length, 0, state);
 	}
 	off();
-});
-
-test("the client_ref memory is bounded and forgets the oldest", () => {
-	m.resetClientRefsForTests();
-	const first = m.newClientRef();
-	for (let i = 0; i < 64; i++) m.newClientRef();
-	assert.equal(m.isOwnClientRef(first), false);
-	assert.equal(m.isOwnClientRef(null), false);
 });
 
 // -- 4. the 50-item cap ----------------------------------------------------------
@@ -321,6 +484,109 @@ test("per-item results read as approved/denied, or say plainly what was not sent
 		"done",
 	);
 	assert.equal(m.resultLine({ ...base, error: "zzz" }).tone, "not_sent");
+});
+
+test("Q5: local authority refusals each say what changed", () => {
+	const base = {
+		message_id: "a",
+		decision: "approve",
+		sent: false,
+		ask_settled: false,
+	};
+	const labels = new Set();
+	for (const error of [
+		"not_designated",
+		"owner_changed",
+		"feature_off",
+		"consent_revoked",
+	]) {
+		const line = m.resultLine({ ...base, error });
+		assert.equal(line.tone, "not_sent", error);
+		assert.notEqual(line.label, "Not sent", error);
+		labels.add(line.label);
+	}
+	assert.equal(labels.size, 4);
+});
+
+test("R1-04 / Q4 / N3: challenge limit, an unconfirmed decide and a dismissal each read accurately", () => {
+	const limit = m.mapApprovalRefusal(refusal("operator_challenge_limit"));
+	assert.equal(limit.kind, "challenge_limit");
+	assert.match(limit.message, RE_4);
+	const lost = m.mapApprovalRefusal(
+		new m.DesktopControlError(503, "x"),
+		undefined,
+		"decide",
+	);
+	assert.equal(lost.kind, "unconfirmed");
+	assert.match(lost.message, RE_UNCONFIRMED);
+	// The same failure BEFORE Touch ID stays the generic line.
+	assert.equal(
+		m.mapApprovalRefusal(new m.DesktopControlError(503, "x")).kind,
+		"other",
+	);
+	// A 4xx at decide is not "couldn't be reached".
+	assert.equal(
+		m.mapApprovalRefusal(
+			new m.DesktopControlError(422, "x"),
+			undefined,
+			"decide",
+		).kind,
+		"other",
+	);
+	assert.match(
+		m.mapApprovalRefusal(refusal("operator_signature_unavailable")).message,
+		RE_WAIT,
+	);
+});
+
+test("U6: the batch preview counts what each word would actually send", () => {
+	const rows = [
+		row({ message_id: "a" }),
+		row({ message_id: "b", unsent_decision: "approve" }),
+		row({ message_id: "c" }),
+	];
+	const preview = m.selectionPreview(rows, new Set(["a", "b", "c"]));
+	assert.deepEqual(preview.approve, { send: 3, left: 0 });
+	assert.deepEqual(preview.deny, { send: 2, left: 1 });
+});
+
+test("D7: the results summary counts decided and not-sent items", () => {
+	const base = {
+		message_id: "a",
+		decision: "approve",
+		sent: true,
+		ask_settled: true,
+	};
+	assert.deepEqual(
+		m.resultsSummary([
+			{ ...base, status: "approved" },
+			{ ...base, error: "answered_on_card" },
+			{ ...base, error: "messaging_unavailable" },
+		]),
+		{ done: 2, notSent: 1 },
+	);
+});
+
+test("U2: what this machine decided is remembered in memory, bounded, never with a body", () => {
+	m.resetDecidedForTests();
+	m.rememberDecided("x", {
+		sender: "Priya",
+		excerpt: "may it deploy?",
+		sessionId: "s1",
+	});
+	assert.deepEqual(Object.keys(m.decidedSnapshot("x")).sort(), [
+		"excerpt",
+		"sender",
+		"sessionId",
+	]);
+	for (let i = 0; i < 250; i++)
+		m.rememberDecided(`m${i}`, { sender: "S", excerpt: null, sessionId: null });
+	assert.equal(
+		m.decidedSnapshot("x"),
+		null,
+		"the oldest is forgotten past the bound",
+	);
+	assert.notEqual(m.decidedSnapshot("m249"), null);
 });
 
 // -- 5. the wire: the IPC contract refuses what the route would refuse ----------
@@ -380,6 +646,26 @@ test("the selection ops refuse 51 items and a client_ref outside lowercase hex <
 			authorize({ items: [{ message_id: "m1", decision: "maybe" }] }),
 		).success,
 		false,
+	);
+});
+
+test("the tenant guard still applies to every other team_bridge op; only approvals ops are exempt", () => {
+	const join = {
+		op: "team_bridge.conversations.join",
+		expected_account_id: "acct_1",
+		conversation_id: "conv_1",
+	};
+	assert.equal(c.desktopRequestSchema.safeParse(join).success, false);
+	assert.equal(
+		c.desktopRequestSchema.safeParse({ ...join, tenant_id: "tnt_1" }).success,
+		true,
+	);
+	assert.equal(
+		c.desktopRequestSchema.safeParse({
+			op: "team_bridge.requests.list",
+			expected_account_id: "acct_1",
+		}).success,
+		true,
 	);
 });
 

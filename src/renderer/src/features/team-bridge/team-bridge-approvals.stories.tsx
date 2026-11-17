@@ -1,13 +1,23 @@
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogTitle,
+} from "@shared/components/ui/dialog";
 import type { Meta, StoryObj } from "@storybook/react";
+import { useLayoutEffect, useState } from "react";
 import {
 	TeamBridgeAuthorizeNoticeView,
+	TeamBridgeAuthorizeNotices,
 	TeamBridgeRequestsView,
 } from "./team-bridge-approvals";
 import {
 	type ApprovalDecisionRow,
 	type ApprovalRequestRow,
+	applyAuthorizeFrame,
 	mapApprovalRefusal,
+	resetAuthorizeNoticesForTests,
 } from "./team-bridge-approvals-model";
 
 /*
@@ -23,10 +33,10 @@ import {
 
 const at = "2026-11-17T14:05:00Z";
 const person = (name: string) => ({
-	account_id: `acct_${name.toLowerCase()}`,
+	account_id: `acct_${name.toLowerCase().replace(/\W+/g, "_")}`,
 	endpoint_id: null,
 	name,
-	email: `${name.toLowerCase()}@example.com`,
+	email: `${name.toLowerCase().split(" ")[0]}@example.com`,
 });
 const row = (
 	id: string,
@@ -38,7 +48,7 @@ const row = (
 	thread_id: "bct_1",
 	created_at: at,
 	excerpt,
-	request: { state: "pending", expires_at: null },
+	request: { state: "pending", expires_at: "2026-11-17T15:05:00Z" },
 	sender: person(name),
 	ask: { session_id: "s_cos", ask_id: `ask_${id}`, status: "open" },
 	decidable: true,
@@ -48,21 +58,21 @@ const row = (
 
 const priya = row(
 	"bcmsg_1",
-	"Priya",
+	"Priya Raman",
 	"Priya's agent asks: may it deploy the staging build of the billing service?",
 );
 const omar = row(
 	"bcmsg_2",
-	"Omar",
+	"Omar Haddad",
 	"Omar's agent asks: may it share the Q3 forecast sheet with the finance channel?",
 );
 const lockedRow = row(
 	"bcmsg_3",
-	"Lena",
+	"Lena Fischer",
 	"Lena's agent asks: may it book the offsite venue for 12 people?",
 	{ unsent_decision: "approve" },
 );
-const noCard = row("bcmsg_4", "Sam", "", {
+const noCard = row("bcmsg_4", "Sam Okafor", "", {
 	excerpt: null,
 	ask: null,
 	decidable: false,
@@ -75,7 +85,7 @@ const history: ApprovalDecisionRow[] = [
 		thread_id: "bct_1",
 		decision: "approved",
 		decided_at: "2026-11-16T09:12:00Z",
-		requested_by: person("Priya"),
+		requested_by: person("Priya Raman"),
 		decided_by: person("Damian"),
 		decided_via_claimed: "desktop",
 		ask_id: "ask_9",
@@ -85,7 +95,7 @@ const history: ApprovalDecisionRow[] = [
 		thread_id: "bct_2",
 		decision: "denied",
 		decided_at: "2026-11-15T17:40:00Z",
-		requested_by: person("Omar"),
+		requested_by: person("Omar Haddad"),
 		decided_by: person("Damian"),
 		decided_via_claimed: "ask",
 		ask_id: "ask_8",
@@ -139,12 +149,21 @@ export const Authorizing: Story = {
 		},
 	},
 };
-/** One approved, one already answered on its card, one not confirmed yet. */
+/**
+ * After a batch: the decided rows have LEFT the list (the decide's refetch
+ * drops them), so the results are their own list under a counted heading,
+ * with the senders captured when the person pressed (R1-02, Q1, D7).
+ */
 export const MixedBatchResult: Story = {
 	args: {
-		rows: populated,
+		rows: [lockedRow, noCard],
 		flow: {
 			phase: "done",
+			labels: {
+				bcmsg_1: "Priya Raman",
+				bcmsg_2: "Omar Haddad",
+				bcmsg_3: "Lena Fischer",
+			},
 			results: [
 				{
 					message_id: "bcmsg_1",
@@ -171,10 +190,65 @@ export const MixedBatchResult: Story = {
 		},
 	},
 };
+/** Everything sent: no rows left, the results stay until Dismiss. */
+export const AllSentResult: Story = {
+	args: {
+		rows: [],
+		flow: {
+			phase: "done",
+			labels: { bcmsg_1: "Priya Raman", bcmsg_2: "Omar Haddad" },
+			results: [
+				{
+					message_id: "bcmsg_1",
+					decision: "approve",
+					sent: true,
+					ask_settled: true,
+					status: "approved",
+				},
+				{
+					message_id: "bcmsg_2",
+					decision: "deny",
+					sent: true,
+					ask_settled: true,
+					status: "denied",
+				},
+			],
+		},
+	},
+};
+/**
+ * A long list scrolled: the batch bar stays pinned at the top, and Select all
+ * reads mixed with 2 of 12 selected (U8).
+ */
+export const ManyRowsScrolled: Story = {
+	args: {
+		rows: Array.from({ length: 12 }, (_, index) =>
+			row(
+				`bcmsg_m${index}`,
+				["Priya Raman", "Omar Haddad", "Lena Fischer"][index % 3],
+				`Request ${index + 1}: may it renew the shared tooling subscription?`,
+			),
+		),
+		initialSelected: ["bcmsg_m0", "bcmsg_m1"],
+	},
+	play: async ({ canvasElement }) => {
+		const scroller = canvasElement.querySelector("section");
+		if (scroller) scroller.scrollTop = 600;
+	},
+};
+/** Two selected, one of them locked to Approve: Deny says "1 of 2" (U6). */
+export const SelectionWithLockedRow: Story = {
+	args: {
+		rows: populated,
+		initialSelected: ["bcmsg_1", "bcmsg_3"],
+	},
+};
+/** Counts down live and clears itself when the wait ends (D4, Q3). */
 export const Cooldown: Story = {
 	args: {
 		rows: populated,
 		coolingDown: true,
+		cooldownUntil: Date.now() + 8_000,
 		flow: {
 			phase: "refused",
 			refusal: refusal("operator_prompt_cooldown", {
@@ -196,13 +270,68 @@ export const LockedRefusal: Story = {
 		},
 	},
 };
+/** Batch deciding unavailable: each row opens its card instead (D5, U3). */
 export const PresenceRequired: Story = {
 	args: {
 		rows: populated,
+		presenceRequired: true,
+		onOpenCard: () => {},
 		flow: { phase: "refused", refusal: refusal("operator_presence_required") },
 	},
 };
-export const History: Story = { args: { initialTab: "history" } };
+/** The same state after Dismiss: the batch controls stay away (D5). */
+export const PresenceRequiredDismissed: Story = {
+	args: {
+		rows: populated,
+		presenceRequired: true,
+		onOpenCard: () => {},
+	},
+};
+/** Rows with their "Open in chat" door (U3). */
+export const PopulatedWithOpen: Story = {
+	args: { rows: populated, onOpenCard: () => {} },
+};
+/** A prompt this window did not start has ended: the trace it leaves (U7). */
+export const ForeignPromptTrace: Story = {
+	args: {
+		rows: populated,
+		onDismissTrace: () => {},
+		traces: [
+			{
+				authorizeId: "f1",
+				count: 2,
+				ended: "signed",
+				at: Date.parse("2026-11-17T14:12:00Z"),
+			},
+			{
+				authorizeId: "f0",
+				count: 1,
+				ended: "dismissed",
+				at: Date.parse("2026-11-17T14:02:00Z"),
+			},
+		],
+	},
+};
+/**
+ * History: the first row was decided on this machine, so it carries the
+ * excerpt captured then and opens its card; the second was decided elsewhere
+ * (U2).
+ */
+export const History: Story = {
+	args: {
+		initialTab: "history",
+		onOpenCard: () => {},
+		decided: (id) =>
+			id === "bcmsg_9"
+				? {
+						sender: "Priya Raman",
+						excerpt:
+							"Priya's agent asks: may it renew the design-tool licence for one year?",
+						sessionId: "s_cos",
+					}
+				: null,
+	},
+};
 export const HistoryEmpty: Story = {
 	args: { initialTab: "history", history: { state: "ready", rows: [] } },
 };
@@ -211,13 +340,13 @@ const promptItems = [
 	{
 		message_id: "bcmsg_1",
 		word: "approve" as const,
-		sender: "Priya",
+		sender: "Priya Raman",
 		excerpt: "may it deploy the staging build of the billing service?",
 	},
 	{
 		message_id: "bcmsg_2",
 		word: "deny" as const,
-		sender: "Omar",
+		sender: "Omar Haddad",
 		excerpt: "may it share the Q3 forecast sheet with the finance channel?",
 	},
 ];
@@ -261,10 +390,54 @@ export const PromptNoticeForeign: StoryObj<
 								sender: null,
 								excerpt: null,
 							},
+							{
+								message_id: "bcmsg_y",
+								word: null,
+								sender: "Omar Haddad",
+								excerpt: null,
+							},
 						],
 					},
 				]}
 			/>
 		</div>
 	),
+};
+
+/**
+ * The notice above an open dialog (security S-3): the host is portalled to
+ * <body> at `z-[60]`, over Radix's `z-50` scrim, and keeps `aria-live` so the
+ * dialog's `aria-hidden` sweep leaves it announced. Drives the REAL host
+ * through the module store with a foreign frame (no `client_ref`).
+ */
+function NoticeOverDialog() {
+	const [ready, setReady] = useState(false);
+	useLayoutEffect(() => {
+		resetAuthorizeNoticesForTests();
+		applyAuthorizeFrame({
+			authorize_id: "story_foreign",
+			client_ref: null,
+			state: "prompting",
+			items: [promptItems[0]],
+		});
+		setReady(true);
+		return () => resetAuthorizeNoticesForTests();
+	}, []);
+	if (!ready) return null;
+	return (
+		<>
+			<Dialog open>
+				<DialogContent>
+					<DialogTitle>Settings</DialogTitle>
+					<DialogDescription>
+						A dialog the person had open when the prompt appeared.
+					</DialogDescription>
+				</DialogContent>
+			</Dialog>
+			<TeamBridgeAuthorizeNotices />
+		</>
+	);
+}
+export const PromptNoticeOverDialog: StoryObj = {
+	render: () => <NoticeOverDialog />,
 };

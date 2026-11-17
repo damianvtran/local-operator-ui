@@ -432,12 +432,6 @@ export function useDesktopFeed(): DesktopFeedConnection {
 				return;
 			}
 			/*
-			 * A `config.yml` change, exposed the same way the revisions above are:
-			 * the transport says WHAT moved; the language's own writer (locale-sync)
-			 * decides what to invalidate and whether the change is worth announcing
-			 * (slice B1).
-			 */
-			/*
 			 * A Team Bridge Touch ID prompt moved (local-operator #4099, S-6).
 			 * Applied to the approvals module's notice store, keyed by `epoch:seq`
 			 * so the one delivery per mounted feed hook lands once.
@@ -446,6 +440,12 @@ export function useDesktopFeed(): DesktopFeedConnection {
 				applyAuthorizeFrame(frame.payload, `${frame.epoch}:${frame.seq}`);
 				return;
 			}
+			/*
+			 * A `config.yml` change, exposed the same way the revisions above are:
+			 * the transport says WHAT moved; the language's own writer (locale-sync)
+			 * decides what to invalidate and whether the change is worth announcing
+			 * (slice B1).
+			 */
 			if (frame.type === "config") {
 				setConfigChange({
 					changedKeys: frame.payload.changed_keys,
