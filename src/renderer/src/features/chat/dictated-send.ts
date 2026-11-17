@@ -167,7 +167,7 @@ export function setDictatedSendNavigate(
 
 /** One toast id per origin, so a second refusal replaces the first rather than stacking. */
 export function dictatedToastId(originId: string): string {
-	return `dictated-away:${originId}`;
+	return `dictated-away:${originId}`; // i18n: ignore toast identity, never rendered copy
 }
 
 /* ------------------------------------------------------------------ */
