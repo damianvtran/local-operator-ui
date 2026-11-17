@@ -25,9 +25,11 @@ import {
 	memo,
 	useCallback,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
+import { diagramWheelZoomFactor } from "./diagram-wheel-zoom";
 
 export type DiagramRenderer = (chart: string, id?: string) => Promise<string>;
 
@@ -244,8 +246,8 @@ export const DiagramViewer: FC<DiagramViewerProps> = memo(
 		// This subscription covers the live core; the boundary fallback owns its
 		// own subscription because catching an error unmounts this component.
 		useI18nLocale();
-		const elementRef = useRef<HTMLDivElement>(null);
-		const fullscreenElementRef = useRef<HTMLDivElement>(null);
+		const elementRef = useRef<HTMLDivElement | null>(null);
+		const fullscreenElementRef = useRef<HTMLDivElement | null>(null);
 		const [error, setError] = useState<string | null>(null);
 		const [isLoading, setIsLoading] = useState(true);
 		const [svgContent, setSvgContent] = useState<string>("");
@@ -490,24 +492,44 @@ export const DiagramViewer: FC<DiagramViewerProps> = memo(
 			}
 		}, []);
 
-		const handleWheel = useCallback(
-			(e: React.WheelEvent, isFullscreenMode = false) => {
-				try {
-					e.preventDefault();
-					const delta = e.deltaY > 0 ? 0.9 : 1.1;
-					const setTransformState = isFullscreenMode
-						? setFullscreenTransform
-						: setTransform;
+		const wheelCleanupRef = useRef<{
+			inline: (() => void) | null;
+			fullscreen: (() => void) | null;
+		}>({ inline: null, fullscreen: null });
 
+		const bindWheelZoom = useCallback(
+			(isFullscreenMode: boolean) => (node: HTMLDivElement | null) => {
+				const slot = isFullscreenMode ? "fullscreen" : "inline";
+				const targetRef = isFullscreenMode ? fullscreenElementRef : elementRef;
+				wheelCleanupRef.current[slot]?.();
+				wheelCleanupRef.current[slot] = null;
+				targetRef.current = node;
+				if (!node) return;
+				const setTransformState = isFullscreenMode
+					? setFullscreenTransform
+					: setTransform;
+				const onWheel = (e: WheelEvent) => {
+					const factor = diagramWheelZoomFactor(e, isFullscreenMode);
+					if (factor === null) return;
 					setTransformState((prev) => ({
 						...prev,
-						scale: Math.min(Math.max(prev.scale * delta, 0.1), 5), // Increased max zoom to 5x
+						scale: Math.min(Math.max(prev.scale * factor, 0.1), 5),
 					}));
-				} catch (err) {
-					console.error("Error in wheel:", err);
-				}
+				};
+				node.addEventListener("wheel", onWheel, { passive: false });
+				wheelCleanupRef.current[slot] = () =>
+					node.removeEventListener("wheel", onWheel);
 			},
 			[],
+		);
+
+		const inlineContainerRef = useMemo(
+			() => bindWheelZoom(false),
+			[bindWheelZoom],
+		);
+		const fullscreenContainerRef = useMemo(
+			() => bindWheelZoom(true),
+			[bindWheelZoom],
 		);
 
 		const handleFullscreenToggle = useCallback((open: boolean) => {
@@ -539,8 +561,8 @@ export const DiagramViewer: FC<DiagramViewerProps> = memo(
 		const renderDiagramContent = (isFullscreenMode = false) => {
 			try {
 				const containerRef = isFullscreenMode
-					? fullscreenElementRef
-					: elementRef;
+					? fullscreenContainerRef
+					: inlineContainerRef;
 				const currentTransformState = isFullscreenMode
 					? fullscreenTransform
 					: transform;
@@ -564,7 +586,6 @@ export const DiagramViewer: FC<DiagramViewerProps> = memo(
 						onMouseUp={handleMouseUp}
 						onMouseLeave={handleMouseUp}
 						style={diagramStyle}
-						onWheel={(e) => handleWheel(e, isFullscreenMode)}
 					>
 						{isLoading ? (
 							<div className={cn("p-4 text-body-sm text-ink-muted")}>

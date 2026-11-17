@@ -164,3 +164,57 @@ test("both engines share one viewer and the transcript consumes the selector", (
 	assert.ok(selector.includes("<MermaidDiagram"));
 	assert.ok(selector.includes("<PeleDiagram"));
 });
+
+const wheelEvent = (init) => {
+	const event = { ctrlKey: false, metaKey: false, deltaY: 100, ...init };
+	event.defaultPrevented = false;
+	event.preventDefault = () => {
+		event.defaultPrevented = true;
+	};
+	return event;
+};
+
+test("inline diagrams leave the plain wheel to the transcript scroller", async () => {
+	const { diagramWheelZoomFactor } = await bundle("diagram-wheel-zoom.ts");
+	for (const deltaY of [-120, -3, 3, 120]) {
+		const event = wheelEvent({ deltaY });
+		assert.equal(diagramWheelZoomFactor(event, false), null);
+		assert.equal(event.defaultPrevented, false);
+	}
+});
+
+test("ctrl and meta wheel zoom an inline diagram and cancel the page zoom", async () => {
+	const { diagramWheelZoomFactor } = await bundle("diagram-wheel-zoom.ts");
+	for (const key of ["ctrlKey", "metaKey"]) {
+		const zoomOut = wheelEvent({ [key]: true, deltaY: 40 });
+		const out = diagramWheelZoomFactor(zoomOut, false);
+		assert.ok(out < 1 && out > 0.5);
+		assert.equal(zoomOut.defaultPrevented, true);
+		const zoomIn = wheelEvent({ [key]: true, deltaY: -40 });
+		assert.ok(diagramWheelZoomFactor(zoomIn, false) > 1);
+		assert.equal(zoomIn.defaultPrevented, true);
+	}
+});
+
+test("wheel zoom steps are smooth for small deltas and bounded for large ones", async () => {
+	const { diagramWheelZoomFactor } = await bundle("diagram-wheel-zoom.ts");
+	const factor = (deltaY) =>
+		diagramWheelZoomFactor(wheelEvent({ ctrlKey: true, deltaY }), false);
+	assert.ok(Math.abs(factor(2) - 1) < 0.03);
+	assert.equal(factor(100000), 0.85);
+	assert.equal(factor(-100000), 1.15);
+});
+
+test("the fullscreen dialog zooms on the plain wheel", async () => {
+	const { diagramWheelZoomFactor } = await bundle("diagram-wheel-zoom.ts");
+	const event = wheelEvent({ deltaY: -100 });
+	assert.ok(diagramWheelZoomFactor(event, true) > 1);
+	assert.equal(event.defaultPrevented, true);
+});
+
+test("the viewer binds a non-passive native wheel listener instead of onWheel", () => {
+	const viewer = read("diagram-viewer.tsx");
+	assert.ok(viewer.includes('addEventListener("wheel"'));
+	assert.ok(viewer.includes("passive: false"));
+	assert.equal(viewer.includes("onWheel="), false);
+});
