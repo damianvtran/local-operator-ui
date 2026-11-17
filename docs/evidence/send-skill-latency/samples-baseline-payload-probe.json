@@ -1,0 +1,114 @@
+{
+  "label": "baseline-payload-probe",
+  "head": "ccc99372ac60c86963f4384541207c393d1e81d4",
+  "proxyPort": 11879,
+  "backendPort": 9706,
+  "rig": {
+    "out": "/Users/bentran/.local-operator/sessions/a0621b5fc813/scratchpad/after",
+    "budgetSeconds": 1500,
+    "skillDelayMs": 200
+  },
+  "skills": [
+    "skill-one",
+    "skill-two",
+    "skill-three"
+  ],
+  "arms": [
+    {
+      "id": "three-skills-cold",
+      "skills": 3,
+      "cold": true,
+      "delayMs": 0,
+      "requested": 1,
+      "attempts": 1,
+      "valid": 1,
+      "samples": [
+        {
+          "arm": "three-skills-cold",
+          "index": 0,
+          "nonce": "n0e03aef9690e",
+          "keydownWall": 1794942869223,
+          "bubbleWall": 1794942870255,
+          "postWall": 1794942870230,
+          "keydownToBubble": 1032,
+          "keydownToPost": 1007,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 3,
+              "daemonMs": 345,
+              "totalMs": 346
+            },
+            {
+              "inMs": 350,
+              "daemonMs": 330,
+              "totalMs": 330
+            },
+            {
+              "inMs": 681,
+              "daemonMs": 323,
+              "totalMs": 324
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "postBody": "{\"request_id\":\"88e7a504-4e81-42f5-a66b-d2ec159cdc15\",\"text\":\"$skill-one $skill-two $skill-three n0e03aef9690e\\n\\n<operator-skills>\\n\\nThe user invoked the following skills directly. Follow them for this request. Their reference files, if any, are listed at the end of each body and are read with `skill://<name>/<path>`.\\n\\n<skill name=\\\"skill-one\\\">\\n---\\nname: skill-one\\ndescription: Seeded skill-one for the submit-latency rig.\\n---\\n\\nStep 1: skill-one line 1 of the seeded body.\\nStep 2: skill-one line 2 of the seeded body.\\nStep 3: skill-one line 3 of the seeded body.\\nStep 4: skill-one line 4 of the seeded body.\\nStep 5: skill-one line 5 of the seeded body.\\nStep 6: skill-one line 6 of the seeded body.\\nStep 7: skill-one line 7 of the seeded body.\\nStep 8: skill-one line 8 of the seeded body.\\nStep 9: skill-one line 9 of the seeded body.\\nStep 10: skill-one line 10 of the seeded body.\\nStep 11: skill-one line 11 of the seeded body.\\nStep 12: skill-one line 12 of the seeded body.\\n\\n</skill>\\n\\n<skill name=\\\"skill-two\\\">\\n---\\nname: skill-two\\ndescription: Seeded skill-two for the submit-latency rig.\\n---\\n\\nStep 1: skill-two line 1 of the seeded body.\\nStep 2: skill-two line 2 of the seeded body.\\nStep 3: skill-two line 3 of the seeded body.\\nStep 4: skill-two line 4 of the seeded body.\\nStep 5: skill-two line 5 of the seeded body.\\nStep 6: skill-two line 6 of the seeded body.\\nStep 7: skill-two line 7 of the seeded body.\\nStep 8: skill-two line 8 of the seeded body.\\nStep 9: skill-two line 9 of the seeded body.\\nStep 10: skill-two line 10 of the seeded body.\\nStep 11: skill-two line 11 of the seeded body.\\nStep 12: skill-two line 12 of the seeded body.\\n\\n</skill>\\n\\n<skill name=\\\"skill-three\\\">\\n---\\nname: skill-three\\ndescription: Seeded skill-three for the submit-latency rig.\\n---\\n\\nStep 1: skill-three line 1 of the seeded body.\\nStep 2: skill-three line 2 of the seeded body.\\nStep 3: skill-three line 3 of the seeded body.\\nStep 4: skill-three line 4 of the seeded body.\\nStep 5: skill-three line 5 of the seeded body.\\nStep 6: skill-three line 6 of the seeded body.\\nStep 7: skill-three line 7 of the seeded body.\\nStep 8: skill-three line 8 of the seeded body.\\nStep 9: skill-three line 9 of the seeded body.\\nStep 10: skill-three line 10 of the seeded body.\\nStep 11: skill-three line 11 of the seeded body.\\nStep 12: skill-three line 12 of the seeded body.\\n\\n</skill>\\n\\n</operator-skills>\",\"images\":[],\"mode\":\"prompt\",\"input_mode\":\"typed\"}",
+          "typed": true,
+          "invalid": null
+        }
+      ],
+      "bubble": {
+        "n": 1,
+        "p50": 1032,
+        "p95": 1032,
+        "max": 1032,
+        "min": 1032
+      },
+      "post": {
+        "n": 1,
+        "p50": 1007,
+        "p95": 1007,
+        "max": 1007,
+        "min": 1007
+      },
+      "daemonScan": {
+        "n": 3,
+        "p50": 330,
+        "p95": 345,
+        "max": 345,
+        "min": 323
+      },
+      "readsPerPress": {
+        "n": 1,
+        "p50": 3,
+        "p95": 3,
+        "max": 3,
+        "min": 3
+      }
+    }
+  ],
+  "notes": [],
+  "loadavg_start": [
+    7.56,
+    6.37,
+    8.34
+  ],
+  "capabilities.session_catalogue": 3,
+  "capabilities.session_catalogue_ok": true,
+  "capabilities.desktop_available": true,
+  "sessionId": "c5741caf7c6f",
+  "viewport": "{\"w\":1380,\"h\":900,\"dpr\":1}",
+  "location": "file:///Users/bentran/workspace/repos/local-operator-ui/.worktrees/send-baseline/out/renderer/index.html#/chat/c5741caf7c6f",
+  "proxy_saw_app_traffic": true,
+  "loadavg_end": [
+    7.52,
+    6.4,
+    8.33
+  ],
+  "invalid": 0
+}
