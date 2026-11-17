@@ -115,7 +115,9 @@ export function TeamBridgeRequestsView({
 		setExcluded(left.length);
 		if (items.length > 0) {
 			onDecide(items);
-			setSelected(new Set());
+			// Rows left out stay selected, so the person can send their one
+			// allowed word next without hunting for them again.
+			setSelected(new Set(left.map((row) => row.message_id)));
 			setCapped(false);
 		}
 	};

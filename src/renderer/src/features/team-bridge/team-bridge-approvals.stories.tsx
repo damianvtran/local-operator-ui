@@ -225,7 +225,7 @@ const promptItems = [
 /** The prompt notice for a confirmation this window started. */
 export const PromptNoticeOwn: StoryObj<typeof TeamBridgeAuthorizeNoticeView> = {
 	render: () => (
-		<div className="flex justify-center p-6">
+		<div className="flex w-full items-start justify-center p-6">
 			<TeamBridgeAuthorizeNoticeView
 				notices={[
 					{
@@ -245,7 +245,7 @@ export const PromptNoticeForeign: StoryObj<
 	typeof TeamBridgeAuthorizeNoticeView
 > = {
 	render: () => (
-		<div className="flex justify-center p-6">
+		<div className="flex w-full items-start justify-center p-6">
 			<TeamBridgeAuthorizeNoticeView
 				notices={[
 					{
