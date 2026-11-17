@@ -24,7 +24,11 @@
  */
 
 import { AgentMark } from "@shared/agent-avatar/agent-mark";
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	DesktopControlError,
+	desktopResult,
+	userFacingMessage,
+} from "@shared/api/local-operator/desktop-api";
 import type {
 	ReusableProfile,
 	ReusableTeam,
@@ -72,6 +76,10 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+	DESKTOP_MACHINE_DETAIL,
+	DESKTOP_REFUSAL_CODE,
+} from "../../../../../shared/desktop-contract";
+import {
 	type ActionClass,
 	BUILTIN_SWITCH_DISCLOSURE,
 	CLASS_LABEL,
@@ -115,6 +123,41 @@ type Draft = {
 };
 
 const TOOL_TOKEN = /^[A-Za-z0-9_.:-]{1,128}$/;
+
+/**
+ * The sentence a failed write hands to `refusalCopy`, in the interface language.
+ *
+ * WHY NOT `caught.message`. When the backend is unreachable main answers with
+ * its own transport sentence (`DESKTOP_MACHINE_DETAIL.transportFailed`, English
+ * by construction: it is a machine vocabulary shared with main, not catalogue
+ * copy), and handing that string on put English on the save alert, the install
+ * alert and the install toast in EVERY language (QA round 1, Q1).
+ *
+ * TWO ARMS, in this order:
+ *  1. The transport failure itself is worded by
+ *     `ui.common.errors.desktop_transport_failed`, the key the sibling read-state
+ *     pane (`missing-definition-error.tsx`) already uses for the same refusal.
+ *     NOT `userFacingMessage`'s own sentence for that code ("The Local Operator
+ *     server did not answer this request."): that key is deliberately worded
+ *     differently (see its context note) and using it would change the English a
+ *     user already reads on this pane.
+ *  2. Every other desktop error goes through `userFacingMessage`: the pairing and
+ *     server-updating refusals become their translated sentences, an authored
+ *     backend refusal (name taken, grammar, instructions...) comes back verbatim
+ *     so `refusalCopy` still recognises and routes it, and a value that is not an
+ *     authored message becomes `fallback` instead of a stack-trace fragment.
+ */
+function writeFailureSentence(caught: unknown, fallback: string): string {
+	if (
+		caught instanceof DesktopControlError &&
+		(caught.code === DESKTOP_REFUSAL_CODE.transportFailed ||
+			(!caught.code &&
+				caught.message === DESKTOP_MACHINE_DETAIL.transportFailed))
+	) {
+		return t("ui.common.errors.desktop_transport_failed");
+	}
+	return userFacingMessage(caught, fallback);
+}
 
 /*
  * The summary portrait's box: 80px, and borderless - `AgentAvatar` carries a
@@ -827,9 +870,7 @@ export function AgentDetail({
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {
 			const copy = refusalCopy(
-				caught instanceof Error
-					? caught.message
-					: t("ui.agents.detail.edit.error_generic"),
+				writeFailureSentence(caught, t("ui.agents.detail.edit.error_generic")),
 			);
 			setError(copy.message);
 			setErrorField(copy.field);
@@ -908,9 +949,10 @@ export function AgentDetail({
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {
 			const copy = refusalCopy(
-				caught instanceof Error
-					? caught.message
-					: t("ui.agents.detail.install.error_generic"),
+				writeFailureSentence(
+					caught,
+					t("ui.agents.detail.install.error_generic"),
+				),
 			);
 			setError(copy.message);
 			showErrorToast(copy.message);
@@ -1650,9 +1692,10 @@ export function AgentCreate({
 			onSaved(result.name);
 		} catch (caught) {
 			const copy = refusalCopy(
-				caught instanceof Error
-					? caught.message
-					: t("ui.agents.detail.create.error_generic"),
+				writeFailureSentence(
+					caught,
+					t("ui.agents.detail.create.error_generic"),
+				),
 			);
 			setError(copy.message);
 			setErrorField(copy.field);
