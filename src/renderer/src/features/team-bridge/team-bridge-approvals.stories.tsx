@@ -10,8 +10,8 @@ import { useLayoutEffect, useState } from "react";
 import {
 	TeamBridgeAuthorizeNoticeView,
 	TeamBridgeAuthorizeNotices,
-	TeamBridgeRequestsView,
-} from "./team-bridge-approvals";
+} from "./team-bridge-approval-notice";
+import { TeamBridgeRequestsView } from "./team-bridge-approvals";
 import {
 	type ApprovalDecisionRow,
 	type ApprovalRequestRow,

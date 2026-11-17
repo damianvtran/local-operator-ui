@@ -3552,6 +3552,43 @@ html[data-glass][data-browser-live-composite] {
 }
 
 /*
+ * A SECURITY NOTICE ON THE FLOATING LAYER IS OPAQUE (PR #1954, design round 3,
+ * D12 and D13).
+ *
+ * The Team Bridge Touch ID prompt notice (`team-bridge-approval-notice.tsx`) is
+ * a security control: it is the only place the person can see what the OS sheet
+ * is about to sign, and the foreign variant's one instruction ("click Cancel on
+ * the Touch ID prompt") and the request excerpts are the words that must not
+ * fail. It floats over ANY page, so the ground under it is arbitrary opaque
+ * content, not the column the overlay alpha is derived against: over a white
+ * patch in dark, or a black patch in light, its muted ink measured 3.59 / 3.30:1
+ * at the default intensity and 3.04 / 2.52:1 at 100 (design round 3), under the
+ * 4.5:1 text floor. Same argument as the live composite above: choose the one
+ * that still works, so this one surface takes the opaque plate.
+ *
+ * `--lo-glass-overlay-ink-mix: 0` goes with it. The rebind exists for meaning
+ * colours drawn on a translucent ground; on the opaque plate it only pulled the
+ * foreign strip's warning ink ~60% toward body ink (CIELAB chroma 48.6 -> 20.1
+ * dark), which is the notice's one at-a-glance colour cue (D13). The strip's
+ * `bg-warning-wash` is an opaque palette hex, so the authored amber already
+ * clears AA on it.
+ *
+ * WHY ON THE ELEMENT, AND WHY NO `!important`. Both properties are written
+ * inline on `<html>` (`use-window-glass.ts`) and reach the notice by
+ * inheritance; a declared value on the element itself beats an inherited one,
+ * and the one `[data-glass-overlay]` rule resolves its `var()`s on that same
+ * element. The selector deliberately does not name `[data-glass-overlay]`, so
+ * the floating layer keeps exactly one rule (`glass-overlay.test.mjs` O-3);
+ * this only moves the inputs that rule reads, for one surface. The markers stay
+ * on, so the focus exclusion, the forced-colors edge and the no-border contract
+ * still apply.
+ */
+html[data-glass] [data-lo-security-notice] {
+	--lo-glass-a-overlay: 1;
+	--lo-glass-overlay-ink-mix: 0;
+}
+
+/*
  * ENDED CONSOLE HISTORY: NO CARET, BUT A FOCUS RING (D1, D2).
  *
  * The cursor cell is made transparent and its ink inherited from the row, so the

@@ -534,22 +534,10 @@ const SECONDARY_BUTTON_IS_TONAL =
 
 /*
  * Lines in a marking file whose bordered variant is genuinely OUTSIDE the panel,
- * keyed `path: trimmed line`. The original sweep's hits were all inside a panel
- * and moved to `tonal`; the entries below are page controls in a file whose only
- * marked element is a separate panel. An entry needs the reason beside it.
+ * keyed `path: trimmed line`. Empty today: every hit the sweep found was inside
+ * the panel and was moved to `tonal`. An entry needs the reason beside it.
  */
-const NESTED_VARIANT_ALLOWED = new Set([
-	/*
-	 * team-bridge-approvals.tsx marks ONE floating element, the Touch ID prompt
-	 * notice (`TeamBridgeAuthorizeNoticeView`), which holds no button at all. Its
-	 * bordered variants are the in-flow Requests page's: the batch Deny and the
-	 * row's Deny (both this `secondary` line) and the row's "Open in chat", which
-	 * sit on the page ground, not on the notice's floating panel (merge gate
-	 * remediation on ui#1954).
-	 */
-	'src/renderer/src/features/team-bridge/team-bridge-approvals.tsx: variant="secondary"',
-	'src/renderer/src/features/team-bridge/team-bridge-approvals.tsx: variant={decideHere ? "ghost" : "secondary"}',
-]);
+const NESTED_VARIANT_ALLOWED = new Set([]);
 
 test("O-9a the operator's named nested controls stay borderless", () => {
 	const card = read(
