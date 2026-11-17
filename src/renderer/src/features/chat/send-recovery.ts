@@ -36,14 +36,46 @@
  *   Anything unmatched yields `null` and the row keeps its existing controls.
  */
 
-import { NO_PROVIDER_NOTICE } from "@features/providers/connect-provider-store";
 import { DESKTOP_REFUSAL_CODE } from "../../../../shared/desktop-contract";
+/*
+ * Relative, not the `@features` alias: the sessions store imports this module
+ * (R1), and the store is bundled by Node tests that resolve no renderer aliases
+ * (`canonical-chat.test.mjs`).
+ */
+import { NO_PROVIDER_NOTICE } from "../providers/connect-provider-store";
 
-/** The one fix a blocked or failed send is offered. */
-export type SendRecovery = "connect_provider" | "choose_model" | "reconnect";
+/**
+ * The one fix a blocked or failed send is offered.
+ *
+ * `use_local` (UX round 1, U1): a local runtime the user already picked a model
+ * on, made the chats' default in one press. See `sendBlockFor`.
+ */
+export type SendRecovery =
+	| "connect_provider"
+	| "choose_model"
+	| "reconnect"
+	| "use_local";
 
-/** Why the composer cannot send right now, before any press. */
-export type SendBlock = "offline" | "no_provider" | "no_model";
+/**
+ * Why the composer cannot send right now, before any press.
+ *
+ * `local_not_default`: the conversation's chosen model is on a local runtime
+ * (Ollama, LM Studio, ...) but no default provider is configured, so the send
+ * gate (`useProviderStatus`) still reads "nothing connected". It is the
+ * `no_provider` fact, stated as the user sees it: they picked a model they can
+ * see is there, and "no model provider is connected" contradicted that.
+ */
+export type SendBlock =
+	| "offline"
+	| "no_provider"
+	| "no_model"
+	| "local_not_default";
+
+/**
+ * A configuration cause the store classified a failed send by (R1), kept on
+ * the draft as `errorCause` so the row can name its fix after a remount.
+ */
+export type FailureCause = "no_provider" | "no_model";
 
 /*
  * `HostingUnknownError` and `ModelNotConfiguredError`, by the sentence the core
@@ -54,20 +86,52 @@ const HOSTING_UNKNOWN_NOTICE = /model provider is not recognised/;
 const MODEL_NOT_CONFIGURED_NOTICE = /No model is selected for this session/;
 
 /**
+ * Which configuration cause a backend sentence names, if any.
+ *
+ * WHERE THESE SENTENCES ARRIVE (agent review round 1, R1): the core sends its
+ * vetted startup reasons (`session/runtime/launch.py::_ACTIONABLE_STARTUP_REASONS`)
+ * as the `message` of a 503 `runtime_unreachable` refusal. The store's
+ * `sendFailureCopy` rewrites every `runtime_unreachable` to its own "couldn't
+ * confirm" sentence before anything is kept, so matching on the KEPT sentence
+ * never saw them. The store calls this on the raw error text instead, at the one
+ * place it classifies, and keeps the answer.
+ *
+ * The prefixes are untranslated core constants wrapped in `"{error}"` in every
+ * core catalogue, so this is locale-safe today; a miss falls back to `null`,
+ * which is the pre-change behaviour (the row keeps Send again and Edit).
+ */
+export function failureCauseOf(
+	message: string | undefined,
+): FailureCause | null {
+	const text = message ?? "";
+	if (NO_PROVIDER_NOTICE.test(text) || HOSTING_UNKNOWN_NOTICE.test(text))
+		return "no_provider";
+	if (MODEL_NOT_CONFIGURED_NOTICE.test(text)) return "no_model";
+	return null;
+}
+
+/**
  * The composer's pre-send verdict.
  *
  * OFFLINE OUTRANKS the provider facts: with the background service down, the
  * provider census is a stale read (`useProviderStatus` reports nothing it could
  * not fetch), and "connect a provider" would send the user to a dialog that
  * cannot load either.
+ *
+ * `localSelection` (U1): the conversation's chosen model is on a local runtime.
+ * With no provider configured that is the replays' dead end - Ollama running, a
+ * model picked, Send refused - and its fix is to make that runtime the default,
+ * not to connect something else.
  */
 export function sendBlockFor(input: {
 	noProvider: boolean;
 	noModel: boolean;
 	serverOffline: boolean;
+	localSelection?: boolean;
 }): SendBlock | null {
 	if (input.serverOffline) return "offline";
-	if (input.noProvider) return "no_provider";
+	if (input.noProvider)
+		return input.localSelection ? "local_not_default" : "no_provider";
 	if (input.noModel) return "no_model";
 	return null;
 }
@@ -76,27 +140,41 @@ export function sendBlockFor(input: {
 export function recoveryForBlock(block: SendBlock): SendRecovery {
 	if (block === "offline") return "reconnect";
 	if (block === "no_provider") return "connect_provider";
+	if (block === "local_not_default") return "use_local";
 	return "choose_model";
 }
 
 /**
- * The fix for a send that FAILED, from the code and sentence the store kept,
- * with the composer's live verdict as the tie-breaker.
+ * The fix for a send that FAILED, from the cause the store classified (or the
+ * code and sentence it kept), with the composer's live verdict as the
+ * tie-breaker.
  *
  * The live verdict wins when it names a block: a row that failed for an unknown
  * reason while the service is down right now is fixed by reconnecting, not by
  * the same press again.
+ *
+ * AND A KNOWN-CLEAR VERDICT RETIRES A CONFIGURATION CAUSE (UX round 1, U2). Once
+ * the census was read and names no block, the provider or model the failure
+ * was about is there now, so the row offers Send again (the request id keeps the
+ * resend safe). Without this the row matched its old sentence forever and kept
+ * "Connect a provider" after the user had connected one. An UNKNOWN verdict
+ * (census still loading, older backend) keeps the cause's fix: "I could not
+ * tell" is not "it is fixed".
  */
 export function recoveryForFailure(input: {
 	code?: string;
 	message?: string;
+	cause?: FailureCause | null;
 	block?: SendBlock | null;
+	/** Whether the live verdict (`useProviderStatus().isKnown`) was read. */
+	verdictKnown?: boolean;
 }): SendRecovery | null {
 	if (input.block) return recoveryForBlock(input.block);
-	const message = input.message ?? "";
-	if (NO_PROVIDER_NOTICE.test(message) || HOSTING_UNKNOWN_NOTICE.test(message))
-		return "connect_provider";
-	if (MODEL_NOT_CONFIGURED_NOTICE.test(message)) return "choose_model";
+	const cause = input.cause ?? failureCauseOf(input.message);
+	if (cause) {
+		if (input.verdictKnown) return null;
+		return cause === "no_provider" ? "connect_provider" : "choose_model";
+	}
 	/*
 	 * `transport.failed` is main's verdict that the daemon did not answer at all;
 	 * the reconnect IPC is the one control that re-dials it. Not

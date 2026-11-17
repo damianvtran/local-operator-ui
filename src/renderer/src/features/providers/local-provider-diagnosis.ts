@@ -55,17 +55,42 @@ export const LOCAL_DOWNLOAD_URLS: Readonly<Record<string, string>> = {
 export const OLLAMA_RECOMMENDED_MODEL = "qwen3:8b";
 
 export type LocalDiagnosis =
-	/** Something answered with a 2xx and serves at least one model (or the list is unknown). */
-	| { kind: "ready"; models: number | null }
-	/** Running, and the model list is empty. */
-	| { kind: "no_models" }
+	/**
+	 * Something answered as this runtime. `models` is the served count when the
+	 * list was read and non-empty, else `null` (unknown). `firstModel` is a model
+	 * the "Use <brand> for chats" press can make the default (U1).
+	 *
+	 * `emptyListing`: the list came back EMPTY. That is NOT "no models" (agent
+	 * review round 1 R2, QA Q1): core discovery caches a local runtime's listing
+	 * (`available_models`, soft TTL 1 h) and caches an empty one too, and this app
+	 * has no fresh-listing path, so after `ollama pull` every Check again still read
+	 * 0. A verdict built on that read recreated the D1 loop, so an empty list is
+	 * stated as running, with the download step as a soft hint.
+	 */
+	| {
+			kind: "ready";
+			models: number | null;
+			firstModel?: string | null;
+			emptyListing?: boolean;
+	  }
 	/** Nothing answered at the runtime's default address: not installed or not started. */
 	| { kind: "not_running" }
 	/**
 	 * Nothing answered at an address the user changed, or something answered
 	 * but not as this runtime's API (a non-2xx status from `/models`).
 	 */
-	| { kind: "wrong_address"; status: number | null };
+	| { kind: "wrong_address"; status: number | null }
+	/**
+	 * No address is configured to check (an OpenAI-compatible row before setup;
+	 * QA round 1, Q3). The core refuses the probe (422) rather than guessing one.
+	 */
+	| { kind: "no_address" }
+	/**
+	 * The probe ROUTE failed: this app's background service did not answer, so
+	 * the check never reached the runtime (agent review round 1, M3). Telling the
+	 * user to install Ollama here sent a working setup to reinstall it.
+	 */
+	| { kind: "check_failed" };
 
 const STATUS_IN_DETAIL = /\((\d{3})\)/;
 
@@ -94,6 +119,8 @@ export function diagnoseLocal(input: {
 	probe: { reachable: boolean; detail: string };
 	/** The served model count, or null when the list could not be read. */
 	models: number | null;
+	/** The first served model's id, when the list was read. */
+	firstModel?: string | null;
 }): LocalDiagnosis {
 	const { probe } = input;
 	if (!probe.reachable) {
@@ -117,6 +144,18 @@ export function diagnoseLocal(input: {
 	) {
 		return { kind: "wrong_address", status };
 	}
-	if (input.models === 0) return { kind: "no_models" };
-	return { kind: "ready", models: input.models };
+	/*
+	 * A token-gated server's listing is unreadable, and the core answers it with
+	 * an empty list (QA round 1, Q4: another program on llama.cpp's port answering
+	 * 401 read as "running, but has no models"). Neutral "running": no count and
+	 * no download step, because nothing here says a model is missing.
+	 */
+	if (status === 401 || status === 403) return { kind: "ready", models: null };
+	if (input.models === 0)
+		return { kind: "ready", models: null, emptyListing: true };
+	return {
+		kind: "ready",
+		models: input.models,
+		firstModel: input.firstModel ?? null,
+	};
 }

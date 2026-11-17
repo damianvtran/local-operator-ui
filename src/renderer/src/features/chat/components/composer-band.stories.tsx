@@ -449,6 +449,22 @@ export const ColumnFloor: Story = {
 	),
 };
 
+/**
+ * The D4 line at the column floor (design round 1 evidence gap 2): the longest
+ * block sentence and its fix at the narrowest column, the frame long locales
+ * (ru runs up to 2.5x English) are checked against with `?args=locale:ru`.
+ */
+export const BlockedColumnFloor: Story = {
+	render: () => (
+		<Column
+			label="column floor (550px): the offline block line and its Reconnect"
+			width={550}
+		>
+			{composerBand({ story: "blocked-floor", serverOffline: true })}
+		</Column>
+	),
+};
+
 /** One step below the floor: the prompt is gone, tip row included. */
 export const SmallView: Story = {
 	render: () => (

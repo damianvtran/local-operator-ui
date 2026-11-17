@@ -7,7 +7,20 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { ApprovalEscapeControls } from "./approval-escape";
+import {
+	ApprovalEscapeControls,
+	type ApprovalEscapeMode,
+	type ApprovalEscapeProvenance,
+	approvalPolicyLine,
+	policyAfterSave,
+} from "./approval-escape";
+
+/* The gate as raised: ask, from the global default. */
+const GATE: {
+	mode: ApprovalEscapeMode;
+	provenance: ApprovalEscapeProvenance;
+	globalMode: ApprovalEscapeMode;
+} = { mode: "ask", provenance: "global", globalMode: "ask" };
 import "../../../../styles/index.css";
 
 const meta: Meta<typeof ApprovalEscapeControls> = {
@@ -29,10 +42,27 @@ type Story = StoryObj<typeof ApprovalEscapeControls>;
 
 export const Idle: Story = {};
 export const SettingAll: Story = { args: { busy: true, pending: "all" } };
+/*
+ * The saved frames carry the policy line `policyAfterSave` derives for that
+ * outcome (design round 1, D4), not the gate's pre-press "Ask", which is what
+ * the connected `ApprovalEscape` now renders.
+ */
 export const AllSessionsOn: Story = {
-	args: { status: { kind: "default-saved" } },
+	args: {
+		status: { kind: "default-saved" },
+		policyLine: approvalPolicyLine(
+			policyAfterSave({ kind: "default-saved" }, GATE),
+		),
+	},
 };
-export const SessionOn: Story = { args: { status: { kind: "session-saved" } } };
+export const SessionOn: Story = {
+	args: {
+		status: { kind: "session-saved" },
+		policyLine: approvalPolicyLine(
+			policyAfterSave({ kind: "session-saved" }, GATE),
+		),
+	},
+};
 export const DefaultSavedSessionRefused: Story = {
 	args: {
 		status: {

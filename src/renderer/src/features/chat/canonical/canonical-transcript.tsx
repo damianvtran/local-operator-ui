@@ -135,7 +135,8 @@ import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
 import {
-	recoveryLabel,
+	UndeliveredLineView,
+	undeliveredSentence,
 	useSendRecoveryAction,
 } from "../components/send-recovery-action";
 import { skillBlockNames } from "../components/skill-invocation";
@@ -186,6 +187,7 @@ import {
 } from "../missing-session-notice";
 import { openTrace } from "../open-trace";
 import {
+	type FailureCause,
 	keepsSendAgain,
 	recoveryForFailure,
 	sendBlockFor,
@@ -1011,85 +1013,46 @@ export const UndeliveredLine: FC<{ undelivered: UndeliveredTurn }> = ({
 	undelivered,
 }) => {
 	useI18nLocale();
-	const { needsProvider, needsModel } = useProviderStatus();
+	const { needsProvider, needsModel, isKnown } = useProviderStatus();
 	const serverOffline = useServerOffline();
+	const block = sendBlockFor({
+		noProvider: needsProvider,
+		noModel: needsModel,
+		serverOffline,
+	});
 	const recovery = recoveryForFailure({
 		code: undelivered.code,
 		message: undelivered.message,
-		block: sendBlockFor({
-			noProvider: needsProvider,
-			noModel: needsModel,
-			serverOffline,
-		}),
+		cause: undelivered.cause,
+		block,
+		/*
+		 * U2: a configuration cause retires once the live verdict is READ and
+		 * clear. Offline outranks it inside `sendBlockFor`, so a read taken while
+		 * the service is down never counts as "fixed".
+		 */
+		verdictKnown: isKnown && !serverOffline,
 	});
 	const fix = useSendRecoveryAction();
-	const offerSendAgain =
-		undelivered.retry !== false && keepsSendAgain(recovery);
 	return (
-		<div
-			data-undelivered
-			className={cn(
-				"flex w-full items-center justify-end gap-3 text-danger text-meta",
-			)}
-		>
-			<span className={cn("flex items-center gap-1")}>
-				<CircleAlert aria-hidden="true" className={cn("size-3.5 shrink-0")} />
-				{undelivered.message ?? t("ui.chat.canonical.transcript.not_delivered")}
-			</span>
-			{recovery !== null && (
-				<button
-					type="button"
-					data-undelivered-recovery={recovery}
-					aria-disabled={fix.busy || undefined}
-					className={cn(
-						"shrink-0 whitespace-nowrap",
-						fix.busy
-							? "text-ink-muted"
-							: "cursor-pointer font-medium underline",
-					)}
-					onClick={() => {
-						if (!fix.busy) fix.run(recovery);
-					}}
-				>
-					{recoveryLabel(recovery, fix.busy)}
-				</button>
-			)}
-			{offerSendAgain && (
-				<button
-					type="button"
-					/*
-					 * DIMMED, NOT GONE, while the composer holds this payload (UX round
-					 * 1, U4): the row keeps its statement and both controls, and the
-					 * box's own Send is the live affordance for this message until the
-					 * text changes. `aria-disabled` rather than `disabled` - see the
-					 * `UndeliveredTurn.retryDisabled` note.
-					 */
-					aria-disabled={undelivered.retryDisabled || undefined}
-					className={cn(
-						"shrink-0 whitespace-nowrap",
-						undelivered.retryDisabled
-							? "text-ink-muted"
-							: "cursor-pointer underline",
-					)}
-					onClick={(event) => {
-						if (undelivered.retryDisabled) {
-							event.preventDefault();
-							return;
-						}
-						undelivered.onSendAgain();
-					}}
-				>
-					{t("ui.chat.canonical.transcript.send_again")}
-				</button>
-			)}
-			<button
-				type="button"
-				className={cn("shrink-0 cursor-pointer whitespace-nowrap underline")}
-				onClick={undelivered.onEdit}
-			>
-				{t("ui.chat.canonical.transcript.edit")}
-			</button>
-		</div>
+		<UndeliveredLineView
+			sentence={undeliveredSentence({
+				message: undelivered.message,
+				recovery,
+				block,
+				/*
+				 * Q2: the row's Reconnect states its result here, as the composer's
+				 * does; only a reconnect's outcome belongs to this row.
+				 */
+				outcome: recovery === "reconnect" ? fix.outcome : null,
+			})}
+			recovery={recovery}
+			offerSendAgain={undelivered.retry !== false && keepsSendAgain(recovery)}
+			retryDisabled={undelivered.retryDisabled}
+			busy={fix.busy}
+			onFix={fix.run}
+			onSendAgain={undelivered.onSendAgain}
+			onEdit={undelivered.onEdit}
+		/>
 	);
 };
 
@@ -1139,6 +1102,12 @@ export type UndeliveredTurn = {
 	 * Absent for a claim nothing classified.
 	 */
 	code?: string;
+	/**
+	 * The configuration cause the store classified this failure by
+	 * (`draft.errorCause`, agent review round 1 R1), so the row can name its fix
+	 * although its sentence is this app's own rather than the backend's.
+	 */
+	cause?: FailureCause;
 	onSendAgain: () => void;
 	onEdit: () => void;
 };

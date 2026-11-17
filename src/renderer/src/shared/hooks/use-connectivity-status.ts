@@ -8,7 +8,11 @@
 
 import { HealthApi } from "@shared/api/local-operator/health-api";
 import { apiConfig, setDiscoveredBackendUrl } from "@shared/config";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	type QueryClient,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { isServerReachable } from "../../../../shared/backend-status";
 import type { DaemonStatusSnapshot } from "../../../../shared/backend-status";
@@ -114,6 +118,26 @@ export const useServerHealth = (refetchInterval = 5000) => {
 		placeholderData: (previousData) => previousData,
 	});
 };
+
+/**
+ * Read server health NOW, through the shared cache entry, and return it.
+ *
+ * For a press that must state its own result (the composer's and the failed
+ * row's Reconnect). `useConnectivityStatus().refetchServerStatus` would answer
+ * the same question, but mounting that hook subscribes the caller to the 5 s
+ * poll's fresh snapshot object and the config and internet queries beside it,
+ * so every line that only needs the press re-rendered on every poll (agent
+ * review round 1, M5). `fetchQuery` writes the answer into the same key, so
+ * the strip and `useServerOffline` see it too.
+ */
+export const readServerHealthNow = (
+	queryClient: QueryClient,
+): Promise<ServerHealthSignal> =>
+	queryClient.fetchQuery({
+		queryKey: serverHealthQueryKey,
+		queryFn: readServerHealth,
+		staleTime: 0,
+	});
 
 /**
  * Whether the background service has ANSWERED that it is offline, as one boolean.

@@ -94,6 +94,10 @@ import type { LaunchTarget } from "../../../../shared/open-session";
 import { draftCreatesTemporary } from "../../features/chat/chat-temporary";
 import { draftModelForWire } from "../../features/chat/draft-selection";
 import {
+	type FailureCause,
+	failureCauseOf,
+} from "../../features/chat/send-recovery";
+import {
 	type PeerDeviceFact,
 	applyPeerDeviceFact,
 	mergePeerDeviceFacts,
@@ -828,6 +832,14 @@ export type ChatDraft = {
 	 */
 	errorRetry?: boolean;
 	/**
+	 * The configuration cause `sendFailureCopy` classified this failure by, when
+	 * the backend's sentence named one (no provider, no model). Kept on the row
+	 * for the same reason as `errorRetry`: the row outlives the Error, and the
+	 * sentence it keeps is this app's own, so the cause cannot be re-read from it
+	 * (agent review round 1, R1).
+	 */
+	errorCause?: FailureCause;
+	/**
 	 * Set once a message the PREVIOUS release held outside the composer has been
 	 * moved back into it (`migrateHeldClaim`), so the move happens once however
 	 * many times a pane mounts over the row.
@@ -1455,6 +1467,15 @@ export const SEND_FAILURE_COPY = {
 	get unconfirmed() {
 		return t("ui.chat.canonical.send_failure.unconfirmed");
 	},
+	/**
+	 * A configuration cause the backend named (R1): what is missing and the fix,
+	 * in this app's words and the user's language rather than the core's English.
+	 */
+	cause(cause: FailureCause): string {
+		return cause === "no_provider"
+			? t("ui.recovery.send.failed_no_provider")
+			: t("ui.recovery.send.failed_no_model");
+	},
 	/** Unknown, and the specific fact is that nothing answered. */
 	get unreachable() {
 		return t("ui.chat.canonical.send_failure.unreachable");
@@ -1629,6 +1650,8 @@ export function sendFailureCopy(
 	message: string;
 	retry: boolean;
 	code?: string;
+	/** A configuration cause the backend's sentence named (R1); see `failureCauseOf`. */
+	cause?: FailureCause;
 } {
 	const klass = sendFailureClass(error, priorAttemptUnresolved);
 	const code = codeOverride ?? sendFailureCode(error);
@@ -1723,6 +1746,32 @@ export function sendFailureCopy(
 	 * same-id resend is safe (`withholdsRetryHint` is false for it), which is what the
 	 * sentence's second clause promises.
 	 */
+	/*
+	 * A CONFIGURATION CAUSE THE BACKEND NAMED (agent review round 1, R1). The core
+	 * sends its vetted startup reasons ("No model provider is configured yet…",
+	 * "No model is selected for this session…") as the message of a 503
+	 * `runtime_unreachable`, so the arm below rewrote them to "couldn't confirm…
+	 * sending it again is safe" - and a resend is exactly the press that cannot
+	 * work until the cause is fixed. Classified here, the ONE place the raw text is
+	 * in hand: the row keeps this app's translated sentence for the cause (not the
+	 * backend's English) and the cause itself, which the row maps to its fix.
+	 * `retry` keeps the unknown class's answer: once the cause is fixed the
+	 * same-id resend is safe, and the row decides when to offer it.
+	 */
+	const cause = failureCauseOf(
+		error instanceof Error
+			? error.message
+			: typeof error === "string"
+				? error
+				: undefined,
+	);
+	if (cause)
+		return {
+			message: SEND_FAILURE_COPY.cause(cause),
+			retry: !withholdsRetryHint(code),
+			code,
+			cause,
+		};
 	if (code === DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable)
 		return { message: SEND_FAILURE_COPY.unconfirmed, retry: true, code };
 	/*
@@ -3207,6 +3256,7 @@ export async function admitChatDraft(
 			error: undefined,
 			errorCode: undefined,
 			errorRetry: undefined,
+			errorCause: undefined,
 			admissionAttempted: true,
 			submittedRendered: rendered,
 		});
@@ -3363,6 +3413,7 @@ export async function admitChatDraft(
 			 * `errorRetry` for why the row carries it rather than the pane deriving it.
 			 */
 			errorRetry: copy.retry,
+			errorCause: copy.cause,
 		});
 		/*
 		 * DELIVERED AFTER ALL: the send is a success, so the composer stays empty,
@@ -5571,6 +5622,7 @@ function unboundDraftRow(draft: ChatDraft): ChatDraft {
 		error: undefined,
 		errorCode: undefined,
 		errorRetry: undefined,
+		errorCause: undefined,
 		submittedText: undefined,
 		submittedRendered: undefined,
 		submittedAttachments: undefined,
@@ -8713,6 +8765,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						error: _error,
 						errorCode: _errorCode,
 						errorRetry: _errorRetry,
+						errorCause: _errorCause,
 						...kept
 					} = draft;
 					/*

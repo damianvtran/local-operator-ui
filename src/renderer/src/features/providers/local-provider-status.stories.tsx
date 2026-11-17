@@ -86,12 +86,19 @@ export const Rechecking: Story = {
 
 /** Running, nothing pulled: the empty state, with a copyable pull command. */
 export const NoModels: Story = {
-	args: { diagnosis: d({ kind: "no_models" }) },
+	args: {
+		diagnosis: d({ kind: "ready", models: null, emptyListing: true }),
+		failedChecks: 0,
+	},
 };
 
 /** LM Studio running with nothing loaded: no one-line command exists, so the step is in words. */
 export const NoModelsLmStudio: Story = {
-	args: { provider: LM_STUDIO, diagnosis: d({ kind: "no_models" }) },
+	args: {
+		provider: LM_STUDIO,
+		diagnosis: d({ kind: "ready", models: null, emptyListing: true }),
+		failedChecks: 0,
+	},
 };
 
 /** A changed address that nothing answers. */
@@ -107,9 +114,69 @@ export const WrongServer: Story = {
 	args: { diagnosis: d({ kind: "wrong_address", status: 404 }) },
 };
 
-/** Ready: the populated state. No alternative is offered. */
+/**
+ * Ready: the populated state, one press from a working chat (UX round 1, U1).
+ * No hosted alternative is offered.
+ */
 export const Running: Story = {
-	args: { diagnosis: d({ kind: "ready", models: 3 }), failedChecks: 0 },
+	args: {
+		diagnosis: d({ kind: "ready", models: 3, firstModel: "qwen3:8b" }),
+		failedChecks: 0,
+		onUseForChats: () => {},
+	},
+};
+
+/** The use press in flight: its label is the status, at body ink (D1). */
+export const RunningSettingUp: Story = {
+	args: {
+		diagnosis: d({ kind: "ready", models: 3, firstModel: "qwen3:8b" }),
+		failedChecks: 0,
+		onUseForChats: () => {},
+		using: true,
+	},
+};
+
+/** Chats already use this runtime: the receipt and the dialog's next step. */
+export const RunningInUse: Story = {
+	args: {
+		diagnosis: d({ kind: "ready", models: 3, firstModel: "qwen3:8b" }),
+		failedChecks: 0,
+		onUseForChats: () => {},
+		inUse: "qwen3:8b",
+		onContinue: () => {},
+		continueLabel: "Continue",
+	},
+};
+
+/** A server answering 401: running, with no model count and no download hint (Q4). */
+export const RunningTokenGated: Story = {
+	args: { diagnosis: d({ kind: "ready", models: null }), failedChecks: 0 },
+};
+
+/** Something else on the port, pressed again: "Same result", not "not found" (D2). */
+export const WrongServerRepeated: Story = {
+	args: {
+		diagnosis: d({ kind: "wrong_address", status: 404 }),
+		failedChecks: 3,
+	},
+};
+
+/** No address configured (OpenAI-compatible before setup; Q3). */
+export const NoAddress: Story = {
+	args: {
+		provider: {
+			id: "openai-compatible",
+			name: "OpenAI-compatible",
+			brand: "OpenAI-compatible",
+			base_url: null,
+		},
+		diagnosis: d({ kind: "no_address" }),
+	},
+};
+
+/** The check could not run: the background service did not answer (M3). */
+export const CheckFailed: Story = {
+	args: { diagnosis: d({ kind: "check_failed" }) },
 };
 
 /** Not running where the census has no Radient row: no hosted way out is drawn. */

@@ -94,6 +94,7 @@ import type {
 	DefaultsApplied,
 	SaveKeyResult,
 } from "../../../../shared/desktop-contract";
+import { useMakeLocalDefault } from "./local-default";
 import { type LocalDiagnosis, diagnoseLocal } from "./local-provider-diagnosis";
 import { LocalProviderStatusView } from "./local-provider-status";
 import { PhoneAccessBlock } from "./phone-access-block";
@@ -118,6 +119,51 @@ import {
 	setKeyOutcome,
 	useSignInSession,
 } from "./sign-in-sessions";
+import { useDefaultModel } from "./use-provider-status";
+
+/**
+ * One local-model check, from the probe and the served list to a diagnosis.
+ *
+ * - No address configured: `no_address`, without asking (the core refuses the
+ *   probe with a 422 that would otherwise read as the service being down; QA
+ *   round 1, Q3).
+ * - The probe ROUTE fails: `check_failed`, because the check never reached the
+ *   runtime (agent review round 1, M3) - not "isn't running, download it".
+ * - A list that cannot be read is `null` (unknown), never 0, and an empty one
+ *   is not trusted as "no models" either (see `LocalDiagnosis`, R2/Q1).
+ */
+async function checkLocalProvider(
+	provider: Pick<DesktopProvider, "id" | "base_url">,
+): Promise<LocalDiagnosis> {
+	if (!provider.base_url) return { kind: "no_address" };
+	let probe: { reachable: boolean; detail: string };
+	try {
+		probe = await desktopResult<{ reachable: boolean; detail: string }>({
+			op: "auth.probe",
+			provider: provider.id,
+		});
+	} catch {
+		return { kind: "check_failed" };
+	}
+	let models: number | null = null;
+	let firstModel: string | null = null;
+	if (probe.reachable) {
+		try {
+			const listed = await ModelsApi.listModels("", provider.id);
+			models = listed.result?.models?.length ?? null;
+			firstModel = listed.result?.models?.[0]?.id ?? null;
+		} catch {
+			models = null;
+		}
+	}
+	return diagnoseLocal({
+		providerId: provider.id,
+		baseUrl: provider.base_url,
+		probe,
+		models,
+		firstModel,
+	});
+}
 
 /**
  * Reachability for a local provider, and what to do when it fails.
@@ -140,58 +186,37 @@ const LocalProviderReachability: FC<{
 	provider: DesktopProvider;
 	/** Opens the hosted sign-in instead; absent where no such row exists. */
 	onUseHosted?: () => void;
-}> = ({ provider, onUseHosted }) => {
+	/** The flow's next step once chats use this runtime; absent in Settings. */
+	onContinue?: () => void;
+	continueLabel?: string;
+}> = ({ provider, onUseHosted, onContinue, continueLabel }) => {
 	useI18nLocale();
+	/*
+	 * U1: whether chats already use this runtime, and the press that makes them.
+	 * The default is the gate `useProviderStatus` reads, so the same read decides
+	 * the receipt here and the composer's line there.
+	 */
+	const defaults = useDefaultModel();
+	const makeDefault = useMakeLocalDefault();
+	const inUse =
+		defaults.hosting === provider.id ? (defaults.model ?? "") : null;
 	const [testing, setTesting] = useState(false);
 	const [diagnosis, setDiagnosis] = useState<LocalDiagnosis | null>(null);
 	const [checkedAt, setCheckedAt] = useState<number | null>(null);
 	const [failedChecks, setFailedChecks] = useState(0);
 	/* A stale answer for a previous provider row must not land on this one. */
 	const generation = useRef(0);
+	const providerId = provider.id;
+	const baseUrl = provider.base_url;
 
 	const test = useCallback(async () => {
 		const mine = ++generation.current;
 		setTesting(true);
 		const started = Date.now();
-		let next: LocalDiagnosis;
-		try {
-			const probe = await desktopResult<{ reachable: boolean; detail: string }>(
-				{ op: "auth.probe", provider: provider.id },
-			);
-			let models: number | null = null;
-			if (probe.reachable) {
-				/*
-				 * The served list separates "running" from "running with nothing
-				 * pulled". A list that cannot be read is `null` (unknown), never 0:
-				 * telling a user to download a model they already have is worse
-				 * than saying only that the server answered.
-				 */
-				try {
-					const listed = await ModelsApi.listModels("", provider.id);
-					models = listed.result?.models?.length ?? null;
-				} catch {
-					models = null;
-				}
-			}
-			next = diagnoseLocal({
-				providerId: provider.id,
-				baseUrl: provider.base_url,
-				probe,
-				models,
-			});
-		} catch {
-			/*
-			 * The probe ROUTE failed (the backend itself, not the local server).
-			 * Read as "nothing answered": the steps it offers are the same ones
-			 * the user can take, and the receipt still moves.
-			 */
-			next = diagnoseLocal({
-				providerId: provider.id,
-				baseUrl: provider.base_url,
-				probe: { reachable: false, detail: "" },
-				models: null,
-			});
-		}
+		const next = await checkLocalProvider({
+			id: providerId,
+			base_url: baseUrl,
+		});
 		/*
 		 * A PERCEPTION FLOOR, not a timeout: a refused connection answers in a few
 		 * milliseconds, so "Checking..." never painted and the press looked
@@ -206,7 +231,7 @@ const LocalProviderReachability: FC<{
 		setCheckedAt(Date.now());
 		setFailedChecks((count) => (next.kind === "ready" ? 0 : count + 1));
 		setTesting(false);
-	}, [provider.id, provider.base_url]);
+	}, [providerId, baseUrl]);
 
 	// A different provider row reuses this component, so the verdict is reset
 	// and re-asked per provider rather than left beside the new name.
@@ -217,6 +242,8 @@ const LocalProviderReachability: FC<{
 		void test();
 	}, [test]);
 
+	const firstModel =
+		diagnosis?.kind === "ready" ? (diagnosis.firstModel ?? null) : null;
 	return (
 		<LocalProviderStatusView
 			provider={provider}
@@ -226,6 +253,20 @@ const LocalProviderReachability: FC<{
 			failedChecks={failedChecks}
 			onCheckAgain={() => void test()}
 			onUseHosted={onUseHosted}
+			inUse={inUse}
+			onUseForChats={
+				firstModel
+					? () =>
+							void makeDefault.run({
+								provider: provider.id,
+								model_id: firstModel,
+							})
+					: undefined
+			}
+			using={makeDefault.busy}
+			useError={makeDefault.error}
+			onContinue={onContinue}
+			continueLabel={continueLabel}
 		/>
 	);
 };
@@ -1019,14 +1060,24 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	if (provider.local) {
 		return (
 			<div className="flex flex-col gap-3">
+				{/*
+				 * Short on purpose (design round 1, D7): the old intro's "start <brand>,
+				 * then check the connection" repeated the cause-specific steps the panel
+				 * now shows right under it.
+				 */}
 				<p className="text-body-sm text-ink-muted">
-					{t("ui.providers.provider_detail.runs_on_this_computer_and_needs_no")}
-					{brand}
-					{t("ui.providers.provider_detail.then_check_the_connection")}
+					{t("ui.recovery.local.intro")}
 				</p>
 				<LocalProviderReachability
 					provider={provider}
 					onUseHosted={onUseHosted}
+					/*
+					 * Where the flow has a next step (onboarding, the connect dialog),
+					 * the "chats use <brand>" receipt carries it, so a ready runtime
+					 * ends the dialog in one more press (U1). Settings has none.
+					 */
+					onContinue={context === "dialog" ? finish : undefined}
+					continueLabel={context === "dialog" ? doneLabel : undefined}
 				/>
 			</div>
 		);

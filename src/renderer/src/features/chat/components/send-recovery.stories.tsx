@@ -4,15 +4,17 @@
  *
  * The line is the production `SendBlockedLineView`; the in-context frames are
  * `Chat/Composer band` (`EmptyChatNoProvider`, `BlockedNoModel`,
- * `BlockedServerOffline`). The undelivered rows render the production
- * `UndeliveredLine` with fixture failures: with no desktop bridge in Storybook
- * the live provider/health reads stay unknown, so each row's fix comes from its
- * own code and sentence, which is the path a real failure takes.
+ * `BlockedServerOffline`, `BlockedColumnFloor`). The undelivered rows render
+ * the production `UndeliveredLineView` with each state's derived sentence and
+ * fix pinned (see the note above `FailedRows`).
  */
 
+import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
-import { UndeliveredLine } from "../canonical/canonical-transcript";
-import { SendBlockedLineView } from "./send-recovery-action";
+import {
+	SendBlockedLineView,
+	UndeliveredLineView,
+} from "./send-recovery-action";
 import "../../../styles/index.css";
 
 const meta: Meta = { title: "Chat/Send recovery" };
@@ -30,6 +32,17 @@ export const BlockedLines: Story = {
 			<SendBlockedLineView block="no_provider" onFix={noop} />
 			<SendBlockedLineView block="no_provider" emphasis onFix={noop} />
 			<SendBlockedLineView block="no_model" onFix={noop} />
+			<SendBlockedLineView
+				block="local_not_default"
+				brand="Ollama"
+				onFix={noop}
+			/>
+			<SendBlockedLineView
+				block="local_not_default"
+				brand="Ollama"
+				busy
+				onFix={noop}
+			/>
 			<SendBlockedLineView block="offline" onFix={noop} />
 			<SendBlockedLineView block="offline" busy onFix={noop} />
 			<SendBlockedLineView
@@ -41,47 +54,79 @@ export const BlockedLines: Story = {
 	),
 };
 
-const row = (over: Record<string, unknown>) => ({
-	recordId: "r1",
-	onSendAgain: noop,
-	onEdit: noop,
-	...over,
-});
+/*
+ * The rows below are the production `UndeliveredLineView` with the sentence and
+ * fix `UndeliveredLine` derives (`undeliveredSentence`, `recoveryForFailure`),
+ * so each state is pinned rather than left to whatever the live reads answer
+ * in Storybook. The config rows carry the store's OWN sentence for the cause
+ * (R1): what a 503 `runtime_unreachable` with the backend's vetted reason now
+ * keeps.
+ */
+const view = (over: Partial<Parameters<typeof UndeliveredLineView>[0]>) => (
+	<UndeliveredLineView
+		sentence=""
+		recovery={null}
+		offerSendAgain
+		onFix={noop}
+		onSendAgain={noop}
+		onEdit={noop}
+		{...over}
+	/>
+);
+
+const FailedRows = () => (
+	<>
+		{view({
+			sentence: t("ui.recovery.send.failed_no_provider"),
+			recovery: "connect_provider",
+			offerSendAgain: false,
+		})}
+		{view({
+			sentence: t("ui.recovery.send.failed_no_model"),
+			recovery: "choose_model",
+			offerSendAgain: false,
+		})}
+		{/* U2: the cause was fixed since; the row offers Send again. */}
+		{view({ sentence: t("ui.recovery.send.failed_no_provider") })}
+		{view({
+			sentence:
+				"Couldn't reach Local Operator. Your message may not have been sent.",
+			recovery: "reconnect",
+		})}
+		{view({
+			sentence:
+				"Couldn't reach Local Operator. Your message may not have been sent.",
+			recovery: "reconnect",
+			busy: true,
+		})}
+		{/* Q2: the row's Reconnect states its result where it was pressed. */}
+		{view({
+			sentence: t("ui.recovery.send.still_offline", { time: "2:32:07 PM" }),
+			recovery: "reconnect",
+		})}
+		{view({
+			sentence:
+				"Couldn't confirm your message was sent. Sending it again is safe.",
+		})}
+	</>
+);
 
 export const FailedSends: Story = {
 	render: () => (
 		<Frame>
-			<UndeliveredLine
-				undelivered={row({
-					message:
-						"No model provider is configured yet. Connect one in Settings > Providers, then send the message again.",
-					retry: false,
-					code: "runtime_unreachable",
-				})}
-			/>
-			<UndeliveredLine
-				undelivered={row({
-					message:
-						"No model is selected for this session. Pick one with /model, then send the message again.",
-					retry: false,
-					code: "runtime_unreachable",
-				})}
-			/>
-			<UndeliveredLine
-				undelivered={row({
-					message:
-						"Couldn't reach Local Operator. Your message may not have been sent.",
-					retry: true,
-					code: "transport.failed",
-				})}
-			/>
-			<UndeliveredLine
-				undelivered={row({
-					message:
-						"Couldn't confirm your message was sent. Sending it again is safe.",
-					retry: true,
-				})}
-			/>
+			<FailedRows />
 		</Frame>
+	),
+};
+
+/**
+ * The same rows at the chat column floor (550px), the frame long locales are
+ * checked against with `?args=locale:ru` (design round 1 evidence gap 2).
+ */
+export const FailedSendsColumnFloor: Story = {
+	render: () => (
+		<div className="flex w-[550px] flex-col gap-6 bg-canvas p-6">
+			<FailedRows />
+		</div>
 	),
 };
