@@ -764,6 +764,9 @@ const baseName = (target: string): string =>
  */
 const MISSING_NOTE_MAX_CHARS = 40;
 
+/** Invisible direction marks and isolates (LRM/RLM/ALM, LRE..PDI): zero width, so not budget. */
+const BIDI_CONTROLS = /[\u200e\u200f\u061c\u202a-\u202e\u2066-\u2069]/g;
+
 /**
  * The missing-file reason, with the DIRECTORY ellipsised instead of the name.
  *
@@ -773,6 +776,20 @@ const MISSING_NOTE_MAX_CHARS = 40;
  * The full path is still on the anchor above the strip and in `title`.
  */
 export function missingNote(target: string): { note: string; title: string } {
+	/*
+	 * The VISIBLE length of the sentence, bidi controls not counted. The budget is
+	 * a proxy for what the reader sees, but an RTL sentence carries invisible
+	 * isolation marks twice over (`isolateLtr` here, and the runtime's own FSI/PDI
+	 * around a Latin-led argument in `src/i18n/bidi.ts`), so measuring the raw
+	 * string charged an RTL locale up to four characters an LTR one is not
+	 * charged: the same path flipped to its short form at a different length by
+	 * language. Measured on the sentence built WITHOUT `isolateLtr` and with the
+	 * controls stripped, LTR and RTL switch at the same visible length.
+	 */
+	const visibleLength = (sentenceText: string) =>
+		sentenceText.replace(BIDI_CONTROLS, "").length;
+	const plain = (path: string) =>
+		t("ui.chat.canonical.link_actions.missing_file", { path });
 	/* A path is LTR content inside a sentence that may be RTL; a no-op in LTR. */
 	const sentence = (path: string) =>
 		t("ui.chat.canonical.link_actions.missing_file", {
@@ -782,7 +799,7 @@ export function missingNote(target: string): { note: string; title: string } {
 	const base = baseName(target) || target;
 	const parts = target.split("/").filter(Boolean);
 	const directory = parts.length > 1 ? parts[parts.length - 2] : "";
-	const withDirectory = directory ? sentence(`…/${directory}/${base}`) : title;
+	const shortPath = directory ? `…/${directory}/${base}` : target;
 	return {
 		/*
 		 * The budget is measured on the WHOLE translated sentence, and the choice is
@@ -796,8 +813,8 @@ export function missingNote(target: string): { note: string; title: string } {
 		 * exactly as it already is for an over-long English base name.
 		 */
 		note:
-			withDirectory.length <= MISSING_NOTE_MAX_CHARS
-				? withDirectory
+			visibleLength(plain(shortPath)) <= MISSING_NOTE_MAX_CHARS
+				? sentence(shortPath)
 				: sentence(base),
 		title,
 	};
@@ -900,16 +917,6 @@ export function linkToolbarModel(input: {
 		canOpenInCanvas,
 	});
 	/*
-	 * THE NOTE: the sentence a strip shows when the canvas is on offer for the TYPE but a press
-	 * would refuse this FILE.
-	 *
-	 * The note slot is the missing-path one's, and the reason it is reused rather than
-	 * a button being dropped silently is the reader's own expectation: the operator's
-	 * rule is that a supported file opens in the canvas, so a `.csv` with no canvas
-	 * button reads as a bug unless the strip says why. Sentence case, and short enough
-	 * to sit in the strip's own line, because it renders beside the buttons.
-	 */
-	/*
 	 * A file the canvas can show but the press will refuse for its size gets the
 	 * honest alternative and the sentence that explains it (round 3, U8a): the
 	 * no-canvas action shape, plus the same note slot the missing path uses. Without
@@ -924,6 +931,16 @@ export function linkToolbarModel(input: {
 			...fileActions,
 			...trailing,
 		],
+		/*
+		 * THE NOTE: the sentence a strip shows when the canvas is on offer for the TYPE but a press
+		 * would refuse this FILE.
+		 *
+		 * The note slot is the missing-path one's, and the reason it is reused rather than
+		 * a button being dropped silently is the reader's own expectation: the operator's
+		 * rule is that a supported file opens in the canvas, so a `.csv` with no canvas
+		 * button reads as a bug unless the strip says why. Sentence case, and short enough
+		 * to sit in the strip's own line, because it renders beside the buttons.
+		 */
 		note: overCeiling
 			? t("ui.chat.canonical.link_actions.too_large_note")
 			: null,

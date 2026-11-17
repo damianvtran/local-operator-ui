@@ -214,6 +214,15 @@ const brokenAttachmentText = (
  * happens. It is the neutral ground rather than a `danger` wash — a file that
  * moved is not an error the user made, and painting it red would put it above
  * the agent's own output in the § 7 hierarchy.
+ *
+ * THE WHOLE SENTENCE IS ONE PLAIN MUTED RUN, the name included. The name used to
+ * sit in its own monospace span, which is a file-name treatment; but the name a
+ * user attachment passes here is very often the generic "Attached image" label
+ * (a picture that travelled with no file name), and setting a noun phrase in
+ * mono reads as if it were a file name. It also could not survive translation:
+ * the sentence is one message so a language can reorder it, and a styled span
+ * would need the message split around the name. Design accepted this (round 1,
+ * D3). The name is still bidi-isolated inside the sentence (`isolateLtr`).
  */
 export const BrokenAttachment = ({
 	name,

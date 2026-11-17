@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import { after, test } from "node:test";
@@ -34,9 +34,12 @@ import React, { act } from "react";
  *    that was mounted and driven in English. The probes are markers, not
  *    translations (those live in `src/i18n/catalogues/<locale>/`). `ur` is the
  *    RTL probe: it proves the name, tool and path are isolated for a right-to-
- *    left sentence, and that English never survives under it. There is no real
- *    `ur` assertion yet because translations are a separate step of this work;
- *    the coverage gate is the one that goes red until they land.
+ *    left sentence, and that English never survives under it. The probes prove
+ *    the WIRING; the shipped translations are asserted separately, from the
+ *    real `fr` and `ur` catalogue files (never from literals), by the
+ *    "attached-image label" and "missing-note budget (real fr/ur)" tests at
+ *    the end of this file. The coverage gate (`check-i18n-coverage`) owns "every
+ *    key has a translation"; those tests own "the surface prints it".
  * 3. THE LADDER SPEAKS IN DATA, NOT ENGLISH: `deriveWorkingLine` returns a rung
  *    plus arguments, so nothing downstream (the clock, the child reader's
  *    classification) compares words.
@@ -135,6 +138,7 @@ export { deriveWorkingLine, workingLineInputFor } from "./${CHAT}/canonical/work
 export { deriveChildWorkingLine } from "./${CHAT}/components/run-details/run-detail-model";
 export * as frame from "./${CHAT}/components/message-item/attachment-frame";
 export { linkToolbarModel, missingNote } from "./${CHAT}/utils/link-actions";
+export { attachedImageLabel } from "./${CHAT}/canonical/media-label";
 export { setLocale, registerCatalogue, clearRegisteredCatalogues, t } from "./src/i18n";`,
 		resolveDir: ROOT,
 	},
@@ -193,6 +197,7 @@ const {
 	frame,
 	linkToolbarModel,
 	missingNote,
+	attachedImageLabel,
 	setLocale,
 	registerCatalogue,
 	clearRegisteredCatalogues,
@@ -884,5 +889,160 @@ test("link strip: the missing-note budget chooses between whole messages, never 
 		assert.equal(missingNote(target).note, "Absent : …/out/a.pdf");
 	} finally {
 		await backToEnglish();
+	}
+});
+
+/*
+ * THE REAL CATALOGUES, not probes: a locale's own file, every namespace, as the
+ * app registers it. Read from disk so a translation edit moves the expectation
+ * with it - the assertions compare the surface to the catalogue, never to a
+ * literal that could drift from it.
+ */
+const realLocale = (locale) =>
+	Object.assign(
+		{},
+		...readdirSync(join(ROOT, `src/i18n/catalogues/${locale}`))
+			.filter((f) => f.endsWith(".json") && !f.endsWith(".context.json"))
+			.map((f) =>
+				JSON.parse(
+					readFileSync(
+						join(ROOT, `src/i18n/catalogues/${locale}/${f}`),
+						"utf8",
+					),
+				),
+			),
+	);
+const NOUN = "ui.canvas.files.attachmentImage";
+
+test("attached-image label: English is byte-identical to the literal it replaced", () => {
+	setLocale("en");
+	/* The pin the old code printed, copied here as literals on purpose. */
+	assert.equal(attachedImageLabel(undefined, 0, 1), "Attached image");
+	assert.equal(attachedImageLabel(undefined, 0, 3), "Attached image 1");
+	assert.equal(attachedImageLabel(null, 2, 3), "Attached image 3");
+	/* A name that travelled wins, and an empty one stays as given (`??`). */
+	assert.equal(attachedImageLabel("shot.png", 0, 3), "shot.png");
+	assert.equal(attachedImageLabel("", 0, 1), "");
+	assert.equal(catalogue("ui.canvas")[NOUN], "Attached image");
+});
+
+for (const locale of ["fr", "ur"]) {
+	test(`attached-image label (${locale}): the shipped translation, one and numbered, live`, async () => {
+		const noun = realLocale(locale)[NOUN];
+		assert.ok(
+			noun && noun !== "Attached image",
+			`${locale} translates ${NOUN}`,
+		);
+		setLocale("en");
+		assert.equal(attachedImageLabel(undefined, 0, 1), "Attached image");
+		await switchTo(locale, realLocale(locale));
+		try {
+			assert.equal(attachedImageLabel(undefined, 0, 1), noun);
+			assert.equal(attachedImageLabel(undefined, 1, 2), `${noun} 2`);
+			for (const seen of [
+				attachedImageLabel(undefined, 0, 1),
+				attachedImageLabel(undefined, 1, 2),
+			]) {
+				assert.ok(!seen.includes("Attached"), `no English under ${locale}`);
+			}
+		} finally {
+			await backToEnglish();
+		}
+		assert.equal(attachedImageLabel(undefined, 0, 1), "Attached image");
+	});
+
+	test(`attached-image label (${locale}): the broken-attachment sentence carries it, whole, as plain text`, async () => {
+		const messages = realLocale(locale);
+		await switchTo(locale, messages);
+		const m = await mount(
+			React.createElement(frame.BrokenAttachment, {
+				name: attachedImageLabel(undefined, 0, 1),
+				kind: "unavailable",
+			}),
+		);
+		try {
+			assert.ok(
+				!m.text().includes("Attached image"),
+				`no English under ${locale}`,
+			);
+			assert.ok(
+				m.text().includes(messages[NOUN]),
+				"the translated noun is in it",
+			);
+		} finally {
+			await m.unmount();
+			await backToEnglish();
+		}
+	});
+}
+
+test("broken attachment: the sentence is ONE plain text run, no monospace span (design D3)", async () => {
+	setLocale("en");
+	const m = await mount(
+		React.createElement(frame.BrokenAttachment, {
+			name: "Attached image",
+			kind: "unavailable",
+		}),
+	);
+	try {
+		const span = m.host.querySelector("span.text-ink-muted");
+		assert.ok(span, "the sentence span");
+		assert.equal(span.childNodes.length, 1, "one child");
+		assert.equal(span.firstChild.nodeType, 3, "which is a text node");
+		assert.equal(m.host.querySelector(".font-mono"), null, "no mono span");
+	} finally {
+		await m.unmount();
+	}
+});
+
+test("missing-note budget (real fr/ur): measured on the visible sentence, so LTR and RTL switch at the same length", async () => {
+	/*
+	 * A path whose short form (`…/out/<base>`) makes the PLAIN sentence exactly
+	 * the budget (40), then one character longer. The old code measured after
+	 * `isolateLtr` added two invisible marks, so under an RTL locale the
+	 * boundary path fell to the base-name message while LTR kept its directory.
+	 */
+	const MAX = 40;
+	const frameLength = (message) => message.replace("{path}", "").length;
+	const targetFor = (message, extra) => {
+		const shortPrefix = "…/out/";
+		const baseLength = MAX - frameLength(message) - shortPrefix.length + extra;
+		return `/tmp/out/${"b".repeat(baseLength - 4)}.pdf`;
+	};
+	const KEY = "ui.chat.canonical.link_actions.missing_file";
+	const cases = [
+		["en", "No file at {path}", false],
+		["ur", realLocale("ur")[KEY], true],
+		["fr", realLocale("fr")[KEY], false],
+	];
+	for (const [locale, message, rtl] of cases) {
+		if (locale === "en") setLocale("en");
+		else await switchTo(locale, realLocale(locale));
+		try {
+			const mark = rtl ? "\u2066" : "";
+			const end = rtl ? "\u2069" : "";
+			const exact = targetFor(message, 0);
+			const over = targetFor(message, 1);
+			const a = missingNote(exact);
+			/* At the budget exactly: the directory is kept. */
+			assert.ok(
+				a.note.includes(`${mark}…/out/`),
+				`${locale}: boundary keeps the directory: ${JSON.stringify(a.note)}`,
+			);
+			assert.equal(
+				a.note.replace(/[\u2066\u2069]/g, "").length,
+				MAX,
+				`${locale}: the visible sentence is exactly the budget`,
+			);
+			/* One character over: the base-name message, whole. */
+			const b = missingNote(over);
+			assert.ok(
+				!b.note.includes("…/"),
+				`${locale}: one over drops the directory: ${JSON.stringify(b.note)}`,
+			);
+			assert.ok(b.note.endsWith(`.pdf${end}`));
+		} finally {
+			if (locale !== "en") await backToEnglish();
+		}
 	}
 });
