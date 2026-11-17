@@ -2,6 +2,8 @@ export type DiagramEngine = "pele" | "mermaid";
 
 export const DIAGRAM_ENGINE_STORAGE_KEY = "diagramEngine";
 
+export const DEFAULT_DIAGRAM_ENGINE: DiagramEngine = "mermaid";
+
 export function parseDiagramEngine(
 	value: string | null | undefined,
 ): DiagramEngine | null {
@@ -26,6 +28,6 @@ function buildDiagramEngine(): DiagramEngine {
 		parseDiagramEngine(
 			(import.meta as { env?: Record<string, string | undefined> }).env
 				?.VITE_DIAGRAM_ENGINE,
-		) ?? "pele"
+		) ?? DEFAULT_DIAGRAM_ENGINE
 	);
 }

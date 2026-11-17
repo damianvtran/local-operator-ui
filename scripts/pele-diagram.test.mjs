@@ -45,34 +45,35 @@ const storage = (entries, throws = false) => ({
 });
 
 const engine = await bundle("diagram-engine.ts");
-const mermaidDefault = await bundle("diagram-engine.ts", {
-	"import.meta.env": '{"VITE_DIAGRAM_ENGINE":"mermaid"}',
+const peleDefault = await bundle("diagram-engine.ts", {
+	"import.meta.env": '{"VITE_DIAGRAM_ENGINE":"pele"}',
 });
 const theme = await bundle("pele-theme.ts");
 
-test("engine defaults to pele and honours an explicit mermaid switch", () => {
+test("engine defaults to mermaid while the journey-fill gap is open, and honours an explicit switch", () => {
 	globalThis.window = storage({});
+	assert.equal(engine.diagramEngine(), "mermaid");
+	assert.equal(engine.DEFAULT_DIAGRAM_ENGINE, "mermaid");
+	globalThis.window = storage({ diagramEngine: "pele" });
 	assert.equal(engine.diagramEngine(), "pele");
 	globalThis.window = storage({ diagramEngine: "mermaid" });
 	assert.equal(engine.diagramEngine(), "mermaid");
-	globalThis.window = storage({ diagramEngine: "pele" });
-	assert.equal(engine.diagramEngine(), "pele");
 });
 
 test("engine ignores an unknown stored value and an unreadable store", () => {
 	globalThis.window = storage({ diagramEngine: "svg" });
-	assert.equal(engine.diagramEngine(), "pele");
+	assert.equal(engine.diagramEngine(), "mermaid");
 	globalThis.window = storage({}, true);
-	assert.equal(engine.diagramEngine(), "pele");
+	assert.equal(engine.diagramEngine(), "mermaid");
 });
 
 test("build-time engine applies unless the stored value overrides it", () => {
 	globalThis.window = storage({});
-	assert.equal(mermaidDefault.diagramEngine(), "mermaid");
-	globalThis.window = storage({ diagramEngine: "pele" });
-	assert.equal(mermaidDefault.diagramEngine(), "pele");
+	assert.equal(peleDefault.diagramEngine(), "pele");
+	globalThis.window = storage({ diagramEngine: "mermaid" });
+	assert.equal(peleDefault.diagramEngine(), "mermaid");
 	globalThis.window = storage({}, true);
-	assert.equal(mermaidDefault.diagramEngine(), "mermaid");
+	assert.equal(peleDefault.diagramEngine(), "pele");
 });
 
 test("every Pele colour variable resolves to a theme role the app defines", () => {
