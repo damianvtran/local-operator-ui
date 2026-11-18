@@ -35,7 +35,7 @@
  * below the fold.
  */
 
-import { t } from "@shared/i18n";
+import { isolateLtr, t } from "@shared/i18n";
 import type { ProfileRecencyKind } from "../../../shared/store/ui-preferences-store";
 import type { PickerOption } from "../pickers/picker-host";
 
@@ -494,42 +494,29 @@ export function identityAgentConstraintCaption(teamLabel: string): string {
 }
 
 /**
- * The sentence a CLOSED agent control states, for the runtime's strict rule
- * (local-operator core PR #2050, `AgentSlotOwnedByTeam`).
- *
- * WHERE THE WORDS COME FROM. It is the runtime's own attach refusal,
- * `Session._team_agent_slot_refusal("attach")`:
- *
- *   team <team> owns this session: <manager> is the speaker, so /agent is
- *   closed. Run /team clear to detach the team first.
- *
- * byte for byte, with `<team>` the team's SLUG (what the runtime prints, and
- * what the composer's own `/agent` refusal will print if one is typed) rather
- * than the catalogue label the chip shows: the closed control and the notice a
- * typed `/agent` returns are then the same words, and every word of this
- * sentence has a source. The label is one hover away on the team chip. When the
- * runtime cannot name a manager it says `its manager is the speaker`;
- * `speaker: null` is that case, so a blank or team-named speaker reads `its
- * manager` rather than "team lopdev owns this session: lopdev is the speaker".
- *
- * THE WAY OUT IS `/team clear`, NOT A CONTROL. This app ships no detach row
- * in its team menu (the menu lists teams only, and its `No team` label is an
- * assign affordance rather than a verb), so the only exit that exists is the
- * slash command the runtime itself names, typed in the composer. The
- * sentence does not promise a button.
- *
- * DELIBERATELY ABSENT: any sentence about the profile a team's attach
- * silently REPLACES (`/team X` over an earlier `/agent`). Core WILL add a
- * short notice for it (a clause naming the dropped profile and the new
- * speaker, only when one was dropped), but its wording is not final, and a
- * line written here now would be a paraphrase of words that do not exist yet.
- * Add it only when core's wording lands, quoting core's words, never ours.
+ * Display-only reason for the strict team-owned seat. English mirrors core's
+ * attach refusal byte for byte, but no runtime text is read or parsed here.
+ * Use two complete messages so the locale owns the unnamed-manager phrasing.
+ * The only exit is a command typed in the composer, not a control in this menu.
  */
 export function identityAgentClosedCaption(
 	team: string,
 	speaker: string | null,
 ): string {
-	return `team ${team} owns this session: ${speaker ?? "its manager"} is the speaker, so /agent is closed. Run /team clear to detach the team first.`;
+	const args = {
+		team: isolateLtr(team),
+		agentCommand: isolateLtr("/agent"),
+		detachCommand: isolateLtr("/team clear"),
+	};
+	return speaker === null
+		? t(
+				"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker",
+				args,
+			)
+		: t("ui.chat.header_identity.agent_seat_closed_caption_known_speaker", {
+				...args,
+				speaker: isolateLtr(speaker),
+			});
 }
 
 /**
@@ -537,10 +524,9 @@ export function identityAgentClosedCaption(
  * (its label when it has one) so the screen says what the screen says.
  *
  * WHY A LEAD LINE AND NOT A DIFFERENT SENTENCE (design D2/D3). The sentence
- * under it is the runtime's refusal byte for byte and names the team by SLUG,
+ * under it mirrors the runtime's refusal in English and names the team by SLUG,
  * which appears nowhere else on screen; the lead supplies the label (and the
- * sentence-case statement a caption needs above it) without touching the
- * runtime's words. `closed` is the runtime's own word for the state (`/agent is
+ * sentence-case statement a caption needs above it). `closed` is the runtime's own word for the state (`/agent is
  * closed`). It also names the dialog (`aria-labelledby`), which Radix would
  * otherwise announce with no name.
  */

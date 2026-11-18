@@ -5942,6 +5942,17 @@ export type MessageParams = {
 	"ui.chat.error_block.schema.before": undefined;
 	"ui.chat.error_block.unavailable.after": undefined;
 	"ui.chat.error_block.unavailable.before": undefined;
+	"ui.chat.header_identity.agent_seat_closed_caption_known_speaker": {
+		team: string;
+		speaker: string;
+		agentCommand: string;
+		detachCommand: string;
+	};
+	"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker": {
+		team: string;
+		agentCommand: string;
+		detachCommand: string;
+	};
 	"ui.chat.header_identity.agent_seat_closed_title": { team: string };
 	"ui.chat.header_identity.aria_agent_assign": { label: string };
 	"ui.chat.header_identity.aria_agent_closed": {
