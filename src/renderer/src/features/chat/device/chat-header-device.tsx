@@ -48,7 +48,9 @@ import {
 import { MoveConfirmDialog } from "../../mesh/mesh-actions";
 import {
 	type MovePlan,
+	type MoveQuestion,
 	type WorkingSetConsent,
+	reopenAsk,
 	workingSetConsent,
 } from "../../mesh/mesh-drop";
 import {
@@ -544,7 +546,15 @@ export const ChatHeaderDevice = ({
 		destinationName?: string;
 		/** A consent refusal's fresh manifest, shown instead of a new preflight. */
 		seed?: MoveWorkingSetSeed | null;
+		/** The option to pre-select on a refusal reopen (the user's earlier pick). */
+		initialKeep?: boolean;
 	} | null>(null);
+	/*
+	 * The question the dialog last asked, kept past its close so a consent
+	 * refusal reopens the SAME question - Move/Copy pair and risk - as the Mesh
+	 * tab does (`reopenAsk`, UX round 1 U4).
+	 */
+	const askedRef = useRef<MoveQuestion | null>(null);
 	/*
 	 * A CONSENT REFUSAL REOPENS THE DIALOG (design move-working-set §11.4). When the
 	 * route refuses `working_set_changed` (the list moved after the tick) or
@@ -567,9 +577,7 @@ export const ChatHeaderDevice = ({
 		if (!seed) return;
 		reopenedRef.current = move.refusal;
 		setAsk({
-			plan: move.plan,
-			alternatives: [],
-			risky: source !== null,
+			...reopenAsk(askedRef.current, move.plan, source !== null),
 			destinationName: move.name,
 			seed,
 		});
@@ -669,8 +677,10 @@ export const ChatHeaderDevice = ({
 				busy={busy}
 				workingSetSeed={ask?.seed ?? null}
 				destinationName={ask?.destinationName}
+				initialKeep={ask?.initialKeep}
 				onCancel={() => setAsk(null)}
 				onChoose={(plan) => {
+					askedRef.current = ask;
 					setAsk(null);
 					onPick(
 						plan.to === "local" ? null : plan.to,

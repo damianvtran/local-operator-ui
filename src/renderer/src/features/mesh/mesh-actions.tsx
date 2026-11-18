@@ -67,7 +67,12 @@ import {
 	deviceIdentityText,
 	workingSetHasFiles,
 } from "./mesh-types";
-import { WorkingSetReview, workingSetMode } from "./mesh-working-set";
+import {
+	WorkingSetConsent,
+	WorkingSetDetails,
+	WorkingSetWarning,
+	workingSetMode,
+} from "./mesh-working-set";
 
 /**
  * The move confirmation: the operation, the loss, and the reversible alternative.
@@ -113,6 +118,12 @@ export const MoveConfirmDialog: FC<{
 	 * The manifest's own `destination.name` wins when present.
 	 */
 	destinationName?: string;
+	/**
+	 * Which option is selected when the dialog opens: the `keep` of the plan the
+	 * user already chose, when a consent refusal reopens the dialog with the
+	 * original Move/Copy pair (UX round 1, U4). Absent: the drop's own plan.
+	 */
+	initialKeep?: boolean;
 }> = ({
 	open,
 	plan,
@@ -123,6 +134,7 @@ export const MoveConfirmDialog: FC<{
 	onChoose,
 	workingSetSeed = null,
 	destinationName,
+	initialKeep,
 }) => {
 	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
@@ -160,145 +172,222 @@ export const MoveConfirmDialog: FC<{
 		workingSetGate && workingSetSeed === null && open && preflight.isLoading;
 	const reviewFailed =
 		workingSetGate && workingSetSeed === null && preflight.isError;
-	const [confident, setConfident] = useState(false);
 	/*
-	 * UN-TICKED FOR EVERY NEW LIST. The tick is consent to ONE scope: a reopened
-	 * dialog, or a fresh manifest from a `working_set_changed` refusal, is a
-	 * different question and must be answered again, never carried over.
+	 * THE TICK IS CONSENT TO ONE QUESTION, keyed by (opening, digest, mode) and
+	 * DERIVED rather than reset (agent review round 1, R3). Both callers keep this
+	 * dialog mounted across openings, and a reset in a passive effect left the
+	 * first committed frame of a reopen still ticked. `openings` counts
+	 * false->true transitions via the render-time "previous prop" pattern, so the
+	 * new key exists in the SAME render that opens the dialog, and a tick recorded
+	 * for an older key reads as unticked with no effect to run.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the dependencies ARE the reset triggers; the body reads neither.
-	useEffect(() => {
-		setConfident(false);
-	}, [open, review?.scopeDigest, reviewMode]);
+	const [openings, setOpenings] = useState(open ? 1 : 0);
+	const [wasOpen, setWasOpen] = useState(open);
+	if (open !== wasOpen) {
+		setWasOpen(open);
+		if (open) setOpenings((count) => count + 1);
+	}
+	const tickKey = `${openings}:${review?.scopeDigest ?? ""}:${reviewMode}`;
+	const [tickedFor, setTickedFor] = useState<string | null>(null);
+	const confident = open && tickedFor === tickKey;
+	/*
+	 * THE CONSENT NAMES A DEVICE, NEVER AN OPAQUE ID (design round 1, D5): the
+	 * manifest's name, then the caller's label, then "this device" for a recall,
+	 * and only then the generic "the other device" - never `plan.to`.
+	 */
 	const reviewDevice =
 		review?.destination.name ||
 		workingSetSeed?.workingSet?.destination.name ||
 		destinationName ||
-		(plan.to === "local" ? t("ui.mesh.mesh_drop.this_device") : plan.to);
+		(plan.to === "local"
+			? t("ui.mesh.mesh_drop.this_device")
+			: t("ui.chat.device_move.other_device"));
+	const checkboxId = useId();
+	const consentLabelId = useId();
 	const confirm = planConfirm(plan, risky);
 	const [chosen, setChosen] = useState<MovePlan>(plan);
 	// The chosen plan is re-seeded when the dialog opens for a DIFFERENT drop: a
 	// stale choice would send the previous target's verb while the body describes
 	// this one, which is the class of bug a dialog that never reset would hide.
 	useEffect(() => {
-		if (open) setChosen(plan);
-	}, [open, plan]);
+		if (!open) return;
+		setChosen(
+			initialKeep === undefined
+				? plan
+				: ([plan, ...alternatives].find(
+						(option) => option.keep === initialKeep,
+					) ?? plan),
+		);
+	}, [open, plan, alternatives, initialKeep]);
 	const effective = alternatives.some((alt) => alt.keep === chosen.keep)
 		? chosen
 		: plan;
 	const isCopy = effective.keep;
+	/*
+	 * THE ACTION SAYS WHAT HAPPENS (UX round 1, U3): in `without` mode the only
+	 * consent on offer is to move without the files, so Confirm says exactly that
+	 * rather than the plain verb the title already carries.
+	 */
+	const confirmLabel =
+		reviewing && reviewMode === "without"
+			? isCopy
+				? t("ui.mesh.mesh_actions.working_set_copy_without")
+				: t("ui.mesh.mesh_actions.working_set_move_without")
+			: effective.verb;
+	/*
+	 * FIXED WIDTH, CAPPED HEIGHT, ONE SCROLL REGION (design D1/D2, UX U1). With
+	 * the capability on, the dialog is `max-w-lg` from its first (loading) frame,
+	 * so the answer grows it downward instead of re-centring it sideways, and it
+	 * never exceeds 85vh: the header, the destination warning, the checkbox and
+	 * the footer are `shrink-0`, and everything between them scrolls. At the
+	 * app's 600 px minimum window that leaves the consent and Confirm on screen.
+	 * Without the capability the dialog is the one that shipped (`max-w-md`, no
+	 * wrapper), byte for byte.
+	 */
+	const description = isCopy
+		? t("ui.mesh.mesh_actions.copy_notice", {
+				keeper:
+					effective.to === "local"
+						? t("ui.mesh.mesh_actions.the_other_device_keeps")
+						: t("ui.mesh.mesh_actions.this_device_keeps"),
+			})
+		: (confirm?.body ?? t("ui.mesh.mesh_actions.this_moves_the_conversation"));
+	const body = (
+		<>
+			{alternatives.length > 0 && (
+				/*
+				 * THE ALTERNATIVE IS A RADIO-LIKE PAIR OF BUTTONS RATHER THAN A SECOND
+				 * PRIMARY: one of the two is what the drop meant, the other is what the
+				 * user may prefer, and a dialog with two equally-weighted primaries makes
+				 * the reader pick the one it cannot tell apart from the safe one.
+				 */
+				<fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
+					<legend className="sr-only">
+						{t("ui.mesh.mesh_actions.which_operation")}
+					</legend>
+					{[plan, ...alternatives].map((option) => (
+						<label
+							key={option.keep ? "copy" : "move"}
+							className={cn(
+								"flex cursor-pointer items-start gap-2 rounded-md border border-control px-3 py-2",
+								"hover:bg-row-hover",
+								effective.keep === option.keep && "border-ink bg-row-selected",
+							)}
+						>
+							<input
+								type="radio"
+								name="mesh-move-mode"
+								className="mt-1"
+								checked={effective.keep === option.keep}
+								onChange={() => setChosen(option)}
+							/>
+							<span className="min-w-0 flex-1">
+								<span className="flex items-center gap-2 text-body-sm text-ink">
+									{option.keep ? (
+										<Copy aria-hidden="true" className="size-3.5" />
+									) : (
+										<ArrowRight aria-hidden="true" className="size-3.5" />
+									)}
+									{option.verb}
+								</span>
+								{/*
+								 * THE DESTINATION IS NAMED, not counted: "Move to devon-laptop" and not
+								 * "Move to the other device", because the whole point of the affordance is
+								 * that the user can see where their work is going.
+								 */}
+								<span className="mt-0.5 block text-meta text-ink-dim">
+									{moveOptionCaption(option)}
+								</span>
+							</span>
+						</label>
+					))}
+				</fieldset>
+			)}
+			{risky && (
+				<Alert variant="warning" className="text-meta">
+					{effective.keep
+						? t("ui.mesh.mesh_actions.it_is_open_on_the_other_end")
+						: t("ui.mesh.mesh_actions.it_is_open_elsewhere_right_now_whatever")}
+				</Alert>
+			)}
+			{reviewLoading && (
+				<p
+					aria-live="polite"
+					className="flex items-center gap-2 text-meta text-ink-muted"
+				>
+					<Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+					{t("ui.mesh.mesh_actions.working_set_loading")}
+				</p>
+			)}
+			{reviewFailed && (
+				<Alert variant="danger" className="text-meta">
+					<span className="flex flex-col items-start gap-2">
+						{t("ui.mesh.mesh_actions.working_set_error")}
+						<Button
+							size="sm"
+							variant="secondary"
+							onClick={() => void preflight.refetch()}
+						>
+							{t("ui.mesh.mesh_actions.check_again")}
+						</Button>
+					</span>
+				</Alert>
+			)}
+			{review && (
+				<WorkingSetDetails
+					workingSet={review}
+					mode={reviewMode}
+					device={reviewDevice}
+					probe={probeGate}
+				/>
+			)}
+		</>
+	);
 	return (
 		<Dialog open={open} onOpenChange={(next) => !next && onCancel()}>
-			<DialogContent className={reviewing ? "max-w-lg" : "max-w-md"}>
-				<DialogHeader>
+			<DialogContent
+				className={workingSetGate ? "max-h-[85vh] max-w-lg" : "max-w-md"}
+			>
+				<DialogHeader className={workingSetGate ? "shrink-0" : undefined}>
 					<DialogTitle>{effective.verb}</DialogTitle>
-					<DialogDescription>
-						{isCopy
-							? t("ui.mesh.mesh_actions.copy_notice", {
-									keeper:
-										effective.to === "local"
-											? t("ui.mesh.mesh_actions.the_other_device_keeps")
-											: t("ui.mesh.mesh_actions.this_device_keeps"),
-								})
-							: (confirm?.body ??
-								t("ui.mesh.mesh_actions.this_moves_the_conversation"))}
-					</DialogDescription>
+					<DialogDescription>{description}</DialogDescription>
 				</DialogHeader>
-				{alternatives.length > 0 && (
-					/*
-					 * THE ALTERNATIVE IS A RADIO-LIKE PAIR OF BUTTONS RATHER THAN A SECOND
-					 * PRIMARY: one of the two is what the drop meant, the other is what the
-					 * user may prefer, and a dialog with two equally-weighted primaries makes
-					 * the reader pick the one it cannot tell apart from the safe one.
-					 */
-					<fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-						<legend className="sr-only">
-							{t("ui.mesh.mesh_actions.which_operation")}
-						</legend>
-						{[plan, ...alternatives].map((option) => (
-							<label
-								key={option.keep ? "copy" : "move"}
-								className={cn(
-									"flex cursor-pointer items-start gap-2 rounded-md border border-control px-3 py-2",
-									"hover:bg-row-hover",
-									effective.keep === option.keep &&
-										"border-ink bg-row-selected",
-								)}
-							>
-								<input
-									type="radio"
-									name="mesh-move-mode"
-									className="mt-1"
-									checked={effective.keep === option.keep}
-									onChange={() => setChosen(option)}
-								/>
-								<span className="min-w-0 flex-1">
-									<span className="flex items-center gap-2 text-body-sm text-ink">
-										{option.keep ? (
-											<Copy aria-hidden="true" className="size-3.5" />
-										) : (
-											<ArrowRight aria-hidden="true" className="size-3.5" />
-										)}
-										{option.verb}
-									</span>
-									{/*
-									 * THE DESTINATION IS NAMED, not counted: "Move to devon-laptop" and not
-									 * "Move to the other device", because the whole point of the affordance is
-									 * that the user can see where their work is going.
-									 */}
-									<span className="mt-0.5 block text-meta text-ink-dim">
-										{moveOptionCaption(option)}
-									</span>
-								</span>
-							</label>
-						))}
-					</fieldset>
-				)}
-				{risky && (
-					<Alert variant="warning" className="text-meta">
-						{effective.keep
-							? t("ui.mesh.mesh_actions.it_is_open_on_the_other_end")
-							: t(
-									"ui.mesh.mesh_actions.it_is_open_elsewhere_right_now_whatever",
-								)}
-					</Alert>
-				)}
-				{reviewLoading && (
-					<p
-						aria-live="polite"
-						className="flex items-center gap-2 text-meta text-ink-muted"
-					>
-						<Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
-						{t("ui.mesh.mesh_actions.working_set_loading")}
-					</p>
-				)}
-				{reviewFailed && (
-					<Alert variant="danger" className="text-meta">
-						<span className="flex flex-col items-start gap-2">
-							{t("ui.mesh.mesh_actions.working_set_error")}
-							<Button
-								size="sm"
-								variant="secondary"
-								onClick={() => void preflight.refetch()}
-							>
-								{t("ui.mesh.mesh_actions.check_again")}
-							</Button>
-						</span>
-					</Alert>
-				)}
 				{reviewing && (
-					<WorkingSetReview
+					<WorkingSetWarning
 						workingSet={review}
 						mode={reviewMode}
 						device={reviewDevice}
-						confident={confident}
-						onConfidentChange={setConfident}
-						changed={workingSetSeed?.changed ?? false}
-						disabled={busy}
-						probe={probeGate}
+						notice={
+							workingSetSeed?.changed
+								? "changed"
+								: workingSetSeed?.unconfirmed
+									? "unconfirmed"
+									: null
+						}
 					/>
 				)}
-				<DialogFooter>
+				{workingSetGate ? (
+					<div
+						className="-mx-1 flex min-h-0 shrink flex-col gap-4 overflow-y-auto px-1"
+						data-testid="move-dialog-body"
+					>
+						{body}
+					</div>
+				) : (
+					body
+				)}
+				{reviewing && (
+					<WorkingSetConsent
+						mode={reviewMode}
+						device={reviewDevice}
+						confident={confident}
+						onConfidentChange={(next) => setTickedFor(next ? tickKey : null)}
+						disabled={busy}
+						checkboxId={checkboxId}
+						labelId={consentLabelId}
+					/>
+				)}
+				<DialogFooter className={workingSetGate ? "shrink-0" : undefined}>
 					<Button variant="ghost" onClick={onCancel} disabled={busy}>
 						{t("ui.mesh.mesh_actions.cancel")}
 					</Button>
@@ -326,6 +415,9 @@ export const MoveConfirmDialog: FC<{
 							);
 						}}
 						disabled={busy || reviewLoading || (reviewing && !confident)}
+						aria-describedby={
+							reviewing && !confident ? consentLabelId : undefined
+						}
 						variant={isCopy ? "secondary" : "primary"}
 					>
 						{busy && (
@@ -334,7 +426,7 @@ export const MoveConfirmDialog: FC<{
 								className="me-2 size-3.5 animate-spin"
 							/>
 						)}
-						{effective.verb}
+						{confirmLabel}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

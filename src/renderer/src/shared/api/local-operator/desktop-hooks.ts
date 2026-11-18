@@ -1035,7 +1035,8 @@ export type DesktopFeature =
 	 * A move that carries the session's WORKING SET (worktrees, unpushed commits,
 	 * uncommitted files, scratch, session memory) to the destination:
 	 * `POST /v1/desktop/sessions/{id}/transfer/preflight` plus the transfer body's
-	 * `confirm_working_set` / `without_working_set` / `include_history_secrets`.
+	 * `confirm_working_set` / `without_working_set` (deliberately no history-secret
+	 * opt-in: v1 never sends a withheld worktree).
 	 *
 	 * ITS OWN KEY, not a version of `session_transfer` (the backend's
 	 * `server/features.py` rule, design move-working-set §11.1): the old move

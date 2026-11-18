@@ -641,6 +641,16 @@ export type TransferReceipt = {
 	mode: "move" | "keep";
 	/** The phases the move reached, in order, as the backend recorded them. */
 	phases: { phase: string; peer: string; progress: number }[];
+	/**
+	 * Whether the destination STARTED the conversation on arrival (core
+	 * `mobility.py` `receipt["engagement"]`: `{engaged, reason, detail}`; an
+	 * active-mid-turn move resumes there with `reason: "active"`). `null` when
+	 * the receipt carries no such block - an older core, or an offload whose
+	 * engage is the destination's own later work - and then no surface claims a
+	 * resume it cannot observe.
+	 */
+	// Optional only so hand-built fixtures predating the field still type-check.
+	engagement?: { engaged: boolean; reason: string } | null;
 };
 
 /**
@@ -683,6 +693,14 @@ export function transferReceipt(value: unknown): TransferReceipt | null {
 			peer: text(phase.peer),
 			progress: typeof phase.progress === "number" ? phase.progress : 0,
 		})),
+		engagement:
+			isRecord(value.engagement) &&
+			typeof value.engagement.engaged === "boolean"
+				? {
+						engaged: value.engagement.engaged,
+						reason: text(value.engagement.reason),
+					}
+				: null,
 	};
 }
 
@@ -785,14 +803,36 @@ export type WorkingSetWorktree = {
 	 * are read beside `state`, not instead of it. All four are absent on a backend
 	 * without the probe; the renderer additionally gates on the capability.
 	 */
-	/** git's first stderr line (`ERROR: Permission … denied`) or a probe code. */
+	/**
+	 * The probe's FIXED failure code (`url_refused`, `git_missing`, `timeout`, …),
+	 * rendered through `probeDetailSentence`, or `null`. Anything that is not a
+	 * code-shaped token - git's raw stderr, which the first core revision sent - is
+	 * dropped at the parser: peer-authored text never renders inside the consent
+	 * dialog's warnings (agent review round 1, R2 / design D3 / UX U6).
+	 */
 	cloneDetail: string | null;
 	/** The SSH remote failed but its HTTPS twin answered: an offer, never applied here. */
 	httpsRewrite: { url: string; push: boolean } | null;
-	/** The exact command that grants access, and where it must run. */
-	remedy: { runOn: string; command: string } | null;
+	/**
+	 * The exact command that grants access, and where it must run - ONLY when it
+	 * is one of the two shapes the core emits (see `remedyOf`). `kind` picks the
+	 * sentence that says which device runs it (UX round 1, U5).
+	 */
+	remedy: WorkingSetRemedy | null;
 	/** Toolchains this worktree's markers need that the destination's PATH lacks. */
 	missingTools: string[];
+};
+
+/**
+ * A probe remedy the UI will show and copy. `include`: a GitHub share to the
+ * destination exists and the repository must be added to it; `share`: no share
+ * exists yet and one must be created. Both run on a device OTHER than the
+ * destination (the one whose GitHub login is lent).
+ */
+export type WorkingSetRemedy = {
+	runOn: string;
+	command: string;
+	kind: "include" | "share";
 };
 
 /** A path withheld from the transfer because it looks like a secret. */
@@ -861,21 +901,24 @@ const SCOPE_DIGEST = /^sha256:[0-9a-f]{64}$/;
 
 function recipe(value: unknown): WorkingSetRecipe | null {
 	if (!isRecord(value)) return null;
-	const run = text(value.run);
+	const run = peerText(value.run);
 	if (!run) return null;
-	return { kind: text(value.kind) || "none", run, cwd: text(value.cwd) };
+	return { kind: text(value.kind) || "none", run, cwd: peerText(value.cwd) };
 }
 
 function cloneOf(raw: Record<string, unknown>): WorkingSetWorktree["clone"] {
 	const held = raw.clone;
 	if (isRecord(held)) {
 		return {
-			url: text(held.url) || text(held.remote_url) || text(raw.remote_url),
+			url:
+				peerText(held.url) ||
+				peerText(held.remote_url) ||
+				peerText(raw.remote_url),
 			bytes: nullableCount(held.bytes) ?? nullableCount(held.estimated_bytes),
 		};
 	}
 	const bytes = nullableCount(raw.clone_bytes);
-	return bytes === null ? null : { url: text(raw.remote_url), bytes };
+	return bytes === null ? null : { url: peerText(raw.remote_url), bytes };
 }
 
 /** A string array from the wire: non-strings and blanks dropped, never throws. */
@@ -889,14 +932,63 @@ function names(value: unknown): string[] {
 
 function httpsRewriteOf(value: unknown): WorkingSetWorktree["httpsRewrite"] {
 	if (!isRecord(value)) return null;
-	const url = text(value.url);
+	const url = peerText(value.url);
 	return url ? { url, push: value.push === true } : null;
 }
 
-function remedyOf(value: unknown): WorkingSetWorktree["remedy"] {
-	if (!isRecord(value)) return null;
-	const command = text(value.command);
-	return command ? { runOn: text(value.run_on), command } : null;
+/*
+ * DISPLAY HYGIENE FOR PEER STRINGS (agent review round 1, R1). Everything in a
+ * working-set block was computed on ANOTHER device, and the review is a consent
+ * screen: a C0/C1 control or a bidi override (U+202A-202E, U+2066-2069, the
+ * marks) can make a rendered path or command read differently from its bytes.
+ * Display fields are stripped of them; the copyable remedy, whose bytes go to a
+ * shell, is REJECTED outright instead (see `remedyOf`).
+ */
+const UNSAFE_DISPLAY = /[\p{Cc}\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/gu;
+
+/** `text()` minus control and bidi-override code points, for rendered peer strings. */
+function peerText(value: unknown): string {
+	return text(value).replace(UNSAFE_DISPLAY, "");
+}
+
+/** `peerText()`, or `null` when nothing readable is left. */
+function peerTextOrNull(value: unknown): string | null {
+	return peerText(value) || null;
+}
+
+/*
+ * THE ONLY TWO REMEDIES THE CORE EMITS (`network/workset_probe.py` `_remedy`),
+ * matched whole with a strict charset. The command is shown with a Copy button
+ * under "run this on <your trusted, credentialed device>", and the first core
+ * revision copied the DESTINATION's remedy into the row verbatim - so a hostile
+ * destination could otherwise hand the user `curl … | sh` as "the fix". A token
+ * may not start with `-` (no smuggled flags). Anything else: no remedy at all.
+ */
+const REMEDY_INCLUDE =
+	/^lop network credential github include [A-Za-z0-9_.][A-Za-z0-9_.-]{0,99}\/[A-Za-z0-9_.][A-Za-z0-9_.-]{0,99}$/;
+const REMEDY_SHARE =
+	/^lop network credential share github --with [A-Za-z0-9_.][A-Za-z0-9_.-]{0,127}$/;
+
+export function remedyOf(value: unknown): WorkingSetRemedy | null {
+	if (!isRecord(value) || typeof value.command !== "string") return null;
+	// Checked on the RAW string: `text()` trims, and a trailing control byte is
+	// still a byte the clipboard would carry.
+	if (new RegExp(UNSAFE_DISPLAY.source, "u").test(value.command)) return null;
+	const command = value.command;
+	const kind = REMEDY_INCLUDE.test(command)
+		? "include"
+		: REMEDY_SHARE.test(command)
+			? "share"
+			: null;
+	return kind ? { runOn: text(value.run_on), command, kind } : null;
+}
+
+/** A fixed probe code, or `null` for anything else (raw stderr, class names). */
+const PROBE_DETAIL_CODE = /^[a-z][a-z0-9_]{0,63}$/;
+
+function probeDetailOf(value: unknown): string | null {
+	const code = text(value);
+	return PROBE_DETAIL_CODE.test(code) ? code : null;
 }
 
 function destinationProbeOf(value: unknown): WorkingSet["destinationProbe"] {
@@ -915,13 +1007,13 @@ function destinationProbeOf(value: unknown): WorkingSet["destinationProbe"] {
 }
 
 function worktree(raw: Record<string, unknown>): WorkingSetWorktree | null {
-	const path = text(raw.path);
+	const path = peerText(raw.path);
 	if (!path) return null;
 	return {
 		path,
-		destPath: textOrNull(raw.dest_path),
-		repo: text(raw.repo),
-		branch: textOrNull(raw.branch),
+		destPath: peerTextOrNull(raw.dest_path),
+		repo: peerText(raw.repo),
+		branch: peerTextOrNull(raw.branch),
 		head: text(raw.head),
 		unpushedCommits: count(raw.unpushed_commits),
 		staged: count(raw.staged),
@@ -935,9 +1027,9 @@ function worktree(raw: Record<string, unknown>): WorkingSetWorktree | null {
 			.filter((entry): entry is WorkingSetRecipe => entry !== null),
 		clone: cloneOf(raw),
 		cloneCheck: textOrNull(raw.clone_check),
-		remoteUrl: textOrNull(raw.remote_url),
+		remoteUrl: peerTextOrNull(raw.remote_url),
 		primary: raw.primary === true,
-		cloneDetail: textOrNull(raw.clone_detail),
+		cloneDetail: probeDetailOf(raw.clone_detail),
 		httpsRewrite: httpsRewriteOf(raw.https_rewrite),
 		remedy: remedyOf(raw.remedy),
 		missingTools: names(raw.missing_tools),
@@ -978,11 +1070,11 @@ export function workingSet(value: unknown): WorkingSet | null {
 		.map(worktree)
 		.filter((entry): entry is WorkingSetWorktree => entry !== null);
 	const excluded = rows(value.excluded)
-		.map((raw) => ({ path: text(raw.path), why: text(raw.why) }))
+		.map((raw) => ({ path: peerText(raw.path), why: text(raw.why) }))
 		.filter((entry) => entry.path.length > 0);
 	const leftBehind = rows(value.left_behind)
 		.map((raw) => ({
-			path: text(raw.path),
+			path: peerText(raw.path),
 			kind: text(raw.kind) || "loose_file",
 			recipe: recipe(raw.recipe),
 		}))
@@ -999,11 +1091,11 @@ export function workingSet(value: unknown): WorkingSet | null {
 			leftBehind.length > 0,
 		destination: {
 			deviceId: text(destination.device_id),
-			name: text(destination.name),
+			name: peerText(destination.name),
 		},
 		source:
-			source && text(source.name)
-				? { deviceId: text(source.device_id), name: text(source.name) }
+			source && peerText(source.name)
+				? { deviceId: text(source.device_id), name: peerText(source.name) }
 				: null,
 		destinationProbe: destinationProbeOf(value.destination_probe),
 		totals: {
@@ -1043,6 +1135,11 @@ export type MoveWorkingSetSeed = {
 	workingSet: WorkingSet | null;
 	changed: boolean;
 	/**
+	 * The route refused `working_set_unconfirmed`: the user pressed Move and the
+	 * same title came back, so the review says why it is asking (UX round 1, U2).
+	 */
+	unconfirmed: boolean;
+	/**
 	 * The working set cannot be sent at all (`working_set_unknown`, or an
 	 * `unsupported` manifest): the dialog offers ONLY the explicit "move without
 	 * the working files" consent.
@@ -1072,15 +1169,20 @@ export function workingSetReopen(
 	const fresh = refusal.workingSet ?? null;
 	switch (refusal.code) {
 		case "working_set_unknown":
-			return { workingSet: fresh, changed: false, withoutOnly: true };
 		case "working_set_unsupported":
-			return { workingSet: fresh, changed: false, withoutOnly: true };
+			return {
+				workingSet: fresh,
+				changed: false,
+				unconfirmed: false,
+				withoutOnly: true,
+			};
 		case "working_set_unconfirmed":
 		case "working_set_changed":
 			if (!fresh || !workingSetHasFiles(fresh)) return null;
 			return {
 				workingSet: fresh,
 				changed: refusal.code === "working_set_changed",
+				unconfirmed: refusal.code === "working_set_unconfirmed",
 				withoutOnly: fresh.state === "unsupported",
 			};
 		default:

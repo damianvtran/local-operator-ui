@@ -140,7 +140,8 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 											name: move.name,
 											from: move.from,
 											receipt: outcome.receipt,
-											engaged: null,
+											// The receipt's own fact, as the pane's pick reads it.
+											engaged: outcome.receipt.engagement?.engaged ?? null,
 										});
 										return;
 									}

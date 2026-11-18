@@ -149,7 +149,8 @@ function probedBlock(carriesFiles = true) {
 				...first,
 				remote_url: "git@github.com:damianvtran/local-operator.git",
 				clone_check: "destination_cannot_fetch",
-				clone_detail: "git@github.com: Permission denied (publickey).",
+				// A FIXED probe code (core #4241 remediation), never git's raw stderr.
+				clone_detail: "timeout",
 				https_rewrite: {
 					url: "https://github.com/damianvtran/local-operator.git",
 					fetch: true,
@@ -164,8 +165,7 @@ function probedBlock(carriesFiles = true) {
 			{
 				...second,
 				clone_check: "destination_cannot_push",
-				clone_detail:
-					"remote: Permission to damianvtran/local-operator-ui.git denied to build-box.",
+				clone_detail: "auth_denied",
 				remedy: {
 					run_on: "lending_device",
 					command:
@@ -253,6 +253,10 @@ function holdShutter(selector: string) {
 	}, 50);
 }
 
+/*
+ * `destinationName` as the real call sites pass it (design round 1, D5): a story
+ * without it rendered the consent naming the device's opaque id.
+ */
 const Dialog = (props: {
 	seed?: Parameters<typeof MoveConfirmDialog>[0]["workingSetSeed"];
 }) => (
@@ -265,6 +269,7 @@ const Dialog = (props: {
 		onCancel={() => {}}
 		onChoose={() => {}}
 		workingSetSeed={props.seed ?? null}
+		destinationName="build-box"
 	/>
 );
 
@@ -372,7 +377,12 @@ export const ChangedRefusal: Story = {
 			<Dialog
 				seed={
 					parsed
-						? { workingSet: parsed, changed: true, withoutOnly: false }
+						? {
+								workingSet: parsed,
+								changed: true,
+								unconfirmed: false,
+								withoutOnly: false,
+							}
 						: null
 				}
 			/>
@@ -405,8 +415,9 @@ export const PopulatedFilesStay: Story = {
 
 /**
  * The destination probe answered with problems (`session_transfer_working_set_probe`):
- * per-row reachability with git's error line, the HTTPS alternative, the copyable
- * remedy command, and the missing-tools and Team Bridge warnings. None of them
+ * per-row reachability with the probe's fixed reason code said as a sentence
+ * (core DETAIL_CODES `timeout` / `auth_denied`), the HTTPS alternative, the copyable remedy
+ * command, and the missing-tools and Team Bridge notes. None of them
  * gates the checkbox: the core never blocks on reachability or prerequisites.
  */
 export const ProbeFailures: Story = {
@@ -450,7 +461,87 @@ export const UnknownRefusal: Story = {
 		installBridge({ capability: true, preflight: { kind: "hold" } });
 		holdShutter('[data-testid="working-set"]');
 		return (
-			<Dialog seed={{ workingSet: null, changed: false, withoutOnly: true }} />
+			<Dialog
+				seed={{
+					workingSet: null,
+					changed: false,
+					unconfirmed: false,
+					withoutOnly: true,
+				}}
+			/>
 		);
+	},
+};
+
+/**
+ * The route refused `working_set_unconfirmed` (the move reached it without a
+ * reviewed list): the dialog says why it came back (UX round 1, U2).
+ */
+export const UnconfirmedRefusal: Story = {
+	render: () => {
+		installBridge({ capability: true, preflight: { kind: "hold" } });
+		const parsed = workingSet(populatedBlock());
+		holdShutter('[data-testid="working-set"] [data-notice="unconfirmed"]');
+		return (
+			<Dialog
+				seed={
+					parsed
+						? {
+								workingSet: parsed,
+								changed: false,
+								unconfirmed: true,
+								withoutOnly: false,
+							}
+						: null
+				}
+			/>
+		);
+	},
+};
+
+/**
+ * MANY WORKTREES, LONG PATHS (design round 1, D9): eight trees, several of them
+ * deep, plus the withheld and left-behind sections. Proves the dialog caps at
+ * 85vh with ONE scroll region, that the withheld rows are reachable by scrolling
+ * it, and that long paths wrap at separators rather than mid-word. Capture at a
+ * 600 px-tall viewport (the app's `WINDOW_MIN_HEIGHT`).
+ */
+export const ManyWorktrees: Story = {
+	render: () => {
+		const base = populatedBlock();
+		const many = Array.from({ length: 8 }, (_, index) => ({
+			path: `~/code/clients/acme-platform/services/billing-reconciliation-worker/.worktrees/feat/very-long-branch-name-number-${index + 1}`,
+			repo: "~/code/clients/acme-platform",
+			remote_url:
+				"git@github.com:acme-platform/billing-reconciliation-worker.git",
+			branch: `feat/very-long-branch-name-number-${index + 1}`,
+			head: "4b2e9d1c0",
+			unpushed_commits: index % 3,
+			staged: index % 2,
+			unstaged: index,
+			untracked: 0,
+			bundle_bytes: 40_000 * (index + 1),
+			snapshot_bytes: 9_000,
+			clone_check: "pending_destination",
+			state: "planned",
+		}));
+		installBridge({
+			capability: true,
+			preflight: {
+				kind: "answer",
+				result: {
+					working_set: {
+						...base,
+						totals: { ...base.totals, worktrees: 9 },
+						worktrees: [
+							...many,
+							...base.worktrees.filter((tree) => tree.state === "left_behind"),
+						],
+					},
+				},
+			},
+		});
+		holdShutter('[data-testid="working-set"]');
+		return <Dialog />;
 	},
 };

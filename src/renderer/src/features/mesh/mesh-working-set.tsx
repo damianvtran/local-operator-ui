@@ -41,11 +41,20 @@
  * coordinator's live move confirmed rows that all said "pending_destination", and
  * the destination then could neither fetch the SSH remote nor push the HTTPS one.
  * The core now asks the destination BEFORE the user confirms, so each row says
- * whether that device can reach its remote, with git's own error line, the HTTPS
- * alternative when only SSH failed, and the exact command that grants access
- * (copyable, because it must be run on ANOTHER device). Missing toolchains and a
- * missing Team Bridge enrolment are warnings: the core never blocks on them, so
- * neither does the checkbox. Without the capability none of it renders.
+ * whether that device can reach its remote, why not (a FIXED probe code mapped
+ * to a sentence here - never git's raw stderr, which is peer-authored text), the
+ * HTTPS alternative when only SSH failed, and the exact command that grants
+ * access (copyable, because it must be run on ANOTHER device; only the two
+ * command shapes the core emits survive the parser). Missing toolchains and a
+ * missing Team Bridge enrolment are advisory: the core never blocks on them, so
+ * neither does the checkbox, and they share ONE quiet info note so the
+ * destination warning stays the dialog's only warning (design round 1, D4).
+ * Without the capability none of it renders.
+ *
+ * LAYOUT (design D1 / UX U1). The dialog caps its height and only the middle
+ * scrolls: the destination warning (`WorkingSetWarning`) sits above the scroll
+ * region and the confidence checkbox (`WorkingSetConsent`) below it, so the
+ * consent and Confirm are never below the fold however long the list is.
  */
 
 import { CopyButton } from "@shared/components/common/copy-button";
@@ -53,7 +62,7 @@ import { Alert, Checkbox } from "@shared/components/ui";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { AlertTriangle, Check, FolderGit2, Info } from "lucide-react";
-import { type FC, type ReactNode, useId } from "react";
+import type { FC, ReactNode } from "react";
 import { formatBytes, formatList } from "../../../../i18n/format";
 import { t } from "../../../../i18n/messages";
 import type {
@@ -71,7 +80,12 @@ import type {
  * shown verbatim than dropped, because "not sent" without a why is the very
  * surprise this panel exists to prevent.
  */
-export function leftBehindReason(reason: string | null): string {
+export function leftBehindReason(
+	reason: string | null,
+	mode: WorkingSetMode = "send",
+): string {
+	if (mode !== "send" && reason && reason in STAY_REASON)
+		return STAY_REASON[reason]();
 	switch (reason) {
 		case "contended":
 			return t("ui.mesh.mesh_actions.working_set_reason_contended");
@@ -108,6 +122,26 @@ export function leftBehindReason(reason: string | null): string {
 	}
 }
 
+/*
+ * THE SAME REASONS WHEN NOTHING MOVES (UX round 1, U7). In `leave`/`without`
+ * mode no move carries files, so a remedy ending "…then move again" promises a
+ * second move that would carry nothing either. These say only the cause.
+ */
+const STAY_REASON: Record<string, () => string> = {
+	unmerged: () => t("ui.mesh.mesh_actions.working_set_reason_unmerged_stay"),
+	in_progress_operation: () =>
+		t("ui.mesh.mesh_actions.working_set_reason_in_progress_operation_stay"),
+	history_secret: () =>
+		t("ui.mesh.mesh_actions.working_set_reason_history_secret_stay"),
+	history_unscanned: () =>
+		t("ui.mesh.mesh_actions.working_set_reason_history_unscanned_stay"),
+	over_cap: () => t("ui.mesh.mesh_actions.working_set_reason_over_cap_stay"),
+	destination_cannot_clone: () =>
+		t("ui.mesh.mesh_actions.working_set_reason_destination_cannot_clone_stay"),
+	unsupported_by_peer: () =>
+		t("ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer_stay"),
+};
+
 /** Why one path is withheld, from §3.4's `excluded[].why` enum. */
 export function exclusionReason(why: string): string {
 	switch (why) {
@@ -121,8 +155,15 @@ export function exclusionReason(why: string): string {
 			return t(
 				"ui.mesh.mesh_actions.working_set_withheld_history_secret_content",
 			);
+		/*
+		 * An unknown code NAMES the code (agent review round 1, R5), as
+		 * `leftBehindReason` does: claiming "looks like a secret" for a reason this
+		 * build cannot read would be a false statement inside the consent.
+		 */
 		default:
-			return t("ui.mesh.mesh_actions.working_set_withheld_secret_path");
+			return t("ui.mesh.mesh_actions.working_set_reason_unknown", {
+				code: why,
+			});
 	}
 }
 
@@ -141,11 +182,13 @@ function leftBehindKind(kind: string): string {
 }
 
 /**
- * The worktrees that WILL be sent versus the ones left behind with a reason.
+ * The worktrees that WILL be sent versus the ones withheld with a reason.
  *
- * `left_behind` is the only state that means "not sent"; every other state the
- * preflight can report (`planned`, and the post-move states a refusal's fresh
- * manifest may echo) is a tree that travels.
+ * ONLY `planned` IS PROMISED AS SENT (agent review round 1, R5): it is the one
+ * state a preflight - and a refusal's fresh manifest, which is a preflight -
+ * uses for a tree that travels. Any other state (`left_behind`, or one a newer
+ * core adds) is listed as withheld under its reason, or its state when it has
+ * none, so a code this build cannot read is never turned into "will be sent".
  */
 export function partitionWorktrees(set: WorkingSet): {
 	sent: WorkingSetWorktree[];
@@ -154,12 +197,17 @@ export function partitionWorktrees(set: WorkingSet): {
 	const sent: WorkingSetWorktree[] = [];
 	const withheld: WorkingSetWorktree[] = [];
 	for (const tree of set.worktrees) {
-		(tree.state === "left_behind" ? withheld : sent).push(tree);
+		(tree.state === "planned" ? sent : withheld).push(tree);
 	}
 	return { sent, withheld };
 }
 
-const mono = "font-mono text-meta text-ink break-all";
+/*
+ * `overflow-wrap:anywhere`, not `break-all` (design round 1, D7): a path or
+ * command wraps at its separators where it fits and breaks inside a token only
+ * when that token alone is wider than the dialog.
+ */
+const mono = "min-w-0 font-mono text-meta text-ink [overflow-wrap:anywhere]";
 
 /**
  * The probe answers that are a problem the user can act on before confirming.
@@ -173,11 +221,60 @@ const PROBE_FAILURES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * The probe's own short codes (`url_refused`, `git_missing`, `timeout`,
- * `probe_error`, an OSError class name). The row's sentence already states what
- * they mean, so only git's real stderr line is shown verbatim under it.
+ * Why the destination's probe failed, from the core's FIXED `clone_detail` code.
+ *
+ * WHY A TABLE AND NOT THE TEXT. The first core revision sent git's first stderr
+ * line; core #4241's remediation replaced it with fixed codes, and the parser
+ * (`probeDetailOf`) already drops anything that is not code-shaped. A code this
+ * build does not know still gets a sentence that NAMES it, the way
+ * `leftBehindReason` does, so a newer core's reason is never silently lost.
  */
-const PROBE_CODE = /^(?:[a-z_]+|[A-Za-z]+Error)$/;
+const PROBE_DETAIL: Record<string, (device: string) => string> = {
+	// core `network/workset_probe.py` DETAIL_CODES (#4241 @ ca98f378922f).
+	auth_denied: (device) =>
+		t("ui.mesh.mesh_actions.working_set_probe_detail_auth_denied", { device }),
+	not_found: (device) =>
+		t("ui.mesh.mesh_actions.working_set_probe_detail_not_found", { device }),
+	unreachable: (device) =>
+		t("ui.mesh.mesh_actions.working_set_probe_detail_unreachable", { device }),
+	tls: (device) =>
+		t("ui.mesh.mesh_actions.working_set_probe_detail_tls", { device }),
+	host_key: (device) =>
+		t("ui.mesh.mesh_actions.working_set_probe_detail_host_key", { device }),
+	host_refused: () =>
+		t("ui.mesh.mesh_actions.working_set_probe_detail_host_refused"),
+	error: (device) =>
+		t("ui.mesh.mesh_actions.working_set_probe_detail_error", { device }),
+	url_refused: () =>
+		t("ui.mesh.mesh_actions.working_set_probe_detail_url_refused"),
+	git_missing: (device) =>
+		t("ui.mesh.mesh_actions.working_set_probe_detail_git_missing", { device }),
+	timeout: () => t("ui.mesh.mesh_actions.working_set_probe_detail_timeout"),
+	probe_error: (device) =>
+		t("ui.mesh.mesh_actions.working_set_probe_detail_probe_error", { device }),
+};
+
+/*
+ * `run_on` AS A DEVICE NAME, or `null` for the role token the core sends when it
+ * cannot name one (`lending_device`). Peer text: a strict name charset, so the
+ * sentence can never carry markup-looking or multi-line content.
+ */
+const DEVICE_NAME = /^[\p{L}\p{N}][\p{L}\p{N} ._'-]{0,63}$/u;
+
+export function remedyDevice(runOn: string): string | null {
+	if (!runOn || runOn === "lending_device") return null;
+	return DEVICE_NAME.test(runOn) ? runOn : null;
+}
+
+export function probeDetailSentence(code: string, device: string): string {
+	const known = PROBE_DETAIL[code];
+	return known
+		? known(device)
+		: t("ui.mesh.mesh_actions.working_set_probe_detail_unknown", {
+				device,
+				code,
+			});
+}
 
 /** One row's reachability sentence, or `null` when there is nothing to say. */
 export function probeSentence(
@@ -216,11 +313,14 @@ export function probeSentence(
 }
 
 /** The destination's answer for one worktree, under its counts. */
-const ProbeLines: FC<{ tree: WorkingSetWorktree; device: string }> = ({
-	tree,
-	device,
-}) => {
+const ProbeLines: FC<{
+	tree: WorkingSetWorktree;
+	device: string;
+	/** Tools the block-level note already lists: not repeated on the row (D4). */
+	listedTools: ReadonlySet<string>;
+}> = ({ tree, device, listedTools }) => {
 	const check = tree.cloneCheck ?? "";
+	const rowTools = tree.missingTools.filter((tool) => !listedTools.has(tool));
 	const sentence = probeSentence(check, device, tree.remoteUrl ?? tree.repo);
 	const failed = PROBE_FAILURES.has(check);
 	const Icon = failed ? AlertTriangle : check === "ok" ? Check : Info;
@@ -238,13 +338,16 @@ const ProbeLines: FC<{ tree: WorkingSetWorktree; device: string }> = ({
 					<span className="min-w-0 break-words">{sentence}</span>
 				</span>
 			)}
-			{failed && tree.cloneDetail && !PROBE_CODE.test(tree.cloneDetail) && (
-				<span className={cn(mono, "ps-5 text-ink-dim")} data-probe-detail>
-					{tree.cloneDetail}
+			{failed && tree.cloneDetail && (
+				<span
+					className="ps-5 text-meta text-ink-dim"
+					data-probe-detail={tree.cloneDetail}
+				>
+					{probeDetailSentence(tree.cloneDetail, device)}
 				</span>
 			)}
 			{tree.httpsRewrite && (
-				<span className="ps-5 text-meta text-ink-dim break-all">
+				<span className="ps-5 text-meta text-ink-dim [overflow-wrap:anywhere]">
 					{t("ui.mesh.mesh_actions.working_set_probe_https_rewrite", {
 						device,
 						url: tree.httpsRewrite.url,
@@ -254,7 +357,24 @@ const ProbeLines: FC<{ tree: WorkingSetWorktree; device: string }> = ({
 			{tree.remedy && (
 				<span className="flex flex-col gap-1 ps-5" data-probe-remedy>
 					<span className="text-meta text-ink-dim">
-						{t("ui.mesh.mesh_actions.working_set_probe_remedy")}
+						{/*
+						 * WHICH DEVICE RUNS IT (UX round 1, U5): `run_on` names it when the
+						 * core knows the device; when it is only the role
+						 * (`lending_device`), the sentence names the device the access is
+						 * FOR and the role of the one that runs it - an existing share
+						 * (`include`) or a device signed in to GitHub (`share`).
+						 */}
+						{remedyDevice(tree.remedy.runOn)
+							? t("ui.mesh.mesh_actions.working_set_probe_remedy_on", {
+									lender: remedyDevice(tree.remedy.runOn) ?? "",
+								})
+							: tree.remedy.kind === "include"
+								? t("ui.mesh.mesh_actions.working_set_probe_remedy_include", {
+										device,
+									})
+								: t("ui.mesh.mesh_actions.working_set_probe_remedy_share", {
+										device,
+									})}
 					</span>
 					<span className="flex items-center gap-2">
 						<code className={cn(mono, "min-w-0 flex-1")}>
@@ -267,11 +387,11 @@ const ProbeLines: FC<{ tree: WorkingSetWorktree; device: string }> = ({
 					</span>
 				</span>
 			)}
-			{tree.missingTools.length > 0 && (
+			{rowTools.length > 0 && (
 				<span className="ps-5 text-meta text-warning">
 					{t("ui.mesh.mesh_actions.working_set_row_missing_tools", {
 						device,
-						tools: formatList(tree.missingTools),
+						tools: formatList(rowTools),
 					})}
 				</span>
 			)}
@@ -280,8 +400,10 @@ const ProbeLines: FC<{ tree: WorkingSetWorktree; device: string }> = ({
 };
 
 /**
- * The block-level prerequisites and the "could not check" note. Warnings, never
- * gates: the checkbox and Confirm do not depend on any of this.
+ * The block-level prerequisites and the "could not check" note, as ONE quiet
+ * info note (design round 1, D4): they are advisory - the core never blocks on
+ * them, and neither do the checkbox and Confirm - so they must not wear the
+ * destination warning's weight or push the list below it.
  */
 const ProbeNotices: FC<{ set: WorkingSet; device: string }> = ({
 	set,
@@ -290,39 +412,66 @@ const ProbeNotices: FC<{ set: WorkingSet; device: string }> = ({
 	const probe = set.destinationProbe;
 	if (!probe) return null;
 	const bridge = probe.teamBridge;
+	const unknown = probe.state === "unknown_destination";
+	const tools = probe.missingTools.length > 0;
+	const unenrolled = bridge !== null && !bridge.enrolled;
+	if (!unknown && !tools && !unenrolled) return null;
 	return (
-		<>
-			{probe.state === "unknown_destination" && (
-				<Alert variant="info" className="text-meta" data-probe="unknown">
-					{t("ui.mesh.mesh_actions.working_set_probe_unknown", { device })}
-				</Alert>
-			)}
-			{probe.missingTools.length > 0 && (
-				<Alert
-					variant="warning"
-					className="text-meta"
-					data-probe="missing-tools"
-				>
-					<span className="flex flex-col gap-1">
-						{t("ui.mesh.mesh_actions.working_set_missing_tools", { device })}
-						<ul className="m-0 list-disc ps-5">
-							{probe.missingTools.map((tool) => (
-								<li key={tool} className="font-mono">
-									{tool}
-								</li>
-							))}
-						</ul>
+		<Alert variant="info" className="text-meta" data-probe="notes">
+			<span className="flex flex-col gap-1.5">
+				{unknown && (
+					<span data-probe="unknown">
+						{t("ui.mesh.mesh_actions.working_set_probe_unknown", { device })}
 					</span>
-				</Alert>
-			)}
-			{bridge && !bridge.enrolled && (
-				<Alert variant="warning" className="text-meta" data-probe="team-bridge">
-					{t("ui.mesh.mesh_actions.working_set_team_bridge", { device })}
-				</Alert>
-			)}
-		</>
+				)}
+				{tools && (
+					<span data-probe="missing-tools">
+						{t("ui.mesh.mesh_actions.working_set_missing_tools", { device })}{" "}
+						<span className="font-mono">{formatList(probe.missingTools)}</span>
+					</span>
+				)}
+				{unenrolled && (
+					<span data-probe="team-bridge">
+						{t("ui.mesh.mesh_actions.working_set_team_bridge", { device })}
+					</span>
+				)}
+			</span>
+		</Alert>
 	);
 };
+
+/**
+ * A row's change counts, ZERO TERMS OMITTED (design round 1, D8): "0 staged · 0
+ * untracked" is noise that wraps the row; a clean tree shows just its branch.
+ */
+function worktreeCounts(tree: WorkingSetWorktree): string[] {
+	const parts: string[] = [];
+	if (tree.unpushedCommits > 0)
+		parts.push(
+			t("ui.mesh.mesh_actions.working_set_count_unpushed", {
+				count: tree.unpushedCommits,
+			}),
+		);
+	if (tree.staged > 0)
+		parts.push(
+			t("ui.mesh.mesh_actions.working_set_count_staged", {
+				count: tree.staged,
+			}),
+		);
+	if (tree.unstaged > 0)
+		parts.push(
+			t("ui.mesh.mesh_actions.working_set_count_unstaged", {
+				count: tree.unstaged,
+			}),
+		);
+	if (tree.untracked > 0)
+		parts.push(
+			t("ui.mesh.mesh_actions.working_set_count_untracked", {
+				count: tree.untracked,
+			}),
+		);
+	return parts;
+}
 
 const WorktreeRow: FC<{
 	tree: WorkingSetWorktree;
@@ -333,7 +482,8 @@ const WorktreeRow: FC<{
 	clonePending: boolean;
 	/** The backend serves the destination probe: render its per-row answer. */
 	probe: boolean;
-}> = ({ tree, device, showClone, clonePending, probe }) => (
+	listedTools: ReadonlySet<string>;
+}> = ({ tree, device, showClone, clonePending, probe, listedTools }) => (
 	<li className="flex flex-col gap-0.5 py-1.5">
 		<span className="flex items-start gap-1.5">
 			<FolderGit2
@@ -343,15 +493,11 @@ const WorktreeRow: FC<{
 			<span className={mono}>{tree.path}</span>
 		</span>
 		<span className="ps-5 text-meta text-ink-dim">
-			{tree.branch ?? t("ui.mesh.mesh_actions.working_set_detached")}
-			{" · "}
-			{t("ui.mesh.mesh_actions.working_set_worktree_counts", {
-				unpushed: tree.unpushedCommits,
-				staged: tree.staged,
-				unstaged: tree.unstaged,
-				untracked: tree.untracked,
-			})}
-			{tree.bytes > 0 ? ` · ${formatBytes(tree.bytes)}` : ""}
+			{[
+				tree.branch ?? t("ui.mesh.mesh_actions.working_set_detached"),
+				...worktreeCounts(tree),
+				...(tree.bytes > 0 ? [formatBytes(tree.bytes)] : []),
+			].join(" · ")}
 		</span>
 		{tree.destPath && tree.destPath !== tree.path && (
 			<span className="ps-5 text-meta text-ink-dim">
@@ -363,6 +509,7 @@ const WorktreeRow: FC<{
 		{showClone && clonePending && !tree.clone && (
 			<span className="ps-5 text-meta text-ink-dim">
 				{t("ui.mesh.mesh_actions.working_set_clone_pending", {
+					device,
 					url: tree.remoteUrl ?? "",
 				})}
 			</span>
@@ -381,15 +528,23 @@ const WorktreeRow: FC<{
 						})}
 			</span>
 		)}
-		{probe && <ProbeLines tree={tree} device={device} />}
+		{probe && (
+			<ProbeLines tree={tree} device={device} listedTools={listedTools} />
+		)}
 	</li>
 );
 
-const WithheldTreeRow: FC<{ tree: WorkingSetWorktree }> = ({ tree }) => (
+const WithheldTreeRow: FC<{
+	tree: WorkingSetWorktree;
+	mode: WorkingSetMode;
+}> = ({ tree, mode }) => (
 	<li className="flex flex-col gap-0.5 py-1">
 		<span className={mono}>{tree.path}</span>
 		<span className="text-meta text-ink-muted">
-			{leftBehindReason(tree.reason)}
+			{leftBehindReason(
+				tree.reason ?? (tree.state === "left_behind" ? null : tree.state),
+				mode,
+			)}
 		</span>
 	</li>
 );
@@ -456,45 +611,23 @@ export function workingSetMode(
 }
 
 /**
- * The populated review: warning, lists, and the REQUIRED confidence checkbox.
- *
- * The checkbox is controlled by the dialog, not here, because the dialog owns
- * the rule it feeds (Confirm disabled until ticked) and the reset it needs (a
- * fresh manifest un-ticks it). `workingSet` is null only in `without` mode for a
- * manifest the owner could not compute: the warning and the box still render,
- * there is simply no list to show.
+ * The review's PINNED TOP: why it is asking again (if it is) and the destination
+ * warning. Rendered above the dialog's scroll region so the one sentence the
+ * consent is about never scrolls away (design D1 / UX U1), and the ONLY
+ * `warning` alert in the review (design D4).
  */
-export const WorkingSetReview: FC<{
+export const WorkingSetWarning: FC<{
 	workingSet: WorkingSet | null;
 	mode: WorkingSetMode;
-	/** The destination device's display name, as the warning and checkbox say it. */
+	/** The destination device's display name, as the warning says it. */
 	device: string;
-	confident: boolean;
-	onConfidentChange: (next: boolean) => void;
-	/** The route refused `working_set_changed`: say why the list is being asked again. */
-	changed: boolean;
-	disabled: boolean;
 	/**
-	 * `features.session_transfer_working_set_probe`: render the destination's
-	 * reachability and prerequisite answers. False renders exactly the pre-probe
-	 * review even if a block happens to carry the fields.
+	 * Why the dialog came back: `changed` (the list moved after the tick) or
+	 * `unconfirmed` (the route refused a move that carried no reviewed list).
 	 */
-	probe?: boolean;
-}> = ({
-	workingSet,
-	mode,
-	device,
-	confident,
-	onConfidentChange,
-	changed,
-	disabled,
-	probe = false,
-}) => {
+	notice: "changed" | "unconfirmed" | null;
+}> = ({ workingSet, mode, device, notice }) => {
 	useI18nLocale();
-	const checkboxId = useId();
-	const { sent, withheld } = workingSet
-		? partitionWorktrees(workingSet)
-		: { sent: [], withheld: [] };
 	const warning =
 		mode === "send"
 			? t("ui.mesh.mesh_actions.working_set_warning", { device })
@@ -503,6 +636,49 @@ export const WorkingSetReview: FC<{
 				: workingSet
 					? t("ui.mesh.mesh_actions.working_set_warning_without", { device })
 					: t("ui.mesh.mesh_actions.working_set_unknown", { device });
+	return (
+		<div className="flex shrink-0 flex-col gap-3" data-testid="working-set">
+			{notice && (
+				<Alert variant="info" className="text-meta" data-notice={notice}>
+					{notice === "changed"
+						? t("ui.mesh.mesh_actions.working_set_changed")
+						: t("ui.mesh.mesh_actions.working_set_unconfirmed")}
+				</Alert>
+			)}
+			<Alert variant="warning" className="text-meta" data-mode={mode}>
+				{warning}
+			</Alert>
+		</div>
+	);
+};
+
+/**
+ * The review's SCROLLING MIDDLE: advisory probe notes and the lists. It owns no
+ * scroll of its own - the dialog's body region is the single scroll container,
+ * because a capped list nested inside a scrolling dialog is two scrollbars and
+ * the withheld rows hide below the inner one (design D9).
+ */
+export const WorkingSetDetails: FC<{
+	workingSet: WorkingSet;
+	mode: WorkingSetMode;
+	device: string;
+	/**
+	 * `features.session_transfer_working_set_probe`: render the destination's
+	 * reachability and prerequisite answers. False renders exactly the pre-probe
+	 * review even if a block happens to carry the fields.
+	 */
+	probe?: boolean;
+}> = ({ workingSet, mode, device, probe = false }) => {
+	useI18nLocale();
+	const { sent, withheld } = partitionWorktrees(workingSet);
+	/*
+	 * A ROW REPEATS NO TOOL THE BLOCK NOTE ALREADY LISTS (design D4): the note
+	 * names the destination's missing toolchains once; a row keeps its own line
+	 * only for a tool the note does not carry.
+	 */
+	const listedTools: ReadonlySet<string> = new Set(
+		probe ? (workingSet.destinationProbe?.missingTools ?? []) : [],
+	);
 	/*
 	 * ONE CLONE NOTE PER REPOSITORY, not per row: whether the destination must
 	 * clone the primary is one question per repository (`clone_check:
@@ -511,106 +687,141 @@ export const WorkingSetReview: FC<{
 	 */
 	const cloneNoted = new Set<string>();
 	return (
-		<div className="flex min-h-0 flex-col gap-3" data-testid="working-set">
-			{changed && (
-				<Alert variant="info" className="text-meta">
-					{t("ui.mesh.mesh_actions.working_set_changed")}
-				</Alert>
-			)}
-			<Alert variant="warning" className="text-meta" data-mode={mode}>
-				{warning}
-			</Alert>
-			{probe && workingSet && <ProbeNotices set={workingSet} device={device} />}
-			{workingSet && (
-				<div className="flex max-h-72 min-h-0 flex-col gap-3 overflow-y-auto pe-1">
-					{sent.length > 0 && (
-						<Section
-							heading={
-								mode === "send"
-									? t("ui.mesh.mesh_actions.working_set_sent_heading", {
-											count: sent.length,
-											size: formatBytes(workingSet.totals.bytes),
-										})
-									: /*
-										 * WHERE THEY STAY is a device the user recognises when the
-										 * block names it (`source`): "stays where it is" is ambiguous
-										 * from the destination's side of a recall.
-										 */
-										workingSet.source
-										? t("ui.mesh.mesh_actions.working_set_kept_heading_on", {
-												count: sent.length,
-												source: workingSet.source.name,
-											})
-										: t("ui.mesh.mesh_actions.working_set_kept_heading", {
-												count: sent.length,
-											})
-							}
-						>
-							{sent.map((tree) => {
-								/*
-								 * The "cloned from origin if missing" note stays for an `ok` probe
-								 * (the destination CAN fetch, so a clone would work) and goes for a
-								 * failed one, whose own line says why a clone would not.
+		<div className="flex flex-col gap-3" data-testid="working-set-details">
+			{probe && <ProbeNotices set={workingSet} device={device} />}
+			{sent.length > 0 && (
+				<Section
+					heading={
+						mode === "send"
+							? t("ui.mesh.mesh_actions.working_set_sent_heading", {
+									count: sent.length,
+									size: formatBytes(workingSet.totals.bytes),
+								})
+							: /*
+								 * WHERE THEY STAY is a device the user recognises when the
+								 * block names it (`source`): "stays where it is" is ambiguous
+								 * from the destination's side of a recall.
 								 */
-								const noteClone =
-									mode === "send" &&
-									(tree.cloneCheck === "pending_destination" ||
-										(probe && tree.cloneCheck === "ok")) &&
-									tree.remoteUrl !== null &&
-									!cloneNoted.has(tree.repo);
-								if (noteClone) cloneNoted.add(tree.repo);
-								return (
-									<WorktreeRow
-										key={tree.path}
-										tree={tree}
-										device={device}
-										showClone={mode === "send"}
-										clonePending={noteClone}
-										probe={probe}
-									/>
-								);
-							})}
-						</Section>
-					)}
-					{(withheld.length > 0 || workingSet.excluded.length > 0) && (
-						<Section
-							heading={t("ui.mesh.mesh_actions.working_set_withheld_heading")}
-						>
-							{withheld.map((tree) => (
-								<WithheldTreeRow key={tree.path} tree={tree} />
-							))}
-							{workingSet.excluded.map((row) => (
-								<ExclusionRow key={`${row.path}:${row.why}`} row={row} />
-							))}
-						</Section>
-					)}
-					{workingSet.leftBehind.length > 0 && (
-						<Section
-							heading={t(
-								"ui.mesh.mesh_actions.working_set_left_behind_heading",
-							)}
-						>
-							{workingSet.leftBehind.map((row) => (
-								<LeftBehindRow key={row.path} row={row} />
-							))}
-						</Section>
-					)}
-				</div>
+								workingSet.source
+								? t("ui.mesh.mesh_actions.working_set_kept_heading_on", {
+										count: sent.length,
+										source: workingSet.source.name,
+									})
+								: t("ui.mesh.mesh_actions.working_set_kept_heading", {
+										count: sent.length,
+									})
+					}
+				>
+					{sent.map((tree) => {
+						/*
+						 * The "cloned from origin if missing" note stays for an `ok` probe
+						 * (the destination CAN fetch, so a clone would work) and goes for a
+						 * failed one, whose own line says why a clone would not.
+						 */
+						const noteClone =
+							mode === "send" &&
+							(tree.cloneCheck === "pending_destination" ||
+								(probe && tree.cloneCheck === "ok")) &&
+							tree.remoteUrl !== null &&
+							!cloneNoted.has(tree.repo);
+						if (noteClone) cloneNoted.add(tree.repo);
+						return (
+							<WorktreeRow
+								key={tree.path}
+								tree={tree}
+								device={device}
+								showClone={mode === "send"}
+								clonePending={noteClone}
+								probe={probe}
+								listedTools={listedTools}
+							/>
+						);
+					})}
+				</Section>
 			)}
-			<div className="flex items-start gap-2">
-				<Checkbox
-					id={checkboxId}
-					checked={confident}
-					disabled={disabled}
-					onCheckedChange={(next) => onConfidentChange(next === true)}
-					className="mt-0.5"
-				/>
-				<label htmlFor={checkboxId} className="text-body-sm text-ink">
-					{mode === "send"
-						? t("ui.mesh.mesh_actions.working_set_checkbox", { device })
-						: t("ui.mesh.mesh_actions.working_set_checkbox_leave", { device })}
-				</label>
-			</div>
+			{(withheld.length > 0 || workingSet.excluded.length > 0) && (
+				<Section
+					heading={
+						/*
+						 * "Withheld - not sent" over a list where NOTHING is sent is a
+						 * double negative (design D6b): in files-stay mode the section is
+						 * what a working-file move would still leave out.
+						 */
+						mode === "send"
+							? t("ui.mesh.mesh_actions.working_set_withheld_heading")
+							: t("ui.mesh.mesh_actions.working_set_withheld_heading_stay")
+					}
+				>
+					{withheld.map((tree) => (
+						<WithheldTreeRow key={tree.path} tree={tree} mode={mode} />
+					))}
+					{workingSet.excluded.map((row) => (
+						<ExclusionRow key={`${row.path}:${row.why}`} row={row} />
+					))}
+				</Section>
+			)}
+			{workingSet.leftBehind.length > 0 && (
+				<Section
+					heading={t("ui.mesh.mesh_actions.working_set_left_behind_heading")}
+				>
+					{workingSet.leftBehind.map((row) => (
+						<LeftBehindRow key={row.path} row={row} />
+					))}
+				</Section>
+			)}
+		</div>
+	);
+};
+
+/**
+ * The REQUIRED confidence checkbox, pinned below the scroll region.
+ *
+ * Controlled by the dialog, not here, because the dialog owns the rule it feeds
+ * (Confirm disabled until ticked) and the reset it needs (a fresh manifest or a
+ * new opening un-ticks it). The ids come from the dialog too: Confirm points
+ * `aria-describedby` at the label while the box is unticked, so a screen-reader
+ * user hears WHY the button is dimmed (UX U8 / agent review N3).
+ */
+export const WorkingSetConsent: FC<{
+	mode: WorkingSetMode;
+	device: string;
+	confident: boolean;
+	onConfidentChange: (next: boolean) => void;
+	disabled: boolean;
+	checkboxId: string;
+	labelId: string;
+}> = ({
+	mode,
+	device,
+	confident,
+	onConfidentChange,
+	disabled,
+	checkboxId,
+	labelId,
+}) => {
+	useI18nLocale();
+	return (
+		<div
+			className="flex shrink-0 items-start gap-2"
+			data-testid="working-set-consent"
+		>
+			<Checkbox
+				id={checkboxId}
+				checked={confident}
+				disabled={disabled}
+				aria-required="true"
+				onCheckedChange={(next) => onConfidentChange(next === true)}
+				className="mt-0.5"
+			/>
+			<label
+				id={labelId}
+				htmlFor={checkboxId}
+				className="text-body-sm text-ink"
+			>
+				{mode === "send"
+					? t("ui.mesh.mesh_actions.working_set_checkbox", { device })
+					: t("ui.mesh.mesh_actions.working_set_checkbox_leave", { device })}
+			</label>
 		</div>
 	);
 };

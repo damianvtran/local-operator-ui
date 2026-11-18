@@ -155,6 +155,46 @@ export function workingSetConsent(
 	return {};
 }
 
+/** The question a move dialog asked: the drop's plan, its alternative(s), the risk. */
+export type MoveQuestion = {
+	plan: MovePlan;
+	alternatives: MovePlan[];
+	risky: boolean;
+};
+
+/**
+ * The dialog to REOPEN for a consent refusal, from the question that was asked.
+ *
+ * WHY THE ORIGINAL QUESTION (UX round 1, U4 / agent review N2). A consent
+ * refusal re-asks the SAME move with a fresh list, so it must keep what the first
+ * dialog offered: the Move/Copy choice (the reversible alternative is the point
+ * of that pair) and the "open elsewhere" warning. Both surfaces used to reopen
+ * with no alternatives, and the Mesh tab also dropped the risk, so one refusal
+ * rendered two ways. `initialKeep` restores the option the user had picked.
+ *
+ * Only an ask for the same session and destination is reused: anything else (a
+ * remedy's re-issue after the dialog's state is gone) falls back to the refused
+ * plan alone with the caller's own reading of the risk.
+ */
+export function reopenAsk(
+	asked: MoveQuestion | null | undefined,
+	refused: MovePlan,
+	fallbackRisky: boolean,
+): MoveQuestion & { initialKeep?: boolean } {
+	if (
+		asked &&
+		asked.plan.sessionId === refused.sessionId &&
+		asked.plan.to === refused.to
+	)
+		return {
+			plan: asked.plan,
+			alternatives: asked.alternatives,
+			risky: asked.risky,
+			initialKeep: refused.keep,
+		};
+	return { plan: refused, alternatives: [], risky: fallbackRisky };
+}
+
 /** The action that fixes a refusal, when there is one. */
 export type Remedy =
 	| { kind: "wait"; label: string; waitS: number }

