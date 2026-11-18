@@ -71,5 +71,21 @@
 	"ui.chat.composer.secret_fill_refused": "The secret field did not take that value. Your text is kept — the asks panel shows why.",
 	"ui.chat.composer.secret_fill_unavailable": "Could not reach the secret field. Your text is kept.",
 	"ui.chat.composer.secret_fill_multi": "This request asks for more than one secret. Your text is kept — choose the field in the asks panel.",
-	"ui.chat.composer.secret_closure_notice": "Answer the secret request in the asks panel — this box is paused until it is answered, and your draft is kept."
+	"ui.chat.composer.secret_closure_notice": "Answer the secret request in the asks panel — this box is paused until it is answered, and your draft is kept.",
+	"ui.chat.composer.dictated_away.not_sent": "Not sent to “{title}”: {reason}. Your dictated text is in that chat's draft.",
+	"ui.chat.composer.dictated_away.not_sent_body": "Not sent: {reason}. Your dictated text is in that chat's draft.",
+	"ui.chat.composer.dictated_away.transcription_failed": "Couldn't transcribe your dictation for “{title}”. The recording wasn't kept - record it again.",
+	"ui.chat.composer.dictated_away.transcription_failed_body": "Couldn't transcribe your dictation. The recording wasn't kept - record it again.",
+	"ui.chat.composer.dictated_away.reason_edited": "you changed that chat's draft while the words were still being written down",
+	"ui.chat.composer.dictated_away.reason_command": "the words would have run as a command",
+	"ui.chat.composer.dictated_away.reason_gate": "the words would have answered the question that chat is waiting on",
+	"ui.chat.composer.dictated_away.reason_secret": "the words look like a credential",
+	"ui.chat.composer.dictated_away.reason_no_model": "that chat has no model chosen to answer it",
+	"ui.chat.composer.dictated_away.reason_unavailable": "that chat could not take a message",
+	"ui.chat.composer.dictated_away.reason_not_ready": "that chat is still opening",
+	"ui.chat.composer.dictated_away.open_chat": "Open chat",
+	"ui.chat.composer.dictated_away.draft_label": "New chat",
+	"ui.chat.composer.dictated_away.untitled_chat": "Untitled chat",
+	"ui.chat.composer.dictated_away.origin_gone": "Not sent to “{title}”: that chat no longer exists, so the dictated text is gone too.",
+	"ui.chat.composer.dictated_away.origin_gone_body": "Not sent: that chat no longer exists, so the dictated text is gone too."
 }

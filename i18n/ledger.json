@@ -4032,8 +4032,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
-			"target_sha256": "d98d0dbfa387072da3520add4d43d755380d31e1346ff6aa33babe7e1a5bc4b4",
+			"source_sha256": "8f6ad5094234ec5368a86da0b1864ae94debba3fa355ea1920d20956425991e6",
+			"target_sha256": "e964dcb104c09cac1cc1464dc71513f77046af899253d853df005d067e4eeb30",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -4043,19 +4043,19 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
-					"result": "clean",
-					"instance": "68a3f14dde44-tc-es",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "f2e66f37f9c0-composer-dictated-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-es.json",
-					"receipt_sha256": "1781b07cd820476afe396e405ca903fd3fd20fd6a7dbe5be548067605b42ffd6",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/f2e66f37f9c0-composer-dictated-es.json",
+					"receipt_sha256": "361650c4b9684270620c1e6dd64b79ade1932e598f8b2939fcd9b283e8e46e46",
+					"scope": "ui.chat.composer: 16 dictated_away keys"
 				}
 			],
 			"status": "audited",
@@ -4236,6 +4236,29 @@
 							"receipt_sha256": "bba1421baa99908048d9aa06d48d9526adf29cdab101a7b9df3876e6a266db98",
 							"scope": "Merge delta for ui.chat.composer: our 1 new key (secret_closure_notice) plus main's 5 (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); merged file audited as a whole",
 							"note": "Audited on merge commit 801b1ad29d47. Session model anthropic/claude-sonnet-5-5, no fallback observed. MINOR/NIT wording suggestions deferred so the audited bytes stay exact."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
+					"target_sha256": "d98d0dbfa387072da3520add4d43d755380d31e1346ff6aa33babe7e1a5bc4b4",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-es.json",
+							"receipt_sha256": "1781b07cd820476afe396e405ca903fd3fd20fd6a7dbe5be548067605b42ffd6",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -17190,8 +17213,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
-			"target_sha256": "ca88c086ca4723f79ef3f95c0dd8577bdeb8673cef2f5be9776415e99cbaf846",
+			"source_sha256": "8f6ad5094234ec5368a86da0b1864ae94debba3fa355ea1920d20956425991e6",
+			"target_sha256": "40d5ca368e658016aee58f29107bd648e5918ab74d30ab71fedaae113bde4c78",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -17201,19 +17224,19 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
-					"result": "clean",
-					"instance": "68a3f14dde44-tc-fr",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "f2e66f37f9c0-composer-dictated-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 3,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-fr.json",
-					"receipt_sha256": "132923423789ef512326275391ecbe202ef89baa71e65f693553450450955442",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/f2e66f37f9c0-composer-dictated-fr.json",
+					"receipt_sha256": "eaa5fe497d444121957c9f6b950f67942ca95c88803cf5a7ad4b0e612970afc7",
+					"scope": "ui.chat.composer: 16 dictated_away keys"
 				}
 			],
 			"status": "audited",
@@ -17416,6 +17439,29 @@
 							"receipt_sha256": "f7eefdfe3663586cbba2795348e94a43682d684abea95f202cb8c3af4b411fab",
 							"scope": "Merge delta for ui.chat.composer: our 1 new key (secret_closure_notice) plus main's 5 (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); merged file audited as a whole",
 							"note": "Audited on merge commit 801b1ad29d47. Session model anthropic/claude-sonnet-5-5, no fallback observed. MINOR/NIT wording suggestions deferred so the audited bytes stay exact."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
+					"target_sha256": "ca88c086ca4723f79ef3f95c0dd8577bdeb8673cef2f5be9776415e99cbaf846",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-fr.json",
+							"receipt_sha256": "132923423789ef512326275391ecbe202ef89baa71e65f693553450450955442",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -30817,8 +30863,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
-			"target_sha256": "818fe2d20ca91f416b97d042a93baa1f71a8d089fc0e18109369f54542f90bc3",
+			"source_sha256": "8f6ad5094234ec5368a86da0b1864ae94debba3fa355ea1920d20956425991e6",
+			"target_sha256": "0cf2c9a6d67aa51c26475b30d509be1815923ed7138e3c65de1dc5f9546211c0",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -30827,20 +30873,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
-					"result": "clean",
-					"instance": "68a3f14dde44-tc-hi-r2",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "044be7ae2c78-dictated-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-hi-r2.json",
-					"receipt_sha256": "3b953123bdf4ca867bcd207e4705cfd4814ee593d4436928d409c3dc711b27bf",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/044be7ae2c78-dictated-hi.json",
+					"receipt_sha256": "7146c7392a7f7efc58d11d81454be147c23116d5c597d3ae620f945ad9379714",
+					"scope": "ui.chat.composer: 16 new dictated_away.* keys"
 				}
 			],
 			"status": "audited",
@@ -31021,6 +31067,29 @@
 							"receipt_sha256": "8dc0b7db9c4e5d4bd539fb11c24113f8a4058a3ba9aab0636c21f0b5ebbbaff1",
 							"scope": "Merge delta for ui.chat.composer: our 1 new key (secret_closure_notice) plus main's 5 (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); merged file audited as a whole",
 							"note": "Audited on merge commit 801b1ad29d47. Session model anthropic/claude-sonnet-5-5, no fallback observed. MINOR/NIT wording suggestions deferred so the audited bytes stay exact."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
+					"target_sha256": "818fe2d20ca91f416b97d042a93baa1f71a8d089fc0e18109369f54542f90bc3",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-hi-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-hi-r2.json",
+							"receipt_sha256": "3b953123bdf4ca867bcd207e4705cfd4814ee593d4436928d409c3dc711b27bf",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -43979,8 +44048,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
-			"target_sha256": "6f2b78af476f03775b7758ae7d62353a9cc8f9babb794758298e331d50e59e7d",
+			"source_sha256": "8f6ad5094234ec5368a86da0b1864ae94debba3fa355ea1920d20956425991e6",
+			"target_sha256": "4adb0e2146439fcbdc0bb65f9aea0b5d450c4e3baafe21e5e910ad2ac6f3ba98",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -43989,20 +44058,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
-					"result": "clean",
-					"instance": "68a3f14dde44-tc-ru",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "044be7ae2c78-dictated-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-ru.json",
-					"receipt_sha256": "7d5cfb7dd72a9245186119160bb7aa4b8350f1511a0a009a7c346bdbbae030c6",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/044be7ae2c78-dictated-ru.json",
+					"receipt_sha256": "43ab385b7e843e7b9aa9c135e41e0a9101733f26b09f1ee75975bc735cd48fe0",
+					"scope": "ui.chat.composer: 16 new dictated_away.* keys"
 				}
 			],
 			"status": "audited",
@@ -44206,6 +44275,29 @@
 							"receipt_sha256": "1b53d9e4edeabef1fec28b8676a48920476eece061f01a4e58fe9f0af2417c1c",
 							"scope": "Merge delta for ui.chat.composer: our 1 new key (secret_closure_notice) plus main's 5 (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); merged file audited as a whole",
 							"note": "Audited on merge commit 801b1ad29d47. Session model anthropic/claude-sonnet-5-5, no fallback observed. MINOR/NIT wording suggestions deferred so the audited bytes stay exact."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
+					"target_sha256": "6f2b78af476f03775b7758ae7d62353a9cc8f9babb794758298e331d50e59e7d",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-ru.json",
+							"receipt_sha256": "7d5cfb7dd72a9245186119160bb7aa4b8350f1511a0a009a7c346bdbbae030c6",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -57274,8 +57366,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
-			"target_sha256": "d08a6d74bb5d2c04791a00d7bbe459b78747443f526b7b39f9cbe4f4a3fa6cc3",
+			"source_sha256": "8f6ad5094234ec5368a86da0b1864ae94debba3fa355ea1920d20956425991e6",
+			"target_sha256": "68a46cd9d1c975f1e304d83760496e9fe38bc34ec07c7de7d617f6b8c52d5aa7",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -57284,20 +57376,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
-					"result": "clean",
-					"instance": "68a3f14dde44-tc-ur",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "044be7ae2c78-dictated-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 5,
+						"nit": 5
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-ur.json",
-					"receipt_sha256": "136315374a7658f27624ab9ad3857ea6e7b2b2f08ccd27b6d15a217ee40b5c5b",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/044be7ae2c78-dictated-ur.json",
+					"receipt_sha256": "93a7c212047e63e2032fb25ea77f2d96de64fa99e0af1f90a4fa746a1b06e282",
+					"scope": "ui.chat.composer: 16 new dictated_away.* keys"
 				}
 			],
 			"status": "audited",
@@ -57502,6 +57594,29 @@
 							"receipt_sha256": "6456129fd4115dd83c424809bfc0eb74a71e969cee08aff9701c68fedd261cd1",
 							"scope": "Merge delta for ui.chat.composer: our 1 new key (secret_closure_notice) plus main's 5 (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); merged file audited as a whole",
 							"note": "Audited on merge commit 801b1ad29d47. Session model anthropic/claude-sonnet-5-5, no fallback observed. MINOR/NIT wording suggestions deferred so the audited bytes stay exact."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
+					"target_sha256": "d08a6d74bb5d2c04791a00d7bbe459b78747443f526b7b39f9cbe4f4a3fa6cc3",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-ur.json",
+							"receipt_sha256": "136315374a7658f27624ab9ad3857ea6e7b2b2f08ccd27b6d15a217ee40b5c5b",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -70357,8 +70472,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
-			"target_sha256": "ad2ed165505bbb3fb80e34f3e547e696ea67b16e4c505df457bb0f1125b0141d",
+			"source_sha256": "8f6ad5094234ec5368a86da0b1864ae94debba3fa355ea1920d20956425991e6",
+			"target_sha256": "b1ed8e44e5ee303d1221909b6b2bb7557afa81938198f2d2c3d87957694c6851",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -70367,20 +70482,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
-					"result": "clean",
-					"instance": "68a3f14dde44-tc-vi",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "044be7ae2c78-dictated-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 3,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-vi.json",
-					"receipt_sha256": "a45052419da1f6ed09da9176280b3c2fba18b0cf4ebe6859165d422fdcddd7f2",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/044be7ae2c78-dictated-vi.json",
+					"receipt_sha256": "b3daf5d0048afd12595fb4a2d724dfac006b009deb835041af4dc1b17bfe3d00",
+					"scope": "ui.chat.composer: 16 new dictated_away.* keys"
 				}
 			],
 			"status": "audited",
@@ -70561,6 +70676,29 @@
 							"receipt_sha256": "b81399c8d58b6c710398933586bc541c8f45c31121f242361960366972aeed59",
 							"scope": "Merge delta for ui.chat.composer: our 1 new key (secret_closure_notice) plus main's 5 (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); merged file audited as a whole",
 							"note": "Audited on merge commit 801b1ad29d47. Session model anthropic/claude-sonnet-5-5, no fallback observed. MINOR/NIT wording suggestions deferred so the audited bytes stay exact."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
+					"target_sha256": "ad2ed165505bbb3fb80e34f3e547e696ea67b16e4c505df457bb0f1125b0141d",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-vi.json",
+							"receipt_sha256": "a45052419da1f6ed09da9176280b3c2fba18b0cf4ebe6859165d422fdcddd7f2",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -84232,8 +84370,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
-			"target_sha256": "9bb8f93873ae90fb4ec3ae682a01ffa4c0fb8c817acfdc4950d5d2a239f9b915",
+			"source_sha256": "8f6ad5094234ec5368a86da0b1864ae94debba3fa355ea1920d20956425991e6",
+			"target_sha256": "d165dc4ec66f7824bd39259997a38b5bf2ef087c06e0e772bac49547217a8ccb",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -84243,19 +84381,19 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
-					"result": "clean",
-					"instance": "68a3f14dde44-tc-zh-cn",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "f2e66f37f9c0-composer-dictated-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-zh-cn.json",
-					"receipt_sha256": "c88dd475c6e791970394a1bbf0543e9ca1313c57fe3215b46d0e3170495c13b2",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/f2e66f37f9c0-composer-dictated-zh-cn.json",
+					"receipt_sha256": "ae0d915e4eafea2f57da40aaf14c48bc659dcf4d7bea26ea635395f7df9f5e54",
+					"scope": "ui.chat.composer: 16 dictated_away keys"
 				}
 			],
 			"status": "audited",
@@ -84461,6 +84599,29 @@
 							"receipt_sha256": "e8e0c72ca89a9ff5746eb08e83751020592fb305849e0524b06e36d0afd2ee16",
 							"scope": "Merge delta for ui.chat.composer: our 1 new key (secret_closure_notice) plus main's 5 (insert_transcript, insert_transcript_hint, send_recording, send_recording_hint, steer_hint); merged file audited as a whole",
 							"note": "Audited on merge commit 801b1ad29d47. Session model anthropic/claude-sonnet-5-5, no fallback observed. MINOR/NIT wording suggestions deferred so the audited bytes stay exact. Run id lowercased for the ledger id-shape rule."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
+					"target_sha256": "9bb8f93873ae90fb4ec3ae682a01ffa4c0fb8c817acfdc4950d5d2a239f9b915",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-zh-cn.json",
+							"receipt_sha256": "c88dd475c6e791970394a1bbf0543e9ca1313c57fe3215b46d0e3170495c13b2",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"

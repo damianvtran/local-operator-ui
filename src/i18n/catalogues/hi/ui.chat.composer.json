@@ -71,5 +71,21 @@
 	"ui.chat.composer.secret_fill_refused": "गोपनीय फ़ील्ड ने वह मान स्वीकार नहीं किया। आपका टेक्स्ट रखा गया है — वजह सवालों के पैनल में दी गई है।",
 	"ui.chat.composer.secret_fill_unavailable": "गोपनीय फ़ील्ड तक नहीं पहुँचा जा सका। आपका टेक्स्ट रखा गया है।",
 	"ui.chat.composer.secret_fill_multi": "इस अनुरोध में एक से ज़्यादा गोपनीय जानकारियाँ माँगी गई हैं। आपका टेक्स्ट रखा गया है — सवालों के पैनल में फ़ील्ड चुनें।",
-	"ui.chat.composer.secret_closure_notice": "सवालों के पैनल में गोपनीय अनुरोध का जवाब दें — जवाब मिलने तक यह बॉक्स रुका हुआ है, और आपका ड्राफ़्ट बना रहता है।"
+	"ui.chat.composer.secret_closure_notice": "सवालों के पैनल में गोपनीय अनुरोध का जवाब दें — जवाब मिलने तक यह बॉक्स रुका हुआ है, और आपका ड्राफ़्ट बना रहता है।",
+	"ui.chat.composer.dictated_away.not_sent": "“{title}” को नहीं भेजा गया: {reason}। आपका बोला हुआ टेक्स्ट उस चैट के ड्राफ़्ट में है।",
+	"ui.chat.composer.dictated_away.not_sent_body": "नहीं भेजा गया: {reason}। आपका बोला हुआ टेक्स्ट उस चैट के ड्राफ़्ट में है।",
+	"ui.chat.composer.dictated_away.transcription_failed": "“{title}” के लिए आपकी डिक्टेशन का टेक्स्ट नहीं बनाया जा सका। रिकॉर्डिंग नहीं रखी गई — फिर से रिकॉर्ड करें।",
+	"ui.chat.composer.dictated_away.transcription_failed_body": "आपकी डिक्टेशन का टेक्स्ट नहीं बनाया जा सका। रिकॉर्डिंग नहीं रखी गई — फिर से रिकॉर्ड करें।",
+	"ui.chat.composer.dictated_away.reason_edited": "टेक्स्ट बनते समय उस चैट का ड्राफ़्ट बदल दिया गया",
+	"ui.chat.composer.dictated_away.reason_command": "ये शब्द कमांड के रूप में चलाए जाते",
+	"ui.chat.composer.dictated_away.reason_gate": "ये शब्द उस सवाल का जवाब देते जिसका वह चैट इंतज़ार कर रही है",
+	"ui.chat.composer.dictated_away.reason_secret": "ये शब्द किसी क्रेडेंशियल जैसे लगते हैं",
+	"ui.chat.composer.dictated_away.reason_no_model": "उस चैट में जवाब देने के लिए कोई मॉडल चुना नहीं गया",
+	"ui.chat.composer.dictated_away.reason_unavailable": "वह चैट संदेश स्वीकार नहीं कर सकी",
+	"ui.chat.composer.dictated_away.reason_not_ready": "वह चैट अभी खुल रही है",
+	"ui.chat.composer.dictated_away.open_chat": "चैट खोलें",
+	"ui.chat.composer.dictated_away.draft_label": "नई चैट",
+	"ui.chat.composer.dictated_away.untitled_chat": "बिना शीर्षक वाली चैट",
+	"ui.chat.composer.dictated_away.origin_gone": "“{title}” को नहीं भेजा गया: वह चैट अब मौजूद नहीं है, इसलिए बोला हुआ टेक्स्ट भी चला गया।",
+	"ui.chat.composer.dictated_away.origin_gone_body": "नहीं भेजा गया: वह चैट अब मौजूद नहीं है, इसलिए बोला हुआ टेक्स्ट भी चला गया।"
 }

@@ -93,6 +93,16 @@ import type { LaunchTarget } from "../../../../shared/open-session";
  */
 import { draftCreatesTemporary } from "../../features/chat/chat-temporary";
 import { draftModelForWire } from "../../features/chat/draft-selection";
+/*
+ * THE SEAM'S SHAPE AND THE CODE ITS BUDGET REFUSAL CARRIES. `AdmissionSeam` is
+ * a type (erased at build); `MESSAGE_BUDGET_CODE` is a value, because a code is
+ * a fact two modules have to spell the same way - `isRefusedBeforeAdmission`
+ * reads it as the refusal it is (see that constant's own note).
+ */
+import {
+	type AdmissionSeam,
+	MESSAGE_BUDGET_CODE,
+} from "../../features/chat/utils/message-budget";
 import {
 	type PeerDeviceFact,
 	applyPeerDeviceFact,
@@ -1335,7 +1345,13 @@ export function withholdsRetryHint(code: string | undefined): boolean {
 		 * Appended for the same reason: the eighth, and the one this predicate is
 		 * consulted for only when the failure is a press (see the note above).
 		 */
-		code === RUNTIME_BUSY_CODE
+		code === RUNTIME_BUSY_CODE ||
+		/*
+		 * A composed payload over the transport budget: the remedy is to cut the
+		 * message, so a hint that invites the same press again would be advice that
+		 * cannot work.
+		 */
+		code === MESSAGE_BUDGET_CODE
 	);
 }
 
@@ -2214,6 +2230,14 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 		error instanceof UserFacingError &&
 		(error.code === SESSION_UNVALIDATED_CODE ||
 			error.code === UNREADABLE_ATTACHMENT_CODE ||
+			/*
+			 * The composed payload's own budget refusal, which the page raises through
+			 * `budgetCheckedSeam` INSIDE the admission: nothing reached the wire, so it
+			 * is the same "nothing was admitted" fact as the two above - and without
+			 * this arm it would be classed an unknown outcome, latched as a claim and
+			 * offered a Retry over bytes that would be refused for the same reason.
+			 */
+			error.code === MESSAGE_BUDGET_CODE ||
 			isStoreWriteRefusal(error.code))
 	);
 }
@@ -2776,6 +2800,30 @@ async function messageWithBusyResend(
 	});
 }
 
+/*
+ * THE LAST SEAM EACH DRAFT KEY WAS ADMITTED WITH, so a replay handed no seam of
+ * its own still carries what the press composed.
+ *
+ * It exists because the composer's payload is now the TYPED line on a pane
+ * whose host honours `beforeAdmission`: the `$skill` bodies travel through the
+ * seam instead of ahead of the press (`message-input.tsx`). A replay of that
+ * draft from any door that cannot rebuild the seam - the store's own retry, a
+ * caller that never had the composer's read - would otherwise send the typed
+ * line with the block silently gone, which is worse than the slow send it
+ * replaced: the `$name` reached the owner as prose. Measured in this file's own
+ * terms: the first attempt fails at `sessions.create`, so nothing rendered and
+ * there is no `submittedRendered` pin to replay, and the store's answer would be
+ * the raw line.
+ *
+ * ONLY READ ON A REPLAY THAT RENDERED NOTHING. A pin is what a replay prefers
+ * (`submittedRendered`, written with the latch before the wire), so this map is
+ * a fallback for the attempt that never got that far - never a second opinion
+ * about a body the owner may already hold. Cleared with the row it describes,
+ * by both endings (`finishDraft`, `discardDraft`), and overwritten by the next
+ * press on the same key.
+ */
+const lastAdmissionSeam = new Map<string, AdmissionSeam>();
+
 /** Create and admission are intentionally separate receipts. A response lost
  * between them retains its exact IDs and payload; retry never reallocates or
  * deletes work that may already have been admitted by the owner. */
@@ -2838,7 +2886,7 @@ export async function admitChatDraft(
 	 * throw here is still "nothing was admitted": the composer gets its text
 	 * back rather than a held claim about a message the owner never saw.
 	 */
-	beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
+	beforeAdmission?: AdmissionSeam,
 ): Promise<string | null> {
 	const store = useCanonicalSessionsStore.getState();
 	/*
@@ -2908,6 +2956,12 @@ export async function admitChatDraft(
 	const replay =
 		previous?.submittedText !== undefined &&
 		payloadMatchesClaim(previous, text, input.attachments);
+	/*
+	 * REMEMBERED FOR THE REPLAY THAT HAS NONE (see `lastAdmissionSeam`), and
+	 * written before the create - the attempt this protects against is exactly
+	 * the one that never reaches the seam.
+	 */
+	if (beforeAdmission) lastAdmissionSeam.set(key, beforeAdmission);
 	const draft: ChatDraft = previous ?? {
 		key,
 		createRequestId: crypto.randomUUID(),
@@ -3180,11 +3234,22 @@ export async function admitChatDraft(
 		 * 1's M4/m5. So the pin is used when there is one, and the seam runs when
 		 * there is not: nothing was rendered, so there is no body to keep identical.
 		 */
+		/*
+		 * AND A REPLAY WITH NO SEAM OF ITS OWN RE-RUNS THE ONE THE PRESS USED
+		 * (`lastAdmissionSeam`): the attempt that failed before this line pinned no
+		 * `submittedRendered`, so there is nothing to replay and the body it would
+		 * otherwise send is the TYPED line - the `$skill` block lives in the seam now
+		 * (`message-input.tsx`). Only on a replay: a first attempt is the one that
+		 * writes the memory, and a caller that offers no seam has already been handed
+		 * its composed payload.
+		 */
+		const seam =
+			beforeAdmission ?? (replay ? lastAdmissionSeam.get(key) : undefined);
 		const rendered =
 			replay && previous?.submittedRendered !== undefined
 				? previous.submittedRendered
-				: beforeAdmission
-					? ((await beforeAdmission(id)) ?? text)
+				: seam
+					? ((await seam(id)) ?? text)
 					: text;
 		attempted = true;
 		/*
@@ -8304,6 +8369,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			finishDraft: (key, sessionId) =>
 				set((state) => {
 					/*
+					 * The remembered seam goes with the row it belonged to (see
+					 * `lastAdmissionSeam`): the message is on the owner, so a replay of it
+					 * cannot happen, and a key that is reused (`send:<id>`) must not inherit
+					 * the last message's composition.
+					 */
+					lastAdmissionSeam.delete(key);
+					/*
 					 * The message is on the owner, so nothing about it is in flight
 					 * or waiting to be reconciled any more. Done here rather than by
 					 * the caller because every path that ends a send successfully
@@ -8431,6 +8503,14 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			},
 			discardDraft: (key) =>
 				set((state) => {
+					/*
+					 * An abandoned draft takes its remembered seam with it (see
+					 * `lastAdmissionSeam`): its row is gone, so nothing can replay it, and the
+					 * next press on that key writes its own before any replay could read this
+					 * one. A Map write rather than state, which is why it sits beside the other
+					 * memory this action owns (`discardPendingSends`).
+					 */
+					lastAdmissionSeam.delete(key);
 					/*
 					 * A LIVE SEND HOP IS WITHHELD FROM THE ACTS, NOT REFUSED HERE (UX round 1's
 					 * U2, remediation, 2026-09-27): the sidebar disables the discard control for
