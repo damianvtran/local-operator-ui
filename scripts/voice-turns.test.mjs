@@ -2498,7 +2498,7 @@ test("BYOK: malformed pushes from main are ignored", async () => {
 	assert.deepEqual(toasts(), []);
 });
 
-test("BYOK: the strip says why a missing key stopped voice, in words, not the rig's sentence", () => {
+test("BYOK: the strip says why a missing provider choice stopped voice, in words, not the rig's sentence", () => {
 	const composer = readFileSync(
 		"src/renderer/src/features/voice/voice-composer.tsx",
 		"utf8",
@@ -2507,9 +2507,9 @@ test("BYOK: the strip says why a missing key stopped voice, in words, not the ri
 	assert.ok(
 		reason
 			.slice(0, reason.indexOf('exchange === "not_sent"'))
-			.includes('rig.cause === "byok_key_missing"'),
+			.includes('rig.cause === "provider_unset"'),
 	);
-	assert.ok(reason.includes("ui.chat.voice.error_byok_key_missing"));
+	assert.ok(reason.includes("ui.chat.voice.error_provider_unset"));
 });
 
 test("BYOK: the controller subscribes to main's byok push, and the bridge, preload and contract carry it", () => {
@@ -2522,7 +2522,7 @@ test("BYOK: the controller subscribes to main's byok push, and the bridge, prelo
 	assert.ok(preload.includes('"voice.qwen.byok"'));
 	const contract = readFileSync("src/shared/desktop-contract.ts", "utf8");
 	assert.ok(contract.includes("onByok:"));
-	assert.ok(contract.includes('"byok_key_missing"'));
+	assert.ok(contract.includes('"provider_unset"'));
 });
 
 test("viewedSessionId reads the HashRouter's chat route", async () => {

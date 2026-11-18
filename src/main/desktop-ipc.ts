@@ -4,10 +4,7 @@ import {
 	ipcMain,
 	shell,
 } from "electron";
-import type {
-	DesktopResponse,
-	QwenVoiceEngine,
-} from "../shared/desktop-contract";
+import type { DesktopResponse } from "../shared/desktop-contract";
 import {
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
 	SUBSCRIPTION_ID_PATTERN,
@@ -506,9 +503,6 @@ export function registerQwenVoiceIPC(
 		/** The person's switch (default off); see `qwen-voice-setting.ts`. */
 		getEnabled: () => boolean;
 		setEnabled: (on: boolean) => Promise<boolean>;
-		/** The engine in effect, and the choice of another (validated in main). */
-		getEngine: () => QwenVoiceEngine;
-		setEngine: (engine: unknown) => Promise<QwenVoiceEngine>;
 		result: (input: unknown) => boolean;
 		speak: (input: unknown) => { spoken: boolean; reason?: string };
 		start: (reason: "renderer") => Promise<unknown>;
@@ -537,14 +531,6 @@ export function registerQwenVoiceIPC(
 	ipcMain.handle("voice.qwen.enabled.set", (event, on: unknown) => {
 		authorize(event);
 		return voice.setEnabled(on === true);
-	});
-	ipcMain.handle("voice.qwen.engine.get", (event) => {
-		authorize(event);
-		return voice.getEngine();
-	});
-	ipcMain.handle("voice.qwen.engine.set", (event, engine: unknown) => {
-		authorize(event);
-		return voice.setEngine(engine);
 	});
 	ipcMain.handle("voice.qwen.result", (event, input: unknown) => {
 		authorize(event);

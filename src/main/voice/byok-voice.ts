@@ -1,8 +1,8 @@
 /**
- * BRING-YOUR-OWN-KEY VOICE IN MAIN (design: the backend's
+ * THE APP-OWNED VOICE PAGE IN MAIN (design: the backend's
  * docs/design/session-voice-groq.md, D2, D3, D7 U2): the app-owned voice page
- * hears, the daemon's ElevenLabs path transcribes and speaks, and this file is
- * the relay between them. It owns no rig and loads no model.
+ * hears, the daemon's speech path transcribes and speaks, and this file is the
+ * relay between them. It owns no rig and loads no model.
  *
  * Electron-free on purpose: the page, the media relay and the renderer are
  * injected from `index.ts`, so the rules are tested as plain code
@@ -10,28 +10,40 @@
  *
  * THE RULES
  *
- * - LISTEN only while the coordinator says so (`apply`): voice on, this engine,
- *   a slot holder, not paused. The microphone is asked for BEFORE the page is
- *   created, and a missing key opens no page at all (nothing listens for voice
- *   that cannot answer).
+ * - THE PROVIDER IS THE PERSON'S ONE CHOICE (`speech.provider`, read from
+ *   `voice.status` and handed down by `setProvider`). Nothing listens until the
+ *   backend says a provider is CHOSEN and READY: none chosen, a chosen provider
+ *   that is not ready, and a status not read yet each open no page and never ask
+ *   for the microphone. No other provider stands in - the daemon refuses a
+ *   request for one that was not chosen - and this file sends no provider of its
+ *   own: the setting decides, on the server, per request.
+ * - LISTEN only while the coordinator says so (`apply`): voice on, a slot
+ *   holder, not paused. The microphone is asked for BEFORE the page is created.
  * - NOTHING LISTENS WITHOUT A HOLDER (privacy): an empty slot or voice off
  *   closes the page at once, and a take that arrives anyway is dropped here -
  *   no request, nothing relayed.
- * - A TAKE is the page's WAV. It goes to `voice.utterance` pinned to
- *   ElevenLabs with a fresh dashed id; the renderer is told BEFORE it is sent
- *   (so it can arm the V14 binding first, as the rig path does) and after.
- *   Main never decides what the words mean and has no path to a gate answer
- *   (V7): the route admits them as an ordinary prompt or steer, or refuses.
+ * - A TAKE is the page's WAV. It goes to `voice.utterance` with a fresh dashed
+ *   id; the renderer is told BEFORE it is sent (so it can arm the V14 binding
+ *   first, as the rig path does) and after. Main never decides what the words
+ *   mean and has no path to a gate answer (V7): the route admits them as an
+ *   ordinary prompt or steer, or refuses.
  * - SPEAKING is a SOURCE REFERENCE plus a segment index (V8): main never holds
  *   words it could be handed. `QwenVoice.speak` hands over only a text main
  *   relayed from a 200 `voice.text`, with its source and segment count. One
  *   segment ahead, never more: segment i+1 is fetched when the page reports i
  *   has STARTED, so an interrupted reply wastes at most one request of quota.
+ * - A FAILURE IS THE PROVIDER'S OWN WORDS. When a refusal carries a sentence for
+ *   a provider problem (credit too low, signed out, no key, none chosen) it is
+ *   passed on as written for the renderer to show; none is invented here.
  * - BARGE-IN: the page stops its own audio at once; main stops fetching and
  *   tells the renderer the playback was cancelled.
  */
 
-import type { QwenByokMessage } from "../../shared/desktop-contract";
+import type {
+	QwenByokMessage,
+	VoiceProviderStatus,
+} from "../../shared/desktop-contract";
+import type { SpeechProvider } from "../../shared/desktop-control-contract";
 import type { PlayMessage } from "../../voice-page/channels";
 import type { DesktopMediaResponse } from "../desktop-media";
 import { QWEN_CHANNEL } from "./qwen-voice";
@@ -44,9 +56,6 @@ import type {
 /** The channel main pushes a take's or a reply's progress to the renderer on. */
 export const BYOK_CHANNEL = "voice.qwen.byok";
 
-/** The one provider this path is pinned to. */
-export const BYOK_PROVIDER = "elevenlabs";
-
 /** The route's own ceiling; a larger take is dropped here, not as its 413. */
 const MAX_TAKE_BYTES = 16 * 1024 * 1024;
 /** A WAV header is 44 bytes; anything shorter holds no audio. */
@@ -57,11 +66,35 @@ const MIC_PROMPT_BUDGET_MS = 5_000;
 export type ByokState =
 	| "idle"
 	| "listening"
-	| "key_missing"
+	// The provider status has not been read yet: nothing can be decided.
+	| "checking"
+	// No speech provider is chosen.
+	| "provider_unset"
+	// A provider is chosen and the backend says it cannot hear and speak.
+	| "provider_not_ready"
 	| "mic_denied"
 	| "mic_prompting"
 	| "page_failed"
 	| "no_window";
+
+/** Which provider is not ready, and the backend's own sentence for it. */
+export type ByokProviderGap = {
+	provider: SpeechProvider;
+	reason: string | null;
+};
+
+/**
+ * Refusals whose sentence is a provider's own word and is shown as written: the
+ * provider's failures, and the backend's "choose a provider" refusal. A 402 is
+ * the Radient credit refusal whatever code it declares.
+ */
+const PROVIDER_WORD_CODES: readonly string[] = [
+	"voice_unavailable",
+	"stt_unavailable",
+	"voice_provider_unset",
+];
+/** What the media relay answers when the backend sent no sentence of its own. */
+const GENERIC_MEDIA_DETAIL = "The media request failed.";
 
 /** What the renderer is told about a take or a reply, on `BYOK_CHANNEL`. */
 export type ByokMessage = QwenByokMessage;
@@ -90,8 +123,8 @@ export type ByokSpeakEntry = {
 /** What `QwenVoice` calls; the real class below and a test fake both fit. */
 export interface ByokVoicePort {
 	apply(state: { active: boolean; slot: string | null; muted: boolean }): void;
-	/** `voice.status`'s `byok.ready`; null when the backend says nothing. */
-	setKeyReady(ready: boolean | null): void;
+	/** `voice.status`'s provider choice and readiness; see `VoiceProviderStatus`. */
+	setProvider(status: VoiceProviderStatus): void;
 	speak(entry: ByokSpeakEntry): { spoken: boolean; reason?: string };
 	stop(): void;
 }
@@ -106,7 +139,7 @@ export type ByokVoiceDeps = {
 	/** Push to the renderer; false when there is no window to receive it. */
 	toRenderer: (channel: string, payload: unknown) => boolean;
 	/** The coordinator maps each state onto the strip's own status. */
-	report: (state: ByokState) => void;
+	report: (state: ByokState, gap?: ByokProviderGap) => void;
 	newId?: () => string;
 	now?: () => number;
 	log?: (message: string) => void;
@@ -129,18 +162,34 @@ function codeOf(response: DesktopMediaResponse): string {
 		: "failed";
 }
 
+/**
+ * The provider's own sentence for a refusal that carries one, else nothing: a
+ * generic transport line is not a provider's word and is never passed on.
+ */
+function wordsOf(response: DesktopMediaResponse): { detail?: string } {
+	if (response.kind !== "error") return {};
+	const detail = response.detail.trim();
+	if (!detail || detail === GENERIC_MEDIA_DETAIL) return {};
+	const provider =
+		response.status === 402 ||
+		(response.voiceCode !== undefined &&
+			PROVIDER_WORD_CODES.includes(response.voiceCode));
+	return provider ? { detail } : {};
+}
+
 export class ByokVoice implements ByokVoicePort {
 	private active = false;
 	private slot: string | null = null;
 	private muted: boolean | null = null;
-	private keyReady: boolean | null = null;
+	/** The last provider status main learned; null until the first read. */
+	private provider: VoiceProviderStatus | null = null;
 	private pageOpen = false;
 	/** A page that could not be brought back; cleared when listening is switched off. */
 	private failed = false;
 	private preflighting = false;
 	/** Bumped by every close, so a microphone answer that outlived it is stale. */
 	private generation = 0;
-	private reported: ByokState | null = null;
+	private reported: string | null = null;
 	private reply: Reply | null = null;
 	private readonly newId: () => string;
 	private readonly now: () => number;
@@ -173,15 +222,20 @@ export class ByokVoice implements ByokVoicePort {
 		void this.ensureListening();
 	}
 
-	setKeyReady(ready: boolean | null): void {
-		if (this.keyReady === ready) return;
-		this.keyReady = ready;
+	/**
+	 * The coordinator hands down every `voice.status` answer, voice on or off, so
+	 * the first enable already knows. Only a CHANGE does anything, and only while
+	 * listening is wanted.
+	 */
+	setProvider(status: VoiceProviderStatus): void {
+		const before = this.provider;
+		this.provider = status;
 		if (!this.active) return;
-		if (ready === false) {
-			this.closePage();
-			this.say("key_missing");
-			return;
-		}
+		const unchanged =
+			before !== null &&
+			before.provider === status.provider &&
+			readinessOf(before) === readinessOf(status);
+		if (unchanged) return;
 		void this.ensureListening();
 	}
 
@@ -297,7 +351,6 @@ export class ByokVoice implements ByokVoicePort {
 					op: "voice.utterance",
 					sessionId,
 					requestId,
-					provider: BYOK_PROVIDER,
 				},
 				bytes,
 			);
@@ -331,6 +384,7 @@ export class ByokVoice implements ByokVoicePort {
 			requestId,
 			status: response.status,
 			code: codeOf(response),
+			...wordsOf(response),
 		});
 	}
 
@@ -345,7 +399,6 @@ export class ByokVoice implements ByokVoicePort {
 						sessionId: entry.sessionId,
 						source: entry.source,
 						segment: index,
-						provider: BYOK_PROVIDER,
 					},
 					null,
 				);
@@ -359,7 +412,7 @@ export class ByokVoice implements ByokVoicePort {
 				response.status >= 300 ||
 				!response.mimeType.startsWith("audio/")
 			) {
-				this.failReply(reply, codeOf(response));
+				this.failReply(reply, codeOf(response), wordsOf(response));
 				return;
 			}
 			this.deps.page.play({
@@ -376,9 +429,18 @@ export class ByokVoice implements ByokVoicePort {
 		}
 	}
 
-	private failReply(reply: Reply, code: string): void {
+	private failReply(
+		reply: Reply,
+		code: string,
+		words: { detail?: string } = {},
+	): void {
 		if (reply.cancelled) return;
-		this.send({ kind: "speech_failed", sessionId: reply.sessionId, code });
+		this.send({
+			kind: "speech_failed",
+			sessionId: reply.sessionId,
+			code,
+			...words,
+		});
 		// The audio already pushed plays out; the Speaking state is released now.
 		this.cancelReply(reply);
 	}
@@ -401,9 +463,29 @@ export class ByokVoice implements ByokVoicePort {
 
 	private async ensureListening(): Promise<void> {
 		if (!this.active || this.failed) return;
-		if (this.keyReady === false) {
+		/*
+		 * THE PROVIDER GATE, before the microphone question and before any page: a
+		 * choice the backend has not confirmed as ready is a reason to stay quiet,
+		 * never a reason to listen and fail later.
+		 */
+		const status = this.provider;
+		if (status === null) {
 			this.closePage();
-			this.say("key_missing");
+			this.say("checking");
+			return;
+		}
+		if (status.provider === null) {
+			this.closePage();
+			this.say("provider_unset");
+			return;
+		}
+		const readiness = status.providers?.[status.provider];
+		if (!readiness?.ready) {
+			this.closePage();
+			this.say("provider_not_ready", {
+				provider: status.provider,
+				reason: readiness?.reason ?? null,
+			});
 			return;
 		}
 		if (this.pageOpen) {
@@ -443,7 +525,7 @@ export class ByokVoice implements ByokVoicePort {
 	}
 
 	private openListening(): void {
-		if (this.pageOpen || this.keyReady === false) return;
+		if (this.pageOpen || !this.providerReady()) return;
 		this.deps.page.open();
 		this.pageOpen = true;
 		this.say("listening");
@@ -464,10 +546,22 @@ export class ByokVoice implements ByokVoicePort {
 		this.say("idle");
 	}
 
-	private say(state: ByokState): void {
-		if (this.reported === state) return;
-		this.reported = state;
-		this.deps.report(state);
+	/** The chosen provider is ready, as the last status read said. */
+	private providerReady(): boolean {
+		const status = this.provider;
+		return (
+			status !== null &&
+			status.provider !== null &&
+			status.providers?.[status.provider]?.ready === true
+		);
+	}
+
+	/** Said once per distinct state: a repeat apply does not re-report. */
+	private say(state: ByokState, gap?: ByokProviderGap): void {
+		const key = `${state}|${gap?.provider ?? ""}|${gap?.reason ?? ""}`;
+		if (this.reported === key) return;
+		this.reported = key;
+		this.deps.report(state, gap);
 	}
 
 	private send(message: ByokMessage): void {
@@ -482,6 +576,13 @@ export class ByokVoice implements ByokVoicePort {
 			...extra,
 		});
 	}
+}
+
+/** Whether the chosen provider is ready, as one comparable value. */
+function readinessOf(status: VoiceProviderStatus): string {
+	const chosen =
+		status.provider === null ? null : status.providers?.[status.provider];
+	return `${chosen?.ready === true}|${chosen?.reason ?? ""}`;
 }
 
 function hasWavHeader(bytes: Uint8Array): boolean {

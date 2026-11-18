@@ -16,6 +16,7 @@ const bundle = await build({
 			'export * from "./src/main/voice/byok-voice";',
 			'export * from "./src/main/voice/byok-voice-page";',
 			'export { QwenVoice, QWEN_CHANNEL } from "./src/main/voice/qwen-voice";',
+			'export * from "./src/main/voice/qwen-voice-setting";',
 			'export { VOICE_PAGE_CHANNELS } from "./src/voice-page/channels";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -64,11 +65,30 @@ const MESSAGE_SOURCE = { kind: "message", messageId: "m1" };
 /* ByokVoice: listening, takes, speaking                                      */
 /* ------------------------------------------------------------------------ */
 
-function byokRig({ mic = "granted", key = null, media = null } = {}) {
+/*
+ * THE ONE SPEECH PROVIDER. The page listens only for a chosen provider that the
+ * backend says is ready; every other answer (none chosen, not ready, not read
+ * yet) opens no page and never asks for the microphone. `READY_STATUS` is what
+ * `readVoiceProviderStatus` returns for a ready Radient choice, and it is the
+ * rig's default so the listening, take and speak cases below stay about those.
+ */
+const READY = { ready: true, reason: null };
+const NO_KEY = { ready: false, reason: "No ElevenLabs API key is stored." };
+const READY_STATUS = {
+	provider: "radient",
+	providers: { radient: READY, elevenlabs: NO_KEY },
+};
+
+function byokRig({
+	mic = "granted",
+	provider = READY_STATUS,
+	media = null,
+} = {}) {
 	const calls = [];
 	const order = [];
 	const toRenderer = [];
 	const reports = [];
+	const gaps = [];
 	const mediaCalls = [];
 	let ids = 0;
 	const page = {
@@ -101,11 +121,14 @@ function byokRig({ mic = "granted", key = null, media = null } = {}) {
 			toRenderer.push({ channel, payload });
 			return true;
 		},
-		report: (state) => reports.push(state),
+		report: (state, gap) => {
+			reports.push(state);
+			gaps.push(gap);
+		},
 		newId: () => `00000000-0000-4000-8000-${String(++ids).padStart(12, "0")}`,
 		now: () => Date.parse("2026-11-18T10:00:00.000Z"),
 	});
-	if (key !== null) byok.setKeyReady(key);
+	if (provider !== null) byok.setProvider(provider);
 	const on = (slot = SESSION, muted = false) =>
 		byok.apply({ active: slot !== null, slot, muted });
 	const channel = (name) =>
@@ -117,6 +140,7 @@ function byokRig({ mic = "granted", key = null, media = null } = {}) {
 		order,
 		toRenderer,
 		reports,
+		gaps,
 		mediaCalls,
 		on,
 		byokMessages: () => channel("voice.qwen.byok"),
@@ -205,35 +229,117 @@ test("LISTEN: no holder or voice off closes the page at once (privacy) and a rep
 	assert.equal(r.reports.length, count);
 });
 
-test("KEY: a key that is known missing opens no page and the microphone is never asked", async () => {
-	const r = byokRig({ key: false });
+test("PROVIDER: none chosen opens no page and the microphone is never asked", async () => {
+	const r = byokRig({ provider: { provider: null, providers: null } });
+	r.on();
+	await settle();
+	assert.deepEqual(r.order, [], "no mic question, no page");
+	assert.equal(r.reports.at(-1), "provider_unset");
+});
+
+test("PROVIDER: an older backend's answer (neither field) reads as none chosen", async () => {
+	const r = byokRig({ provider: { provider: null, providers: null } });
+	r.on();
+	await settle();
+	assert.equal(r.reports.at(-1), "provider_unset");
+	assert.equal(
+		r.page.preflight,
+		undefined,
+		"the microphone was never prepared",
+	);
+});
+
+test("PROVIDER: chosen but not ready opens no page and carries the backend's own reason", async () => {
+	const r = byokRig({
+		provider: {
+			provider: "elevenlabs",
+			providers: { radient: READY, elevenlabs: NO_KEY },
+		},
+	});
 	r.on();
 	await settle();
 	assert.deepEqual(r.order, []);
-	assert.equal(r.reports.at(-1), "key_missing");
+	assert.equal(r.reports.at(-1), "provider_not_ready");
+	assert.deepEqual(r.gaps.at(-1), {
+		provider: "elevenlabs",
+		reason: "No ElevenLabs API key is stored.",
+	});
 });
 
-test("KEY: the key arriving opens the page; the key going away closes it", async () => {
-	const r = byokRig({ key: false });
+test("PROVIDER: another provider being ready does not stand in for the chosen one", async () => {
+	// Radient is ready, ElevenLabs is chosen and is not: nothing listens.
+	const r = byokRig({
+		provider: {
+			provider: "elevenlabs",
+			providers: { radient: READY, elevenlabs: NO_KEY },
+		},
+	});
 	r.on();
 	await settle();
-	r.byok.setKeyReady(true);
+	assert.equal(r.page.preflight, undefined);
+	assert.notEqual(r.reports.at(-1), "listening");
+});
+
+test("PROVIDER: not read yet waits - no page, no microphone question, 'checking' - and the answer decides", async () => {
+	const r = byokRig({ provider: null });
+	r.on();
+	await settle();
+	assert.deepEqual(r.order, []);
+	assert.equal(r.reports.at(-1), "checking");
+	r.byok.setProvider(READY_STATUS);
 	await settle();
 	assert.deepEqual(r.order, ["mic", "open"]);
 	assert.equal(r.reports.at(-1), "listening");
-	r.byok.setKeyReady(false);
+});
+
+test("PROVIDER: the choice arriving opens the page; losing it closes the page", async () => {
+	const r = byokRig({ provider: { provider: null, providers: null } });
+	r.on();
+	await settle();
+	r.byok.setProvider(READY_STATUS);
+	await settle();
+	assert.deepEqual(r.order, ["mic", "open"]);
+	assert.equal(r.reports.at(-1), "listening");
+	r.byok.setProvider({
+		provider: "radient",
+		providers: {
+			radient: {
+				ready: false,
+				reason:
+					"Your Radient credit balance is too low for speech. Add credits in the Radient Console to continue.",
+			},
+			elevenlabs: NO_KEY,
+		},
+	});
 	assert.equal(r.order.at(-1), "close");
-	assert.equal(r.reports.at(-1), "key_missing");
+	assert.equal(r.reports.at(-1), "provider_not_ready");
+	r.byok.setProvider({ provider: null, providers: null });
+	assert.equal(r.reports.at(-1), "provider_unset");
 });
 
-test("KEY: not yet known (null) does not block listening; a ready key changes nothing", async () => {
-	const r = byokRig();
+test("PROVIDER: moving between two ready providers keeps the same page, with no new question", async () => {
+	const r = byokRig({
+		provider: {
+			provider: "radient",
+			providers: { radient: READY, elevenlabs: READY },
+		},
+	});
 	r.on();
 	await settle();
-	assert.equal(r.reports.at(-1), "listening");
-	r.byok.setKeyReady(true);
+	r.byok.setProvider({
+		provider: "elevenlabs",
+		providers: { radient: READY, elevenlabs: READY },
+	});
 	await settle();
 	assert.deepEqual(r.order, ["mic", "open"]);
+	assert.equal(r.reports.at(-1), "listening");
+});
+
+test("PROVIDER: an unset answer that arrives while voice is off changes nothing until voice is on", async () => {
+	const r = byokRig({ provider: null });
+	r.byok.setProvider({ provider: null, providers: null });
+	assert.deepEqual(r.order, []);
+	assert.deepEqual(r.reports, []);
 });
 
 test("MUTE: the person's mute is handed to the page, on every apply that changes it", async () => {
@@ -268,7 +374,7 @@ test("PAGE FAILED: a page that cannot be brought back is reported once and not r
 
 /* ---- takes ---- */
 
-test("TAKE: WAV bytes go to voice.utterance pinned to elevenlabs, with a fresh dashed id, and the renderer is told start then words", async () => {
+test("TAKE: WAV bytes go to voice.utterance with no provider field (the setting decides), with a fresh dashed id, and the renderer is told start then words", async () => {
 	const r = byokRig({
 		media: async () => ({
 			status: 200,
@@ -286,7 +392,11 @@ test("TAKE: WAV bytes go to voice.utterance pinned to elevenlabs, with a fresh d
 	const [a, b] = r.mediaCalls;
 	assert.equal(a.request.op, "voice.utterance");
 	assert.equal(a.request.sessionId, SESSION);
-	assert.equal(a.request.provider, "elevenlabs");
+	assert.equal(
+		"provider" in a.request,
+		false,
+		"the backend reads speech.provider; nothing is pinned from here",
+	);
 	assert.match(a.request.requestId, UUID);
 	assert.notEqual(a.request.requestId, b.request.requestId);
 	assert.equal(a.request.text, undefined, "a recording, not text");
@@ -393,6 +503,84 @@ test("TAKE: each refusal reaches the renderer as a take_failed with its declared
 	}
 });
 
+/*
+ * A PINNED PROVIDER'S FAILURE IS THE PROVIDER'S OWN WORDS ("Your Radient credit
+ * balance is too low for speech...", "Not signed in to Radient.", "No ElevenLabs
+ * API key is stored."). They ride the refusal's `detail`; the renderer shows
+ * them as written, so main passes the sentence through for the codes that carry
+ * one - and never the transport's own generic "The media request failed.".
+ */
+const PROVIDER_WORDS = [
+	[
+		402,
+		"voice_unavailable",
+		"Your Radient credit balance is too low for speech. Add credits in the Radient Console to continue.",
+	],
+	[409, "stt_unavailable", "Not signed in to Radient."],
+	[409, "voice_unavailable", "No ElevenLabs API key is stored."],
+	[
+		409,
+		"voice_provider_unset",
+		"Choose a speech provider first: Radient or your own ElevenLabs key. Voice mode uses only the one you pick.",
+	],
+];
+
+test("TAKE: a provider's own sentence reaches the renderer with its refusal; a generic one does not", async () => {
+	for (const [status, code, sentence] of PROVIDER_WORDS) {
+		const r = byokRig({
+			media: async () => ({
+				status,
+				kind: "error",
+				detail: sentence,
+				voiceCode: code,
+			}),
+		});
+		r.on();
+		await settle();
+		r.byok.onTake(wav());
+		await settle();
+		const failed = r.byokMessages().find((x) => x.kind === "take_failed");
+		assert.equal(failed.detail, sentence, `${status} ${code}`);
+	}
+	const generic = byokRig({
+		media: async () => ({
+			status: 409,
+			kind: "error",
+			detail: "The media request failed.",
+			voiceCode: "stt_unavailable",
+		}),
+	});
+	generic.on();
+	await settle();
+	generic.byok.onTake(wav());
+	await settle();
+	assert.equal(
+		"detail" in generic.byokMessages().find((x) => x.kind === "take_failed"),
+		false,
+		"no sentence is invented for a refusal that had none",
+	);
+});
+
+test("SPEAK failure: a provider's own sentence reaches the renderer with the failure", async () => {
+	for (const [status, code, sentence] of PROVIDER_WORDS) {
+		const r = byokRig({
+			media: async () => ({
+				status,
+				kind: "error",
+				detail: sentence,
+				voiceCode: code,
+			}),
+		});
+		r.on();
+		await settle();
+		r.byok.speak(ENTRY(1));
+		await settle();
+		const failed = r.byokMessages().at(-1);
+		assert.equal(failed.kind, "speech_failed");
+		assert.equal(failed.detail, sentence, `${status} ${code}`);
+	}
+});
+
 test("TAKE: a slot that moved while the request was out still reports for the session it was sent to", async () => {
 	let release;
 	const r = byokRig({
@@ -465,7 +653,6 @@ test("SPEAK: segment 0 is fetched and pushed; segment i+1 only once i has STARTE
 		sessionId: SESSION,
 		source: MESSAGE_SOURCE,
 		segment: 0,
-		provider: "elevenlabs",
 	});
 	const [first] = r.played();
 	assert.equal(first.id.index, 0);
@@ -724,7 +911,7 @@ test("SPEAK failure mid-reply: the cut is reported, and the Speaking state is re
 /* QwenVoice: the byok engine through the coordinator                          */
 /* ------------------------------------------------------------------------ */
 
-function coordinator({ engine = "byok" } = {}) {
+function coordinator({ rig = false } = {}) {
 	const toRenderer = [];
 	const gateway = {
 		running: false,
@@ -753,11 +940,11 @@ function coordinator({ engine = "byok" } = {}) {
 	};
 	const applied = [];
 	const spoken = [];
-	const keys = [];
+	const providers = [];
 	let speakAnswer = { spoken: true };
 	const byok = {
 		apply: (state) => applied.push(state),
-		setKeyReady: (ready) => keys.push(ready),
+		setProvider: (status) => providers.push(status),
 		speak: (entry) => {
 			spoken.push(entry);
 			return speakAnswer;
@@ -779,6 +966,9 @@ function coordinator({ engine = "byok" } = {}) {
 			prepareMicrophone: async () => "granted",
 		},
 		byok,
+		// The Qwen rig is opt-in code the app never opts into; a case that wants
+		// to prove it still never starts leaves this off, as index.ts does.
+		...(rig ? { rig: true } : {}),
 		now: () => 1_000_000,
 	});
 	void voice.setEnabled(true);
@@ -788,7 +978,7 @@ function coordinator({ engine = "byok" } = {}) {
 		speech,
 		applied,
 		spoken,
-		keys,
+		providers,
 		toRenderer,
 		setSpeakAnswer: (a) => {
 			speakAnswer = a;
@@ -798,9 +988,7 @@ function coordinator({ engine = "byok" } = {}) {
 			toRenderer
 				.filter((x) => x.channel === "voice.qwen.status")
 				.map((x) => x.payload),
-		ready: async () => {
-			await voice.setEngine(engine);
-		},
+		ready: async () => {},
 	};
 }
 const frame = (sessionId) => ({
@@ -809,14 +997,14 @@ const frame = (sessionId) => ({
 		active: sessionId ? { session_id: sessionId, enabled_at: 1 } : null,
 	},
 });
-const statusAnswer = (sessionId, byok) => [
+const statusAnswer = (sessionId, extra = {}) => [
 	{ op: "voice.status" },
 	{
 		status: 200,
 		body: {
 			result: {
 				active: sessionId ? { session_id: sessionId, enabled_at: 1 } : null,
-				byok,
+				...extra,
 			},
 		},
 	},
@@ -836,9 +1024,8 @@ const relay = (sessionId, text, segments, kind = "message") => [
 	},
 ];
 
-test("COORDINATOR: an enable frame under byok listens (apply active) and starts no rig", async () => {
+test("COORDINATOR: an enable frame listens through the app's own page and starts no rig", async () => {
 	const c = coordinator();
-	await c.ready();
 	c.voice.observeFrame(frame(SESSION));
 	await settle();
 	assert.deepEqual(c.lastApply(), {
@@ -849,10 +1036,25 @@ test("COORDINATOR: an enable frame under byok listens (apply active) and starts 
 	assert.equal(c.gateway.starts + c.speech.starts, 0);
 });
 
+test("COORDINATOR: the Qwen rig never starts - not for an enable frame, not for the renderer's start, whatever voice-setting.json once said", async () => {
+	const c = coordinator();
+	c.voice.observeFrame(frame(SESSION));
+	await c.voice.start("renderer");
+	await c.voice.start("enable");
+	await settle();
+	assert.equal(c.gateway.starts, 0, "no gateway");
+	assert.equal(c.speech.starts, 0, "no speech models");
+	assert.equal(c.gateway.running || c.speech.running, false);
+	// The shipped setting module no longer reads or writes an engine at all.
+	assert.equal(m.readQwenVoiceEngine, undefined);
+	assert.equal(m.writeQwenVoiceEngine, undefined);
+	assert.equal("engine" in c.voice.getStatus(), false);
+	assert.equal(typeof c.voice.setEngine, "undefined");
+});
+
 test("COORDINATOR: a slot only LEARNED from a status read does not open the microphone; the renderer's start does", async () => {
 	const c = coordinator();
-	await c.ready();
-	c.voice.noteDesktopAnswer(...statusAnswer(SESSION, undefined));
+	c.voice.noteDesktopAnswer(...statusAnswer(SESSION));
 	assert.equal(c.lastApply()?.active ?? false, false);
 	await c.voice.start("renderer");
 	assert.deepEqual(c.lastApply(), {
@@ -860,9 +1062,9 @@ test("COORDINATOR: a slot only LEARNED from a status read does not open the micr
 		slot: SESSION,
 		muted: false,
 	});
-	c.voice.noteDesktopAnswer(...statusAnswer(null, undefined));
+	c.voice.noteDesktopAnswer(...statusAnswer(null));
 	assert.equal(c.lastApply().active, false, "an empty slot closes it");
-	c.voice.noteDesktopAnswer(...statusAnswer(SESSION, undefined));
+	c.voice.noteDesktopAnswer(...statusAnswer(SESSION));
 	assert.equal(
 		c.lastApply().active,
 		false,
@@ -870,21 +1072,18 @@ test("COORDINATOR: a slot only LEARNED from a status read does not open the micr
 	);
 });
 
-test("COORDINATOR: switching voice off, or away from byok, ends listening", async () => {
+test("COORDINATOR: switching voice off ends listening", async () => {
 	const c = coordinator();
-	await c.ready();
 	c.voice.observeFrame(frame(SESSION));
 	await c.voice.setEnabled(false);
 	assert.equal(c.lastApply().active, false);
 	await c.voice.setEnabled(true);
 	c.voice.observeFrame(frame(SESSION));
 	assert.equal(c.lastApply().active, true);
-	await c.voice.setEngine("local");
-	assert.equal(c.lastApply().active, false);
 });
 
-test("COORDINATOR: the local engine never touches the byok half", async () => {
-	const c = coordinator();
+test("COORDINATOR: a run that opted into the rig never touches the page half", async () => {
+	const c = coordinator({ rig: true });
 	c.voice.observeFrame(frame(SESSION));
 	await settle();
 	assert.deepEqual(
@@ -895,7 +1094,6 @@ test("COORDINATOR: the local engine never touches the byok half", async () => {
 
 test("COORDINATOR: pause releases the microphone and keeps the strip 'ready, nobody connected'; resume listens again", async () => {
 	const c = coordinator();
-	await c.ready();
 	c.voice.observeFrame(frame(SESSION));
 	c.voice.byokReport("listening");
 	assert.equal(c.voice.getStatus().rig, "ready");
@@ -917,31 +1115,44 @@ test("COORDINATOR: pause releases the microphone and keeps the strip 'ready, nob
 
 test("COORDINATOR: mute reaches the page through apply and is mirrored in the status", async () => {
 	const c = coordinator();
-	await c.ready();
 	c.voice.observeFrame(frame(SESSION));
 	c.voice.setMuted(true);
 	assert.equal(c.lastApply().muted, true);
 	assert.equal(c.voice.getStatus().muted, true);
 });
 
-test("STATUS: each byok state is the strip's own vocabulary - listening, key missing, mic denied, mic prompting, page failed", async () => {
+test("STATUS: each page state is the strip's own vocabulary - listening, checking, no provider, provider not ready, mic denied, mic prompting, page failed", async () => {
 	const c = coordinator();
-	await c.ready();
 	c.voice.observeFrame(frame(SESSION));
 	c.voice.byokReport("listening");
 	let s = c.voice.getStatus();
-	assert.deepEqual(
-		[s.engine, s.rig, s.clients, s.webui_url],
-		["byok", "ready", 1, null],
-	);
-	c.voice.byokReport("key_missing");
+	assert.deepEqual([s.rig, s.clients, s.webui_url], ["ready", 1, null]);
+	c.voice.byokReport("checking");
+	s = c.voice.getStatus();
+	assert.equal(s.rig, "starting", "the first answer has not arrived");
+	c.voice.byokReport("provider_unset");
 	s = c.voice.getStatus();
 	assert.equal(s.rig, "error");
-	assert.equal(s.cause, "byok_key_missing");
-	assert.match(s.reason, MENTIONS_ELEVENLABS);
+	assert.equal(s.cause, "provider_unset");
+	assert.equal(s.provider ?? null, null);
+	assert.match(s.reason, /provider/i);
+	c.voice.byokReport("provider_not_ready", {
+		provider: "elevenlabs",
+		reason: "No ElevenLabs API key is stored.",
+	});
+	s = c.voice.getStatus();
+	assert.equal(s.rig, "error");
+	assert.equal(s.cause, "provider_not_ready");
+	assert.equal(s.provider, "elevenlabs", "the strip links to that provider");
+	assert.equal(
+		s.reason,
+		"No ElevenLabs API key is stored.",
+		"the backend's sentence, as written",
+	);
 	c.voice.byokReport("mic_denied");
 	s = c.voice.getStatus();
 	assert.deepEqual([s.rig, s.mic], ["stopped", "denied"]);
+	assert.equal(s.cause ?? null, null);
 	c.voice.byokReport("mic_prompting");
 	assert.equal(c.voice.getStatus().mic, "prompting");
 	c.voice.byokReport("page_failed");
@@ -954,41 +1165,58 @@ test("STATUS: each byok state is the strip's own vocabulary - listening, key mis
 	);
 });
 
-test("STATUS: a report with byok not in effect is ignored", async () => {
-	const c = coordinator({ engine: "local" });
+test("STATUS: a not-ready provider with no sentence of its own still says so, without inventing a cause", async () => {
+	const c = coordinator();
+	c.voice.observeFrame(frame(SESSION));
+	c.voice.byokReport("provider_not_ready", {
+		provider: "radient",
+		reason: null,
+	});
+	const s = c.voice.getStatus();
+	assert.equal(s.rig, "error");
+	assert.equal(s.provider, "radient");
+	assert.equal(typeof s.reason, "string");
+	assert.ok(s.reason.length > 0);
+});
+
+test("STATUS: a report with the rig in use is ignored", async () => {
+	const c = coordinator({ rig: true });
 	c.voice.byokReport("listening");
 	assert.equal(c.voice.getStatus().rig, "stopped");
 });
 
-test("KEY: voice.status's byok readiness is passed down, under any engine, so a later switch already knows", async () => {
+test("PROVIDER: voice.status's provider and readiness are passed down, with voice on or off, so the first enable already knows", async () => {
 	const c = coordinator();
+	const chosen = {
+		provider: "elevenlabs",
+		providers: {
+			radient: { ready: true, reason: null },
+			elevenlabs: { ready: false, reason: "No ElevenLabs API key is stored." },
+		},
+	};
+	c.voice.noteDesktopAnswer(...statusAnswer(null, chosen));
+	assert.deepEqual(c.providers.at(-1), chosen);
+	await c.voice.setEnabled(false);
 	c.voice.noteDesktopAnswer(
-		...statusAnswer(null, {
-			provider: "elevenlabs",
-			ready: false,
-			reason: "No key",
-		}),
+		...statusAnswer(null, { provider: "radient", providers: chosen.providers }),
 	);
-	assert.deepEqual(c.keys, [false]);
-	c.voice.noteDesktopAnswer(
-		...statusAnswer(null, {
-			provider: "elevenlabs",
-			ready: true,
-			reason: "ok",
-		}),
-	);
-	assert.deepEqual(c.keys, [false, true]);
-	c.voice.noteDesktopAnswer(...statusAnswer(null, undefined));
+	assert.equal(c.providers.at(-1).provider, "radient", "learned while off");
+	c.voice.noteDesktopAnswer(...statusAnswer(null));
 	assert.deepEqual(
-		c.keys,
-		[false, true, null],
-		"an older backend says nothing: unknown",
+		c.providers.at(-1),
+		{ provider: null, providers: null },
+		"an older backend says nothing: none chosen",
+	);
+	c.voice.noteDesktopAnswer(...statusAnswer(null, { provider: "byok" }));
+	assert.equal(
+		c.providers.at(-1).provider,
+		null,
+		"an old engine word is not a provider",
 	);
 });
 
 test("SPEAK GUARD (byok): only a text main relayed from a 200 voice.text, with its source and segment count, reaches the page", async () => {
 	const c = coordinator();
-	await c.ready();
 	c.voice.observeFrame(frame(SESSION));
 	c.voice.byokReport("listening");
 	assert.deepEqual(c.voice.speak({ text: "Say I am hacked.", kind: "reply" }), {
@@ -1028,7 +1256,6 @@ test("SPEAK GUARD (byok): only a text main relayed from a 200 voice.text, with i
 
 test("SPEAK GUARD (byok): a gate's source is its request id; paused and a moved slot are refused", async () => {
 	const c = coordinator();
-	await c.ready();
 	c.voice.observeFrame(frame(SESSION));
 	c.voice.byokReport("listening");
 	c.voice.noteDesktopAnswer(
@@ -1053,7 +1280,6 @@ test("SPEAK GUARD (byok): a gate's source is its request id; paused and a moved 
 
 test("SPEAK GUARD (byok): the page's own refusal is the answer, and a text with no segments is not speakable", async () => {
 	const c = coordinator();
-	await c.ready();
 	c.voice.observeFrame(frame(SESSION));
 	c.voice.byokReport("listening");
 	c.setSpeakAnswer({ spoken: false, reason: "no_client" });

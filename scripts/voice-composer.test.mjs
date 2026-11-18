@@ -160,7 +160,13 @@ const installControls = (start = {}) => {
 	};
 };
 
-window.__keyCalls = [];
+/*
+ * What the daemon's `voice.status` says about the speech provider
+ * (`provider`, `providers`), set per case; `__editCalls` records every
+ * `settings.edit`/`settings.reset` the Settings page sends, and `__editReply`
+ * scripts the answer.
+ */
+window.__editCalls = [];
 window.api = {
 	desktop: {
 		request: async (request) => {
@@ -184,15 +190,18 @@ window.api = {
 					},
 				};
 			}
-			if (request?.op === "auth.key") {
-				window.__keyCalls.push(request);
-				const reply = window.__keyReply ?? {
+			if (request?.op === "settings.edit" || request?.op === "settings.reset") {
+				window.__editCalls.push(request);
+				const reply = window.__editReply ?? {
 					status: 200,
-					body: { result: { valid: true } },
+					body: { result: {} },
 				};
-				// A saved key changes what the status says: the backend now has one.
-				if (reply.status === 200 && window.__byokAfterSave)
-					window.__byok = window.__byokAfterSave;
+				// A saved choice is what the next status read says.
+				if (reply.status === 200 && request.op === "settings.edit")
+					window.__voiceStatusExtra = {
+						...(window.__voiceStatusExtra ?? {}),
+						provider: request.value,
+					};
 				return reply;
 			}
 			if (request?.op === "voice.status") {
@@ -202,7 +211,7 @@ window.api = {
 						result: {
 							active: window.__voiceSlot ?? null,
 							settings: { max_spoken_chars: 800 },
-							...(window.__byok ? { byok: window.__byok } : {}),
+							...(window.__voiceStatusExtra ?? {}),
 						},
 					},
 				};
@@ -219,8 +228,7 @@ const bundle = await build({
 			export { useVoiceStore } from "./src/renderer/src/features/voice/voice-store";
 			export { applyVoiceActive, controlVoice } from "./src/renderer/src/features/voice/use-voice-status";
 			export { MessageInput } from "./src/renderer/src/shared/components/composer/message-input.tsx";
-			export { useVoiceSwitchStore, useVoiceEngineStore } from "./src/renderer/src/features/voice/use-voice-switch";
-			export { VoiceEngineSetting } from "./src/renderer/src/features/settings/components/voice-engine-setting";
+			export { useVoiceSwitchStore } from "./src/renderer/src/features/voice/use-voice-switch";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 		`,
 		resolveDir: process.cwd(),
@@ -260,8 +268,6 @@ const {
 	applyVoiceActive,
 	useVoiceStore,
 	useVoiceSwitchStore,
-	useVoiceEngineStore,
-	VoiceEngineSetting,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 // The switch is OFF by default; these cases are about voice ON.
@@ -292,12 +298,10 @@ afterEach(async () => {
 	});
 	root = null;
 	window.__voiceSlot = null;
-	window.__byok = null;
-	window.__byokAfterSave = null;
-	window.__keyReply = null;
-	window.__keyCalls = [];
+	window.__voiceStatusExtra = null;
+	window.__editReply = null;
+	window.__editCalls = [];
 	window.api.desktop.qwenVoice = undefined;
-	useVoiceEngineStore.setState({ engine: "local" });
 	useVoiceStore.setState({
 		active: undefined,
 		rig: undefined,
@@ -980,256 +984,6 @@ test("Clear is not offered while the history is empty", async () => {
 		window.document.querySelector("[data-voice-history-clear]"),
 		null,
 	);
-});
-
-/*
- * THE ENGINE CHOICE (Settings, under the Session voice switch). Three options:
- * Local (what exists), Bring your own key (ElevenLabs) and Radient cloud, which is
- * a placeholder: shown, disabled, never selectable. The choice is main's value
- * (`voice.qwen.engine.*`); the row only reads it and asks main to change it.
- */
-function engineBridge({ engine = "local" } = {}) {
-	const calls = [];
-	let current = engine;
-	const listeners = new Set();
-	window.api.desktop.qwenVoice = {
-		getEnabled: async () => true,
-		setEnabled: async (on) => on,
-		onEnabled: () => () => {},
-		getEngine: async () => current,
-		setEngine: async (next) => {
-			calls.push(next);
-			if (next === "radient") return current;
-			current = next;
-			for (const l of listeners) l(current);
-			return current;
-		},
-		onEngine: (l) => {
-			listeners.add(l);
-			return () => listeners.delete(l);
-		},
-	};
-	return calls;
-}
-
-async function mountEngineRow() {
-	// The row reads the shared status query: start from an empty cache, so a
-	// previous case's answer cannot stand in for this one's.
-	client.clear();
-	if (root) {
-		await act(async () => {
-			root.unmount();
-		});
-		root = null;
-	}
-	window.document.body.innerHTML = "<div id='root'></div>";
-	root = createRoot(window.document.getElementById("root"));
-	await act(async () => {
-		root.render(
-			React.createElement(
-				QueryClientProvider,
-				{ client },
-				React.createElement(VoiceEngineSetting),
-			),
-		);
-	});
-	for (let i = 0; i < 5; i += 1) await flush();
-}
-
-const engineRadio = (value) =>
-	window.document.querySelector(`input[type="radio"][value="${value}"]`);
-const engineText = () =>
-	window.document.querySelector("[data-voice-engine]")?.textContent ?? "";
-
-test("Engine: three options, Local chosen by default, Radient shown but disabled", async () => {
-	engineBridge();
-	await mountEngineRow();
-	assert.ok(
-		engineRadio("local") && engineRadio("byok") && engineRadio("radient"),
-	);
-	assert.equal(engineRadio("local").checked, true);
-	assert.equal(engineRadio("byok").checked, false);
-	assert.equal(
-		engineRadio("radient").disabled,
-		true,
-		"a placeholder cannot be picked",
-	);
-	assert.equal(engineRadio("byok").disabled, false);
-	assert.match(engineText(), /Local/);
-	assert.match(engineText(), /Bring your own key/);
-	assert.match(engineText(), /ElevenLabs/);
-	assert.match(engineText(), /Radient cloud/);
-	assert.match(engineText(), /Coming soon/);
-});
-
-test("Engine: choosing Bring your own key asks main, and the row follows what main answers", async () => {
-	const calls = engineBridge();
-	await mountEngineRow();
-	await act(async () => {
-		engineRadio("byok").click();
-	});
-	await flush();
-	assert.deepEqual(calls, ["byok"]);
-	assert.equal(engineRadio("byok").checked, true);
-	assert.equal(engineRadio("local").checked, false);
-});
-
-test("Engine: the Radient placeholder never reaches main", async () => {
-	const calls = engineBridge();
-	await mountEngineRow();
-	await act(async () => {
-		engineRadio("radient").click();
-	});
-	await flush();
-	assert.deepEqual(calls, []);
-	assert.equal(engineRadio("local").checked, true);
-});
-
-test("Engine: a stored byok choice is shown after a reload", async () => {
-	engineBridge({ engine: "byok" });
-	await mountEngineRow();
-	assert.equal(engineRadio("byok").checked, true);
-});
-
-test("Engine: with Bring your own key chosen, the row says whether a key is ready", async () => {
-	engineBridge({ engine: "byok" });
-	window.__byok = {
-		provider: "elevenlabs",
-		ready: false,
-		reason: "No ElevenLabs API key is stored.",
-	};
-	await mountEngineRow();
-	assert.match(engineText(), /No ElevenLabs key yet/);
-	assert.match(engineText(), /\/login elevenlabs/);
-	assert.doesNotMatch(engineText(), /key found/);
-	window.__byok = { provider: "elevenlabs", ready: true, reason: "ok" };
-	await mountEngineRow();
-	assert.match(engineText(), /ElevenLabs key found/);
-});
-
-/*
- * PASTING THE KEY. With Bring your own key chosen the row offers one field. The key
- * goes to the daemon's own credential store through the same `auth.key` route the
- * Providers page uses (so there is still ONE place a secret lives), the field
- * clears at once, and the key is never rendered or kept.
- */
-const KEY = "sk_test_0123456789abcdef";
-const keyInput = () =>
-	window.document.querySelector("[data-voice-engine-key-input]");
-const keySave = () =>
-	window.document.querySelector("[data-voice-engine-key-save]");
-
-async function typeKey(value) {
-	const input = keyInput();
-	const setter = Object.getOwnPropertyDescriptor(
-		window.HTMLInputElement.prototype,
-		"value",
-	).set;
-	await act(async () => {
-		setter.call(input, value);
-		input.dispatchEvent(new window.Event("input", { bubbles: true }));
-	});
-}
-
-test("Key: the field appears only with Bring your own key chosen, and is a password field", async () => {
-	engineBridge({ engine: "local" });
-	await mountEngineRow();
-	assert.equal(keyInput(), null, "no key field for Local");
-	engineBridge({ engine: "byok" });
-	await mountEngineRow();
-	assert.ok(keyInput(), "the field is offered for Bring your own key");
-	assert.equal(keyInput().getAttribute("type"), "password");
-	assert.equal(keyInput().getAttribute("autocomplete"), "off");
-	assert.equal(keySave().disabled, true, "nothing to save yet");
-});
-
-test("Key: Save sends the trimmed key to auth.key for elevenlabs, then clears the field and never shows it", async () => {
-	engineBridge({ engine: "byok" });
-	window.__byok = { provider: "elevenlabs", ready: false, reason: "none" };
-	window.__byokAfterSave = {
-		provider: "elevenlabs",
-		ready: true,
-		reason: "ok",
-	};
-	await mountEngineRow();
-	await typeKey(`  ${KEY}  `);
-	assert.equal(keySave().disabled, false);
-	await act(async () => {
-		keySave().click();
-	});
-	for (let i = 0; i < 5; i += 1) await flush();
-	assert.deepEqual(window.__keyCalls, [
-		{ op: "auth.key", provider: "elevenlabs", value: KEY },
-	]);
-	assert.equal(keyInput().value, "", "the field clears at once");
-	assert.equal(
-		window.document.body.textContent.includes(KEY),
-		false,
-		"the key is never rendered",
-	);
-	assert.match(engineText(), /Key saved and checked/);
-	assert.match(
-		engineText(),
-		/ElevenLabs key found/,
-		"the status re-reads after a save",
-	);
-});
-
-test("Key: a key ElevenLabs could not check is saved and said to be unverified", async () => {
-	engineBridge({ engine: "byok" });
-	window.__keyReply = {
-		status: 200,
-		body: {
-			result: { valid: null, reason: "missing the permission models_read" },
-		},
-	};
-	await mountEngineRow();
-	await typeKey(KEY);
-	await act(async () => {
-		keySave().click();
-	});
-	for (let i = 0; i < 5; i += 1) await flush();
-	assert.match(engineText(), /Key saved/);
-	assert.match(engineText(), /unverified/i);
-	assert.doesNotMatch(engineText(), /Key saved and checked/);
-});
-
-test("Key: a refused key shows the backend's sentence and stores nothing locally", async () => {
-	engineBridge({ engine: "byok" });
-	window.__keyReply = {
-		status: 422,
-		body: {
-			detail: {
-				code: "key_rejected",
-				text: "ElevenLabs does not accept that key.",
-			},
-		},
-	};
-	await mountEngineRow();
-	await typeKey(KEY);
-	await act(async () => {
-		keySave().click();
-	});
-	for (let i = 0; i < 5; i += 1) await flush();
-	assert.match(engineText(), /ElevenLabs does not accept that key\./);
-	assert.equal(window.document.body.textContent.includes(KEY), false);
-	assert.equal(
-		keyInput().value,
-		"",
-		"even a refused key is cleared, never left on screen",
-	);
-});
-
-test("Engine: no key sentence is shown while Local is chosen", async () => {
-	engineBridge({ engine: "local" });
-	window.__byok = { provider: "elevenlabs", ready: false, reason: "x" };
-	await mountEngineRow();
-	assert.doesNotMatch(engineText(), /No ElevenLabs key yet/);
-});
-
-test("Engine: the row is absent without the desktop bridge", async () => {
-	await mountEngineRow();
-	assert.equal(window.document.querySelector("[data-voice-engine]"), null);
 });
 
 test("U5: focus returns to the same control after Resume", async () => {

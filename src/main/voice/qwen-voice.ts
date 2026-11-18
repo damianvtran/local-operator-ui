@@ -37,8 +37,14 @@
  */
 
 import { totalmem } from "node:os";
-import type { QwenVoiceEngine } from "../../shared/desktop-contract";
-import type { ByokSpeakEntry, ByokState, ByokVoicePort } from "./byok-voice";
+import { readVoiceProviderStatus } from "../../shared/desktop-contract";
+import type { SpeechProvider } from "../../shared/desktop-control-contract";
+import type {
+	ByokProviderGap,
+	ByokSpeakEntry,
+	ByokState,
+	ByokVoicePort,
+} from "./byok-voice";
 import type { GatewayDownMessage, GatewayUpMessage } from "./qwen-gateway";
 import { qwenMachineTooSmall } from "./qwen-rig";
 import {
@@ -47,7 +53,6 @@ import {
 	type QwenMicSettled,
 	type QwenVoicePagePort,
 } from "./qwen-voice-page";
-import { isSelectableEngine } from "./qwen-voice-setting";
 
 export type QwenRigState = "stopped" | "starting" | "ready" | "error";
 
@@ -68,18 +73,18 @@ export type QwenVoiceEvent = {
 export type QwenVoiceStatus = {
 	rig: QwenRigState;
 	webui_url: string | null;
-	/** The engine in effect; `rig` describes the local rig only. */
-	engine?: QwenVoiceEngine;
+	/** The provider a `provider_not_ready` error names (see the contract). */
+	provider?: SpeechProvider | null;
 	/** Why the rig is in `error`, as one sentence; null otherwise. */
 	reason?: string | null;
 	/** Voice pages connected to the Gateway right now. */
 	clients?: number;
 	/**
 	 * `unexpected_exit`: a rig process died while the rig was ready.
-	 * `byok_key_missing`: the bring-your-own-key engine has no ElevenLabs key to
-	 * use, so nothing listens.
+	 * `provider_unset` / `provider_not_ready`: no speech provider is chosen, or the
+	 * chosen one cannot hear and speak yet, so nothing listens.
 	 */
-	cause?: "unexpected_exit" | "byok_key_missing" | null;
+	cause?: "unexpected_exit" | "provider_unset" | "provider_not_ready" | null;
 	/**
 	 * The macOS microphone verdict for this app's identity (plan §2/§4, review
 	 * M3). Additive to the frozen status: `denied` is "Microphone blocked - Open
@@ -176,10 +181,18 @@ export type QwenVoiceDeps = {
 	/** The hidden voice page (plan §1-§3); a no-op in agent-driven runs. */
 	page: QwenVoicePagePort;
 	/**
-	 * The bring-your-own-key engine's listener and speaker (`byok-voice.ts`).
-	 * Absent in a run with no byok half; every call to it is then skipped.
+	 * THE APP-OWNED VOICE PAGE's listener and speaker (`byok-voice.ts`; the name is
+	 * from when it was the bring-your-own-key path). It is the ONE voice path:
+	 * whenever hands-free voice is on, this is what hears and speaks. Absent in a
+	 * run with no page half (a test of the rig); every call to it is then skipped.
 	 */
 	byok?: ByokVoicePort;
+	/**
+	 * Allow the local Qwen rig to start. OFF unless a test says so: the app never
+	 * sets it (`index.ts`), so no setting a person can write starts ~5 GB of
+	 * models. The rig's code stays in the repo behind this one flag.
+	 */
+	rig?: boolean;
 	/**
 	 * Physical memory in bytes. A machine under 16 GB cannot hold the rig, and
 	 * the header says so before anything spawns (review R1).
@@ -197,16 +210,18 @@ type Relayed = {
 	at: number;
 	/**
 	 * The source reference and segment count `voice.text` answered for. The
-	 * bring-your-own-key engine speaks by reference (`/voice/speech` takes a
-	 * source and an index, never text), so it needs both; the rig ignores them.
+	 * app-owned page speaks by reference (`/voice/speech` takes a source and an
+	 * index, never text), so it needs both; the rig ignores them.
 	 */
 	source: ByokSpeakEntry["source"] | null;
 	segments: number;
 };
 
-/** The strip's sentence when the bring-your-own-key engine has no key to use. */
-export const BYOK_KEY_MISSING =
-	"Add your ElevenLabs key in Settings to use voice.";
+/** The strip's sentence when no speech provider is chosen. */
+export const PROVIDER_UNSET =
+	"Choose a speech provider in Settings to use voice.";
+/** A chosen provider that is not ready and whose backend sentence was empty. */
+export const PROVIDER_NOT_READY = "The speech provider you chose is not ready.";
 
 /** The slot's session id from a `{active}` payload, or null. */
 function slotOf(payload: unknown): string | null {
@@ -230,11 +245,8 @@ export class QwenVoice {
 	 * message. Every entry point checks it first.
 	 */
 	private enabled = false;
-	/**
-	 * Which engine hears and speaks. Only `local` ever starts the rig: `byok`
-	 * and the placeholder never load a model, which is the point of choosing them.
-	 */
-	private engine: QwenVoiceEngine = "local";
+	/** Whether the local rig may start at all (`QwenVoiceDeps.rig`; the app: never). */
+	private readonly rigAllowed: boolean;
 	/**
 	 * The two controls of the strip that main owns, mirrored into `status` so the
 	 * renderer never holds a second copy that can disagree (see `QwenVoiceStatus`).
@@ -242,7 +254,7 @@ export class QwenVoice {
 	private paused = false;
 	private muted = false;
 	/**
-	 * Whether the bring-your-own-key engine was STARTED (an enable frame, or the
+	 * Whether the app-owned page was STARTED (an enable frame, or the
 	 * renderer's "Start voice"). A slot merely learned from a status read does not
 	 * open the microphone, as with the rig: an app relaunched with voice still on
 	 * must not listen until asked. Cleared with the slot.
@@ -285,6 +297,7 @@ export class QwenVoice {
 
 	constructor(private readonly deps: QwenVoiceDeps) {
 		this.log = deps.log ?? (() => {});
+		this.rigAllowed = deps.rig === true;
 		this.now = deps.now ?? Date.now;
 		this.machineBytes = deps.machineBytes ?? totalmem;
 		this.setTimer =
@@ -300,43 +313,11 @@ export class QwenVoice {
 	}
 
 	getStatus(): QwenVoiceStatus {
-		return { ...this.status, engine: this.engine };
+		return { ...this.status };
 	}
 
 	isEnabled(): boolean {
 		return this.enabled;
-	}
-
-	getEngine(): QwenVoiceEngine {
-		return this.engine;
-	}
-
-	/**
-	 * Choose the engine; answers the one NOW in effect. A value that is not a
-	 * selectable engine (the `radient` placeholder, garbage from a renderer) is
-	 * refused and changes nothing.
-	 *
-	 * Leaving `local` while the rig is up stops it at once, like turning the
-	 * switch off but keeping the switch on: the models are the RAM the other
-	 * engines exist to save. Entering `local` starts nothing by itself; the
-	 * usual enable path does, exactly as when the switch goes on.
-	 */
-	async setEngine(next: unknown): Promise<QwenVoiceEngine> {
-		if (!isSelectableEngine(next) || next === this.engine) return this.engine;
-		this.engine = next;
-		this.log(`qwen-voice: engine is now ${next}`);
-		// Whatever the other engine was doing, this one starts from nothing.
-		this.byokListening = false;
-		this.syncByok();
-		if (next !== "local") {
-			this.applySlot(null, { start: false });
-			this.relayed = [];
-			this.awaitingMic = false;
-			this.starting = null;
-			await this.stop();
-		}
-		this.setStatus(this.status);
-		return this.engine;
 	}
 
 	/**
@@ -532,13 +513,11 @@ export class QwenVoice {
 	 */
 	start(reason: "enable" | "renderer"): Promise<QwenVoiceStatus> {
 		if (!this.enabled) return Promise.resolve(this.getStatus());
-		// Only the local engine has a rig. Another engine loads nothing here; the
-		// bring-your-own-key one starts LISTENING, which loads nothing either.
-		if (this.engine !== "local") {
-			if (this.engine === "byok") {
-				this.byokListening = true;
-				this.syncByok();
-			}
+		// THE RIG NEVER STARTS in the app. The app-owned page starts LISTENING
+		// instead, which loads no model (and still waits for a ready provider).
+		if (!this.rigAllowed) {
+			this.byokListening = true;
+			this.syncByok();
 			return Promise.resolve(this.getStatus());
 		}
 		if (this.rigUp()) return this.readyAgain(reason);
@@ -999,24 +978,32 @@ export class QwenVoice {
 		input: unknown,
 		response: { status: number; body: unknown },
 	): void {
-		if (!this.enabled) return;
 		const request = input as {
 			op?: unknown;
 			action?: unknown;
 			sessionId?: unknown;
 			source?: { kind?: unknown };
 		};
+		/*
+		 * THE PROVIDER IS LEARNED WITH VOICE ON OR OFF. It is a read of the person's
+		 * own `speech.provider` choice with no side effect here (the page half acts
+		 * on it only while listening is wanted), and the first enable must already
+		 * know it: the status read happened when Settings was open, not after the
+		 * wave button was pressed. An older backend sends neither field, which reads
+		 * as "none chosen" - the one reading that starts nothing.
+		 */
+		if (
+			request?.op === "voice.status" &&
+			response.status >= 200 &&
+			response.status < 300
+		) {
+			const result = (response.body as { result?: unknown } | null)?.result;
+			this.deps.byok?.setProvider(readVoiceProviderStatus(result));
+		}
+		if (!this.enabled) return;
 		if (request?.op === "voice.status" || request?.op === "voice.control") {
 			if (response.status < 200 || response.status >= 300) return;
 			const result = (response.body as { result?: unknown } | null)?.result;
-			if (request.op === "voice.status") {
-				// The backend's own answer for a request pinned to ElevenLabs; an older
-				// backend says nothing, which is "unknown", not "missing".
-				const byok = (result as { byok?: { ready?: unknown } } | null)?.byok;
-				this.deps.byok?.setKeyReady(
-					typeof byok?.ready === "boolean" ? byok.ready : null,
-				);
-			}
 			// An enable's answer also arrives as a feed frame, which is what starts
 			// the rig; this read only keeps the copy current between frames.
 			this.applySlot(slotOf(result), { start: false });
@@ -1071,7 +1058,7 @@ export class QwenVoice {
 		);
 		if (index < 0) return { spoken: false, reason: "not_relayed" };
 		if (this.paused) return { spoken: false, reason: "paused" };
-		if (this.engine === "byok") return this.speakByok(index);
+		if (!this.rigAllowed) return this.speakByok(index);
 		if (this.status.rig !== "ready")
 			return { spoken: false, reason: "rig_not_ready" };
 		// No voice page connected: nothing would be heard, so nothing is claimed.
@@ -1085,7 +1072,7 @@ export class QwenVoice {
 		return sent ? { spoken: true } : { spoken: false, reason: "rig_not_ready" };
 	}
 	/**
-	 * Speak through the bring-your-own-key engine: the same guard as the rig's (the
+	 * Speak through the app-owned page: the same guard as the rig's (the
 	 * text is one main relayed, consumed once), then the text's SOURCE and segment
 	 * count go to the page's speaker - never the words.
 	 */
@@ -1105,14 +1092,15 @@ export class QwenVoice {
 	}
 
 	/**
-	 * Tell the byok half whether it should be listening: voice on, this engine,
-	 * started, a holder, not paused. Idempotent, so every change calls it.
+	 * Tell the page half whether it should be listening: voice on, started, a
+	 * holder, not paused (and, inside it, a ready provider). Idempotent, so every
+	 * change calls it.
 	 */
 	private syncByok(): void {
 		this.deps.byok?.apply({
 			active:
 				this.enabled &&
-				this.engine === "byok" &&
+				!this.rigAllowed &&
 				this.byokListening &&
 				this.slot !== null &&
 				!this.paused,
@@ -1122,12 +1110,13 @@ export class QwenVoice {
 	}
 
 	/**
-	 * What the byok half is doing, in the strip's own vocabulary: listening is a
-	 * ready rig with one page connected, a missing key is the rig's error with its
-	 * own cause, a blocked microphone is the same `mic` field the rig reports.
+	 * What the page half is doing, in the strip's own vocabulary: listening is a
+	 * ready rig with one page connected, a missing or unready provider is the rig's
+	 * error with its own cause, a blocked microphone is the same `mic` field the
+	 * rig reports.
 	 */
-	byokReport(state: ByokState): void {
-		if (!this.enabled || this.engine !== "byok") return;
+	byokReport(state: ByokState, gap?: ByokProviderGap): void {
+		if (!this.enabled || this.rigAllowed) return;
 		switch (state) {
 			case "listening":
 				this.setStatus({ rig: "ready", webui_url: null, clients: 1 });
@@ -1140,12 +1129,27 @@ export class QwenVoice {
 						: { rig: "stopped", webui_url: null },
 				);
 				return;
-			case "key_missing":
+			case "checking":
+				// The provider status has not been read yet: not an error, and not
+				// listening either.
+				this.setStatus({ rig: "starting", webui_url: null });
+				return;
+			case "provider_unset":
 				this.setStatus({
 					rig: "error",
 					webui_url: null,
-					reason: BYOK_KEY_MISSING,
-					cause: "byok_key_missing",
+					reason: PROVIDER_UNSET,
+					cause: "provider_unset",
+				});
+				return;
+			case "provider_not_ready":
+				this.setStatus({
+					rig: "error",
+					webui_url: null,
+					// The backend's own sentence, as written.
+					reason: gap?.reason ?? PROVIDER_NOT_READY,
+					cause: "provider_not_ready",
+					provider: gap?.provider ?? null,
 				});
 				return;
 			case "mic_denied":

@@ -8,10 +8,7 @@
 
 import { useEffect } from "react";
 import { create } from "zustand";
-import type {
-	QwenVoiceBridge,
-	QwenVoiceEngine,
-} from "../../../../shared/desktop-contract";
+import type { QwenVoiceBridge } from "../../../../shared/desktop-contract";
 
 export const bridge = (): QwenVoiceBridge | undefined =>
 	(window as { api?: { desktop?: { qwenVoice?: QwenVoiceBridge } } }).api
@@ -51,45 +48,4 @@ export async function setVoiceSwitch(on: boolean): Promise<void> {
 	if (!rig?.setEnabled) return;
 	const enabled = await rig.setEnabled(on);
 	useVoiceSwitchStore.setState({ enabled });
-}
-
-/**
- * THE ENGINE, renderer half. Main owns the value (`qwen-voice-setting.ts`,
- * default `local`); this mirrors it. Unknown reads as `local`, the engine every
- * profile had before the choice existed.
- */
-export const useVoiceEngineStore = create<{ engine: QwenVoiceEngine }>(() => ({
-	engine: "local",
-}));
-
-/** Mount once (the engine row); it follows main's pushes. */
-export function useVoiceEngineSync(): void {
-	useEffect(() => {
-		const rig = bridge();
-		if (!rig?.getEngine) return;
-		let live = true;
-		void rig.getEngine().then(
-			(engine) => live && useVoiceEngineStore.setState({ engine }),
-			() => undefined,
-		);
-		const off = rig.onEngine?.((engine) =>
-			useVoiceEngineStore.setState({ engine }),
-		);
-		return () => {
-			live = false;
-			off?.();
-		};
-	}, []);
-}
-
-export function useVoiceEngine(): QwenVoiceEngine {
-	return useVoiceEngineStore((s) => s.engine);
-}
-
-/** Ask main to change the engine; the store follows main's ANSWER, not the ask. */
-export async function setVoiceEngine(engine: QwenVoiceEngine): Promise<void> {
-	const rig = bridge();
-	if (!rig?.setEngine) return;
-	const inEffect = await rig.setEngine(engine);
-	useVoiceEngineStore.setState({ engine: inEffect });
 }

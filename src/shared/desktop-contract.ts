@@ -6027,9 +6027,12 @@ export type QwenRigState = "stopped" | "starting" | "ready" | "error";
 export type QwenVoiceStatus = {
 	rig: QwenRigState;
 	webui_url: string | null;
-	/** The engine in effect (see `QwenVoiceEngine`); `rig` is only about `local`. */
-	engine?: QwenVoiceEngine;
 	reason?: string | null;
+	/**
+	 * The provider a `provider_not_ready` error is about, so the strip can send the
+	 * person to that provider's own page. Null/absent for every other state.
+	 */
+	provider?: SpeechProvider | null;
 	/**
 	 * Voice pages connected to the Gateway (the launcher's `client_attached` /
 	 * `client_detached`). "Listening" is true only with one or more: a ready rig
@@ -6038,9 +6041,11 @@ export type QwenVoiceStatus = {
 	clients?: number;
 	/**
 	 * Why the rig is in `error` when it was not a start failure.
-	 * `byok_key_missing`: bring-your-own-key voice has no ElevenLabs key to use.
+	 * `provider_unset`: no speech provider is chosen, so nothing listens.
+	 * `provider_not_ready`: the chosen provider cannot hear and speak yet; `reason`
+	 * is the backend's own sentence and `provider` names it.
 	 */
-	cause?: "unexpected_exit" | "byok_key_missing" | null;
+	cause?: "unexpected_exit" | "provider_unset" | "provider_not_ready" | null;
 	/**
 	 * The macOS microphone verdict for this app's identity. `prompting` is the
 	 * bounded wait: the OS dialog is up and unanswered.
@@ -6068,20 +6073,7 @@ export type QwenVoiceResult =
 	| { taskId: string; ok: true }
 	| { taskId: string; ok: false; code: string };
 /**
- * WHICH ENGINE HEARS AND SPEAKS (the voice switch's second setting).
- *
- * - `local`: the Qwen speech models on this machine (~5 GB). The default, and
- *   what every profile from before this setting existed gets.
- * - `byok`: bring your own key. Listening and speaking go through the person's
- *   own ElevenLabs key held by the daemon; nothing local loads.
- * - `radient`: Radient's cloud, billed in Radient credit. A PLACEHOLDER: shown,
- *   never selectable, never stored and never in effect.
- */
-export type QwenVoiceEngine = "local" | "byok" | "radient";
-/** The engines a person can choose today (`radient` is shown disabled). */
-export const SELECTABLE_QWEN_VOICE_ENGINES = ["local", "byok"] as const;
-/**
- * What main pushes about a take or a reply on bring-your-own-key voice
+ * What main pushes about a take or a reply on the app-owned voice page
  * (`voice.qwen.byok`). Main hears and uploads the recording itself, so the
  * renderer is TOLD about a take rather than sending it: `take_start` BEFORE the
  * upload (so the V14 binding is armed first), then `take_done` with the words the
@@ -6096,19 +6088,22 @@ export type QwenByokMessage =
 			requestId: string;
 			status: number;
 			code: string;
+			/** The provider's own sentence, when the refusal carried one. */
+			detail?: string;
 	  }
-	| { kind: "speech_failed"; sessionId: string; code: string };
+	| {
+			kind: "speech_failed";
+			sessionId: string;
+			code: string;
+			/** The provider's own sentence, when the refusal carried one. */
+			detail?: string;
+	  };
 
 export type QwenVoiceBridge = {
 	/** The person's voice switch (default OFF), owned by main. */
 	getEnabled: () => Promise<boolean>;
 	setEnabled: (on: boolean) => Promise<boolean>;
 	onEnabled: (listener: (enabled: boolean) => void) => () => void;
-	/** The engine in effect (`local` unless the person chose another). */
-	getEngine: () => Promise<QwenVoiceEngine>;
-	/** Choose an engine; answers the one now in effect (a refusal keeps the old). */
-	setEngine: (engine: QwenVoiceEngine) => Promise<QwenVoiceEngine>;
-	onEngine: (listener: (engine: QwenVoiceEngine) => void) => () => void;
 	onTake: (listener: (take: QwenVoiceTake) => void) => () => void;
 	result: (result: QwenVoiceResult) => Promise<boolean>;
 	speak: (input: {
@@ -6126,7 +6121,7 @@ export type QwenVoiceBridge = {
 	/** Silence the page's own speech; remembered across a recreate. */
 	setMuted: (muted: boolean) => Promise<QwenVoiceStatus>;
 	onEvent: (listener: (event: QwenVoiceEvent) => void) => () => void;
-	/** Bring-your-own-key voice's takes and reply failures, pushed by main. */
+	/** The app-owned page's takes and reply failures, pushed by main. */
 	onByok: (listener: (message: QwenByokMessage) => void) => () => void;
 };
 

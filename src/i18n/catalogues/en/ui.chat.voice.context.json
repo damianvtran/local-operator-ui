@@ -359,10 +359,10 @@
 		"tone": "sentence, no full stop",
 		"note": "Where the words the person cannot hear are; the reply is in the transcript."
 	},
-	"ui.chat.voice.error_byok_key_missing": {
+	"ui.chat.voice.error_provider_unset": {
 		"role": "visible reason after 'Voice error'",
 		"tone": "plain instruction, one sentence",
-		"note": "Bring-your-own-key voice is on but the daemon has no ElevenLabs key. ElevenLabs is a product name; Settings is the app's settings page."
+		"note": "Voice is on but no speech provider is chosen yet. Names the one place to fix it: the app's Settings page. Radient and ElevenLabs are product names."
 	},
 	"ui.chat.voice.byok_rate_limited": {
 		"role": "error toast",
