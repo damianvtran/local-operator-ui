@@ -1,0 +1,507 @@
+/**
+ * Remote compute, in every state a reviewer has to look at.
+ *
+ * THE COMPONENTS ARE THE SHIPPED ONES: `ChatHeader` is the real header, the device
+ * control is `ChatDeviceSlot`, and the Radient group is `RemoteComputePicker` reading
+ * `remote_compute.read` over the story bridge. What is invented is the WIRE DATA,
+ * whose field names are the API's (`remote-compute-types.ts`) and whose values are
+ * not.
+ *
+ * HOW THE PICKER GETS OPEN, since a story cannot press: the control's own store door
+ * (`useChatDeviceStore.requestPicker`) is the one the header's overflow item uses, so
+ * the story opens the real popover through the real path rather than re-creating the
+ * panel. That is also why the row states below are photographs of the control a user
+ * sees rather than of a layout this file drew.
+ *
+ * THE STATE EACH STORY IS NAMED FOR IS THE STATE ITS READ ANSWERS: A (flag off) is
+ * `{enabled: false}`, B is a signed-out account, and so on. Nothing here fakes a
+ * disabled row by passing a prop - if the model's resolver changed, the frames would
+ * change with it.
+ */
+
+import type { Meta, StoryObj } from "@storybook/react";
+import { type ReactNode, useLayoutEffect } from "react";
+import "../../styles/index.css";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import { ChatHeader } from "../chat/components/chat-header";
+import { ChatDeviceSlot } from "../chat/device/chat-device-slot";
+import { useChatDeviceStore } from "../chat/device/chat-device-store";
+import { RemoteComputeSheet } from "./remote-compute-sheet";
+import { remoteComputeRead } from "./remote-compute-types";
+import { RemoteRunCard } from "./remote-run-card";
+import { RemoteRunsDialog } from "./remote-runs-list";
+
+const meta = {
+	title: "Chat/Remote compute",
+	parameters: { layout: "fullscreen" },
+} satisfies Meta;
+export default meta;
+
+type Story = StoryObj;
+
+const SESSION = "8c1d2f4a9b73";
+const SELF = "d_9f3ac1e0b7d2aa41";
+const PEER = "d_4b2a91c4e0b87f3a";
+const RUN_ID = "9f2c1a04e7b3";
+const PROMPT = "Fix the failing test in the importer and open a pull request.";
+
+/* ---------------------------------------------------------------- the bridge */
+
+type Answer = { status: number; body: unknown };
+
+/**
+ * The capability read, as the picker receives it.
+ *
+ * ANSWERED FOR ITS OWN OP ONLY: a story's `remote` hook is consulted before the
+ * shared bridge, so a function that answered every op would hand the header's teams
+ * and sessions reads this family's body - which is how the first version of these
+ * stories rendered an error boundary instead of a picker.
+ */
+const readOnly = (over: Record<string, unknown>) => (request: { op: string }) =>
+	request.op === "remote_compute.read" ? read(over) : null;
+
+/** A remote-compute read; `over` is the wire's own shape, never a component prop. */
+const read = (over: Record<string, unknown>): Answer => ({
+	status: 200,
+	body: {
+		result: remoteComputeRead({
+			enabled: true,
+			account: { state: "signed-in", label: "operator@example.com" },
+			networks: [{ network_id: "n_4a1c", name: "devmesh", role: "admin" }],
+			capacity: [{ tier: "cloud_run", ready: true, detail: {} }],
+			pricing: null,
+			active: [],
+			offered: true,
+			...over,
+		}),
+	},
+});
+
+const RUN = {
+	id: RUN_ID,
+	name: "Fix the failing importer test",
+	tier: "cloud_run",
+	status: "running",
+	started_at: Date.now() - 252_000,
+	deadline_at: Date.now() + 6_948_000,
+	metered_seconds: 252,
+	charged_usd: 0,
+	hold_usd: 5.09,
+	network_id: null,
+};
+
+/**
+ * `pending` is a read that has NOT answered: the row's `checking…` state is only
+ * photographable while the promise is outstanding, so the bridge is asked for one.
+ */
+type Reply = Answer | null | Promise<never>;
+
+const installBridge = (remote: (request: { op: string }) => Reply) => {
+	const ok = <T,>(result: T): Answer => ({ status: 200, body: { result } });
+	const bridge = async (request: { op: string }) => {
+		const answered = remote(request);
+		if (answered) return answered;
+		switch (request.op) {
+			case "capabilities":
+				return ok({
+					desktop_available: true,
+					features: { peers: 1, session_transfer: 1 },
+				});
+			case "peers.list":
+				return ok({
+					self_device_id: SELF,
+					peers: [
+						{
+							device_id: PEER,
+							name: "build-box",
+							reachable: true,
+							session_count: 2,
+						},
+					],
+				});
+			case "networks.list":
+				return ok({
+					self_device_id: SELF,
+					networks: [
+						{
+							network_id: "n_4a1c",
+							name: "devmesh",
+							epoch: 7,
+							trust: "operator",
+							members: [
+								{
+									device_id: SELF,
+									name: "operator-mbp",
+									role: "admin",
+									capabilities: ["list", "view", "prompt", "steer", "stop"],
+									active: true,
+									suspect: false,
+									endpoints: [],
+									last_seen_at: 1789400000,
+									reachable: true,
+									reason: "",
+								},
+								{
+									device_id: PEER,
+									name: "build-box",
+									role: "drive",
+									capabilities: ["list", "view", "prompt", "steer", "stop"],
+									active: true,
+									suspect: false,
+									endpoints: ["10.88.0.4:4097"],
+									last_seen_at: 1789400000,
+									reachable: true,
+									reason: "",
+								},
+							],
+						},
+					],
+				});
+			case "teams.list":
+				return ok({ teams: [] });
+			case "commands.entities":
+				return ok({ command: "", entities: [], current: null });
+			case "sessions.list":
+			case "sessions.command":
+				return ok({ sessions: [] });
+			/*
+			 * THE ARTIFACT ROUTES ARE 404 ON PURPOSE: that is the state v1 ships in (the
+			 * two routes land later), so the run card's Logs/Results controls must NOT be
+			 * drawn in these frames. A story that answered them would photograph a
+			 * capability this release does not have.
+			 */
+			case "remote_compute.logs":
+			case "remote_compute.results":
+				return { status: 404, body: { detail: "not found" } };
+			default:
+				throw new Error(`unexpected desktop op in this story: ${request.op}`);
+		}
+	};
+	const page = window as unknown as {
+		api?: {
+			desktop?: {
+				request: (r: { op: string }) => Promise<Answer>;
+			};
+		};
+	};
+	const api = page.api ?? {};
+	page.api = api;
+	api.desktop = { request: bridge };
+};
+
+/** The pane the control is composed for, with a prompt in its composer. */
+const seed = () => {
+	useCanonicalSessionsStore.setState({
+		drafts: {},
+		cwd: "~/src/importer",
+		sessions: [],
+	});
+	useConversationInputStore.setState({
+		inputByConversation: {
+			[SESSION]: {
+				currentInput: PROMPT,
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+		},
+	});
+	useChatDeviceStore.setState({ moves: {}, pickerRequests: {} });
+};
+
+const Band = ({
+	width = 1080,
+	children,
+}: { width?: number; children: ReactNode }) => (
+	<div className="flex shrink-0 flex-col bg-canvas" style={{ width }}>
+		{children}
+	</div>
+);
+
+/** The header with its picker OPEN, through the control's own door. */
+const Pickers = ({
+	remote,
+	width = 1080,
+}: {
+	remote: Parameters<typeof installBridge>[0];
+	width?: number;
+}) => {
+	useLayoutEffect(() => {
+		installBridge(remote);
+		seed();
+	}, [remote]);
+	return (
+		<div className="flex flex-col bg-canvas">
+			<Band width={width}>
+				<ChatHeader
+					agentName="local-operator-ui"
+					identity={{
+						sessionId: SESSION,
+						activeAgent: "lopdev",
+						activeTeam: "manager",
+						boundAgent: null,
+						boundTeam: null,
+					}}
+					onOpenOptions={() => undefined}
+					onToggleBrowser={() => undefined}
+					onOpenConsole={() => undefined}
+					deviceSlot={<ChatDeviceSlot sessionId={SESSION} />}
+				/>
+			</Band>
+		</div>
+	);
+};
+
+/* ------------------------------------------------------- the picker's states */
+
+/** A: the family is off. The group does not exist; the picker is today's. */
+export const RowFlagOff: Story = {
+	render: () => <Pickers remote={readOnly({ enabled: false })} />,
+};
+
+/** B: enabled, not signed in. The row is an on-ramp, not an error. */
+export const RowSignedOut: Story = {
+	render: () => (
+		<Pickers
+			remote={readOnly({ account: { state: "signed-out", label: "" } })}
+		/>
+	),
+};
+
+/** C: ready, no run live. */
+export const RowReady: Story = {
+	render: () => <Pickers remote={readOnly({})} />,
+};
+
+/** D: a run in flight. The aggregate is on the row. */
+export const RowRunning: Story = {
+	render: () => <Pickers remote={readOnly({ active: [RUN] })} />,
+};
+
+/** E: capacity cannot be provisioned. Not "offline" - nothing went away. */
+export const RowCapacity: Story = {
+	render: () => (
+		<Pickers
+			remote={readOnly({ capacity: [{ tier: "cloud_run", ready: false }] })}
+		/>
+	),
+};
+
+/** F: no network to bind a run to. */
+export const RowNeedsNetwork: Story = {
+	render: () => <Pickers remote={readOnly({ networks: [] })} />,
+};
+
+/** G: the deployment does not offer the family. The group stays, disabled. */
+export const RowNotOffered: Story = {
+	render: () => <Pickers remote={readOnly({ offered: false, capacity: [] })} />,
+};
+
+/** The read is still in flight: the row says so rather than guessing. */
+export const RowChecking: Story = {
+	render: () => (
+		<Pickers
+			remote={(request) =>
+				request.op === "remote_compute.read" ? new Promise(() => {}) : null
+			}
+		/>
+	),
+};
+
+/* ------------------------------------------------------------------ the sheet */
+
+const Sheet = ({
+	remote,
+	prompt = PROMPT,
+}: {
+	remote: Parameters<typeof installBridge>[0];
+	/** The composer's text: empty is a state the sheet must answer for. */
+	prompt?: string;
+}) => {
+	useLayoutEffect(() => {
+		installBridge(remote);
+	}, [remote]);
+	const value = remote({ op: "remote_compute.read" });
+	const parsed = remoteComputeRead(
+		value !== null && !(value instanceof Promise)
+			? (value.body as { result?: unknown }).result
+			: undefined,
+	);
+	return (
+		<div className="flex min-h-[34rem] items-center justify-center bg-canvas p-8">
+			<RemoteComputeSheet
+				open
+				onOpenChange={() => undefined}
+				read={parsed}
+				prompt={prompt}
+				directory="~/src/importer"
+				onSubmitted={() => undefined}
+				onViewRuns={() => undefined}
+			/>
+		</div>
+	);
+};
+
+/** The sheet with one network: the line is a statement, and Cloud run is live. */
+export const SheetReady: Story = {
+	render: () => <Sheet remote={readOnly({})} />,
+};
+
+/** Two networks and no default: the tiers stand down until one is chosen. */
+export const SheetAmbiguousNetwork: Story = {
+	render: () => (
+		<Sheet
+			remote={readOnly({
+				networks: [
+					{ network_id: "n_4a1c", name: "devmesh", role: "admin" },
+					{ network_id: "n_91cc", name: "homelab", role: "read" },
+				],
+			})}
+		/>
+	),
+};
+
+/** An empty composer: the submit stands down with its own reason. */
+export const SheetNoPrompt: Story = {
+	render: () => <Sheet remote={readOnly({})} prompt="" />,
+};
+
+/* ------------------------------------------------------------------ the card */
+
+const Card = ({ remote }: { remote: Parameters<typeof installBridge>[0] }) => {
+	useLayoutEffect(() => {
+		installBridge(remote);
+	}, [remote]);
+	return (
+		<div className="bg-canvas p-6" style={{ width: 560 }}>
+			<RemoteRunCard
+				runId={RUN_ID}
+				networkName={() => "devmesh"}
+				onForgotten={() => undefined}
+			/>
+		</div>
+	);
+};
+
+const runAnswer =
+	(over: Record<string, unknown>): Parameters<typeof installBridge>[0] =>
+	(request) =>
+		request.op === "remote_compute.run"
+			? { status: 200, body: { result: { run: { ...RUN, ...over } } } }
+			: request.op === "remote_compute.read"
+				? read({
+						networks: [
+							{ network_id: "n_4a1c", name: "devmesh", role: "admin" },
+						],
+					})
+				: null;
+
+/** A run that is spending: held amount, elapsed from the server's start. */
+export const CardRunning: Story = {
+	render: () => <Card remote={runAnswer({ status: "running" })} />,
+};
+
+/** Settled with its charge, and the controls that a settled run offers. */
+export const CardFinished: Story = {
+	render: () => (
+		<Card
+			remote={runAnswer({
+				status: "succeeded",
+				started_at: Date.now() - 3_600_000,
+				metered_seconds: 511,
+				charged_usd: 0.62,
+				hold_usd: 5.09,
+				network_id: "n_4a1c",
+			})}
+		/>
+	),
+};
+
+/** A run the provider reports as failed. */
+export const CardFailed: Story = {
+	render: () => (
+		<Card
+			remote={runAnswer({
+				status: "failed",
+				started_at: Date.now() - 600_000,
+				charged_usd: 0.11,
+				hold_usd: null,
+			})}
+		/>
+	),
+};
+
+/* ------------------------------------------------------------------ the list */
+
+const List = ({
+	remote,
+	open = true,
+}: {
+	remote: Parameters<typeof installBridge>[0];
+	open?: boolean;
+}) => {
+	useLayoutEffect(() => {
+		installBridge(remote);
+	}, [remote]);
+	return (
+		<div className="flex min-h-[30rem] items-center justify-center bg-canvas p-8">
+			<RemoteRunsDialog
+				open={open}
+				onOpenChange={() => undefined}
+				enabled
+				networkName={() => "devmesh"}
+			/>
+		</div>
+	);
+};
+
+const runsList =
+	(runs: unknown[], server: string): Parameters<typeof installBridge>[0] =>
+	(request) =>
+		request.op === "remote_compute.runs"
+			? { status: 200, body: { result: { runs, server } } }
+			: null;
+
+/** Three runs, two of them still spending. */
+export const RunsPopulated: Story = {
+	render: () => (
+		<List
+			remote={runsList(
+				[
+					{ ...RUN, network_id: "n_4a1c" },
+					{
+						...RUN,
+						id: "aa12bc77f001",
+						name: "Rewrite the parser tests",
+						status: "queued",
+						started_at: Date.now() - 40_000,
+					},
+					{
+						...RUN,
+						id: "cc90de11a2b4",
+						name: "Lint the docs tree",
+						status: "succeeded",
+						charged_usd: 0.34,
+						hold_usd: null,
+						metered_seconds: 210,
+					},
+				],
+				"ok",
+			)}
+		/>
+	),
+};
+
+/** Signed out: these are this device's record, and the banner says so. */
+export const RunsRecordOnly: Story = {
+	render: () => (
+		<List remote={runsList([{ ...RUN, status: "succeeded" }], "signed-out")} />
+	),
+};
+
+/** Nothing has been run yet. */
+export const RunsEmpty: Story = {
+	render: () => <List remote={runsList([], "ok")} />,
+};

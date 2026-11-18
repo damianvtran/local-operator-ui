@@ -38,7 +38,10 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	panelIdentityFor,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { type FC, useCallback, useMemo } from "react";
 import {
 	useMeshNetworks,
@@ -46,6 +49,8 @@ import {
 	useMeshTransfer,
 } from "../../mesh/mesh-store";
 import type { NetworkSummary, PeerRow } from "../../mesh/mesh-types";
+import { RemoteComputePicker } from "../../remote-compute/remote-compute-picker";
+import { useRemoteRunPins } from "../../remote-compute/remote-run-pins";
 import {
 	type DevicePickerModel,
 	type DeviceRow,
@@ -170,6 +175,16 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	const settleMove = useChatDeviceStore((state) => state.settleMove);
 	const refuseMove = useChatDeviceStore((state) => state.refuseMove);
 	const setDraftPeer = useCanonicalSessionsStore((state) => state.setDraftPeer);
+	/*
+	 * A DRAFT'S STAGED DIRECTORY, which is where its first send will run and therefore
+	 * where a remote run started from this pane starts. One value for every draft row
+	 * (`setCwd`'s own note says why), so a live conversation reads its own row's `cwd`
+	 * beside it.
+	 */
+	const draftCwd = useCanonicalSessionsStore((state) => state.cwd);
+	/* The pane's identity, from the same helper the composer keys its text by. */
+	const identity = panelIdentityFor(draftKey ?? null, sessionId);
+	const pinRun = useRemoteRunPins((state) => state.pin);
 	const settlePlacement = useCanonicalSessionsStore(
 		(state) => state.settlePlacement,
 	);
@@ -412,6 +427,19 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	);
 
 	if (!peersEnabled) return null;
+	/*
+	 * THE OTHER GROUP IN THIS PICKER, composed here for the same reason the mesh's
+	 * rows are: the node reads its own facts, and the header stays chrome. Its prompt
+	 * comes from the composer by `identity`, read inside the node while the picker is
+	 * open; its directory is this pane's own (`draftCwd`, or the live row's `cwd`).
+	 */
+	const remoteGroup = identity ? (
+		<RemoteComputePicker
+			identity={identity}
+			directory={sessionId ? (row?.cwd ?? "") : draftCwd}
+			onSubmitted={(run) => pinRun(identity, run.id)}
+		/>
+	) : undefined;
 	return (
 		<ChatHeaderDevice
 			placement={placement}
@@ -419,6 +447,7 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 			sessionId={sessionId}
 			busy={move?.kind === "moving"}
 			onPick={onPick}
+			remoteGroup={remoteGroup}
 			onCheckAgain={() => {
 				void peers.refetch();
 				void networks.refetch();

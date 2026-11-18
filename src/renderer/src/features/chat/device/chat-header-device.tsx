@@ -362,6 +362,7 @@ const DevicePicker = ({
 	busy,
 	onPick,
 	onCheckAgain,
+	remoteGroup,
 	open,
 	onOpenChange,
 	children,
@@ -370,6 +371,18 @@ const DevicePicker = ({
 	busy: boolean;
 	onPick: (row: DeviceRow) => void;
 	onCheckAgain: () => void;
+	/**
+	 * THE SECOND GROUP: rented capacity, drawn below a rule.
+	 *
+	 * A NODE RATHER THAN A ROW TYPE, because Radient is not a device: it has no id, no
+	 * membership, no presence and no sessions, so it cannot be a `DeviceRow` without
+	 * those fields asserting things that are not true (see
+	 * `features/remote-compute/remote-compute-picker.tsx`). The picker owns the peer
+	 * group and the rule; the caller composes the other group, exactly as the header
+	 * takes `deviceSlot` as a node. The node renders its own separators and its own
+	 * second-level surfaces.
+	 */
+	remoteGroup?: ReactNode;
 	/**
 	 * The picker's open state, LIFTED because two doors reach it: the chip itself
 	 * (an uncontrolled press) and the header's `Move to another device` menu item,
@@ -425,6 +438,9 @@ const DevicePicker = ({
 					 */
 					<DeviceGuidance guidance={model.guidance} />
 				) : null}
+				{/* The second group, last: it is the one entry that is not a device, and
+				 * the rule above it is what says so. */}
+				{remoteGroup}
 			</div>
 			{model.footer ||
 			model.readFailure ||
@@ -498,6 +514,7 @@ export const ChatHeaderDevice = ({
 	busy,
 	onPick,
 	onCheckAgain,
+	remoteGroup,
 }: {
 	placement: DevicePlacement;
 	model: DevicePickerModel;
@@ -508,6 +525,8 @@ export const ChatHeaderDevice = ({
 	/** `keep` is the confirmation's own answer: false deletes the source copy. */
 	onPick: (deviceId: string | null, keep: boolean) => void;
 	onCheckAgain: () => void;
+	/** The rented-capacity group below the rule; see `DevicePicker`. */
+	remoteGroup?: ReactNode;
 }) => {
 	useI18nLocale();
 	/*
@@ -598,6 +617,7 @@ export const ChatHeaderDevice = ({
 				busy={busy}
 				onCheckAgain={onCheckAgain}
 				onPick={choose}
+				remoteGroup={remoteGroup}
 				open={open}
 				onOpenChange={setOpen}
 			>

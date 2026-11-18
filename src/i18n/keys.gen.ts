@@ -88,6 +88,7 @@ import enUiChatPickers from "./catalogues/en/ui.chat.pickers.json";
 import enUiChatQuotaResend from "./catalogues/en/ui.chat.quota_resend.json";
 import enUiChatRadientSession from "./catalogues/en/ui.chat.radient_session.json";
 import enUiChatReadAck from "./catalogues/en/ui.chat.read_ack.json";
+import enUiChatRemoteCompute from "./catalogues/en/ui.chat.remote_compute.json";
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
 import enUiChatRunControls from "./catalogues/en/ui.chat.run_controls.json";
 import enUiChatRunDetails from "./catalogues/en/ui.chat.run_details.json";
@@ -260,6 +261,7 @@ import esUiChatPickers from "./catalogues/es/ui.chat.pickers.json";
 import esUiChatQuotaResend from "./catalogues/es/ui.chat.quota_resend.json";
 import esUiChatRadientSession from "./catalogues/es/ui.chat.radient_session.json";
 import esUiChatReadAck from "./catalogues/es/ui.chat.read_ack.json";
+import esUiChatRemoteCompute from "./catalogues/es/ui.chat.remote_compute.json";
 import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.json";
 import esUiChatRunControls from "./catalogues/es/ui.chat.run_controls.json";
 import esUiChatRunDetails from "./catalogues/es/ui.chat.run_details.json";
@@ -432,6 +434,7 @@ import frUiChatPickers from "./catalogues/fr/ui.chat.pickers.json";
 import frUiChatQuotaResend from "./catalogues/fr/ui.chat.quota_resend.json";
 import frUiChatRadientSession from "./catalogues/fr/ui.chat.radient_session.json";
 import frUiChatReadAck from "./catalogues/fr/ui.chat.read_ack.json";
+import frUiChatRemoteCompute from "./catalogues/fr/ui.chat.remote_compute.json";
 import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.json";
 import frUiChatRunControls from "./catalogues/fr/ui.chat.run_controls.json";
 import frUiChatRunDetails from "./catalogues/fr/ui.chat.run_details.json";
@@ -604,6 +607,7 @@ import hiUiChatPickers from "./catalogues/hi/ui.chat.pickers.json";
 import hiUiChatQuotaResend from "./catalogues/hi/ui.chat.quota_resend.json";
 import hiUiChatRadientSession from "./catalogues/hi/ui.chat.radient_session.json";
 import hiUiChatReadAck from "./catalogues/hi/ui.chat.read_ack.json";
+import hiUiChatRemoteCompute from "./catalogues/hi/ui.chat.remote_compute.json";
 import hiUiChatResponseActions from "./catalogues/hi/ui.chat.response_actions.json";
 import hiUiChatRunControls from "./catalogues/hi/ui.chat.run_controls.json";
 import hiUiChatRunDetails from "./catalogues/hi/ui.chat.run_details.json";
@@ -776,6 +780,7 @@ import ruUiChatPickers from "./catalogues/ru/ui.chat.pickers.json";
 import ruUiChatQuotaResend from "./catalogues/ru/ui.chat.quota_resend.json";
 import ruUiChatRadientSession from "./catalogues/ru/ui.chat.radient_session.json";
 import ruUiChatReadAck from "./catalogues/ru/ui.chat.read_ack.json";
+import ruUiChatRemoteCompute from "./catalogues/ru/ui.chat.remote_compute.json";
 import ruUiChatResponseActions from "./catalogues/ru/ui.chat.response_actions.json";
 import ruUiChatRunControls from "./catalogues/ru/ui.chat.run_controls.json";
 import ruUiChatRunDetails from "./catalogues/ru/ui.chat.run_details.json";
@@ -948,6 +953,7 @@ import urUiChatPickers from "./catalogues/ur/ui.chat.pickers.json";
 import urUiChatQuotaResend from "./catalogues/ur/ui.chat.quota_resend.json";
 import urUiChatRadientSession from "./catalogues/ur/ui.chat.radient_session.json";
 import urUiChatReadAck from "./catalogues/ur/ui.chat.read_ack.json";
+import urUiChatRemoteCompute from "./catalogues/ur/ui.chat.remote_compute.json";
 import urUiChatResponseActions from "./catalogues/ur/ui.chat.response_actions.json";
 import urUiChatRunControls from "./catalogues/ur/ui.chat.run_controls.json";
 import urUiChatRunDetails from "./catalogues/ur/ui.chat.run_details.json";
@@ -1120,6 +1126,7 @@ import viUiChatPickers from "./catalogues/vi/ui.chat.pickers.json";
 import viUiChatQuotaResend from "./catalogues/vi/ui.chat.quota_resend.json";
 import viUiChatRadientSession from "./catalogues/vi/ui.chat.radient_session.json";
 import viUiChatReadAck from "./catalogues/vi/ui.chat.read_ack.json";
+import viUiChatRemoteCompute from "./catalogues/vi/ui.chat.remote_compute.json";
 import viUiChatResponseActions from "./catalogues/vi/ui.chat.response_actions.json";
 import viUiChatRunControls from "./catalogues/vi/ui.chat.run_controls.json";
 import viUiChatRunDetails from "./catalogues/vi/ui.chat.run_details.json";
@@ -1292,6 +1299,7 @@ import zhCNUiChatPickers from "./catalogues/zh-CN/ui.chat.pickers.json";
 import zhCNUiChatQuotaResend from "./catalogues/zh-CN/ui.chat.quota_resend.json";
 import zhCNUiChatRadientSession from "./catalogues/zh-CN/ui.chat.radient_session.json";
 import zhCNUiChatReadAck from "./catalogues/zh-CN/ui.chat.read_ack.json";
+import zhCNUiChatRemoteCompute from "./catalogues/zh-CN/ui.chat.remote_compute.json";
 import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actions.json";
 import zhCNUiChatRunControls from "./catalogues/zh-CN/ui.chat.run_controls.json";
 import zhCNUiChatRunDetails from "./catalogues/zh-CN/ui.chat.run_details.json";
@@ -1467,6 +1475,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatQuotaResend,
 	...enUiChatRadientSession,
 	...enUiChatReadAck,
+	...enUiChatRemoteCompute,
 	...enUiChatResponseActions,
 	...enUiChatRunControls,
 	...enUiChatRunDetails,
@@ -1647,6 +1656,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatQuotaResend,
 		...esUiChatRadientSession,
 		...esUiChatReadAck,
+		...esUiChatRemoteCompute,
 		...esUiChatResponseActions,
 		...esUiChatRunControls,
 		...esUiChatRunDetails,
@@ -1821,6 +1831,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatQuotaResend,
 		...frUiChatRadientSession,
 		...frUiChatReadAck,
+		...frUiChatRemoteCompute,
 		...frUiChatResponseActions,
 		...frUiChatRunControls,
 		...frUiChatRunDetails,
@@ -1995,6 +2006,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatQuotaResend,
 		...hiUiChatRadientSession,
 		...hiUiChatReadAck,
+		...hiUiChatRemoteCompute,
 		...hiUiChatResponseActions,
 		...hiUiChatRunControls,
 		...hiUiChatRunDetails,
@@ -2169,6 +2181,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatQuotaResend,
 		...ruUiChatRadientSession,
 		...ruUiChatReadAck,
+		...ruUiChatRemoteCompute,
 		...ruUiChatResponseActions,
 		...ruUiChatRunControls,
 		...ruUiChatRunDetails,
@@ -2343,6 +2356,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatQuotaResend,
 		...urUiChatRadientSession,
 		...urUiChatReadAck,
+		...urUiChatRemoteCompute,
 		...urUiChatResponseActions,
 		...urUiChatRunControls,
 		...urUiChatRunDetails,
@@ -2517,6 +2531,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatQuotaResend,
 		...viUiChatRadientSession,
 		...viUiChatReadAck,
+		...viUiChatRemoteCompute,
 		...viUiChatResponseActions,
 		...viUiChatRunControls,
 		...viUiChatRunDetails,
@@ -2691,6 +2706,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatQuotaResend,
 		...zhCNUiChatRadientSession,
 		...zhCNUiChatReadAck,
+		...zhCNUiChatRemoteCompute,
 		...zhCNUiChatResponseActions,
 		...zhCNUiChatRunControls,
 		...zhCNUiChatRunDetails,
@@ -7210,6 +7226,86 @@ export type MessageParams = {
 	"ui.chat.read_ack.retry_remedy": undefined;
 	"ui.chat.read_ack.retry_remedy_sentence": undefined;
 	"ui.chat.read_ack.unreachable_fallback": undefined;
+	"ui.chat.remote_compute.card.artifacts_soon": undefined;
+	"ui.chat.remote_compute.card.binding": { network: string };
+	"ui.chat.remote_compute.card.binding_none": undefined;
+	"ui.chat.remote_compute.card.cancel": undefined;
+	"ui.chat.remote_compute.card.cancel_failed": undefined;
+	"ui.chat.remote_compute.card.charged": { amount: string };
+	"ui.chat.remote_compute.card.forget": undefined;
+	"ui.chat.remote_compute.card.forget_failed": undefined;
+	"ui.chat.remote_compute.card.held": { amount: string };
+	"ui.chat.remote_compute.card.logs": undefined;
+	"ui.chat.remote_compute.card.not_found": undefined;
+	"ui.chat.remote_compute.card.results": undefined;
+	"ui.chat.remote_compute.card.status.cancelled": undefined;
+	"ui.chat.remote_compute.card.status.failed": undefined;
+	"ui.chat.remote_compute.card.status.queued": undefined;
+	"ui.chat.remote_compute.card.status.running": undefined;
+	"ui.chat.remote_compute.card.status.succeeded": undefined;
+	"ui.chat.remote_compute.card.unavailable": undefined;
+	"ui.chat.remote_compute.card.untitled": undefined;
+	"ui.chat.remote_compute.remedy.add_credits": undefined;
+	"ui.chat.remote_compute.remedy.push_branch": undefined;
+	"ui.chat.remote_compute.remedy.push_branch_help": undefined;
+	"ui.chat.remote_compute.remedy.refresh": undefined;
+	"ui.chat.remote_compute.remedy.retry": undefined;
+	"ui.chat.remote_compute.remedy.retry_in": { seconds: number };
+	"ui.chat.remote_compute.remedy.sign_in": undefined;
+	"ui.chat.remote_compute.row.capacity": undefined;
+	"ui.chat.remote_compute.row.checking": undefined;
+	"ui.chat.remote_compute.row.create_one": undefined;
+	"ui.chat.remote_compute.row.held": { amount: string };
+	"ui.chat.remote_compute.row.name": undefined;
+	"ui.chat.remote_compute.row.needs_network": undefined;
+	"ui.chat.remote_compute.row.not_offered": undefined;
+	"ui.chat.remote_compute.row.ready": undefined;
+	"ui.chat.remote_compute.row.retry": undefined;
+	"ui.chat.remote_compute.row.runs": { count: number };
+	"ui.chat.remote_compute.row.runs_capped": { count: string };
+	"ui.chat.remote_compute.row.sentence.capacity": undefined;
+	"ui.chat.remote_compute.row.sentence.checking": undefined;
+	"ui.chat.remote_compute.row.sentence.network": undefined;
+	"ui.chat.remote_compute.row.sentence.not_offered": undefined;
+	"ui.chat.remote_compute.row.sentence.ready": undefined;
+	"ui.chat.remote_compute.row.sentence.runs": {
+		count: string;
+		factsSuffix: string;
+	};
+	"ui.chat.remote_compute.row.sentence.sign_in": undefined;
+	"ui.chat.remote_compute.row.sign_in": undefined;
+	"ui.chat.remote_compute.runs.disabled": undefined;
+	"ui.chat.remote_compute.runs.empty": undefined;
+	"ui.chat.remote_compute.runs.loading": undefined;
+	"ui.chat.remote_compute.runs.record_only": undefined;
+	"ui.chat.remote_compute.runs.title": undefined;
+	"ui.chat.remote_compute.runs.unavailable": undefined;
+	"ui.chat.remote_compute.sheet.close": undefined;
+	"ui.chat.remote_compute.sheet.directory.label": undefined;
+	"ui.chat.remote_compute.sheet.heading": undefined;
+	"ui.chat.remote_compute.sheet.network.change": undefined;
+	"ui.chat.remote_compute.sheet.network.choose": undefined;
+	"ui.chat.remote_compute.sheet.network.choose_why": undefined;
+	"ui.chat.remote_compute.sheet.network.label": undefined;
+	"ui.chat.remote_compute.sheet.network.recorded": undefined;
+	"ui.chat.remote_compute.sheet.prompt.empty": undefined;
+	"ui.chat.remote_compute.sheet.prompt.label": undefined;
+	"ui.chat.remote_compute.sheet.submit": undefined;
+	"ui.chat.remote_compute.sheet.submit.why_capacity": undefined;
+	"ui.chat.remote_compute.sheet.submit.why_directory": undefined;
+	"ui.chat.remote_compute.sheet.submit.why_network": undefined;
+	"ui.chat.remote_compute.sheet.submit.why_prompt": undefined;
+	"ui.chat.remote_compute.sheet.submitting": undefined;
+	"ui.chat.remote_compute.sheet.tier.capacity_why": undefined;
+	"ui.chat.remote_compute.sheet.tier.cloud_run.note": undefined;
+	"ui.chat.remote_compute.sheet.tier.cloud_run.title": undefined;
+	"ui.chat.remote_compute.sheet.tier.dedicated.note": undefined;
+	"ui.chat.remote_compute.sheet.tier.dedicated.spot.note": undefined;
+	"ui.chat.remote_compute.sheet.tier.dedicated.spot.title": undefined;
+	"ui.chat.remote_compute.sheet.tier.dedicated.title": undefined;
+	"ui.chat.remote_compute.sheet.tier.dedicated.why": undefined;
+	"ui.chat.remote_compute.sheet.tier.group_label": undefined;
+	"ui.chat.remote_compute.sheet.view_runs": undefined;
 	"ui.chat.response_actions.answer_label": undefined;
 	"ui.chat.response_actions.copied": undefined;
 	"ui.chat.response_actions.copy": undefined;

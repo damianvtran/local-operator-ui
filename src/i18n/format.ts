@@ -162,6 +162,27 @@ export function formatRelativeTime(
 }
 
 /**
+ * A money amount: `5.09` -> `"$5.09"` (fr `"5,09 $US"`, hi `"US$5.09"`).
+ *
+ * WHY CURRENCY AND NOT A NUMBER WITH A SIGN GLUED ON. The amounts this app prints
+ * are the remote-compute HOLD and CHARGE the server reports, both in USD - and a
+ * symbol concatenated in JSX puts the symbol in the wrong place, keeps a `.` decimal
+ * separator in every locale, and formats digits in the wrong script. `Intl` under
+ * the resolved locale is the only one of those that is true everywhere.
+ *
+ * WHY THE AMOUNT IS PASSED IN RATHER THAN DERIVED: the rates are the deployment's
+ * own configuration and the API publishes none (capacity carries no pricing today),
+ * so nothing in this layer may compute what a run costs - it prints what the server
+ * stated. A caller with no stated amount prints nothing, never `$0.00`.
+ */
+export function formatUsd(amount: number, locale?: string): string {
+	return numberFormatFor(locale ?? currentLocale(), {
+		style: "currency",
+		currency: "USD",
+	}).format(amount);
+}
+
+/**
  * A compact duration: `3725` -> `"1h 2m 5s"` (digits localised).
  *
  * Mirrors `local_operator/i18n/format.py::format_duration`: zero units are
