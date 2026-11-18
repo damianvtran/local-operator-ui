@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, copy-review round 2, PR #1981 (Team Bridge held messages)",
+  "locale": "fr",
+  "pr": 1981,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "feat/team-bridge-held-messages",
+  "date": "2026-11-18",
+  "head": "fc873f42a2717c07be28bcda656c30808593c375",
+  "instance": "pr1981-r2-fr-copy-448ec44e",
+  "auditor": {
+    "agent": "copy-reviewer",
+    "role": "independent copy reviewer and translation auditor (radientdev team); did not translate or author these strings",
+    "model": "anthropic/claude-opus-5-5",
+    "session": "448ec44e4dca",
+    "instance": "pr1981-r2-fr-copy-448ec44e",
+    "independent_of_translator": true,
+    "independence": "Copy-reviewer lop session 448ec44e4dca, a fresh round-2 task. Translator: coder-fa67a4efec8b (anthropic/claude-opus-5-5), which authored 924551c6ce and fc873f42a2; this session wrote no product code or catalogue bytes. Round-1 copy auditor was session 59b8a8b87a55. No MT or translation API used."
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Served model anthropic/claude-opus-5-5 per this session's harness system prompt; no fallback observed during the audit.",
+  "status": "passed",
+  "references": {
+    "glossary": "damianvtran/local-operator i18n/glossary.md @ origin/main 1d7e456afbb9 (sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7)",
+    "style_guide": "damianvtran/local-operator i18n/style-guides/fr.md @ origin/main 1d7e456afbb9 (sha256 5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7)",
+    "context": {
+      "ui.teamBridge.holds": "d520a4ecdc360f69213e54b072772b94bdf0681aed51495eea21000eb906b17f",
+      "ui.ownerAudit": "06df625675d7ce420878f7c13f7b519c7811567de6a7d47e946206d8b96c1e87"
+    }
+  },
+  "checks": "key set == en; ICU placeholders identical to en; plural arms == CLDR categories (ru one/few/many/other, es/fr one/many/other, hi/ur one/other, vi/zh-CN other); no manual bidi controls (U+200E/F, U+202A-E, U+2066-9, U+061C); no em/en dashes; glossary terms (agent, approvals) match damianvtran/local-operator i18n/glossary.md; visible Deliver/Discard labels contained in their accessible names and confirm actions (label-in-name); meaning read against en + ui.teamBridge.holds.context.json.",
+  "namespaces": {
+    "ui.teamBridge.holds": {
+      "status": "passed",
+      "sha256": {
+        "en": "7ae9c6602f2e20a626710782f01eae941689e960bfebe9ff8c398c9f152551ff",
+        "fr": "128e0c84e634c6a66d193154439bd5e2160138163626c543b7325638e85992b7"
+      },
+      "keys_audited": 56,
+      "scope": "Whole namespace (new in this PR), 56 keys at fc873f42a2. 28 keys added or changed in fc873f42a2 read in full; the other 28 English values are byte-identical to 06304b6f24, where round-1 copy audit (comment 6988505360) judged them, and their fr values are byte-identical too except release_off and refusal.release_off, changed by C9 and re-read here. Round-1 C2/C3/C9/C10 locale fixes verified landed.",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "id": "C13",
+          "key": "ui.teamBridge.holds.discarding",
+          "current": "Écartement…",
+          "suggested": "Mise à l’écart…",
+          "note": "'écartement' is a noun for spacing or a gap, not the act of setting something aside; the progress label should be the nominalised 'écarter'."
+        }
+      ]
+    },
+    "ui.ownerAudit": {
+      "status": "passed",
+      "sha256": {
+        "en": "f143ad7cb33ca8fb1a568144097fd82ca264447e2bb999cea2be6e144448f6b2",
+        "fr": "b717ec88ddf3616db1fa870a4ddcb013e30979de1d6b2dab4d6ca84d2dd2c0fd"
+      },
+      "keys_audited": 1,
+      "keys": [
+        "ui.ownerAudit.held_review"
+      ],
+      "scope": "Only ui.ownerAudit.held_review differs from base 1fb3d656c3 in en and in fr (mechanically verified); the other 43 pairs are byte-identical to base and keep their prior audits' judgement.",
+      "findings": []
+    }
+  }
+}
