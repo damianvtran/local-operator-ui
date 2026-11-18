@@ -176,6 +176,8 @@ function errorReason(
 ): string {
 	if (rig?.rig === "error") {
 		if (rig.cause === "unexpected_exit") return t("ui.chat.voice.error_exited");
+		if (rig.cause === "byok_key_missing")
+			return t("ui.chat.voice.error_byok_key_missing");
 		const reason = rig.reason?.trim();
 		return reason
 			? reason.charAt(0).toUpperCase() + reason.slice(1)

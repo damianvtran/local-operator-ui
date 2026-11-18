@@ -31,6 +31,7 @@
  *   tells the renderer the playback was cancelled.
  */
 
+import type { QwenByokMessage } from "../../shared/desktop-contract";
 import type { PlayMessage } from "../../voice-page/channels";
 import type { DesktopMediaResponse } from "../desktop-media";
 import { QWEN_CHANNEL } from "./qwen-voice";
@@ -63,17 +64,7 @@ export type ByokState =
 	| "no_window";
 
 /** What the renderer is told about a take or a reply, on `BYOK_CHANNEL`. */
-export type ByokMessage =
-	| { kind: "take_start"; sessionId: string; requestId: string }
-	| { kind: "take_done"; sessionId: string; requestId: string; text: string }
-	| {
-			kind: "take_failed";
-			sessionId: string;
-			requestId: string;
-			status: number;
-			code: string;
-	  }
-	| { kind: "speech_failed"; sessionId: string; code: string };
+export type ByokMessage = QwenByokMessage;
 
 /** The app-owned voice page, as this file sees it (`byok-voice-page.ts`). */
 export interface ByokPagePort {

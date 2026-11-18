@@ -52,6 +52,7 @@ import { useNavigate } from "react-router-dom";
 import QWEN_PHRASES from "../../../../../resources/qwen-voice/phrases.json";
 import type {
 	DesktopMediaResponse,
+	QwenByokMessage,
 	QwenVoiceBridge,
 	QwenVoiceStatus,
 } from "../../../../shared/desktop-contract";
@@ -520,6 +521,81 @@ export async function sendVoiceTake(text: string): Promise<VoiceTakeOutcome> {
 	};
 }
 
+/**
+ * BRING-YOUR-OWN-KEY TAKES. Main hears the person and uploads the recording
+ * itself, so this window is TOLD about a take rather than sending it, and the
+ * rest is the rig path's own: the binding is armed BEFORE the upload (the
+ * server mints the take's user message with `message.id == request_id`, and a
+ * fast turn can beat the 200 home), the take's own turn answers it, and its last
+ * assistant message is spoken through the same `voice.text` -> `speak` door.
+ *
+ * Only the slot holder's takes count: a message for a session that no longer
+ * holds the slot changes nothing here (the upload already happened; the server
+ * decided what it was).
+ */
+export function applyByokMessage(message: unknown): void {
+	const value = message as Partial<QwenByokMessage> | null;
+	if (!value || typeof value !== "object") return;
+	const sessionId = (value as { sessionId?: unknown }).sessionId;
+	if (typeof sessionId !== "string") return;
+	if (useVoiceStore.getState().active?.session_id !== sessionId) return;
+	const store = useVoiceStore.getState();
+	if (value.kind === "speech_failed") {
+		// The reply is on screen either way; this only says it was not spoken.
+		showWarningToast(
+			t(
+				value.code === "voice_rate_limited"
+					? "ui.chat.voice.byok_speech_rate_limited"
+					: "ui.chat.voice.byok_speech_failed",
+			),
+		);
+		return;
+	}
+	const requestId = (value as { requestId?: unknown }).requestId;
+	if (typeof requestId !== "string") return;
+	if (value.kind === "take_start") {
+		feedTurns(sessionId, { kind: "armed", requestId });
+		scheduleTakeExpiry(sessionId, requestId);
+		store.setExchange("working", sessionId);
+		return;
+	}
+	if (value.kind === "take_done") {
+		// The words the SERVER heard: the strip's subject and the history's `You:`.
+		if (typeof value.text === "string")
+			store.noteTake(sessionId, value.text, Date.now());
+		settleExchange(sessionId);
+		return;
+	}
+	if (value.kind !== "take_failed") return;
+	feedTurns(sessionId, { kind: "disarmed", requestId });
+	switch (value.code) {
+		case "approval_pending":
+			// The card is on screen and blocking; the take changed nothing (V7, V13).
+			settleExchange(sessionId);
+			showCardToast(sessionId, t("ui.chat.voice.card_pending"));
+			return;
+		case "empty_transcript":
+			settleExchange(sessionId);
+			showInfoToast(t("ui.chat.voice.empty_transcript"));
+			return;
+		case "voice_rate_limited":
+			store.setExchange("error", sessionId, "not_sent");
+			showErrorToast(t("ui.chat.voice.byok_rate_limited"));
+			return;
+		case "stt_unavailable":
+			store.setExchange("error", sessionId, "not_sent");
+			showErrorToast(t("ui.chat.voice.byok_stt_failed"));
+			return;
+		case "voice_not_enabled":
+			store.setExchange("error", sessionId, "not_sent");
+			showErrorToast(t("ui.chat.voice.not_enabled"));
+			return;
+		default:
+			store.setExchange("error", sessionId, "not_sent");
+			showErrorToast(t("ui.chat.voice.error_not_sent"));
+	}
+}
+
 /** One rig take: the take path, then its admission back to the launcher. */
 async function onRigTake(take: { taskId: string; text: string }) {
 	const outcome = await sendVoiceTake(take.text);
@@ -889,6 +965,7 @@ export const QwenVoiceController: FC = () => {
 		void rig.getStatus().then(setRig, () => undefined);
 		const offStatus = rig.onStatus(setRig);
 		const offTake = rig.onTake((take) => void onRigTake(take));
+		const offByok = rig.onByok(applyByokMessage);
 		/*
 		 * THE RIG'S OWN AUDIO EVENTS (plan §8/§10): only the Gateway knows when
 		 * sound is actually moving, so the header's "Hearing you" and "Speaking"
@@ -944,6 +1021,7 @@ export const QwenVoiceController: FC = () => {
 		return () => {
 			offStatus();
 			offTake();
+			offByok();
 			offEvent();
 		};
 	}, []);

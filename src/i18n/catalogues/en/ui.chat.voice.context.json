@@ -358,5 +358,30 @@
 		"role": "strip caption beside the chip",
 		"tone": "sentence, no full stop",
 		"note": "Where the words the person cannot hear are; the reply is in the transcript."
+	},
+	"ui.chat.voice.error_byok_key_missing": {
+		"role": "visible reason after 'Voice error'",
+		"tone": "plain instruction, one sentence",
+		"note": "Bring-your-own-key voice is on but the daemon has no ElevenLabs key. ElevenLabs is a product name; Settings is the app's settings page."
+	},
+	"ui.chat.voice.byok_rate_limited": {
+		"role": "error toast",
+		"tone": "plain, calm, one or two short sentences",
+		"note": "The person's own ElevenLabs account refused a request for hitting its limit while their words were being heard. Their spoken words were not sent."
+	},
+	"ui.chat.voice.byok_stt_failed": {
+		"role": "error toast",
+		"tone": "plain, one short sentence then a hint",
+		"note": "ElevenLabs could not turn the recording into words, most often a missing or wrong key. Their spoken words were not sent."
+	},
+	"ui.chat.voice.byok_speech_failed": {
+		"role": "warning toast",
+		"tone": "plain, two short sentences",
+		"note": "A reply could not be read aloud. The reply is already in the conversation."
+	},
+	"ui.chat.voice.byok_speech_rate_limited": {
+		"role": "warning toast",
+		"tone": "plain, one sentence",
+		"note": "The person's ElevenLabs limit stopped a reply being read aloud. The reply is already on screen."
 	}
 }

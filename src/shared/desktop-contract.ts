@@ -5972,8 +5972,11 @@ export type QwenVoiceStatus = {
 	 * with no page open hears nothing.
 	 */
 	clients?: number;
-	/** Why the rig is in `error` when it was not a start failure. */
-	cause?: "unexpected_exit" | null;
+	/**
+	 * Why the rig is in `error` when it was not a start failure.
+	 * `byok_key_missing`: bring-your-own-key voice has no ElevenLabs key to use.
+	 */
+	cause?: "unexpected_exit" | "byok_key_missing" | null;
 	/**
 	 * The macOS microphone verdict for this app's identity. `prompting` is the
 	 * bounded wait: the OS dialog is up and unanswered.
@@ -6013,6 +6016,25 @@ export type QwenVoiceResult =
 export type QwenVoiceEngine = "local" | "byok" | "radient";
 /** The engines a person can choose today (`radient` is shown disabled). */
 export const SELECTABLE_QWEN_VOICE_ENGINES = ["local", "byok"] as const;
+/**
+ * What main pushes about a take or a reply on bring-your-own-key voice
+ * (`voice.qwen.byok`). Main hears and uploads the recording itself, so the
+ * renderer is TOLD about a take rather than sending it: `take_start` BEFORE the
+ * upload (so the V14 binding is armed first), then `take_done` with the words the
+ * server heard or `take_failed` with the route's declared word.
+ */
+export type QwenByokMessage =
+	| { kind: "take_start"; sessionId: string; requestId: string }
+	| { kind: "take_done"; sessionId: string; requestId: string; text: string }
+	| {
+			kind: "take_failed";
+			sessionId: string;
+			requestId: string;
+			status: number;
+			code: string;
+	  }
+	| { kind: "speech_failed"; sessionId: string; code: string };
+
 export type QwenVoiceBridge = {
 	/** The person's voice switch (default OFF), owned by main. */
 	getEnabled: () => Promise<boolean>;
@@ -6040,6 +6062,8 @@ export type QwenVoiceBridge = {
 	/** Silence the page's own speech; remembered across a recreate. */
 	setMuted: (muted: boolean) => Promise<QwenVoiceStatus>;
 	onEvent: (listener: (event: QwenVoiceEvent) => void) => () => void;
+	/** Bring-your-own-key voice's takes and reply failures, pushed by main. */
+	onByok: (listener: (message: QwenByokMessage) => void) => () => void;
 };
 
 export type DesktopAPI = {

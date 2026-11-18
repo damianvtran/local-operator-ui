@@ -1086,8 +1086,9 @@ test("D8: the gate announcement and every refused take share one per-session war
 	// Round 1, U5/D7: only when Ben is NOT looking at the voice session.
 	assert.match(helper.slice(0, helper.indexOf("\n}")), TOAST_ONLY_ELSEWHERE);
 	// The announcement, the pre-check and the server's refusal all route through it.
-	// Its declaration plus three call sites.
-	assert.equal([...controller.matchAll(CARD_TOAST)].length, 4);
+	// Its declaration plus four call sites (the bring-your-own-key refusal is the
+	// fourth: it too shares the one id).
+	assert.equal([...controller.matchAll(CARD_TOAST)].length, 5);
 	assert.doesNotMatch(
 		controller,
 		RAW_CARD_TOAST,
@@ -1583,7 +1584,7 @@ const CONTROLLER_STUBS = {
 	"@shared/hooks/use-desktop-feed": "export const useDesktopFeed=()=>({});",
 	"@shared/i18n": "export const t=(k)=>k;",
 	"@shared/utils/toast-manager":
-		"export const dismissToast=()=>{}; export const showErrorToast=()=>{}; export const showInfoToast=()=>{}; export const showWarningToast=()=>{};",
+		"const note=(kind)=>(message)=>{(globalThis.__voiceToasts??=[]).push([kind,message]);}; export const dismissToast=()=>{}; export const showErrorToast=note('error'); export const showInfoToast=note('info'); export const showWarningToast=note('warning');",
 	"@shared/api/local-operator/desktop-hooks":
 		"export const desktopFeatureEnabled=()=>true; export const useDesktopCapabilities=()=>({});",
 	"@shared/api/query-client": "export const queryClient={};",
@@ -1597,7 +1598,7 @@ const READS_INPUT_MODE = /input_mode|inputMode/;
 const controllerBundle = await build({
 	stdin: {
 		contents:
-			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, isQwenPhrase, isQwenPhraseHeard, markPhraseSpoken, PHRASE_ECHO_WINDOW_MS, rememberSpoken, speechMs, viewedSessionId, spokenTruncated, LONG_TAKE_MS, noteSpeechSegment, takeDroppedNotice, voiceEventEffects } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf, activityOfEvent } from "./src/renderer/src/features/voice/voice-store"; export { scheduleReplyEndTone, playReplyEndTone, END_TONE_HZ, END_NOTE_SECONDS } from "./src/renderer/src/features/voice/voice-earcons";',
+			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, isQwenPhrase, isQwenPhraseHeard, markPhraseSpoken, PHRASE_ECHO_WINDOW_MS, rememberSpoken, speechMs, viewedSessionId, spokenTruncated, LONG_TAKE_MS, noteSpeechSegment, takeDroppedNotice, voiceEventEffects, applyByokMessage } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf, activityOfEvent } from "./src/renderer/src/features/voice/voice-store"; export { scheduleReplyEndTone, playReplyEndTone, END_TONE_HZ, END_NOTE_SECONDS } from "./src/renderer/src/features/voice/voice-earcons";',
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -2343,6 +2344,185 @@ test("U9: a rig error wins over a stale exchange error, so its reason and Try ag
 	assert.match(reason, RIG_REASON_SHOWN);
 	store.setExchange(null, null);
 	store.setRig({ rig: "ready", webui_url: null, clients: 1 });
+});
+
+/*
+ * BRING-YOUR-OWN-KEY TAKES: main hears and uploads the recording, so the renderer
+ * is told instead of sending. The binding (V14) must be armed BEFORE the upload,
+ * and the take's own turn must answer it, exactly as on the rig path.
+ */
+const toasts = () => globalThis.__voiceToasts ?? [];
+const takeMessage = (kind, extra = {}) => ({
+	kind,
+	sessionId: "s-byok",
+	requestId: "6f1c2a4e-1b2c-4d3e-8f90-123456789abc",
+	...extra,
+});
+
+test("BYOK: take_start puts the strip on Working and arms the binding; the take's own turn ends it", async () => {
+	const { applyByokMessage, feedTurns, useVoiceStore, phase } =
+		await controller();
+	useVoiceStore.getState().setActive({ session_id: "s-byok", enabled_at: 1 });
+	assert.equal(phase(), "listening");
+	applyByokMessage(takeMessage("take_start"));
+	assert.equal(phase(), "working");
+	assert.equal(useVoiceStore.getState().exchange?.sessionId, "s-byok");
+	// A typed turn is not the take's: it must not end the exchange.
+	feedTurns("s-byok", userStart("someone-elses-message"));
+	assert.equal(phase(), "working");
+	feedTurns("s-byok", userStart(takeMessage("take_start").requestId));
+	feedTurns("s-byok", { kind: "event", event: { type: "agent_start" } });
+	feedTurns("s-byok", {
+		kind: "event",
+		event: { type: "agent_end", aborted: true },
+	});
+	assert.equal(phase(), "listening", "the bound turn answered the take");
+});
+
+test("BYOK: take_done records the words the server heard for the strip and the history, and keeps Working while an answer is owed", async () => {
+	const { applyByokMessage, useVoiceStore, phase } = await controller();
+	useVoiceStore.getState().setActive({ session_id: "s-byok", enabled_at: 1 });
+	applyByokMessage(takeMessage("take_start"));
+	applyByokMessage(takeMessage("take_done", { text: "What is in plan.txt?" }));
+	assert.equal(phase(), "working");
+	assert.ok(
+		JSON.stringify(useVoiceStore.getState()).includes("What is in plan.txt?"),
+		"the transcript is shown",
+	);
+	useVoiceStore.getState().setExchange(null, null);
+});
+
+test("BYOK: a take for a session that no longer holds the slot changes nothing here", async () => {
+	const { applyByokMessage, useVoiceStore, phase } = await controller();
+	useVoiceStore.getState().setActive({ session_id: "s-other", enabled_at: 1 });
+	globalThis.__voiceToasts = [];
+	applyByokMessage(takeMessage("take_start"));
+	applyByokMessage(takeMessage("take_done", { text: "hello" }));
+	applyByokMessage(
+		takeMessage("take_failed", { status: 409, code: "voice_not_enabled" }),
+	);
+	assert.equal(phase(), "listening");
+	assert.deepEqual(toasts(), []);
+});
+
+test("BYOK: each refused take is said in plain words and leaves the right state", async () => {
+	const { applyByokMessage, useVoiceStore, phase } = await controller();
+	const cases = [
+		["empty_transcript", "info", "ui.chat.voice.empty_transcript", "listening"],
+		["approval_pending", "warning", "ui.chat.voice.card_pending", "listening"],
+		["voice_rate_limited", "error", "ui.chat.voice.byok_rate_limited", "error"],
+		["stt_unavailable", "error", "ui.chat.voice.byok_stt_failed", "error"],
+		["voice_not_enabled", "error", "ui.chat.voice.not_enabled", "error"],
+		["failed", "error", "ui.chat.voice.error_not_sent", "error"],
+	];
+	for (const [code, kind, key, expectedPhase] of cases) {
+		useVoiceStore.getState().setExchange(null, null);
+		useVoiceStore.getState().setActive({ session_id: "s-byok", enabled_at: 1 });
+		globalThis.__voiceToasts = [];
+		applyByokMessage(takeMessage("take_start"));
+		applyByokMessage(takeMessage("take_failed", { status: 422, code }));
+		assert.deepEqual(toasts(), [[kind, key]], code);
+		assert.equal(phase(), expectedPhase, code);
+	}
+	useVoiceStore.getState().setExchange(null, null);
+	useVoiceStore
+		.getState()
+		.setRig({ rig: "ready", webui_url: null, clients: 1 });
+});
+
+test("BYOK: a refused take disarms the binding, so a later typed turn is not spoken as its answer", async () => {
+	const { applyByokMessage, feedTurns, useVoiceStore, phase } =
+		await controller();
+	useVoiceStore.getState().setExchange(null, null);
+	useVoiceStore.getState().setActive({ session_id: "s-byok", enabled_at: 1 });
+	applyByokMessage(takeMessage("take_start"));
+	applyByokMessage(
+		takeMessage("take_failed", { status: 429, code: "voice_rate_limited" }),
+	);
+	feedTurns("s-byok", userStart(takeMessage("take_start").requestId));
+	feedTurns("s-byok", { kind: "event", event: { type: "agent_start" } });
+	assert.notEqual(phase(), "working", "nothing is owed an answer");
+	useVoiceStore.getState().setExchange(null, null);
+});
+
+test("BYOK: a reply that could not be spoken is a short toast, never an error state", async () => {
+	const { applyByokMessage, useVoiceStore, phase } = await controller();
+	useVoiceStore.getState().setExchange(null, null);
+	useVoiceStore.getState().setActive({ session_id: "s-byok", enabled_at: 1 });
+	globalThis.__voiceToasts = [];
+	applyByokMessage({
+		kind: "speech_failed",
+		sessionId: "s-byok",
+		code: "voice_rate_limited",
+	});
+	applyByokMessage({
+		kind: "speech_failed",
+		sessionId: "s-byok",
+		code: "voice_unavailable",
+	});
+	applyByokMessage({
+		kind: "speech_failed",
+		sessionId: "s-byok",
+		code: "failed",
+	});
+	assert.deepEqual(toasts(), [
+		["warning", "ui.chat.voice.byok_speech_rate_limited"],
+		["warning", "ui.chat.voice.byok_speech_failed"],
+		["warning", "ui.chat.voice.byok_speech_failed"],
+	]);
+	assert.equal(phase(), "listening");
+	applyByokMessage({
+		kind: "speech_failed",
+		sessionId: "s-other",
+		code: "failed",
+	});
+	assert.equal(toasts().length, 3, "another session's failure is not shown");
+});
+
+test("BYOK: malformed pushes from main are ignored", async () => {
+	const { applyByokMessage, useVoiceStore, phase } = await controller();
+	useVoiceStore.getState().setExchange(null, null);
+	useVoiceStore.getState().setActive({ session_id: "s-byok", enabled_at: 1 });
+	globalThis.__voiceToasts = [];
+	for (const junk of [
+		null,
+		"x",
+		{},
+		{ kind: "nope" },
+		{ kind: "take_start" },
+		{ kind: "take_start", sessionId: "s-byok" },
+	]) {
+		applyByokMessage(junk);
+	}
+	assert.equal(phase(), "listening");
+	assert.deepEqual(toasts(), []);
+});
+
+test("BYOK: the strip says why a missing key stopped voice, in words, not the rig's sentence", () => {
+	const composer = readFileSync(
+		"src/renderer/src/features/voice/voice-composer.tsx",
+		"utf8",
+	);
+	const reason = composer.slice(composer.indexOf("function errorReason"));
+	assert.ok(
+		reason
+			.slice(0, reason.indexOf('exchange === "not_sent"'))
+			.includes('rig.cause === "byok_key_missing"'),
+	);
+	assert.ok(reason.includes("ui.chat.voice.error_byok_key_missing"));
+});
+
+test("BYOK: the controller subscribes to main's byok push, and the bridge, preload and contract carry it", () => {
+	const controllerSource = readFileSync(
+		"src/renderer/src/features/voice/qwen-voice-controller.tsx",
+		"utf8",
+	);
+	assert.ok(controllerSource.includes("rig.onByok("));
+	const preload = readFileSync("src/preload/index.ts", "utf8");
+	assert.ok(preload.includes('"voice.qwen.byok"'));
+	const contract = readFileSync("src/shared/desktop-contract.ts", "utf8");
+	assert.ok(contract.includes("onByok:"));
+	assert.ok(contract.includes('"byok_key_missing"'));
 });
 
 test("viewedSessionId reads the HashRouter's chat route", async () => {

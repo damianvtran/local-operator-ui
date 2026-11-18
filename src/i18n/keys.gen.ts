@@ -1179,6 +1179,10 @@ export type MessageParams = {
 	"ui.chat.voice.another_conversation": undefined;
 	"ui.chat.voice.approval_waiting": undefined;
 	"ui.chat.voice.approve_on_screen": undefined;
+	"ui.chat.voice.byok_rate_limited": undefined;
+	"ui.chat.voice.byok_speech_failed": undefined;
+	"ui.chat.voice.byok_speech_rate_limited": undefined;
+	"ui.chat.voice.byok_stt_failed": undefined;
 	"ui.chat.voice.card_pending": undefined;
 	"ui.chat.voice.card_pending_short": undefined;
 	"ui.chat.voice.connecting_caption": undefined;
@@ -1190,6 +1194,7 @@ export type MessageParams = {
 	"ui.chat.voice.empty_history": undefined;
 	"ui.chat.voice.empty_transcript": undefined;
 	"ui.chat.voice.enable_failed": { reason: string };
+	"ui.chat.voice.error_byok_key_missing": undefined;
 	"ui.chat.voice.error_exited": undefined;
 	"ui.chat.voice.error_not_sent": undefined;
 	"ui.chat.voice.error_start_failed": undefined;

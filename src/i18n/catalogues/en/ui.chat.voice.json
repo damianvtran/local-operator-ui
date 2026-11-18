@@ -71,5 +71,10 @@
 	"ui.chat.voice.strip_pause": "Pause voice",
 	"ui.chat.voice.strip_resume": "Resume voice",
 	"ui.chat.voice.mute": "Silence the voice",
-	"ui.chat.voice.unmute": "Hear the voice again"
+	"ui.chat.voice.unmute": "Hear the voice again",
+	"ui.chat.voice.error_byok_key_missing": "Add your ElevenLabs key in Settings to use voice.",
+	"ui.chat.voice.byok_rate_limited": "Your ElevenLabs limit is used up for now. Try again in a moment.",
+	"ui.chat.voice.byok_stt_failed": "Voice could not hear that. Check your ElevenLabs key.",
+	"ui.chat.voice.byok_speech_failed": "Voice could not speak that reply. It is on screen.",
+	"ui.chat.voice.byok_speech_rate_limited": "Your ElevenLabs limit is used up for now, so that reply was not spoken."
 }
