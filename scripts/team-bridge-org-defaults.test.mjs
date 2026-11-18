@@ -250,7 +250,7 @@ test("a community is the default only with no private org and no invitation", ()
 	);
 });
 
-test("this app session's scope outranks invitation and default org while still valid", () => {
+test("a pending invitation outranks this app session's scope (RFC §3 order; review m1)", () => {
 	const invited = { ...acme, invited: true };
 	assert.deepEqual(
 		resolve({
@@ -258,7 +258,30 @@ test("this app session's scope outranks invitation and default org while still v
 			defaultTenantId: "tnt_minerva",
 			session: priv(ALL),
 		}),
+		priv("tnt_acme"),
+		"an invitation arriving mid-session is shown, not hidden behind the earlier scope",
+	);
+	assert.deepEqual(
+		resolve({
+			organizations: [minerva, invited],
+			communities: [loc],
+			defaultTenantId: "tnt_minerva",
+			session: cmty("cmty_local_operator"),
+		}),
+		priv("tnt_acme"),
+		"nor behind a community the reader switched to",
+	);
+});
+
+test("this app session's scope outranks the default org while still valid", () => {
+	assert.deepEqual(
+		resolve({
+			organizations: [minerva, acme],
+			defaultTenantId: "tnt_minerva",
+			session: priv(ALL),
+		}),
 		priv(ALL),
+		"the reader moved to the union this session; leaving and returning keeps it",
 	);
 	assert.deepEqual(
 		resolve({
@@ -343,6 +366,219 @@ test("resolveOpeningScope: a remembered union survives a pending organization li
 	);
 });
 
+/* ------------------------------------- the default-org hold (review M1/m2) */
+
+test("openingDefaultHeld: several orgs and memberships unsettled hold the opening", () => {
+	const base = {
+		organizationCount: 2,
+		membershipsSettled: false,
+		chosen: false,
+	};
+	assert.equal(m.openingDefaultHeld(base), true);
+	assert.equal(
+		m.openingDefaultHeld({ ...base, membershipsSettled: true }),
+		false,
+		"answered (or failed) memberships settle it",
+	);
+	assert.equal(
+		m.openingDefaultHeld({ ...base, organizationCount: 1 }),
+		false,
+		"one org is the answer whatever the default: tb-instant-open is untouched",
+	);
+	assert.equal(m.openingDefaultHeld({ ...base, organizationCount: 0 }), false);
+	assert.equal(m.openingDefaultHeld({ ...base, chosen: true }), false);
+	assert.equal(
+		m.openingDefaultHeld({ ...base, requestedTenant: "tnt_acme" }),
+		false,
+	);
+	assert.equal(
+		m.openingDefaultHeld({ ...base, session: "tnt_acme" }),
+		false,
+		"a session scope outranks the default, so waiting would buy nothing",
+	);
+});
+
+test("openingOrganizationCount: the list when known, else the snapshot's tenants", () => {
+	assert.equal(m.openingOrganizationCount([minerva, acme], []), 2);
+	assert.equal(
+		m.openingOrganizationCount(
+			[],
+			[
+				{ tenant_id: "tnt_minerva" },
+				{ tenant_id: "tnt_acme" },
+				{ tenant_id: "tnt_acme" },
+			],
+		),
+		2,
+		"a two-tenant snapshot proves a multi-org account before the status answers",
+	);
+	assert.equal(m.openingOrganizationCount([], [{ tenant_id: "tnt_acme" }]), 1);
+	assert.equal(m.openingOrganizationCount([], undefined), 0);
+});
+
+test("resolveOpeningScope: a held opening keeps the seed and decides nothing", () => {
+	assert.equal(
+		m.resolveOpeningScope({
+			organizations: [minerva, acme],
+			stored: "tnt_acme",
+			defaultTenantId: null,
+			chosen: false,
+			current: "tnt_acme",
+			defaultPending: true,
+		}),
+		"tnt_acme",
+	);
+	assert.equal(
+		m.resolveOpeningScope({
+			organizations: [minerva, acme],
+			defaultTenantId: null,
+			requestedTenant: "tnt_x",
+			chosen: false,
+			current: "tnt_acme",
+			defaultPending: true,
+		}),
+		"tnt_x",
+		"a deep link is never held",
+	);
+});
+
+/*
+ * The cold launch the review reproduced (M1), driven through the same three
+ * page decisions in order: is the opening held, what scope does it resolve
+ * to, and is that answer recorded. The page paints its gate loading state
+ * while held (pinned in the page-source test below), so the only scopes that
+ * ever reach the screen or `sessionStorage` are the ones this walk records.
+ */
+function coldLaunch({ stored, phases }) {
+	const session = fakeStorage();
+	let scope = stored ?? ALL; // the page's synchronous seed on a restart
+	const painted = [];
+	for (const phase of phases) {
+		const organizationCount = m.openingOrganizationCount(
+			phase.organizations,
+			phase.snapshotRows,
+		);
+		const sessionScope = m.readSessionScope(session, "acct-1");
+		const held = m.openingDefaultHeld({
+			organizationCount,
+			membershipsSettled: phase.memberships !== "loading",
+			chosen: false,
+			session: sessionScope,
+		});
+		if (held) {
+			painted.push("held");
+			continue;
+		}
+		scope = m.resolveOpeningScope({
+			organizations: phase.organizations,
+			stored,
+			session: sessionScope,
+			defaultTenantId:
+				phase.memberships === "ok" ? phase.defaultTenantId : null,
+			chosen: false,
+			current: scope,
+			snapshotRows: phase.snapshotRows,
+		});
+		painted.push(scope);
+		if (
+			m.shouldRecordSessionScope({
+				organizationCount,
+				membershipsFailed: phase.memberships === "failed",
+				chosen: false,
+			})
+		)
+			m.writeSessionScope(session, "acct-1", scope);
+	}
+	return { painted, session: m.readSessionScope(session, "acct-1") };
+}
+
+test("cold launch, hub tenants before memberships: never paints or records yesterday's pick (M1, m2)", () => {
+	const snapshotRows = [
+		{ tenant_id: "tnt_minerva" },
+		{ tenant_id: "tnt_acme" },
+	];
+	const run = coldLaunch({
+		stored: "tnt_acme",
+		phases: [
+			// before the status gate: only the watcher's two-tenant snapshot
+			{ organizations: [], snapshotRows, memberships: "loading" },
+			// status answered with hub tenants; memberships still in flight
+			{ organizations: [minerva, acme], snapshotRows, memberships: "loading" },
+			// memberships answered: Minerva is home
+			{
+				organizations: [minerva, acme],
+				snapshotRows,
+				memberships: "ok",
+				defaultTenantId: "tnt_minerva",
+			},
+		],
+	});
+	assert.deepEqual(run.painted, ["held", "held", "tnt_minerva"]);
+	assert.equal(
+		run.session,
+		"tnt_minerva",
+		"only the decided scope is recorded",
+	);
+});
+
+test("memberships fail: fall back now, record nothing, and let the default win later (M1)", () => {
+	const session = fakeStorage();
+	const failed = {
+		organizationCount: 2,
+		membershipsFailed: true,
+		chosen: false,
+	};
+	assert.equal(m.shouldRecordSessionScope(failed), false);
+	assert.equal(
+		m.shouldRecordSessionScope({ ...failed, chosen: true }),
+		true,
+		"a scope the reader picked is theirs, memberships or not",
+	);
+	assert.equal(
+		m.shouldRecordSessionScope({ ...failed, organizationCount: 1 }),
+		true,
+	);
+	const run = coldLaunch({
+		stored: "tnt_acme",
+		phases: [
+			{ organizations: [minerva, acme], memberships: "loading" },
+			{ organizations: [minerva, acme], memberships: "failed" },
+		],
+	});
+	assert.deepEqual(
+		run.painted,
+		["held", "tnt_acme"],
+		"the fallback still opens",
+	);
+	assert.equal(run.session, undefined, "and is not this session's scope");
+	// A later visit (or a retry that answers) in the same app session.
+	assert.equal(
+		m.resolveOpeningScope({
+			organizations: [minerva, acme],
+			stored: "tnt_acme",
+			session: m.readSessionScope(session, "acct-1"),
+			defaultTenantId: "tnt_minerva",
+			chosen: false,
+			current: "tnt_acme",
+		}),
+		"tnt_minerva",
+	);
+});
+
+test("one org: no hold, the snapshot paints at once (tb-instant-open kept)", () => {
+	const run = coldLaunch({
+		stored: "tnt_acme",
+		phases: [
+			{
+				organizations: [],
+				snapshotRows: [{ tenant_id: "tnt_acme" }],
+				memberships: "loading",
+			},
+		],
+	});
+	assert.deepEqual(run.painted, ["tnt_acme"]);
+});
+
 /* --------------------------------------------------------- session storage */
 
 function fakeStorage(initial) {
@@ -393,4 +629,24 @@ test("the page feeds the session scope and default org to both opening reads", a
 		page.includes('membership.is_home && membership.status === "active"'),
 	);
 	assert.ok(page.includes("writeSessionScope(storage, accountId, scope)"));
+	// Review M1/m2: both opening reads are held together, the held page paints
+	// its gate loading state (never the seed), and the write waits on both
+	// the decision and `shouldRecordSessionScope`.
+	for (const call of calls) {
+		const args = call.slice(0, call.indexOf("})"));
+		assert.ok(args.includes("defaultPending: openingHeld"));
+	}
+	assert.ok(
+		page.includes(
+			"const scopeDecided = scopeSettled && !organizationsPending && !openingHeld;",
+		),
+	);
+	assert.ok(
+		page.includes("gatePending={(gatePending && !cachedPaint) || openingHeld}"),
+	);
+	assert.ok(
+		page.includes(
+			"if (!scopeDecided || !recordSessionScope || !accountId) return;",
+		),
+	);
 });

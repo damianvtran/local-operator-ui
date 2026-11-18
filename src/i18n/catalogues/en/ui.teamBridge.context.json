@@ -452,6 +452,15 @@
 		"placeholders": {},
 		"note": "Opens a directory where the person can find and join communities. The ellipsis signals that another view opens next."
 	},
+	"ui.teamBridge.scope.community.trigger": {
+		"role": "organization switcher accessible name while a community is selected",
+		"tone": "neutral, names the current scope",
+		"length": "One short clause.",
+		"placeholders": {
+			"name": "the selected community's name"
+		},
+		"note": "Screen-reader name of the switcher button when the reader is viewing a community. Same shape as ui.teamBridge.scope.trigger, but the noun is the singular of the Communities group label: a community is a public platform, never an organization, so it must not be announced as one."
+	},
 	"ui.teamBridge.preview.chip": {
 		"role": "conversation row chip",
 		"tone": "neutral, quiet",

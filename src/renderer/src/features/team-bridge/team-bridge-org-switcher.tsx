@@ -27,6 +27,18 @@ import {
 	teamBridgeSwitcherGroups,
 } from "./team-bridge-model";
 
+/*
+ * ONE TRAILING COUNT COLUMN (design review round 1, D1; frames D21 and M8:
+ * "unread counts and the check share one aligned right column"). Every row
+ * reserves the same slot whether or not it has a count, with the badge
+ * right-aligned inside, so the Public badges on community rows and the role
+ * labels on organization rows sit in one column instead of jumping 24px left
+ * on each row that has unread. 1.5rem holds a one- or two-digit count (the
+ * badge is `min-w-4` plus `px-1`); a capped "99+" may still widen its row,
+ * which is rare and still right-aligned.
+ */
+const COUNT_SLOT = "flex min-w-6 shrink-0 justify-end";
+
 /**
  * The organization switcher at the top of the conversation rail.
  *
@@ -134,7 +146,13 @@ export const TeamBridgeOrgSwitcher: FC<{
 			<DropdownMenuTrigger asChild>
 				<button
 					type="button"
-					aria-label={t("ui.teamBridge.scope.trigger", { name: title })}
+					// A community is not an organization (Amendment A), so a screen
+					// reader must not announce it as one (design review round 1, D2).
+					aria-label={
+						selectedCommunity
+							? t("ui.teamBridge.scope.community.trigger", { name: title })
+							: t("ui.teamBridge.scope.trigger", { name: title })
+					}
 					title={title}
 					aria-busy={unreadRefreshing || undefined}
 					className={cn(
@@ -199,19 +217,21 @@ export const TeamBridgeOrgSwitcher: FC<{
 						<span className="min-w-0 flex-1 truncate">
 							{t("ui.teamBridge.scope.all")}
 						</span>
-						{totalUnread > 0 && (
-							/* Unread across every organization: an attention count, so the
-							   shared accent badge the sidebar rows wear (2026-10-28). */
-							<AttentionBadge
-								count={totalUnread}
-								aria-label={t("ui.teamBridge.unread.count", {
-									count: totalUnread,
-								})}
-								title={t("ui.teamBridge.unread.count", {
-									count: totalUnread,
-								})}
-							/>
-						)}
+						<span className={COUNT_SLOT} data-count-slot="">
+							{totalUnread > 0 && (
+								/* Unread across every organization: an attention count, so the
+								   shared accent badge the sidebar rows wear (2026-10-28). */
+								<AttentionBadge
+									count={totalUnread}
+									aria-label={t("ui.teamBridge.unread.count", {
+										count: totalUnread,
+									})}
+									title={t("ui.teamBridge.unread.count", {
+										count: totalUnread,
+									})}
+								/>
+							)}
+						</span>
 					</DropdownMenuRadioItem>
 					{groups.organizations.length > 0 && <DropdownMenuSeparator />}
 					{groups.organizations.map((organization) => (
@@ -235,17 +255,19 @@ export const TeamBridgeOrgSwitcher: FC<{
 									</span>
 								)
 							)}
-							{organization.unread > 0 && (
-								<AttentionBadge
-									count={organization.unread}
-									aria-label={t("ui.teamBridge.unread.count", {
-										count: organization.unread,
-									})}
-									title={t("ui.teamBridge.unread.count", {
-										count: organization.unread,
-									})}
-								/>
-							)}
+							<span className={COUNT_SLOT} data-count-slot="">
+								{organization.unread > 0 && (
+									<AttentionBadge
+										count={organization.unread}
+										aria-label={t("ui.teamBridge.unread.count", {
+											count: organization.unread,
+										})}
+										title={t("ui.teamBridge.unread.count", {
+											count: organization.unread,
+										})}
+									/>
+								)}
+							</span>
 						</DropdownMenuRadioItem>
 					))}
 				</DropdownMenuRadioGroup>
@@ -344,17 +366,19 @@ export const TeamBridgeOrgSwitcher: FC<{
 											<Globe size={10} aria-hidden="true" />
 											{t("ui.teamBridge.scope.community.public")}
 										</Badge>
-										{community.unread > 0 && (
-											<AttentionBadge
-												count={community.unread}
-												aria-label={t("ui.teamBridge.unread.count", {
-													count: community.unread,
-												})}
-												title={t("ui.teamBridge.unread.count", {
-													count: community.unread,
-												})}
-											/>
-										)}
+										<span className={COUNT_SLOT} data-count-slot="">
+											{community.unread > 0 && (
+												<AttentionBadge
+													count={community.unread}
+													aria-label={t("ui.teamBridge.unread.count", {
+														count: community.unread,
+													})}
+													title={t("ui.teamBridge.unread.count", {
+														count: community.unread,
+													})}
+												/>
+											)}
+										</span>
 									</DropdownMenuRadioItem>
 								))}
 							</DropdownMenuRadioGroup>

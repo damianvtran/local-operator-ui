@@ -263,3 +263,93 @@ test("a re-entry keeps its rows while the reads behind them settle", async () =>
 		await app.close();
 	}
 });
+
+/*
+ * THE DEFAULT ORG IS WAITED FOR, NOT CORRECTED TO (agent review round 1, M1
+ * and m2 on ui#1970). A multi-org account learns its organizations from the
+ * status payload a round trip before `GET /v1/me/memberships` names the
+ * default (`is_home`). Deciding in between painted yesterday's pick, read its
+ * list, recorded it as this app session's scope and then jumped. Held
+ * instead: no list read, no seed painted, nothing recorded - and then one read,
+ * of the default org's list.
+ */
+test("multi-org restart: nothing of yesterday's pick paints or is read before the default org lands", async () => {
+	const gate = deferred();
+	const OTHER_ROW = "Other thread";
+	const app = await mount({
+		path: "/team-bridge",
+		waitReady: false,
+		membershipsGate: gate,
+		memberships: [
+			{
+				tenant_id: "org_shared",
+				tenant_name: "Shared",
+				role: "member",
+				status: "active",
+				is_home: true,
+				plan: { status: "active", seats: 5 },
+			},
+		],
+		seed: ({ client, ui: bundle }) => {
+			// Yesterday's durable pick, and the watcher's two-tenant snapshot.
+			localStorage.setItem(
+				"lo.teamBridge.scope.v1",
+				JSON.stringify({ acct_a: "org_other" }),
+			);
+			client.setQueryData(
+				bundle.teamBridgeKeys.conversations("all", "acct_a"),
+				{
+					conversations: [
+						row(),
+						row({ id: "bcv_other", tenant_id: "org_other", name: OTHER_ROW }),
+					],
+					has_more: false,
+				},
+			);
+		},
+	});
+	const sessionScope = () =>
+		JSON.parse(
+			window.sessionStorage.getItem("lo.teamBridge.sessionScope.v1") ?? "{}",
+		).acct_a;
+	try {
+		await until(
+			() =>
+				app.fixture.calls.some(
+					(call) =>
+						call.op === "radient.request" &&
+						call.control?.operation === "memberships.list",
+				),
+			"the memberships read is in flight",
+		);
+		await delay(150);
+		assert.deepEqual(listScopes(app), [], "no list read while held");
+		assert.equal(
+			app.host.textContent.includes(OTHER_ROW),
+			false,
+			"yesterday's org's rows never paint",
+		);
+		assert.equal(
+			app.host.querySelector('button[aria-label="Organization: Other"]'),
+			null,
+			"yesterday's org's title never paints",
+		);
+		assert.equal(sessionScope(), undefined, "no interim session scope");
+
+		await act(async () => gate.resolve());
+		await until(
+			() => app.host.querySelector('button[aria-label="Organization: Shared"]'),
+			"the default org's title",
+		);
+		await until(() => app.host.textContent.includes(ROW), "its rail row");
+		assert.deepEqual(
+			listScopes(app),
+			["org_shared"],
+			"one read: the default org",
+		);
+		assert.equal(app.host.textContent.includes(OTHER_ROW), false);
+		assert.equal(sessionScope(), "org_shared");
+	} finally {
+		await app.close();
+	}
+});

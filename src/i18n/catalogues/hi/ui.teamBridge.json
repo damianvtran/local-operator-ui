@@ -82,6 +82,7 @@
 	"ui.teamBridge.scope.community.search": "समुदाय खोजें",
 	"ui.teamBridge.scope.community.no_match": "कोई समुदाय मेल नहीं खाता।",
 	"ui.teamBridge.scope.community.browse": "समुदाय ब्राउज़ करें…",
+	"ui.teamBridge.scope.community.trigger": "समुदाय: {name}",
 	"ui.teamBridge.preview.chip": "प्रीव्यू",
 	"ui.teamBridge.preview.banner": "आप इस चैनल का प्रीव्यू देख रहे हैं। इसका इतिहास देखने और सूचनाएँ पाने के लिए जुड़ें।",
 	"ui.teamBridge.preview.join": "जुड़ें",

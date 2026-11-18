@@ -13651,6 +13651,7 @@ export type MessageParams = {
 	"ui.teamBridge.scope.community.no_match": undefined;
 	"ui.teamBridge.scope.community.public": undefined;
 	"ui.teamBridge.scope.community.search": undefined;
+	"ui.teamBridge.scope.community.trigger": { name: string };
 	"ui.teamBridge.scope.create_needs_org": undefined;
 	"ui.teamBridge.scope.empty": undefined;
 	"ui.teamBridge.scope.error": undefined;

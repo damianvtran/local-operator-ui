@@ -10,49 +10,16 @@ import { telemetryEnabled } from "@shared/config";
 import posthog from "posthog-js";
 import { useFeatureFlagEnabled } from "posthog-js/react";
 import type { FC, ReactNode } from "react";
-import { createContext, useContext, useEffect, useMemo } from "react";
+import { useContext, useEffect, useMemo } from "react";
 
-/**
- * Type definition for all available feature flags
- * Add new feature flags here with their expected value types
- */
-export type FeatureFlags = Record<string, boolean>;
+import {
+	FeatureFlagContext,
+	type FeatureFlagContextType,
+	type FeatureFlagKey,
+	type FeatureFlags,
+} from "./feature-flag-context";
 
-/**
- * Type for feature flag keys, derived from the FeatureFlags type
- */
-export type FeatureFlagKey = keyof FeatureFlags;
-
-/**
- * Context for accessing feature flags in a type-safe manner
- */
-type FeatureFlagContextType = {
-	/**
-	 * Check if a boolean feature flag is enabled
-	 * @param key - The feature flag key
-	 * @returns Whether the feature flag is enabled
-	 */
-	isEnabled: <K extends FeatureFlagKey>(
-		key: K,
-	) => FeatureFlags[K] extends boolean ? boolean : never;
-
-	/**
-	 * Get the value of a feature flag
-	 * @param key - The feature flag key
-	 * @returns The value of the feature flag, or undefined if not set
-	 * @deprecated PostHog React SDK only provides boolean flag checking
-	 */
-	getValue: <K extends FeatureFlagKey>(key: K) => FeatureFlags[K] | undefined;
-
-	/**
-	 * Manually reload feature flags from PostHog
-	 * This is called automatically every 10 minutes, but can be called manually if needed
-	 */
-	reloadFeatureFlags: () => void;
-};
-
-// Create the context with a default value
-const FeatureFlagContext = createContext<FeatureFlagContextType | null>(null);
+export type { FeatureFlagKey, FeatureFlags } from "./feature-flag-context";
 
 /**
  * Props for the FeatureFlagProvider component
