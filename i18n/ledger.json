@@ -8592,33 +8592,33 @@
 		{
 			"locale": "es",
 			"namespace": "ui.mesh",
-			"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
-			"target_sha256": "c6fa28e2c46312ab4771bf905022f4c7566866e12f97917bdb9749c7d4973ea7",
+			"source_sha256": "6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1",
+			"target_sha256": "eae84895651582b809bbb72c730bc7e9153bc1a27598302a798c00758c439320",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18",
+				"note": "PR #1978 lane move-working-set: coder (job eacba7a3806e, session 76c99189cb1d) added the 42 ui.mesh.mesh_actions.working_set_* values; every other value is unchanged from the i18n-translator bytes whose audits sit in superseded."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-19",
-					"result": "clean",
-					"instance": "pr1984-r4-es-uimesh-aead7d1d",
+					"date": "2026-11-18",
+					"result": "changes_requested",
+					"instance": "b973c86b28e4-pr1978-r1-es",
 					"findings": {
 						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"major": 1,
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/pr1984-r4-es-uimesh-aead7d1d.json",
-					"receipt_sha256": "d5e2c946822b312be851d8e601ea87d5e0ea1e17d49b17d2425fbf0cde6c869e",
-					"scope": "PR #1984 round 4: 12 delta ui.mesh values (63ad8010c1..a45eeb1196) audited; 384 keys mechanically checked; other values retained by byte identity",
-					"note": "PR #1984: translator coder (implementer, anthropic/claude-opus-5-5) for the pairing keys; independent audit reviewer session aead7d1dac3d"
+					"receipt": "i18n/receipts/b973c86b28e4-pr1978-r1-es.json",
+					"receipt_sha256": "48079dd603b41a7984317e539b72a511570a75b69a0d8dc93f1e62378d37fb1c",
+					"scope": "PR #1978 r1: 42 added ui.mesh.mesh_actions.working_set_* keys at dd014c1e9d"
 				}
 			],
-			"status": "audited",
+			"status": "changes_requested",
 			"superseded": [
 				{
 					"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
@@ -8979,6 +8979,30 @@
 							},
 							"receipt": "i18n/receipts/i18n-audit-uimesh-es-59a1adac0231.json",
 							"receipt_sha256": "e85ef08bdf7d155b98ea8ae75d60027e5bb3a91da1e5bdd605fc3f9c5c6847a7"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
+					"target_sha256": "c6fa28e2c46312ab4771bf905022f4c7566866e12f97917bdb9749c7d4973ea7",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean",
+							"instance": "pr1984-r4-es-uimesh-aead7d1d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1984-r4-es-uimesh-aead7d1d.json",
+							"receipt_sha256": "d5e2c946822b312be851d8e601ea87d5e0ea1e17d49b17d2425fbf0cde6c869e",
+							"scope": "PR #1984 round 4: 12 delta ui.mesh values (63ad8010c1..a45eeb1196) audited; 384 keys mechanically checked; other values retained by byte identity",
+							"note": "PR #1984: translator coder (implementer, anthropic/claude-opus-5-5) for the pairing keys; independent audit reviewer session aead7d1dac3d"
 						}
 					],
 					"status": "audited"
@@ -22146,30 +22170,30 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.mesh",
-			"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
-			"target_sha256": "35601c89a6e08f69124ff4e9622139772e4b46320f69e1e656bfeabd83be1164",
+			"source_sha256": "6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1",
+			"target_sha256": "ca848108de9d30f06013cb7f9222f3c221e2c418cf51b91216c88f7e73fca44f",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18",
+				"note": "PR #1978 lane move-working-set: coder (job eacba7a3806e, session 76c99189cb1d) added the 42 ui.mesh.mesh_actions.working_set_* values; every other value is unchanged from the i18n-translator bytes whose audits sit in superseded."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-19",
-					"result": "clean",
-					"instance": "pr1984-r4-fr-uimesh-aead7d1d",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "b973c86b28e4-pr1978-r1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 3,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/pr1984-r4-fr-uimesh-aead7d1d.json",
-					"receipt_sha256": "1ae6762cb1342fb7d9e47415b0680622867077e7aeecf5cef14dca56c16fbe78",
-					"scope": "PR #1984 round 4: 12 delta ui.mesh values (63ad8010c1..a45eeb1196) audited; 384 keys mechanically checked; other values retained by byte identity",
-					"note": "PR #1984: translator coder (implementer, anthropic/claude-opus-5-5) for the pairing keys; independent audit reviewer session aead7d1dac3d"
+					"receipt": "i18n/receipts/b973c86b28e4-pr1978-r1-fr.json",
+					"receipt_sha256": "55c57cfbf80ed2cbcf897d08fa1ce309e6b438fcc4bd6aa7cedca5e6ba75f5c9",
+					"scope": "PR #1978 r1: 42 added ui.mesh.mesh_actions.working_set_* keys at dd014c1e9d"
 				}
 			],
 			"status": "audited",
@@ -22509,6 +22533,30 @@
 							},
 							"receipt": "i18n/receipts/i18n-audit-uimesh-fr-59a1adac0231.json",
 							"receipt_sha256": "ada100ab66c17904b94f0d29c993aaa9bd624ede182308004151fc2de9581321"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
+					"target_sha256": "35601c89a6e08f69124ff4e9622139772e4b46320f69e1e656bfeabd83be1164",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean",
+							"instance": "pr1984-r4-fr-uimesh-aead7d1d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1984-r4-fr-uimesh-aead7d1d.json",
+							"receipt_sha256": "1ae6762cb1342fb7d9e47415b0680622867077e7aeecf5cef14dca56c16fbe78",
+							"scope": "PR #1984 round 4: 12 delta ui.mesh values (63ad8010c1..a45eeb1196) audited; 384 keys mechanically checked; other values retained by byte identity",
+							"note": "PR #1984: translator coder (implementer, anthropic/claude-opus-5-5) for the pairing keys; independent audit reviewer session aead7d1dac3d"
 						}
 					],
 					"status": "audited"
@@ -35868,30 +35916,30 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.mesh",
-			"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
-			"target_sha256": "9dc778fe5d7789dc46ac4dd7d31f2936135e1220fad9d5204729dfa6f3fceac5",
+			"source_sha256": "6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1",
+			"target_sha256": "883c84e612520532695c1edb5d0b247bdd71aac4886d5df0203681837562e17e",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-19"
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18",
+				"note": "PR #1978 lane move-working-set: coder (job eacba7a3806e, session 76c99189cb1d) added the 42 ui.mesh.mesh_actions.working_set_* values; every other value is unchanged from the i18n-translator bytes whose audits sit in superseded."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-19",
+					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "pr1984-r4-hi-uimesh-aead7d1d",
+					"instance": "b973c86b28e4-pr1978-r1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/pr1984-r4-hi-uimesh-aead7d1d.json",
-					"receipt_sha256": "24f4f0d5afb5fb4ec216bb82c140764a7b7ef10c960fad85fb4e0b3babdd41fb",
-					"scope": "PR #1984 round 4: 12 delta ui.mesh values (63ad8010c1..a45eeb1196) audited; 384 keys mechanically checked; other values retained by byte identity",
-					"note": "PR #1984: translator coder (implementer, anthropic/claude-opus-5-5) for the pairing keys; independent audit reviewer session aead7d1dac3d"
+					"receipt": "i18n/receipts/b973c86b28e4-pr1978-r1-hi.json",
+					"receipt_sha256": "e3ca28417cedab28c9dbdcdcc63f950b0ade42dd49d468d335de15bb9febf00c",
+					"scope": "PR #1978 r1: 42 added ui.mesh.mesh_actions.working_set_* keys at dd014c1e9d"
 				}
 			],
 			"status": "audited",
@@ -36256,6 +36304,30 @@
 							},
 							"receipt": "i18n/receipts/i18n-audit-uimesh-hi-59a1adac0231.json",
 							"receipt_sha256": "63a9c85d876b90e52f8b2f2067177857d631b07514764e9242976635e613b4b5"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
+					"target_sha256": "9dc778fe5d7789dc46ac4dd7d31f2936135e1220fad9d5204729dfa6f3fceac5",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean-with-findings",
+							"instance": "pr1984-r4-hi-uimesh-aead7d1d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1984-r4-hi-uimesh-aead7d1d.json",
+							"receipt_sha256": "24f4f0d5afb5fb4ec216bb82c140764a7b7ef10c960fad85fb4e0b3babdd41fb",
+							"scope": "PR #1984 round 4: 12 delta ui.mesh values (63ad8010c1..a45eeb1196) audited; 384 keys mechanically checked; other values retained by byte identity",
+							"note": "PR #1984: translator coder (implementer, anthropic/claude-opus-5-5) for the pairing keys; independent audit reviewer session aead7d1dac3d"
 						}
 					],
 					"status": "audited"
@@ -49161,33 +49233,33 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.mesh",
-			"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
-			"target_sha256": "f52318afd30808c69575ca37ef8eb338939eac82efca7327633d4d71ccabe536",
+			"source_sha256": "6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1",
+			"target_sha256": "2ad9c047c1f3a31a744fa1ea842c923cef04a31371d5b286c19c08e40049779c",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18",
+				"note": "PR #1978 lane move-working-set: coder (job eacba7a3806e, session 76c99189cb1d) added the 42 ui.mesh.mesh_actions.working_set_* values; every other value is unchanged from the i18n-translator bytes whose audits sit in superseded."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-19",
-					"result": "clean",
-					"instance": "pr1984-r4-ru-uimesh-aead7d1d",
+					"date": "2026-11-18",
+					"result": "changes_requested",
+					"instance": "b973c86b28e4-pr1978-r1-ru",
 					"findings": {
 						"blocker": 0,
-						"major": 0,
-						"minor": 0,
+						"major": 1,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1984-r4-ru-uimesh-aead7d1d.json",
-					"receipt_sha256": "4aafc15a157144eb66a56901b0c7f2271d1105a952d832dd8afb1f040967334c",
-					"scope": "PR #1984 round 4: 12 delta ui.mesh values (63ad8010c1..a45eeb1196) audited; 384 keys mechanically checked; other values retained by byte identity",
-					"note": "PR #1984: translator coder (implementer, anthropic/claude-opus-5-5) for the pairing keys; independent audit reviewer session aead7d1dac3d"
+					"receipt": "i18n/receipts/b973c86b28e4-pr1978-r1-ru.json",
+					"receipt_sha256": "2bdcb58b4a15314b9d719c6f76a7c2605cb864fc581abd24bc8cbc478782da2d",
+					"scope": "PR #1978 r1: 42 added ui.mesh.mesh_actions.working_set_* keys at dd014c1e9d"
 				}
 			],
-			"status": "audited",
+			"status": "changes_requested",
 			"superseded": [
 				{
 					"source_sha256": "6b1a7e7433d1e4650d6bca114a7e6d20af3ea582b33a9c9c4039d22bdbbeb21d",
@@ -49524,6 +49596,30 @@
 							},
 							"receipt": "i18n/receipts/i18n-audit-uimesh-ru-59a1adac0231.json",
 							"receipt_sha256": "9ff8ca6cb60affb9f48912191b4fd8050bf078099ca2c5aa9683187019296676"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
+					"target_sha256": "f52318afd30808c69575ca37ef8eb338939eac82efca7327633d4d71ccabe536",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean",
+							"instance": "pr1984-r4-ru-uimesh-aead7d1d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1984-r4-ru-uimesh-aead7d1d.json",
+							"receipt_sha256": "4aafc15a157144eb66a56901b0c7f2271d1105a952d832dd8afb1f040967334c",
+							"scope": "PR #1984 round 4: 12 delta ui.mesh values (63ad8010c1..a45eeb1196) audited; 384 keys mechanically checked; other values retained by byte identity",
+							"note": "PR #1984: translator coder (implementer, anthropic/claude-opus-5-5) for the pairing keys; independent audit reviewer session aead7d1dac3d"
 						}
 					],
 					"status": "audited"
@@ -62702,30 +62798,30 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.mesh",
-			"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
-			"target_sha256": "02992d5b57a67f080348ac9c8db7109983ec70cfb9748f0e6d1a27b2899805bb",
+			"source_sha256": "6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1",
+			"target_sha256": "d8f059f9dffb870ec708d172b87068b9f40df1e0cc4530bf8e82fcf4091a9e80",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-19"
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18",
+				"note": "PR #1978 lane move-working-set: coder (job eacba7a3806e, session 76c99189cb1d) added the 42 ui.mesh.mesh_actions.working_set_* values; every other value is unchanged from the i18n-translator bytes whose audits sit in superseded."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-19",
-					"result": "clean",
-					"instance": "pr1984-r4-ur-uimesh-aead7d1d",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "b973c86b28e4-pr1978-r1-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/pr1984-r4-ur-uimesh-aead7d1d.json",
-					"receipt_sha256": "e80f18d70590a7bc58f5ae01b97ff25dc33554a2fc9a3b25abd7d4170b923023",
-					"scope": "PR #1984 round 4: 12 delta ui.mesh values (63ad8010c1..a45eeb1196) audited; 384 keys mechanically checked; other values retained by byte identity",
-					"note": "PR #1984: translator coder (implementer, anthropic/claude-opus-5-5) for the pairing keys; independent audit reviewer session aead7d1dac3d"
+					"receipt": "i18n/receipts/b973c86b28e4-pr1978-r1-ur.json",
+					"receipt_sha256": "ee5c04ce504748c39927f893c2d8a51b3b704352355be512ad17e0ed84f5a8d4",
+					"scope": "PR #1978 r1: 42 added ui.mesh.mesh_actions.working_set_* keys at dd014c1e9d"
 				}
 			],
 			"status": "audited",
@@ -63042,6 +63138,30 @@
 							},
 							"receipt": "i18n/receipts/i18n-audit-uimesh-ur-59a1adac0231.json",
 							"receipt_sha256": "06d005a67e2bff3bbae5beb51da7d0566e8918f6ed057da0f389d0f9032a8c9c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
+					"target_sha256": "02992d5b57a67f080348ac9c8db7109983ec70cfb9748f0e6d1a27b2899805bb",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean",
+							"instance": "pr1984-r4-ur-uimesh-aead7d1d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1984-r4-ur-uimesh-aead7d1d.json",
+							"receipt_sha256": "e80f18d70590a7bc58f5ae01b97ff25dc33554a2fc9a3b25abd7d4170b923023",
+							"scope": "PR #1984 round 4: 12 delta ui.mesh values (63ad8010c1..a45eeb1196) audited; 384 keys mechanically checked; other values retained by byte identity",
+							"note": "PR #1984: translator coder (implementer, anthropic/claude-opus-5-5) for the pairing keys; independent audit reviewer session aead7d1dac3d"
 						}
 					],
 					"status": "audited"
@@ -76126,30 +76246,30 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.mesh",
-			"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
-			"target_sha256": "14f4cc34832779fcdee5cea3a18225df9fe82f5b91cc29ceca49ef2498f6819b",
+			"source_sha256": "6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1",
+			"target_sha256": "7857d8a333ca718e1910bf2e688db0bc89a4665c37063c13a6bb8839bc45b8e1",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18"
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18",
+				"note": "PR #1978 lane move-working-set: coder (job eacba7a3806e, session 76c99189cb1d) added the 42 ui.mesh.mesh_actions.working_set_* values; every other value is unchanged from the i18n-translator bytes whose audits sit in superseded."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-19",
-					"result": "clean",
-					"instance": "pr1984-r4-vi-uimesh-aead7d1d",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "b973c86b28e4-pr1978-r1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/pr1984-r4-vi-uimesh-aead7d1d.json",
-					"receipt_sha256": "1df216ab330d7c9290c411eda033d93dc23acb39de6e8338523c5e2a2532dd26",
-					"scope": "PR #1984 round 4: 12 delta ui.mesh values (63ad8010c1..a45eeb1196) audited; 384 keys mechanically checked; other values retained by byte identity",
-					"note": "PR #1984: translator coder (implementer, anthropic/claude-opus-5-5) for the pairing keys; independent audit reviewer session aead7d1dac3d"
+					"receipt": "i18n/receipts/b973c86b28e4-pr1978-r1-vi.json",
+					"receipt_sha256": "42b3b87d92bd91956a8f308701a5fa8061663814534c13533981d7941690ffe6",
+					"scope": "PR #1978 r1: 42 added ui.mesh.mesh_actions.working_set_* keys at dd014c1e9d"
 				}
 			],
 			"status": "audited",
@@ -76514,6 +76634,30 @@
 							},
 							"receipt": "i18n/receipts/i18n-audit-uimesh-vi-59a1adac0231.json",
 							"receipt_sha256": "e8b62b6f41615fe90087c00e32e16eefec9e4ce3cd55293f60201cc073d074d1"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
+					"target_sha256": "14f4cc34832779fcdee5cea3a18225df9fe82f5b91cc29ceca49ef2498f6819b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean",
+							"instance": "pr1984-r4-vi-uimesh-aead7d1d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1984-r4-vi-uimesh-aead7d1d.json",
+							"receipt_sha256": "1df216ab330d7c9290c411eda033d93dc23acb39de6e8338523c5e2a2532dd26",
+							"scope": "PR #1984 round 4: 12 delta ui.mesh values (63ad8010c1..a45eeb1196) audited; 384 keys mechanically checked; other values retained by byte identity",
+							"note": "PR #1984: translator coder (implementer, anthropic/claude-opus-5-5) for the pairing keys; independent audit reviewer session aead7d1dac3d"
 						}
 					],
 					"status": "audited"
@@ -90338,31 +90482,30 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.mesh",
-			"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
-			"target_sha256": "af50013cb122791666923582fa42c9d9ee138684b021c4ad36d40c21601b6d9e",
+			"source_sha256": "6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1",
+			"target_sha256": "6936b517d387d8864398cdd34c9e3dc730d50a1a1f5c5f5f323ae7e09cb1f78d",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18",
-				"note": "Reworded by the implementing coder (deepseek/deepseek-flash) on 2026-10-18 for the 您→你 register correction, PR #1205, not a translator: 7 strings, 7 您 occurrences. Register-only audit 4c6c213dd0d8 covers the new bytes; prior full audits stay in superseded."
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18",
+				"note": "PR #1978 lane move-working-set: coder (job eacba7a3806e, session 76c99189cb1d) added the 42 ui.mesh.mesh_actions.working_set_* values; every other value is unchanged from the i18n-translator bytes whose audits sit in superseded."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-19",
-					"result": "clean",
-					"instance": "pr1984-r4-zh-cn-uimesh-aead7d1d",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "b973c86b28e4-pr1978-r1-zh-CN",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 3,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1984-r4-zh-cn-uimesh-aead7d1d.json",
-					"receipt_sha256": "7b609fa207127251c27962d0f273d417ec33cb3a6e97f81dc5e1287a6781bc50",
-					"scope": "PR #1984 round 4: 12 delta ui.mesh values (63ad8010c1..a45eeb1196) audited; 384 keys mechanically checked; other values retained by byte identity",
-					"note": "PR #1984: translator coder (implementer, anthropic/claude-opus-5-5) for the pairing keys; independent audit reviewer session aead7d1dac3d"
+					"receipt": "i18n/receipts/b973c86b28e4-pr1978-r1-zh-CN.json",
+					"receipt_sha256": "17a4335fe7c50a3b2be8db3e296753161029ea357e61a6bf83222ed0990978cf",
+					"scope": "PR #1978 r1: 42 added ui.mesh.mesh_actions.working_set_* keys at dd014c1e9d"
 				}
 			],
 			"status": "audited",
@@ -90703,6 +90846,30 @@
 							},
 							"receipt": "i18n/receipts/i18n-audit-uimesh-zh-cn-59a1adac0231.json",
 							"receipt_sha256": "8b1b98f4c20fbdccaba909a9f3a1d140cc798fcbb1bc83f6ccba844330bb8633"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
+					"target_sha256": "af50013cb122791666923582fa42c9d9ee138684b021c4ad36d40c21601b6d9e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean",
+							"instance": "pr1984-r4-zh-cn-uimesh-aead7d1d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1984-r4-zh-cn-uimesh-aead7d1d.json",
+							"receipt_sha256": "7b609fa207127251c27962d0f273d417ec33cb3a6e97f81dc5e1287a6781bc50",
+							"scope": "PR #1984 round 4: 12 delta ui.mesh values (63ad8010c1..a45eeb1196) audited; 384 keys mechanically checked; other values retained by byte identity",
+							"note": "PR #1984: translator coder (implementer, anthropic/claude-opus-5-5) for the pairing keys; independent audit reviewer session aead7d1dac3d"
 						}
 					],
 					"status": "audited"

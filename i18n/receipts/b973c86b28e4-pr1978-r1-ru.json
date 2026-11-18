@@ -1,0 +1,129 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1978 (move dialog working set)",
+  "locale": "ru",
+  "namespace": "ui.mesh",
+  "pr": 1978,
+  "date": "2026-11-18",
+  "head": "dd014c1e9de973a72ef3e64e75cccfc2cf4e8fcc",
+  "instance": "b973c86b28e4-pr1978-r1-ru",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (lopdev task subagent); did not translate or author these strings",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Auditor session b973c86b28e4 (task role, lopdev lane move-working-set, manager 35c4f00e8d73). Translator was a different session: agent coder, job eacba7a3806e, session 76c99189cb1d. Same served model family as the translator (anthropic/claude-opus-5-5), different agent and run; no fallback. No MT or translation API used.",
+    "instance": "b973c86b28e4-pr1978-r1-ru"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "references": {
+    "glossary": "damianvtran/local-operator i18n/glossary.md @ origin/main d0484be33486 (sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7)",
+    "style_guide": "damianvtran/local-operator i18n/style-guides/ru.md @ origin/main d0484be33486 (sha256 f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5)",
+    "context": "src/i18n/catalogues/en/ui.mesh.context.json @ dd014c1e9de973a72ef3e64e75cccfc2cf4e8fcc"
+  },
+  "findings": [
+    {
+      "id": "RU-1",
+      "severity": "MAJOR",
+      "key": "ui.mesh.mesh_actions.working_set_warning",
+      "keys": [
+        "ui.mesh.mesh_actions.working_set_warning",
+        "ui.mesh.mesh_actions.working_set_worktree_counts",
+        "ui.mesh.mesh_actions.working_set_withheld_history_secret_path",
+        "ui.mesh.mesh_actions.working_set_withheld_history_secret_content",
+        "ui.mesh.mesh_actions.working_set_reason_history_secret",
+        "ui.mesh.mesh_actions.working_set_reason_over_cap",
+        "ui.mesh.mesh_actions.working_set_warning_leave",
+        "ui.mesh.mesh_actions.working_set_warning_without",
+        "ui.mesh.mesh_actions.working_set_reason_history_unscanned"
+      ],
+      "problem": "push is rendered with 'отправить' — the same verb this dialog uses for 'send to {device}'. The main warning reads 'отправит все его рабочие файлы на {device}: рабочие деревья ниже с неотправленными коммитами' ('will send … the worktrees with their unsent commits'), and the remedies 'Отправьте коммиты' / 'Перед перемещением отправьте или зафиксируйте всё, что вам нужно' read as 'send it yourself', not git push. ru.md wave-2 keeps push Latin undeclined and the corpus says 'выполнили push'. Only reason_over_cap disambiguates ('в удалённый репозиторий'). The consent text no longer states clearly what is pushed versus what is sent.",
+      "fix": "Keep push Latin: 'коммитами без push' / '{n} коммит без push' in worktree_counts; remedies 'Выполните push или перепишите коммит…', 'Выполните push коммитов или уберите их…', 'Перед перемещением выполните push или зафиксируйте всё, что вам нужно', '…или отменить и сначала выполнить push или зафиксировать работу'. 'незафиксированные'/'зафиксируйте' for commit is git-ru standard and does not collide, so it may stay."
+    },
+    {
+      "id": "RU-2",
+      "severity": "MINOR",
+      "key": "ui.mesh.mesh_actions.working_set_warning",
+      "problem": "'память сеанса' — the glossary's session row is 'сессия' and the ru corpus has 0 uses of 'сеанс'.",
+      "fix": "'память сессии'"
+    },
+    {
+      "id": "RU-3",
+      "severity": "MINOR",
+      "key": "ui.mesh.mesh_actions.working_set_checkbox",
+      "problem": "'Я уверен, что…' is masculine-only in a required first-person consent checkbox (the sibling checkbox_leave 'Я понимаю' is neutral).",
+      "fix": "'Подтверждаю, что {device} должно получить эти файлы'"
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical checks on the committed bytes at dd014c1e9d (scratch script run with the repo's @formatjs/icu-messageformat-parser): key set equals English; the base..head diff of this file is exactly the 42 added working_set_* lines (0 changed, 0 removed values, so every other value is the bytes audited by the superseded row); every audited value parses and carries the same arguments, types and ::group-off skeletons as English; plural arms present for every CLDR category of the locale and no foreign arm; NFC; no bidi controls (U+200E/F, U+202A-E, U+2066-9, U+061C); no ASCII '...'; no leading/trailing/double spaces; no <Trans> tags in this namespace. Rendered fit NOT verified in this lane (no rendered frames)."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.mesh.mesh_actions.working_set_reason_over_cap",
+      "note": "reason_over_cap already disambiguates ('Отправьте его в удалённый репозиторий'); it is listed under RU-1 only for consistency of the push rendering."
+    }
+  ],
+  "audited_values": {
+    "ui.mesh.mesh_actions.working_set_loading": "Проверяем, какие рабочие файлы отправит это перемещение…",
+    "ui.mesh.mesh_actions.working_set_error": "Не удалось проверить, какие рабочие файлы отправит это перемещение. Если у разговора есть рабочие файлы, перемещение попросит вас проверить их, прежде чем что-либо отправить.",
+    "ui.mesh.mesh_actions.working_set_warning": "Перемещение посреди разговора отправит все его рабочие файлы на {device}: рабочие деревья ниже с неотправленными коммитами и незафиксированными изменениями, а также временные файлы и память сеанса. Продолжайте, только если эта работа должна быть на {device}.",
+    "ui.mesh.mesh_actions.working_set_changed": "Рабочие файлы изменились после вашей проверки. Просмотрите обновлённый список и подтвердите снова.",
+    "ui.mesh.mesh_actions.working_set_sent_heading": "{count, plural, one {Будет отправлено {count, number, ::group-off} рабочее дерево} few {Будет отправлено {count, number, ::group-off} рабочих дерева} many {Будет отправлено {count, number, ::group-off} рабочих деревьев} other {Будет отправлено {count, number, ::group-off} рабочего дерева}} · всего {size}",
+    "ui.mesh.mesh_actions.working_set_detached": "отсоединённый HEAD",
+    "ui.mesh.mesh_actions.working_set_worktree_counts": "{unpushed, plural, one {{unpushed, number, ::group-off} неотправленный коммит} few {{unpushed, number, ::group-off} неотправленных коммита} many {{unpushed, number, ::group-off} неотправленных коммитов} other {{unpushed, number, ::group-off} неотправленного коммита}} · в индексе: {staged, number, ::group-off} · не в индексе: {unstaged, number, ::group-off} · неотслеживаемых: {untracked, number, ::group-off}",
+    "ui.mesh.mesh_actions.working_set_dest_path": "Окажется в {path}",
+    "ui.mesh.mesh_actions.working_set_clone": "На {device} ещё нет этого репозитория, поэтому он будет клонирован из {url}.",
+    "ui.mesh.mesh_actions.working_set_clone_sized": "На {device} ещё нет этого репозитория, поэтому он будет клонирован из {url} (около {size}).",
+    "ui.mesh.mesh_actions.working_set_withheld_heading": "Удержано — не отправляется",
+    "ui.mesh.mesh_actions.working_set_withheld_secret_path": "Похоже на файл с секретами, поэтому не отправляется.",
+    "ui.mesh.mesh_actions.working_set_withheld_secret_content": "Содержит значение, похожее на секрет, поэтому не отправляется.",
+    "ui.mesh.mesh_actions.working_set_withheld_history_secret_path": "Неотправленный коммит добавляет файл, похожий на секрет, поэтому он не отправляется.",
+    "ui.mesh.mesh_actions.working_set_withheld_history_secret_content": "Неотправленный коммит содержит значение, похожее на секрет, поэтому он не отправляется.",
+    "ui.mesh.mesh_actions.working_set_left_behind_heading": "Остаётся на месте",
+    "ui.mesh.mesh_actions.working_set_kind_dependency_tree": "Зависимости",
+    "ui.mesh.mesh_actions.working_set_kind_build_output": "Результаты сборки",
+    "ui.mesh.mesh_actions.working_set_kind_ignored": "Игнорируется Git",
+    "ui.mesh.mesh_actions.working_set_kind_loose_file": "Файл вне рабочего дерева",
+    "ui.mesh.mesh_actions.working_set_recreate_with": "восстановить командой {command}",
+    "ui.mesh.mesh_actions.working_set_reason_contended": "В этом рабочем дереве работает другой активный разговор, поэтому оно остаётся на месте.",
+    "ui.mesh.mesh_actions.working_set_reason_outside_home": "Это рабочее дерево находится вне домашней папки, поэтому его нельзя разместить на другом устройстве.",
+    "ui.mesh.mesh_actions.working_set_reason_unmerged": "В этом рабочем дереве есть неразрешённые конфликты слияния. Разрешите их и переместите снова.",
+    "ui.mesh.mesh_actions.working_set_reason_in_progress_operation": "Здесь выполняется слияние, перебазирование или cherry-pick. Завершите или прервите его и переместите снова.",
+    "ui.mesh.mesh_actions.working_set_reason_submodule": "Рабочие деревья с подмодулями пока не переносятся.",
+    "ui.mesh.mesh_actions.working_set_reason_lfs": "Рабочие деревья, использующие Git LFS, пока не переносятся.",
+    "ui.mesh.mesh_actions.working_set_reason_history_secret": "Неотправленная история содержит данные, похожие на секреты. Отправьте или перепишите коммит либо уберите его из этой ветки, затем переместите снова.",
+    "ui.mesh.mesh_actions.working_set_reason_over_cap": "Слишком велико для этого перемещения. Отправьте его в удалённый репозиторий или клонируйте на другом устройстве, затем переместите снова.",
+    "ui.mesh.mesh_actions.working_set_reason_destination_conflict": "На другом устройстве по этому пути уже есть другая рабочая копия.",
+    "ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer": "Другое устройство пока не может принимать рабочие деревья. Обновите на нём Local Operator и переместите снова.",
+    "ui.mesh.mesh_actions.working_set_reason_unknown": "Не отправляется ({code}).",
+    "ui.mesh.mesh_actions.working_set_checkbox": "Я уверен, что {device} должно получить эти файлы",
+    "ui.mesh.mesh_actions.working_set_warning_leave": "Эта версия пока не переносит рабочие файлы. Рабочие деревья ниже останутся на месте, поэтому у разговора на {device} не будет их неотправленных коммитов и незафиксированных изменений. Перед перемещением отправьте или зафиксируйте всё, что вам нужно.",
+    "ui.mesh.mesh_actions.working_set_warning_without": "Эти рабочие файлы нельзя отправить с этим перемещением, поэтому у разговора на {device} их не будет. Можно переместить без них или отменить и сначала отправить или зафиксировать работу.",
+    "ui.mesh.mesh_actions.working_set_unknown": "Не удалось проверить рабочие файлы, поэтому их нельзя отправить с этим перемещением и у разговора на {device} их не будет. Можно переместить без них или отменить и попробовать снова.",
+    "ui.mesh.mesh_actions.working_set_kept_heading": "{count, plural, one {{count, number, ::group-off} рабочее дерево остаётся на месте} few {{count, number, ::group-off} рабочих дерева остаются на месте} many {{count, number, ::group-off} рабочих деревьев остаются на месте} other {{count, number, ::group-off} рабочего дерева остаются на месте}}",
+    "ui.mesh.mesh_actions.working_set_checkbox_leave": "Я понимаю, что у разговора на {device} не будет этих файлов",
+    "ui.mesh.mesh_actions.working_set_clone_pending": "Если на другом устройстве нет этого репозитория, он будет клонирован из {url} после проверки свободного места.",
+    "ui.mesh.mesh_actions.working_set_reason_history_unscanned": "Неотправленная история слишком велика для проверки на секреты, поэтому не отправляется. Отправьте коммиты или уберите их из этой ветки, затем переместите снова.",
+    "ui.mesh.mesh_actions.working_set_reason_destination_cannot_clone": "Другое устройство не может клонировать этот репозиторий. Сначала клонируйте его там, затем переместите снова.",
+    "ui.mesh.mesh_actions.working_set_reason_not_transferred": "Не перемещено: эта версия пока не переносит рабочие деревья."
+  },
+  "prior_audits": [
+    {
+      "instance": "i18n-audit-uimesh-ru-59a1adac0231",
+      "covers": "every ui.mesh value other than the 42 working_set_* keys (byte-identical at this head); moved to superseded by this row"
+    }
+  ],
+  "scope": "PR #1978 round 1 (1fb3d656c3..dd014c1e9d): the 42 added ui.mesh.mesh_actions.working_set_* keys; the remaining values are unchanged bytes covered by the prior audit",
+  "binding": "Verified on the committed tree at dd014c1e9de973a72ef3e64e75cccfc2cf4e8fcc (worktree .worktrees/move-confirm-dialog): target src/i18n/catalogues/ru/ui.mesh.json sha256 2ad9c047c1f3a31a744fa1ea842c923cef04a31371d5b286c19c08e40049779c; English sha256 6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1; context sha256 bf697eeff765fa92d20dd5aae4b584d7d527125b20bd980cd62ce4e19ef6bd21.",
+  "en_sha256": "6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1",
+  "context_sha256": "bf697eeff765fa92d20dd5aae4b584d7d527125b20bd980cd62ce4e19ef6bd21",
+  "target_sha256": "2ad9c047c1f3a31a744fa1ea842c923cef04a31371d5b286c19c08e40049779c",
+  "sha256": {
+    "ru": "2ad9c047c1f3a31a744fa1ea842c923cef04a31371d5b286c19c08e40049779c",
+    "en": "6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1"
+  }
+}
