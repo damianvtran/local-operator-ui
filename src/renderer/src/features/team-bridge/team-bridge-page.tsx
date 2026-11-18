@@ -1,4 +1,8 @@
 import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
+import { CommunityHome } from "@features/community/community-home";
+import { CommunityJoinDialog } from "@features/community/community-join-dialog";
+import { COMMUNITY_WELCOME_CHANNEL } from "@features/community/community-model";
+import { CommunityNoPlanEntry } from "@features/community/community-no-plan";
 import { TEAM_BRIDGE_ENABLED_SETTING_KEY } from "@features/settings/promoted-setting-sections";
 import {
 	type DesktopFeatureState,
@@ -164,12 +168,14 @@ import {
 	type ChiefLabels,
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeCommunity,
+	type TeamBridgeCommunityId,
 	type TeamBridgeEligibility,
 	type TeamBridgeOrganization,
 	type TeamBridgeRecipient,
 	type TeamBridgeScope,
 	type TeamBridgeTarget,
 	archivedChannelRows,
+	asTeamBridgeCommunityId,
 	asTeamBridgeTenantId,
 	builtinTopicKey,
 	canArchiveConversation,
@@ -1114,6 +1120,10 @@ export type TeamBridgePageViewProps = {
 	 */
 	communities?: readonly TeamBridgeCommunity[];
 	communitiesEnabled?: boolean;
+	/** Select a joined community (renders the community home instead). */
+	onCommunityChange?: (communityId: TeamBridgeCommunityId) => void;
+	/** "Browse communities…"; omitted, the row is not drawn. */
+	onBrowseCommunities?: () => void;
 };
 
 export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
@@ -1219,6 +1229,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onRetryMemberships,
 	communities,
 	communitiesEnabled,
+	onCommunityChange,
+	onBrowseCommunities,
 }) => {
 	useI18nLocale();
 	/* Whether the rail is drawn in the shell's column; see the thread takeover. */
@@ -3065,6 +3077,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					onRetry={onRetryMemberships}
 					communities={communities}
 					communitiesEnabled={communitiesEnabled}
+					onCommunityChange={onCommunityChange}
+					onBrowseCommunities={onBrowseCommunities}
 				/>
 				{/*
 				 * STALE-WHILE-REVALIDATE, VISIBLY (tb-instant-open). Cached rows stay
@@ -5588,8 +5602,54 @@ const TeamBridgeOwnedPage: FC<{
 	 */
 	const unreadView = useTeamBridgeUnreadView(selfAccountId);
 	const memberships = useMembershipsQuery({ enabled: readsEnabled });
-	// Empty until the community client lands; the flag alone draws the group.
+	// The joined communities (flag-gated list read; empty with the flag off).
 	const communityList = useTeamBridgeCommunities();
+	/*
+	 * THE COMMUNITY SCOPE (Amendment A). A community is selected in the same
+	 * switcher as a private org but is its own page (`CommunityHome`): nothing of
+	 * the private view, its caches or its drafts renders under a community title.
+	 * Session state only - never written to the durable scope preference, so a
+	 * restart reapplies the opening rule (default private org first; a community
+	 * only when there is no private org). `landing` names the channel a fresh join
+	 * opens (#welcome-and-rules, RFC §5.2).
+	 */
+	const [communityScope, setCommunityScope] = useState<{
+		id: TeamBridgeCommunityId;
+		landing: string | null;
+	} | null>(null);
+	const [joinOpen, setJoinOpen] = useState(false);
+	const joinTarget =
+		communityList.featured[0]?.id ??
+		communityList.communities[0]?.communityId ??
+		null;
+	const openCommunity = (communityId: TeamBridgeCommunityId) =>
+		setCommunityScope({ id: communityId, landing: null });
+	/*
+	 * "Browse communities…": with one featured community at launch, browsing is
+	 * joining it; a joined one simply opens. A community directory is a later
+	 * lane - this keeps the entry honest rather than opening an empty catalogue.
+	 */
+	const browseCommunities = () => {
+		const joined = communityList.communities[0];
+		if (joined && communityList.featured.length === 0)
+			openCommunity(joined.communityId);
+		else if (joinTarget) setJoinOpen(true);
+	};
+	/*
+	 * THE ONE WAY A COMMUNITY IS A LAUNCH DEFAULT (`resolveDefaultSelection` rule
+	 * 7): no private Team org at all (the plan-required gate) and a joined
+	 * community. Once per mount, so choosing the empty private side afterwards
+	 * is not overridden.
+	 */
+	const communityAutoOpened = useRef(false);
+	useEffect(() => {
+		if (!communityList.enabled || communityAutoOpened.current) return;
+		if (eligibility !== "plan_required") return;
+		const first = communityList.communities[0];
+		if (!first) return;
+		communityAutoOpened.current = true;
+		setCommunityScope({ id: first.communityId, landing: null });
+	}, [communityList.enabled, communityList.communities, eligibility]);
 	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE, {
 		accountId,
 	});
@@ -7101,8 +7161,62 @@ const TeamBridgeOwnedPage: FC<{
 		createHandoff.current?.key === draftKey
 			? createHandoff.current.viewKey
 			: draftKey;
+	const communityJoin = communityList.enabled ? (
+		<CommunityJoinDialog
+			communityId={joinTarget}
+			open={joinOpen}
+			onClose={() => setJoinOpen(false)}
+			selfName={selfName ?? null}
+			onJoined={(communityId) => {
+				setJoinOpen(false);
+				setCommunityScope({
+					id: asTeamBridgeCommunityId(communityId),
+					landing: COMMUNITY_WELCOME_CHANNEL,
+				});
+			}}
+		/>
+	) : null;
+	/*
+	 * A COMMUNITY IN VIEW replaces the private page, behind the flag. Turning the
+	 * flag off mid-session drops back to the private page (the scope is ignored).
+	 * Keyed by account and community so a switch is a remount (no stale paint).
+	 */
+	if (communityList.enabled && communityScope)
+		return (
+			<>
+				<CommunityHome
+					key={`${accountId ?? ""}:${communityScope.id}`}
+					communityId={communityScope.id}
+					initialChannelName={communityScope.landing}
+					switcher={
+						<TeamBridgeOrgSwitcher
+							organizations={organizations}
+							scope={scope}
+							onScopeChange={(next) => {
+								setCommunityScope(null);
+								chooseOrganization(next);
+							}}
+							totalUnread={unread.data ? unreadView.total : 0}
+							membershipsLoading={organizationsPending}
+							organizationsFailed={organizationsFailed}
+							communities={communityList.communities}
+							communitiesEnabled
+							selectedCommunityId={communityScope.id}
+							onCommunityChange={openCommunity}
+							onBrowseCommunities={
+								joinTarget || communityList.communities.length > 0
+									? browseCommunities
+									: undefined
+							}
+						/>
+					}
+				/>
+				{communityJoin}
+			</>
+		);
 	return (
 		<>
+			{communityJoin}
 			<TeamBridgePageView
 				ownerAudit={ownerAudit}
 				requests={requestsSlot}
@@ -7556,6 +7670,18 @@ const TeamBridgeOwnedPage: FC<{
 							tenantId={trialEnded.tenantId}
 							endedAt={trialEnded.endedAt}
 						/>
+					) : communityList.enabled ? (
+						/* D1 (RFC §5.1): the trial card beside the free community, dark
+						   behind the community flag; off, the shipped trial panel stays. */
+						<CommunityNoPlanEntry
+							communityAccess={communityList.access}
+							selfName={selfName}
+							onJoin={() => setJoinOpen(true)}
+							onOpen={() => {
+								const joined = communityList.communities[0];
+								if (joined) openCommunity(joined.communityId);
+							}}
+						/>
 					) : (
 						<TeamBridgeTrialEmpty
 							fallback={<TeamBridgeEligibilityPanel reason="plan_required" />}
@@ -7573,6 +7699,13 @@ const TeamBridgeOwnedPage: FC<{
 				}}
 				communities={communityList.communities}
 				communitiesEnabled={communityList.enabled}
+				onCommunityChange={communityList.enabled ? openCommunity : undefined}
+				onBrowseCommunities={
+					communityList.enabled &&
+					(joinTarget || communityList.communities.length > 0)
+						? browseCommunities
+						: undefined
+				}
 			/>
 			<TeamBridgeCreateDialog
 				open={channelFormOpen}
