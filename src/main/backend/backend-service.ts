@@ -1321,7 +1321,8 @@ export class BackendServiceManager {
 			message,
 			afterReady,
 		};
-		this.failuresInRow += 1;
+		// A stop after Ready is a recovery prompt, not a failed attempt to start.
+		if (!afterReady) this.failuresInRow += 1;
 		logger.error(
 			`Backend ${afterReady ? "stopped after ready" : "start failed"} (${failure.category}; exit=${failure.exitCode ?? "none"} signal=${failure.signal ?? "none"} spawn=${failure.spawnErrorCode ?? "none"})`,
 			LogFileType.BACKEND,

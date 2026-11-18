@@ -503,6 +503,21 @@ test("a server that dies AFTER ready is recorded as stopped, not as a failed sta
 		"",
 		"the tail was reset at ready: start-up noise is not post-ready evidence (R1)",
 	);
+	assert.equal(startup.failuresInRow, 0, "the stop was not a try (U9)");
+	m.shellEnv = { ...m.shellEnv, FIXTURE_MODE: "early" };
+	for (const failures of [1, 2]) {
+		assert.equal(await m.restart(), false, `restart ${failures} failed`);
+		const failed = m.getStatusSnapshot().startup;
+		assert.equal(failed.phase, "failed");
+		assert.equal(failed.failure.afterReady, false);
+		assert.equal(
+			failed.failure.exitCode,
+			7,
+			"the launcher exited before serving",
+		);
+		assert.equal(failed.attempt, ready.attempt + failures);
+		assert.equal(failed.failuresInRow, failures, "only failed starts count");
+	}
 	await m.stop(false);
 });
 

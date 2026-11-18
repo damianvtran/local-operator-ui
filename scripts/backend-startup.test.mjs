@@ -102,7 +102,7 @@ test("the stderr tail keeps the most recent characters within its bound", () => 
 	assert.ok(!tail.includes("line 1\n"), "the oldest is evicted");
 });
 
-test("diagnostics carry what the machine said, and say when nothing was recorded", () => {
+test("shared diagnostics contain only the structured allowlist (R6, Q8)", () => {
 	const text = mod.startupDiagnosticsText(
 		{
 			phase: "failed",
@@ -112,25 +112,33 @@ test("diagnostics carry what the machine said, and say when nothing was recorded
 			failure: {
 				category: "port_forbidden",
 				exitCode: 1,
-				signal: null,
-				spawnErrorCode: null,
-				stderrTail: "PermissionError: [WinError 10013]\n",
-				message: "The server process ended before it answered.",
+				signal: "signal-private-marker",
+				spawnErrorCode: "spawn-private-marker",
+				stderrTail: "PermissionError: /Users/path-private-marker/serve",
+				message: "Contact email-private-marker@example.invalid",
 			},
 		},
-		{ appVersion: "0.58.0", platform: "win32", state: "detached", url: null },
+		{
+			appVersion: "0.58.0",
+			platform: "win32",
+			arch: "x64",
+			state: "detached",
+			url: "https://example.invalid/url-private-marker",
+			detail: "detail-private-marker",
+		},
 	);
-	assert.match(text, /app: 0\.58\.0/);
-	assert.match(text, /platform: win32/);
-	assert.match(
+	assert.ok(!text.includes("private-marker"), "no free-form source is shared");
+	assert.equal(
 		text,
-		/start: failed, attempt 2, budget 30 s, started 2026-11-17T12:00:00\.000Z/,
-	);
-	assert.match(text, /category: port_forbidden/);
-	assert.match(text, /exit code: 1/);
-	assert.match(
-		text,
-		/stderr \(last lines\):\nPermissionError: \[WinError 10013\]$/,
+		[
+			"Local Operator start-up diagnostics",
+			"app: 0.58.0",
+			"platform: win32 x64",
+			"connection: detached",
+			"start: failed, attempt 2, budget 30 s",
+			"category: port_forbidden",
+			"exit code: 1",
+		].join("\n"),
 	);
 	assert.match(
 		mod.startupDiagnosticsText(null, {}),
@@ -138,51 +146,76 @@ test("diagnostics carry what the machine said, and say when nothing was recorded
 	);
 });
 
-/*
- * Review round 1, R1: the diagnostics are pasted into help requests, and the
- * stderr tail is the server's own output - a logged key, bearer header or
- * token must not reach the clipboard.
- */
-test("diagnostics mask credential-shaped text and keep the evidence", () => {
-	const secretHex = "a".repeat(32) + "0123456789abcdef".repeat(2);
-	const stderr = [
-		"Traceback (most recent call last):",
-		"  headers={'Authorization': 'Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig'}",
-		"  OPENAI_API_KEY=sk-proj-abcdefghijklmnop1234",
-		'  {"token": "tok_live_12345678"}',
-		`  desktop token ${secretHex}`,
-		"  password: hunter22",
-		"ValueError: bad config",
-	].join("\n");
+test("shared diagnostics reject malformed runtime values without coercing them", () => {
+	const marker = "runtime-private-marker";
 	const text = mod.startupDiagnosticsText(
 		{
-			phase: "failed",
-			startedAt: 0,
-			budgetMs: 30_000,
-			attempt: 1,
-			settledAt: 1000,
-			failure: {
-				category: "crashed",
-				exitCode: 1,
-				signal: null,
-				spawnErrorCode: null,
-				stderrTail: stderr,
-				message: "The server process ended before it answered.",
-			},
+			phase: [marker],
+			startedAt: Number.NaN,
+			budgetMs: Number.POSITIVE_INFINITY,
+			attempt: marker,
+			failure: { category: marker, exitCode: marker, afterReady: marker },
 		},
-		{ appVersion: "1.2.3", platform: "win32 x64" },
+		{
+			appVersion: `0.58.0+${marker}`,
+			platform: marker,
+			arch: marker,
+			state: marker,
+		},
 	);
-	for (const leaked of [
-		"eyJhbGciOiJIUzI1NiJ9",
-		"sk-proj-abcdefghijklmnop1234",
-		"tok_live_12345678",
-		secretHex,
-		"hunter22",
-	])
-		assert.ok(!text.includes(leaked), `masked: ${leaked}`);
-	assert.match(text, /ValueError: bad config/, "the error itself survives");
-	assert.match(text, /category: crashed/);
-	assert.match(text, /app: 1\.2\.3/);
+	assert.equal(
+		text,
+		[
+			"Local Operator start-up diagnostics",
+			"app: unknown",
+			"platform: unknown",
+			"connection: unknown",
+			"start: unknown, attempt unknown, budget unknown",
+			"category: unknown",
+		].join("\n"),
+	);
+});
+
+test("local stderr masks known credentials but keeps the surrounding error (Q8)", () => {
+	const hex = "a".repeat(24); // Shorter than the unrelated opaque hex scrub.
+	const basic = "syntheticBasic";
+	const authValue = "fixture-authority-value";
+	const authority = ["syntheticLogin", authValue].join(":");
+	const address = `https://${authority}@example.invalid/`;
+	const queryValue = "fixture-query-value";
+	const cases = [
+		[`Authorization: bearer ${hex}`, hex],
+		[`Authorization: bAsIc ${basic}`, basic],
+		['password: "two words syntheticQuoted"', "syntheticQuoted"],
+		[String.raw`passwd='two \'words syntheticSingle'`, "syntheticSingle"],
+		[address, "syntheticLogin"],
+		[address, authValue],
+		['{"token": "syntheticJson"}', "syntheticJson"],
+		["OPENAI_API_KEY=syntheticAssigned", "syntheticAssigned"],
+		[`${["?token", queryValue].join("=")}&mode=test`, queryValue],
+		[`desktop token ${"f1".repeat(32)}`, "f1".repeat(32)],
+	];
+	for (const [input, sentinel] of cases) {
+		assert.ok(input.includes(sentinel), "the control contains the marker");
+		const text = mod.redactSecrets(`${input}\nValueError: bad config`);
+		assert.ok(
+			!text.includes(sentinel),
+			`credential marker survived: ${sentinel}`,
+		);
+		assert.ok(text.endsWith("\nValueError: bad config"));
+	}
+	assert.equal(
+		mod.redactSecrets('password: "two words syntheticQuoted"; ok'),
+		"password: [redacted]; ok",
+	);
+	assert.equal(
+		mod.redactSecrets(`Authorization: bearer ${hex}`),
+		"Authorization: bearer [redacted]",
+	);
+	assert.equal(
+		mod.redactSecrets(address),
+		"https://[redacted]@example.invalid/",
+	);
 });
 
 test("a failure after ready is labelled as such in the diagnostics (U2)", () => {

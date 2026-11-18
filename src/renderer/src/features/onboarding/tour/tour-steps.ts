@@ -576,11 +576,26 @@ const commandPaletteStep = (): StepOptions => {
  */
 export const createTourSteps = (
 	onSkipped?: (stepId: string) => void,
-	options: { targetWaitMs?: number } = {},
-): StepOptions[] =>
-	guardTourTargets(buildTourSteps(), undefined, onSkipped, {
+	options: { targetWaitMs?: number; onShown?: (stepId: string) => void } = {},
+): StepOptions[] => {
+	const steps = guardTourTargets(buildTourSteps(), undefined, onSkipped, {
 		waitMs: options.targetWaitMs,
 	});
+	const { onShown } = options;
+	if (!onShown) return steps;
+	return steps.map((step) => ({
+		...step,
+		// The tour-level show event precedes beforeShowPromise: it is useful for
+		// shaping a step but doesn't mean the guard let Shepherd draw it.
+		when: {
+			...step.when,
+			show(this: Step) {
+				step.when?.show?.call(this);
+				onShown(this.id);
+			},
+		},
+	}));
+};
 
 const buildTourSteps = (): StepOptions[] => [
 	{

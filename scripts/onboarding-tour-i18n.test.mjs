@@ -198,6 +198,7 @@ const built = await build({
 			'export { MemoryRouter } from "react-router-dom";',
 			'export { ShepherdJourneyContext } from "react-shepherd";',
 			'export { useOnboardingTour } from "./src/renderer/src/features/onboarding/hooks/use-onboarding-tour";',
+			'export { setProductEventSink } from "./src/renderer/src/shared/analytics/product-events";',
 		].join("\n"),
 		resolveDir: repo,
 	},
@@ -1665,6 +1666,64 @@ test("a step whose target is missing is skipped and reported, without a console 
 		[],
 		"no Shepherd missing-element error",
 	);
+});
+
+test("the hook reports a missing target only as skipped and a late target once shown (R7)", async () => {
+	const tag = "chat-input-textarea";
+	const stepId = "chat-input";
+	const target = document.querySelector(`[data-tour-tag="${tag}"]`);
+	assert.ok(target);
+	target.remove();
+	const events = [];
+	mod.setProductEventSink((name, { step, outcome }) => {
+		if (name === "onboarding_tour_step" && step === stepId) {
+			events.push({
+				outcome,
+				open: shownStepElement()?.dataset.shepherdStepId === stepId,
+			});
+		}
+	});
+	let started;
+	try {
+		started = await startTourThroughHook(900);
+		const { tour } = started;
+		tour.show(stepId);
+		assert.ok(
+			await waitFor(() =>
+				events.some(({ outcome }) => outcome === "skipped_missing_target"),
+			),
+			"the absent target reached the skip path",
+		);
+		assert.deepEqual(events, [
+			{ outcome: "skipped_missing_target", open: false },
+		]);
+
+		tour.show(stepId);
+		assert.equal(
+			tour.getCurrentStep()?.id,
+			stepId,
+			"Shepherd selected the step before its target arrived",
+		);
+		assert.equal(
+			events.length,
+			1,
+			"the early Tour.show event did not emit shown",
+		);
+		document.body.appendChild(target);
+		assert.ok(
+			await waitFor(
+				() => shownStepElement()?.dataset.shepherdStepId === stepId,
+			),
+		);
+		assert.deepEqual(events, [
+			{ outcome: "skipped_missing_target", open: false },
+			{ outcome: "shown", open: true },
+		]);
+	} finally {
+		mod.setProductEventSink("default");
+		if (!target.isConnected) document.body.appendChild(target);
+		await started?.stop();
+	}
 });
 
 /*

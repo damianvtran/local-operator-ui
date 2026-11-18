@@ -5,7 +5,7 @@ import { useOnboardingStore } from "@shared/store/onboarding-store";
 import { useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShepherdJourneyContext } from "react-shepherd";
-import type { Step, StepOptions, Tour } from "shepherd.js";
+import type { StepOptions, Tour } from "shepherd.js";
 import {
 	applyTourLocale,
 	consumeTourEndedBySkipping,
@@ -34,15 +34,14 @@ const paletteReleaseHandlerFor = (tour: Tour): (() => void) => {
 };
 
 /**
- * `onboarding_tour_step` for shown, completed and cancelled steps (skips are
- * reported by `guardTourTargets`). Module-scope and memoised per tour for the
+ * `onboarding_tour_step` for completed and cancelled steps. Shown and skipped
+ * come from the step lifecycle. Memoised per tour for the
  * same reason as the palette release above: Shepherd matches listeners by
  * identity, and a fresh arrow per `startTour` would stack.
  */
 const tourTelemetryByTour = new WeakMap<
 	Tour,
 	{
-		show: (event: { step?: Step }) => void;
 		complete: () => void;
 		cancel: () => void;
 	}
@@ -52,11 +51,6 @@ const tourTelemetryFor = (tour: Tour) => {
 	if (existing) return existing;
 	const current = () => tour.getCurrentStep()?.id ?? "unknown";
 	const handlers = {
-		show: (event: { step?: Step }) =>
-			trackProductEvent("onboarding_tour_step", {
-				step: event?.step?.id ?? "unknown",
-				outcome: "shown",
-			}),
 		complete: () =>
 			trackProductEvent("onboarding_tour_step", {
 				step: current(),
@@ -222,17 +216,22 @@ export const useOnboardingTour = () => {
 		tourInstance.off("show", syncStepSevenShapeOnShow);
 		tourInstance.on("show", syncStepSevenShapeOnShow);
 		const telemetry = tourTelemetryFor(tourInstance);
-		for (const name of ["show", "complete", "cancel"] as const) {
+		for (const name of ["complete", "cancel"] as const) {
 			tourInstance.off(name, telemetry[name]);
 			tourInstance.on(name, telemetry[name]);
 		}
 
 		// Resolve the copy in the language active at start (see ./tour/tour-steps).
-		const tourSteps = createTourSteps((step) =>
-			trackProductEvent("onboarding_tour_step", {
-				step,
-				outcome: "skipped_missing_target",
-			}),
+		const tourSteps = createTourSteps(
+			(step) =>
+				trackProductEvent("onboarding_tour_step", {
+					step,
+					outcome: "skipped_missing_target",
+				}),
+			{
+				onShown: (step) =>
+					trackProductEvent("onboarding_tour_step", { step, outcome: "shown" }),
+			},
 		);
 
 		// Manage steps:

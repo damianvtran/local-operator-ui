@@ -174,20 +174,16 @@ export const BackendStartupPanel = ({
 	const copyDiagnostics = () => {
 		void (async () => {
 			try {
-				const [appVersion, platform] = await Promise.all([
+				const [appVersion, platformInfo] = await Promise.all([
 					window.api?.systemInfo?.getAppVersion?.().catch(() => null) ?? null,
-					window.api?.systemInfo
-						?.getPlatformInfo?.()
-						.then((info) => `${info.platform} ${info.arch}`)
-						.catch(() => null) ?? null,
+					window.api?.systemInfo?.getPlatformInfo?.().catch(() => null) ?? null,
 				]);
 				await navigator.clipboard.writeText(
 					startupDiagnosticsText(startup, {
 						appVersion,
-						platform,
+						platform: platformInfo?.platform,
+						arch: platformInfo?.arch,
 						state: snapshot.state,
-						url: snapshot.url,
-						detail: snapshot.detail,
 					}),
 				);
 				setCopy("copied");

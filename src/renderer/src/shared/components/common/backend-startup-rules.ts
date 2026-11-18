@@ -145,7 +145,7 @@ export function backendStatusEvent(
 
 /**
  * The band's title and reason for a failed record. A server that died after it
- * was ready is not a failed START (UX round 1, U2): the D2 replays were all of
+ * was ready is not a failed START (UX round 1, U2): some D2 replays were of
  * that kind, and "could not start ... stopped before it finished starting" was
  * false for them and pointed toward reinstalling.
  */

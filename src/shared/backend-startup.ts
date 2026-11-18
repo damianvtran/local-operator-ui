@@ -57,7 +57,7 @@ export interface BackendStartupFailure {
 	spawnErrorCode: string | null;
 	/** The last lines the child wrote to stderr, bounded (see STDERR_TAIL_CHARS). */
 	stderrTail: string;
-	/** Main's own one-line account, for the diagnostics block. English, technical. */
+	/** Main's own technical account, not for sharing. */
 	message: string;
 	/**
 	 * The server had reached `ready` and then died (UX round 1, U2). Such a
@@ -88,7 +88,8 @@ export interface BackendStartup {
 	settledAt: number | null;
 	failure: BackendStartupFailure | null;
 	/**
-	 * Failures recorded since the server was last ready, this one included (UX
+	 * Failed starts since the server was last ready, excluding a stop after
+	 * Ready (U9). A failed start includes the current attempt (UX
 	 * round 1, U4): a Restart that fails again must not look identical to the
 	 * first failure, which is what drove the repeated Retry presses in the D1/D2
 	 * replays. Reset to 0 by `ready`. Optional for records from older builds.
@@ -173,19 +174,22 @@ export function classifyStartupFailure(input: {
 }
 
 /*
- * Credential shapes masked out of the diagnostics (review round 1, R1). The
- * stderr tail is the server's own output, and a server that logs a provider
- * key, a bearer header or a `token=` query string would otherwise put it on
- * the clipboard of a user who was asked to paste it into a support request.
- * Shapes, not a list of known keys: each is a recognisable credential syntax,
- * matched broadly - over-masking a diagnostic costs nothing, a leak does.
+ * Best-effort masking for the local Show details view only. An unknown secret
+ * shape can still get through, so this must never be the clipboard boundary.
  */
 const SECRET_PATTERNS: readonly [RegExp, string][] = [
-	// `Authorization: Bearer <x>` / `Bearer <x>` anywhere.
-	[/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/g, "$1 [redacted]"],
-	// key=value / key: value / "key": "value" for credential-named keys.
+	// Strip the whole URL userinfo, not just the password.
+	[/\b([a-z][a-z0-9+.-]*:\/\/)[^\s/<>"'?#]+@/gi, "$1[redacted]@"],
+	// Consume a complete quoted value (including whitespace and escaped quotes).
 	[
-		/\b([A-Za-z0-9_-]*(?:api[_-]?key|apikey|token|secret|password|passwd|credential|auth)[A-Za-z0-9_-]*)(["']?\s*[:=]\s*["']?)([^\s"',;&]{4,})/gi,
+		/\b([A-Za-z0-9_-]*(?:api[_-]?key|token|secret|password|passwd|credential|auth)[A-Za-z0-9_-]*["']?\s*[:=]\s*)("(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*')/gi,
+		"$1[redacted]",
+	],
+	// HTTP auth schemes are case-insensitive; mask the payload before the
+	// generic assignment pattern can mistake a scheme for the value.
+	[/\b(Bearer|Basic)[ \t]+[A-Za-z0-9._~+/=-]+/gi, "$1 [redacted]"],
+	[
+		/\b([A-Za-z0-9_-]*(?:api[_-]?key|token|secret|password|passwd|credential|auth)[A-Za-z0-9_-]*)(["']?\s*[:=]\s*)(?!\[redacted\]|(?:Bearer|Basic)[ \t])([^\s"',;&]+)/gi,
 		"$1$2[redacted]",
 	],
 	// Provider key prefixes that appear bare (OpenAI/Anthropic `sk-`, GitHub,
@@ -198,7 +202,7 @@ const SECRET_PATTERNS: readonly [RegExp, string][] = [
 	[/\b[a-f0-9]{32,}\b/gi, "[redacted]"],
 ];
 
-/** Mask credential-shaped substrings (see `SECRET_PATTERNS`). */
+/** Mask known credential shapes in the local stderr view. */
 export function redactSecrets(text: string): string {
 	let out = text;
 	for (const [pattern, replacement] of SECRET_PATTERNS)
@@ -206,52 +210,67 @@ export function redactSecrets(text: string): string {
 	return out;
 }
 
+const allowlisted = (value: unknown, choices: readonly string[]) =>
+	typeof value === "string" && choices.includes(value) ? value : "unknown";
+const RELEASE_VERSION = /^[0-9]{1,9}\.[0-9]{1,9}\.[0-9]{1,9}$/;
+const integer = (value: unknown, min: number) =>
+	typeof value === "number" && Number.isSafeInteger(value) && value >= min
+		? value
+		: null;
+
 /**
- * The plain-text block "Copy diagnostics" puts on the clipboard.
- *
- * Technical and English on purpose: it is pasted into a support thread or an
- * issue, where the reader is whoever maintains the server, and its value is that
- * it is the same in every locale. It carries what the user's machine said and
- * nothing the app inferred beyond the category.
+ * Shareable and locale-independent. Only emit validated structured values:
+ * even redacted free text can identify the user (e.g. home paths in stderr).
+ * In particular, omit exact timestamps and free-form version suffixes.
  */
 export function startupDiagnosticsText(
 	startup: BackendStartup | null,
 	context: {
 		appVersion?: string | null;
 		platform?: string | null;
-		url?: string | null;
+		arch?: string | null;
 		state?: string | null;
-		detail?: string | null;
 	},
 ): string {
+	const version = context.appVersion;
+	const platform = allowlisted(context.platform, ["darwin", "linux", "win32"]);
+	const arch = allowlisted(context.arch, ["arm64", "x64", "ia32", "arm"]);
+	const state = allowlisted(context.state, [
+		"connecting",
+		"attached",
+		"degraded",
+		"detached",
+		"replaced",
+		"wedged",
+	]);
 	const lines = [
 		"Local Operator start-up diagnostics",
-		`app: ${context.appVersion ?? "unknown"}`,
-		`platform: ${context.platform ?? "unknown"}`,
-		`connection: ${context.state ?? "unknown"}${context.url ? ` (${context.url})` : ""}`,
+		`app: ${typeof version === "string" && RELEASE_VERSION.test(version) ? version : "unknown"}`,
+		`platform: ${platform}${arch === "unknown" ? "" : ` ${arch}`}`,
+		`connection: ${state}`,
 	];
-	if (context.detail) lines.push(`detail: ${context.detail}`);
-	if (startup) {
-		lines.push(
-			`start: ${startup.phase}, attempt ${startup.attempt}, budget ${Math.round(startup.budgetMs / 1000)} s, started ${new Date(startup.startedAt).toISOString()}`,
-		);
-		const f = startup.failure;
-		if (f) {
-			lines.push(`category: ${f.category}`);
-			if (f.afterReady) lines.push("stopped after a successful start: yes");
-			if (f.exitCode !== null) lines.push(`exit code: ${f.exitCode}`);
-			if (f.signal) lines.push(`signal: ${f.signal}`);
-			if (f.spawnErrorCode) lines.push(`spawn error: ${f.spawnErrorCode}`);
-			if (f.message) lines.push(`message: ${f.message}`);
-			if (f.stderrTail.trim()) {
-				lines.push("stderr (last lines):", f.stderrTail.trimEnd());
-			}
-		}
-	} else {
+	if (!startup) {
 		lines.push("start: no start-up recorded by this app session");
+		return lines.join("\n");
 	}
-	// Masked as a whole: the message and detail can quote server output too.
-	return redactSecrets(lines.join("\n"));
+	const phase = allowlisted(startup.phase, ["starting", "ready", "failed"]);
+	const attempt = integer(startup.attempt, 1);
+	const budget = integer(startup.budgetMs, 1);
+	lines.push(
+		`start: ${phase}, attempt ${attempt ?? "unknown"}, budget ${budget === null ? "unknown" : `${Math.round(budget / 1000)} s`}`,
+	);
+	const f = startup.failure;
+	if (f) {
+		lines.push(
+			`category: ${allowlisted(f.category, BACKEND_STARTUP_CATEGORIES)}`,
+		);
+		if (f.afterReady === true)
+			lines.push("stopped after a successful start: yes");
+		const exitCode = integer(f.exitCode, -0x80000000);
+		if (exitCode !== null && exitCode <= 0xffffffff)
+			lines.push(`exit code: ${exitCode}`);
+	}
+	return lines.join("\n");
 }
 
 /** IPC channel: restart the owned server (stop, then start). */
