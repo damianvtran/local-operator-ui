@@ -639,9 +639,17 @@ test("FAILURE PATH: the only call that submits a dictated message sits behind th
 	const window_ = ROW_SOURCE.slice(at - 900, at + 100);
 	assert.match(window_, /dictatedSendCheck\(/);
 	assert.match(window_, /intact \? runSubmitRef\.current\(true\)/);
-	// Every failure arm of the transcription ends the step instead of submitting.
+	/*
+	 * Every failure arm of the transcription ends the step instead of submitting.
+	 *
+	 * THE SLICE IS THE TAKE'S BODY, and bug 2 renamed it: `handleSendAudio` now
+	 * wraps `transcribeTake`, which is the function the bytes travel through (an
+	 * `onstop` delivered after an unmount calls it directly). The pin is the same
+	 * property over the same code - one take, no submit inside it, every failure
+	 * arm ending the step - and it moved with the name rather than being loosened.
+	 */
 	const send = ROW_SOURCE.slice(
-		ROW_SOURCE.indexOf("const handleSendAudio = useCallback"),
+		ROW_SOURCE.indexOf("const transcribeTake = useCallback"),
 		ROW_SOURCE.indexOf("const retryDictation"),
 	);
 	assert.ok(

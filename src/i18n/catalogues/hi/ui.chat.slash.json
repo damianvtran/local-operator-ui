@@ -1,5 +1,7 @@
 {
 	"ui.chat.slash.arg.credential_api_key": "API कुंजी",
+	"ui.chat.slash.arg.kind_role": "भूमिका",
+	"ui.chat.slash.arg.kind_specialist": "विशेषज्ञ",
 	"ui.chat.slash.arg.mcp_detail.reauthorize": "कनेक्ट है — दोबारा अधिकृत किया जाएगा",
 	"ui.chat.slash.arg.mcp_detail.reuse": "कनेक्ट है — दोबारा इस्तेमाल होगा",
 	"ui.chat.slash.arg.mcp_detail.stored": "सहेजा गया क्रेडेंशियल",

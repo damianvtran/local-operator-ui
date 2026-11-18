@@ -998,6 +998,7 @@ export function visibleConversationRows(
 export type TeamBridgeEligibility =
 	| "signed_out"
 	| "update_required"
+	| "rate_limited"
 	| "unavailable"
 	| "plan_required"
 	| "off"
@@ -1010,6 +1011,7 @@ export function teamBridgeEligibility(
 				"state" | "surface_state" | "update_required"
 		  > & {
 				local?: Pick<AgentMessagesStatus["local"], "enabled">;
+				error?: { code?: unknown } | null;
 		  })
 		| null
 		| undefined,
@@ -1019,6 +1021,16 @@ export function teamBridgeEligibility(
 	if (status.state === "update_required" || status.update_required) {
 		return "update_required";
 	}
+	/*
+	 * A THROTTLE IS NOT AN OUTAGE (incident 2026-11-17). The edge's per-address
+	 * rate rule answered 429 to every client on one network for 300 s, and this
+	 * page told the reader the service was down. The runtime keeps the state
+	 * `unavailable` (no READY answer to show yet) and names the cause in
+	 * `error.code`; the page shows a "slowing down, retrying" panel that retries
+	 * on its own instead of the hard unavailable screen.
+	 */
+	if (status.state === "unavailable" && isRateLimitedCode(status.error?.code))
+		return "rate_limited";
 	if (status.state === "unavailable") return "unavailable";
 	if (status.surface_state === "A") return "plan_required";
 	/*
@@ -2152,4 +2164,198 @@ export async function sendFirstMessage(args: {
 	});
 	args.remembered.delete(args.draftKey);
 	return created;
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * Rate limits (incident 2026-11-17)
+ *
+ * WHY THIS EXISTS. AWS WAF in front of api.radienthq.com blocks a whole client
+ * ADDRESS for up to 300 s once it passes 2000 requests per 5 minutes, and the
+ * hub's own buckets answer 429 `rate_limited` too. Desktop, phone and agents on
+ * one network share that address, so one runaway client blocked everyone, and
+ * this page answered every throttle with "Team Bridge is unavailable". The
+ * helpers below let the page tell a throttle from an outage, keep what it had
+ * already loaded, and come back on its own after the named wait — with jitter,
+ * so every client released together does not return in the same second and
+ * trip the rule again.
+ * ---------------------------------------------------------------------------
+ */
+
+/** The wait used when a throttle names none (no header, no body field). */
+export const TEAM_BRIDGE_RATE_LIMIT_DEFAULT_MS = 60_000;
+/**
+ * The longest wait honoured. The edge's longest block is 300 s; a broken or
+ * hostile value must not park the page for longer than that.
+ */
+export const TEAM_BRIDGE_RATE_LIMIT_MAX_MS = 300_000;
+/** The upper bound on the jitter added on top of the named wait. */
+export const TEAM_BRIDGE_RATE_LIMIT_JITTER_MAX_MS = 30_000;
+
+function isRateLimitedCode(code: unknown): boolean {
+	return code === "rate_limited";
+}
+
+/**
+ * The shortest wait honoured. A stated wait of 0 (or anything under a second)
+ * must still schedule a read: query-core treats a `refetchInterval` of 0 as "no
+ * interval", so an unfloored 0 would leave the page saying "Retrying
+ * automatically" and never retry (agent review round 1, M3).
+ */
+export const TEAM_BRIDGE_RATE_LIMIT_MIN_MS = 1_000;
+
+function boundedWaitMs(ms: unknown): number | null {
+	if (typeof ms !== "number" || !Number.isFinite(ms) || ms < 0) return null;
+	return Math.min(
+		Math.max(ms, TEAM_BRIDGE_RATE_LIMIT_MIN_MS),
+		TEAM_BRIDGE_RATE_LIMIT_MAX_MS,
+	);
+}
+
+/**
+ * The throttle the status answer (or its failed read) reports, as the wait it
+ * named in ms, or null when the answer is not a throttle.
+ *
+ * Two sources, because a throttle reaches the renderer two ways: the runtime's
+ * status payload carries the hub/edge refusal in `error` (`code`,
+ * `retry_after_seconds`), and a read the runtime itself refused arrives as a
+ * failed query whose error carries `status: 429` / `code: "rate_limited"` and,
+ * from `desktopResult`, `retryAfterMs` or `detail.retry_after_seconds`.
+ */
+export function teamBridgeRateLimit(
+	status:
+		| {
+				error?: {
+					code?: unknown;
+					retry_after_seconds?: unknown;
+				} | null;
+		  }
+		| null
+		| undefined,
+	queryError?: unknown,
+): { retryAfterMs: number } | null {
+	const refusal = status?.error;
+	if (refusal && isRateLimitedCode(refusal.code)) {
+		const seconds = refusal.retry_after_seconds;
+		return {
+			retryAfterMs:
+				boundedWaitMs(typeof seconds === "number" ? seconds * 1_000 : null) ??
+				TEAM_BRIDGE_RATE_LIMIT_DEFAULT_MS,
+		};
+	}
+	const failure = queryError as {
+		status?: unknown;
+		code?: unknown;
+		retryAfterMs?: unknown;
+		detail?: { retry_after_seconds?: unknown } | null;
+	} | null;
+	if (
+		!failure ||
+		typeof failure !== "object" ||
+		!(failure.status === 429 || isRateLimitedCode(failure.code))
+	)
+		return null;
+	const detailSeconds = failure.detail?.retry_after_seconds;
+	return {
+		retryAfterMs:
+			boundedWaitMs(failure.retryAfterMs) ??
+			boundedWaitMs(
+				typeof detailSeconds === "number" ? detailSeconds * 1_000 : null,
+			) ??
+			TEAM_BRIDGE_RATE_LIMIT_DEFAULT_MS,
+	};
+}
+
+/**
+ * When to read again after a throttle: never sooner than the named wait, plus
+ * full jitter over up to `TEAM_BRIDGE_RATE_LIMIT_JITTER_MAX_MS` (at most the
+ * wait itself, so a short wait is not tripled). `rand` is injectable for tests.
+ */
+export function teamBridgeRateLimitRetryMs(
+	retryAfterMs: number,
+	rand: () => number = Math.random,
+): number {
+	const wait = boundedWaitMs(retryAfterMs) ?? TEAM_BRIDGE_RATE_LIMIT_DEFAULT_MS;
+	const spread = Math.min(wait, TEAM_BRIDGE_RATE_LIMIT_JITTER_MAX_MS);
+	return Math.round(wait + rand() * spread);
+}
+
+/**
+ * A jitter source that answers the SAME value for the same query answer.
+ *
+ * WHY: `refetchInterval` is a function query-core calls on every render
+ * (`useBaseQuery` -> `setOptions`), and it clears and restarts the timer
+ * whenever the returned value differs from the last (`queryObserver`
+ * `#updateRefetchInterval`). A fresh `Math.random()` per call therefore pushed
+ * the retry back on every re-render, indefinitely for a busy observer (agent
+ * review round 1, M1). Seeding from the answer's own timestamp keeps the value
+ * fixed until a new read lands, still differs between clients (each records
+ * its own millisecond), and gives every observer of one query the same
+ * deadline, so they coalesce into one read instead of one each.
+ *
+ * `updatedAt` is the latest of the query's `dataUpdatedAt`/`errorUpdatedAt`.
+ * The mix is a 32-bit integer hash (splitmix-style avalanche), not crypto:
+ * it only has to spread nearby timestamps across [0, 1).
+ */
+export function teamBridgeRateLimitJitter(updatedAt: number): () => number {
+	const at = Number.isFinite(updatedAt) ? Math.trunc(updatedAt) : 0;
+	// Epoch milliseconds exceed 32 bits: fold the high word into the low one.
+	let h = (at >>> 0) ^ Math.trunc(at / 2 ** 32);
+	h = Math.imul(h ^ (h >>> 16), 0x7feb352d);
+	h = Math.imul(h ^ (h >>> 15), 0x846ca68b);
+	h ^= h >>> 16;
+	const value = (h >>> 0) / 2 ** 32;
+	return () => value;
+}
+
+/**
+ * The status query's `refetchInterval`, given the query's state: after a
+ * throttle (in the answer or as the read's own 429), the named wait plus
+ * jitter that is stable for that answer; otherwise no interval. Lives here,
+ * not inline in the hook, so the "same answer, same deadline" property is
+ * testable against the real query-core observer.
+ */
+export function teamBridgeStatusRefetchInterval(state: {
+	data?: Parameters<typeof teamBridgeRateLimit>[0];
+	error?: unknown;
+	dataUpdatedAt: number;
+	errorUpdatedAt: number;
+}): number | false {
+	const limit = teamBridgeRateLimit(state.data, state.error);
+	if (!limit) return false;
+	return teamBridgeRateLimitRetryMs(
+		limit.retryAfterMs,
+		teamBridgeRateLimitJitter(
+			Math.max(state.dataUpdatedAt, state.errorUpdatedAt),
+		),
+	);
+}
+
+/**
+ * The status answer to keep when a fresh read is throttled.
+ *
+ * A READY answer the page already rendered stays the page's answer for the
+ * same account, with the throttle attached as `error`, so the conversations
+ * stay on screen and a quiet "retrying" note explains the pause. A newer
+ * runtime already does this itself; this covers a runtime restarted mid-block
+ * (no last-good answer of its own) while the renderer still holds one. Any
+ * other answer, or a different account, is taken as it came.
+ */
+export function holdReadyThroughThrottle<
+	T extends {
+		state: string;
+		account_id?: string | null;
+		error?: { code?: unknown } | null;
+	},
+>(previous: T | null | undefined, next: T): T {
+	if (
+		previous &&
+		previous.state === "ready" &&
+		next.state === "unavailable" &&
+		isRateLimitedCode(next.error?.code) &&
+		previous.account_id != null &&
+		previous.account_id === next.account_id
+	)
+		return { ...previous, error: next.error };
+	return next;
 }

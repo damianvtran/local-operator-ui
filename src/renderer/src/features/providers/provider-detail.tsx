@@ -25,6 +25,8 @@
  * field, and nothing was stored (UX U3).
  */
 
+import { categorizeProviderFailure } from "@shared/analytics/first-run-reasons";
+import { trackProductEvent } from "@shared/analytics/product-events";
 import { pollAuthOperation } from "@shared/api/local-operator/auth-operation";
 import {
 	DesktopControlError,
@@ -37,7 +39,6 @@ import type {
 	ProviderMethod,
 } from "@shared/api/local-operator/desktop-api";
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
-import { ModelsApi } from "@shared/api/local-operator/models-api";
 import { CopyButton } from "@shared/components/common/copy-button";
 import { Spinner } from "@shared/components/common/spinner";
 import { getModelsForHostingProvider } from "@shared/components/hosting/hosting-model-manifest";
@@ -95,7 +96,8 @@ import type {
 	SaveKeyResult,
 } from "../../../../shared/desktop-contract";
 import { useMakeLocalDefault } from "./local-default";
-import { type LocalDiagnosis, diagnoseLocal } from "./local-provider-diagnosis";
+import { checkLocalProvider } from "./local-provider-check";
+import type { LocalDiagnosis } from "./local-provider-diagnosis";
 import { LocalProviderStatusView } from "./local-provider-status";
 import { PhoneAccessBlock } from "./phone-access-block";
 import {
@@ -120,50 +122,6 @@ import {
 	useSignInSession,
 } from "./sign-in-sessions";
 import { useDefaultModel } from "./use-provider-status";
-
-/**
- * One local-model check, from the probe and the served list to a diagnosis.
- *
- * - No address configured: `no_address`, without asking (the core refuses the
- *   probe with a 422 that would otherwise read as the service being down; QA
- *   round 1, Q3).
- * - The probe ROUTE fails: `check_failed`, because the check never reached the
- *   runtime (agent review round 1, M3) - not "isn't running, download it".
- * - A list that cannot be read is `null` (unknown), never 0, and an empty one
- *   is not trusted as "no models" either (see `LocalDiagnosis`, R2/Q1).
- */
-async function checkLocalProvider(
-	provider: Pick<DesktopProvider, "id" | "base_url">,
-): Promise<LocalDiagnosis> {
-	if (!provider.base_url) return { kind: "no_address" };
-	let probe: { reachable: boolean; detail: string };
-	try {
-		probe = await desktopResult<{ reachable: boolean; detail: string }>({
-			op: "auth.probe",
-			provider: provider.id,
-		});
-	} catch {
-		return { kind: "check_failed" };
-	}
-	let models: number | null = null;
-	let firstModel: string | null = null;
-	if (probe.reachable) {
-		try {
-			const listed = await ModelsApi.listModels("", provider.id);
-			models = listed.result?.models?.length ?? null;
-			firstModel = listed.result?.models?.[0]?.id ?? null;
-		} catch {
-			models = null;
-		}
-	}
-	return diagnoseLocal({
-		providerId: provider.id,
-		baseUrl: provider.base_url,
-		probe,
-		models,
-		firstModel,
-	});
-}
 
 /**
  * Reachability for a local provider, and what to do when it fails.
@@ -1009,6 +967,10 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		setKeySaving(true);
 		rememberKey({ error: null });
 		try {
+			trackProductEvent("provider_setup_started", {
+				provider: method.id,
+				method: "api_key",
+			});
 			const result =
 				(await desktopResult<SaveKeyResult | null>({
 					op: "auth.key",
@@ -1017,6 +979,10 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				})) ?? {};
 			setKeyValue("");
 			rememberKey({ saved: result });
+			trackProductEvent("provider_connected", {
+				provider: method.id,
+				method: "api_key",
+			});
 			refreshProviders();
 			void adoptDefaultRef.current(
 				provider.id,
@@ -1024,6 +990,11 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				provider.suggested_model?.id,
 			);
 		} catch (error) {
+			trackProductEvent("provider_setup_failed", {
+				provider: method.id,
+				method: "api_key",
+				reason: categorizeProviderFailure(error, "key"),
+			});
 			// A 422 is the backend refusing THIS key (validation, or a provider
 			// with no key route), and its sentence belongs under the field.
 			// Anything else is also shown there: the field is what the user

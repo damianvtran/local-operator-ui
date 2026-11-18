@@ -873,16 +873,25 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 						 * THE NOUN. A sound entry only knows it is audio; whether it is a
 						 * voiceover or a sound effect is the fact `view.material` carries, so
 						 * the label reads `Generated voiceover`, never `Generated audio`.
+						 *
+						 * THE LABEL IS ITS OWN KEY, NOT THE STATUS LINE (2026-11-17). It used
+						 * to be `state.done` with an index appended, which is a finished-state
+						 * STATUS: in a language where that is a clause (`Видео создано`) the
+						 * broken-media sentence `{name} could not be played`, the player's
+						 * accessible name and the image alt all came out ungrammatical. The
+						 * `result_label` message is a bare noun phrase and takes `position`
+						 * and `count` so a locale places the numeral itself. Resolved here at
+						 * render, like its neighbours, so a language switch repaints it.
 						 */
-						const noun = t("ui.chat.canonical.image_gen.state.done", {
+						const label = t("ui.chat.canonical.image_gen.result_label", {
 							material: materialToken(
 								image.kind === "audio"
 									? view.material
 									: (image.kind ?? "image"),
 							),
+							position: index + 1,
+							count: view.images.length,
 						});
-						const label =
-							view.images.length === 1 ? noun : `${noun} ${index + 1}`;
 						return image.kind === "video" ? (
 							<CanonicalVideo
 								key={image.id}

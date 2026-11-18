@@ -1,23 +1,3 @@
-/** Canonical sessions are the only conversation identities. Profile names stage
- * drafts; the legacy agent mapping is retained only to resolve old deep links.
- *
- * SHARED CONVENTION, NAMED THE SAME WAY AT THE TUI'S ROW-NORMALISATION POINT
- * (`SessionSidebar._unpinned_rank`) AND IN ITS `docs/design/mesh-ui.md` §1.3.1,
- * AND BY THIS SIBLING CHANGE - the sentence kept verbatim across surfaces
- * (design review round 1, D4; agent review round 1, R1):
- *
- * > Remote rows are first-class: they file into the same bins as local rows under
- * > the same ordering rule, carry a per-row indicator, and their hover reads the
- * > owning device and its network; there is no separate remote section.
- *
- * This module is the UI's half of that sentence: `settlePeerCatalogue` merges a
- * peers-inclusive answer's remote rows into this catalogue, the sidebar renders
- * them through the one row component (the reserved locality cell and its mark in
- * `features/chat/components/chat-remote-mark.tsx`, the flyout's and the
- * accessible name's one fragment in `features/chat/chat-remote.ts`), and the
- * bins that sentence names are this list's own - Running, Today, This week,
- * Older, Pinned.
- */
 import {
 	DesktopControlError,
 	UserFacingError,
@@ -97,6 +77,16 @@ import {
 	type FailureCause,
 	failureCauseOf,
 } from "../../features/chat/send-recovery";
+/*
+ * THE SEAM'S SHAPE AND THE CODE ITS BUDGET REFUSAL CARRIES. `AdmissionSeam` is
+ * a type (erased at build); `MESSAGE_BUDGET_CODE` is a value, because a code is
+ * a fact two modules have to spell the same way - `isRefusedBeforeAdmission`
+ * reads it as the refusal it is (see that constant's own note).
+ */
+import {
+	type AdmissionSeam,
+	MESSAGE_BUDGET_CODE,
+} from "../../features/chat/utils/message-budget";
 import {
 	type PeerDeviceFact,
 	applyPeerDeviceFact,
@@ -108,6 +98,27 @@ import { desktopRefusalSentence } from "../api/local-operator/desktop-refusal-co
 // `@shared` alias and resolve only the `@shared` paths they stub, so a new
 // `@shared/...` import is unresolvable there (merge-gate run 42679243544).
 import { isServerUpdatingError } from "../api/local-operator/server-updating-error";
+/** Canonical sessions are the only conversation identities. Profile names stage
+ * drafts; the legacy agent mapping is retained only to resolve old deep links.
+ *
+ * SHARED CONVENTION, NAMED THE SAME WAY AT THE TUI'S ROW-NORMALISATION POINT
+ * (`SessionSidebar._unpinned_rank`) AND IN ITS `docs/design/mesh-ui.md` §1.3.1,
+ * AND BY THIS SIBLING CHANGE - the sentence kept verbatim across surfaces
+ * (design review round 1, D4; agent review round 1, R1):
+ *
+ * > Remote rows are first-class: they file into the same bins as local rows under
+ * > the same ordering rule, carry a per-row indicator, and their hover reads the
+ * > owning device and its network; there is no separate remote section.
+ *
+ * This module is the UI's half of that sentence: `settlePeerCatalogue` merges a
+ * peers-inclusive answer's remote rows into this catalogue, the sidebar renders
+ * them through the one row component (the reserved locality cell and its mark in
+ * `features/chat/components/chat-remote-mark.tsx`, the flyout's and the
+ * accessible name's one fragment in `features/chat/chat-remote.ts`), and the
+ * bins that sentence names are this list's own - Running, Today, This week,
+ * Older, Pinned.
+ */
+import { quotaSafePersistStorage } from "./quota-safe-storage";
 import {
 	EMPTY_SETTINGS_INTENTS,
 	type SettingsIntentsMirror,
@@ -1347,7 +1358,13 @@ export function withholdsRetryHint(code: string | undefined): boolean {
 		 * Appended for the same reason: the eighth, and the one this predicate is
 		 * consulted for only when the failure is a press (see the note above).
 		 */
-		code === RUNTIME_BUSY_CODE
+		code === RUNTIME_BUSY_CODE ||
+		/*
+		 * A composed payload over the transport budget: the remedy is to cut the
+		 * message, so a hint that invites the same press again would be advice that
+		 * cannot work.
+		 */
+		code === MESSAGE_BUDGET_CODE
 	);
 }
 
@@ -2263,6 +2280,14 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 		error instanceof UserFacingError &&
 		(error.code === SESSION_UNVALIDATED_CODE ||
 			error.code === UNREADABLE_ATTACHMENT_CODE ||
+			/*
+			 * The composed payload's own budget refusal, which the page raises through
+			 * `budgetCheckedSeam` INSIDE the admission: nothing reached the wire, so it
+			 * is the same "nothing was admitted" fact as the two above - and without
+			 * this arm it would be classed an unknown outcome, latched as a claim and
+			 * offered a Retry over bytes that would be refused for the same reason.
+			 */
+			error.code === MESSAGE_BUDGET_CODE ||
 			isStoreWriteRefusal(error.code))
 	);
 }
@@ -2825,6 +2850,30 @@ async function messageWithBusyResend(
 	});
 }
 
+/*
+ * THE LAST SEAM EACH DRAFT KEY WAS ADMITTED WITH, so a replay handed no seam of
+ * its own still carries what the press composed.
+ *
+ * It exists because the composer's payload is now the TYPED line on a pane
+ * whose host honours `beforeAdmission`: the `$skill` bodies travel through the
+ * seam instead of ahead of the press (`message-input.tsx`). A replay of that
+ * draft from any door that cannot rebuild the seam - the store's own retry, a
+ * caller that never had the composer's read - would otherwise send the typed
+ * line with the block silently gone, which is worse than the slow send it
+ * replaced: the `$name` reached the owner as prose. Measured in this file's own
+ * terms: the first attempt fails at `sessions.create`, so nothing rendered and
+ * there is no `submittedRendered` pin to replay, and the store's answer would be
+ * the raw line.
+ *
+ * ONLY READ ON A REPLAY THAT RENDERED NOTHING. A pin is what a replay prefers
+ * (`submittedRendered`, written with the latch before the wire), so this map is
+ * a fallback for the attempt that never got that far - never a second opinion
+ * about a body the owner may already hold. Cleared with the row it describes,
+ * by both endings (`finishDraft`, `discardDraft`), and overwritten by the next
+ * press on the same key.
+ */
+const lastAdmissionSeam = new Map<string, AdmissionSeam>();
+
 /** Create and admission are intentionally separate receipts. A response lost
  * between them retains its exact IDs and payload; retry never reallocates or
  * deletes work that may already have been admitted by the owner. */
@@ -2887,7 +2936,7 @@ export async function admitChatDraft(
 	 * throw here is still "nothing was admitted": the composer gets its text
 	 * back rather than a held claim about a message the owner never saw.
 	 */
-	beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
+	beforeAdmission?: AdmissionSeam,
 ): Promise<string | null> {
 	const store = useCanonicalSessionsStore.getState();
 	/*
@@ -2957,6 +3006,12 @@ export async function admitChatDraft(
 	const replay =
 		previous?.submittedText !== undefined &&
 		payloadMatchesClaim(previous, text, input.attachments);
+	/*
+	 * REMEMBERED FOR THE REPLAY THAT HAS NONE (see `lastAdmissionSeam`), and
+	 * written before the create - the attempt this protects against is exactly
+	 * the one that never reaches the seam.
+	 */
+	if (beforeAdmission) lastAdmissionSeam.set(key, beforeAdmission);
 	const draft: ChatDraft = previous ?? {
 		key,
 		createRequestId: crypto.randomUUID(),
@@ -3229,11 +3284,22 @@ export async function admitChatDraft(
 		 * 1's M4/m5. So the pin is used when there is one, and the seam runs when
 		 * there is not: nothing was rendered, so there is no body to keep identical.
 		 */
+		/*
+		 * AND A REPLAY WITH NO SEAM OF ITS OWN RE-RUNS THE ONE THE PRESS USED
+		 * (`lastAdmissionSeam`): the attempt that failed before this line pinned no
+		 * `submittedRendered`, so there is nothing to replay and the body it would
+		 * otherwise send is the TYPED line - the `$skill` block lives in the seam now
+		 * (`message-input.tsx`). Only on a replay: a first attempt is the one that
+		 * writes the memory, and a caller that offers no seam has already been handed
+		 * its composed payload.
+		 */
+		const seam =
+			beforeAdmission ?? (replay ? lastAdmissionSeam.get(key) : undefined);
 		const rendered =
 			replay && previous?.submittedRendered !== undefined
 				? previous.submittedRendered
-				: beforeAdmission
-					? ((await beforeAdmission(id)) ?? text)
+				: seam
+					? ((await seam(id)) ?? text)
 					: text;
 		attempted = true;
 		/*
@@ -6054,6 +6120,34 @@ export function launchDraftSeed(
 }
 
 /**
+ * Step 3 of the quota fallback for this store (`quota-safe-storage.ts`), run
+ * only after a full write AND an image-free write were both refused.
+ *
+ * `forgotten` is the one map here that only grows - a fact per session the user
+ * removed, kept so the list does not resurrect it - so under quota pressure it
+ * keeps its NEWER half (records keep insertion order, which is the order facts
+ * were added). Halving rather than a fixed count, because no count has been
+ * measured; the oldest facts are the ones a session list is least likely to
+ * still be showing. Drafts and the active pointers are kept whole.
+ */
+export function shrinkPersistedSessions<
+	V extends { state: { forgotten?: Record<string, unknown> } },
+>(value: V): V {
+	const forgotten = value.state.forgotten;
+	if (!forgotten) return value;
+	const entries = Object.entries(forgotten);
+	return {
+		...value,
+		state: {
+			...value.state,
+			forgotten: Object.fromEntries(
+				entries.slice(Math.floor(entries.length / 2)),
+			),
+		},
+	};
+}
+
+/**
  * The launch argument OUTRANKS the persisted conversation.
  *
  * Main was asked for this conversation BY NAME, and the window exists to show
@@ -8356,6 +8450,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			finishDraft: (key, sessionId) =>
 				set((state) => {
 					/*
+					 * The remembered seam goes with the row it belonged to (see
+					 * `lastAdmissionSeam`): the message is on the owner, so a replay of it
+					 * cannot happen, and a key that is reused (`send:<id>`) must not inherit
+					 * the last message's composition.
+					 */
+					lastAdmissionSeam.delete(key);
+					/*
 					 * The message is on the owner, so nothing about it is in flight
 					 * or waiting to be reconciled any more. Done here rather than by
 					 * the caller because every path that ends a send successfully
@@ -8483,6 +8584,14 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			},
 			discardDraft: (key) =>
 				set((state) => {
+					/*
+					 * An abandoned draft takes its remembered seam with it (see
+					 * `lastAdmissionSeam`): its row is gone, so nothing can replay it, and the
+					 * next press on that key writes its own before any replay could read this
+					 * one. A Map write rather than state, which is why it sits beside the other
+					 * memory this action owns (`discardPendingSends`).
+					 */
+					lastAdmissionSeam.delete(key);
 					/*
 					 * A LIVE SEND HOP IS WITHHELD FROM THE ACTS, NOT REFUSED HERE (UX round 1's
 					 * U2, remediation, 2026-09-27): the sidebar disables the discard control for
@@ -9436,6 +9545,17 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 		}),
 		{
 			name: "canonical-sessions-storage",
+			/*
+			 * Quota-safe (`quota-safe-storage.ts`): a full localStorage used to throw
+			 * out of zustand's persist as an uncaught `QuotaExceededError` (PostHog,
+			 * Windows). The last resort keeps the active pointers and drafts with
+			 * text, and trims `forgotten` to its newest entries - it only ever runs
+			 * once the platform has refused the full and the image-free copies.
+			 */
+			storage: quotaSafePersistStorage<Partial<CanonicalSessionsState>>({
+				storeName: "canonical-sessions-storage",
+				lastResort: shrinkPersistedSessions,
+			}),
 			merge: mergePersistedSession,
 			partialize: (state) => ({
 				activeSessionId: state.activeSessionId,

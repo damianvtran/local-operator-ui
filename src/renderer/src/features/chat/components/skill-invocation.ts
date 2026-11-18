@@ -526,6 +526,53 @@ export function skillBodyHasContent(body: string | null | undefined): boolean {
 	return pyTrim(text) !== "";
 }
 
+/** One planned `$name` whose body was read, in the message's own text order. */
+export type PlannedSkillBody = { name: string; body: string };
+
+/**
+ * The planned mentions' bodies, read CONCURRENTLY, in text order, with the ones
+ * that carry nothing named so the caller can say so.
+ *
+ * ONE READER FOR EVERY PRESS PATH. The read is `Promise.all` rather than a loop
+ * of awaits because N serial reads put N daemon scans of the skills catalogue
+ * between the press and the bubble (the scan alone measured p50 67 ms, max
+ * 80 ms, n=15), and a message naming three skills paid three of them before it
+ * could be painted. Issuing them together is what keeps a host that still
+ * awaits at one scan deep, and a host reading through the `beforeAdmission`
+ * seam pays nothing at the press at all.
+ *
+ * `read` answers `null` for a body that could not be read at all, and
+ * `skillBodyHasContent` is what tells an empty STUB (frontmatter only, which
+ * would be a silent no-op dressed as an invocation - see its own note) from a
+ * real one. Both are reported, never thrown: the message still goes, and the
+ * caller raises one notice per skipped name. Order is preserved because the
+ * block's bodies follow the user's own mention order, not the vocabulary's.
+ */
+export async function readPlannedSkillBodies(
+	planned: readonly SkillMention[],
+	read: (name: string) => Promise<string | null>,
+): Promise<{
+	entries: PlannedSkillBody[];
+	skipped: { name: string; reason: "empty" | "unreadable" }[];
+}> {
+	const bodies = await Promise.all(
+		planned.map((mention) => read(mention.name)),
+	);
+	const entries: PlannedSkillBody[] = [];
+	const skipped: { name: string; reason: "empty" | "unreadable" }[] = [];
+	planned.forEach((mention, index) => {
+		const body = bodies[index];
+		if (body !== null && body !== undefined && skillBodyHasContent(body))
+			entries.push({ name: mention.name, body });
+		else
+			skipped.push({
+				name: mention.name,
+				reason: body === null || body === undefined ? "unreadable" : "empty",
+			});
+	});
+	return { entries, skipped };
+}
+
 /**
  * Escape a typed line for an XML-ish attribute, reversibly (`_escape_attr`).
  *

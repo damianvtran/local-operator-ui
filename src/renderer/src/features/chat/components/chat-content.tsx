@@ -309,6 +309,22 @@ type ChatContentProps = {
 		 */
 		beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
 	) => SendOutcome | Promise<SendOutcome>;
+	/**
+	 * Whether the page that owns `onSendMessage` APPLIES the seam it is handed
+	 * (`MessageInputProps.admissionSeamHonoured`). True only for the chat pane,
+	 * whose `send` forwards the seam to `admitChatDraft` and composes an aside's
+	 * text through it; every other `ChatContent` caller leaves it false and keeps
+	 * the composer's pre-seam behaviour.
+	 */
+	admissionSeamHonoured?: boolean;
+	/**
+	 * Whether the page that owns `onSendMessage` honours the SEVENTH argument's
+	 * `originBound` (`MessageInputProps.dictatedAwayDelivery`). True only for the
+	 * chat pane, whose `send` can post to a conversation that is not the one on
+	 * screen; every other caller leaves it false and keeps the composer's
+	 * mount-bound dictation byte for byte.
+	 */
+	dictatedAwayDelivery?: boolean;
 	currentJobId: string | null;
 	onCancelJob: (jobId: string) => void;
 	agentData?: AgentDetails | null;
@@ -953,6 +969,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		scrollToBottom,
 		rawInfoContent,
 		onSendMessage,
+		admissionSeamHonoured = false,
+		dictatedAwayDelivery = false,
 		currentJobId,
 		onCancelJob,
 		onComposerInput,
@@ -3175,14 +3193,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 												canonical.view.temporaryDeleted === true
 											}
 											/*
-											 * The cached paint's own two facts, beside the rows it seeded: where
-											 * the reader was, and whether a turn was running when this window
-											 * last showed the conversation. Both are claims the snapshot
-											 * corrects; both are one-shot reads of the paint, not live state
-											 * (`use-canonical-session` clears them in the snapshot's commit).
+											 * The cached paint's own THREE facts, beside the rows it seeded: where
+											 * the reader was, whether a turn was running when this window
+											 * last showed the conversation, and whether those rows were all of it.
+											 * All are claims the snapshot corrects; all are one-shot reads of the
+											 * paint, not live state (`use-canonical-session` clears them in the
+											 * snapshot's commit).
 											 */
 											restoredScroll={canonical.view.paintScroll}
 											paintRunning={canonical.view.paintBusy}
+											/*
+											 * And the one the LAYOUT reads: a cached fragment shorter than the pane
+											 * must not top-anchor, or the page that lands moves every row.
+											 */
+											paintComplete={canonical.view.paintComplete}
 										/>
 										<JobCancelPopover {...musicJobCancel.popover} />
 									</MusicJobsLiveContext.Provider>,
@@ -3384,6 +3408,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<MessageInput
 								ref={messageInputRef}
 								onSendMessage={onSendMessage}
+								admissionSeamHonoured={admissionSeamHonoured}
+								dictatedAwayDelivery={dictatedAwayDelivery}
 								onComposerInput={onComposerInput}
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
 								noProvider={needsProvider}

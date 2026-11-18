@@ -4,6 +4,11 @@ import {
 } from "@features/aida/use-aida-target";
 import { sessionPictureEditable } from "@shared/agent-avatar/agent-avatar-meta";
 import { useAgentSlotMark } from "@shared/agent-avatar/agent-avatar-slot";
+import { categorizeSendFailure } from "@shared/analytics/first-run-reasons";
+import {
+	trackFirstMessageSent,
+	trackProductEvent,
+} from "@shared/analytics/product-events";
 import {
 	backendPaneSentence,
 	compatibilityBannerShown,
@@ -67,6 +72,7 @@ import {
 	SESSION_UNVALIDATED_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
+	composerIdentityFor,
 	isSessionUnvalidated,
 	migrateHeldClaim,
 	paneDraftKey,
@@ -167,6 +173,13 @@ import { ChatDeviceHold } from "../device/chat-device-hold";
 import { ChatDeviceNotice } from "../device/chat-device-notice";
 import { ChatDeviceSlot } from "../device/chat-device-slot";
 import {
+	dictatedRefusalSentence,
+	dictatedSends,
+	dismissDictatedToast,
+	setDictatedSendNavigate,
+	useDictatedSendStore,
+} from "../dictated-send";
+import {
 	type DraftResolution,
 	type DraftSelectionTarget,
 	FAST_UNAVAILABLE_CODE,
@@ -205,7 +218,10 @@ import {
 	unreadableAttachmentRefusal,
 } from "../utils/attachment-read";
 import { canvasDocumentForPath } from "../utils/canvas-document";
-import { messageBudgetRefusal } from "../utils/message-budget";
+import {
+	budgetCheckedSeam,
+	messageBudgetRefusal,
+} from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
 import { ChatHeaderDraftTarget } from "./chat-header-draft-target";
 import { draftTargetChipShown } from "./chat-header-draft-target-model";
@@ -322,6 +338,39 @@ function SessionPanel({
 	const draft = useCanonicalSessionsStore((state) =>
 		draftIdentity ? state.drafts[draftIdentity] : undefined,
 	);
+	/*
+	 * A DICTATED SEND THAT ENDED WITHOUT POSTING IS SAID HERE (bug 2).
+	 *
+	 * The refusal is recorded against the CONVERSATION (`dictated-send.ts`), not
+	 * against a pane, because the pane it belongs to is exactly the thing that may
+	 * be gone when it happens. This effect is where the record meets the notice this
+	 * pane already renders: opening that chat - now, or an hour later - states the
+	 * sentence, clears the record and retires the persistent toast, so the reader is
+	 * told once, in the place the dictation lives.
+	 *
+	 * The toast itself is raised at the refusal, and only when the reader is looking
+	 * at another chat; `dismissDictatedToast` here is what withdraws it once they
+	 * come back to this one.
+	 */
+	const dictatedRefusal = useDictatedSendStore((state) =>
+		identity ? state.refused[identity] : undefined,
+	);
+	useEffect(() => {
+		if (!identity || !dictatedRefusal) return;
+		setSendError(dictatedRefusalSentence(dictatedRefusal));
+		setSendErrorCode(undefined);
+		setSendErrorRetry(false);
+		setSendErrorMuted(false);
+		dictatedSends.clearRefusal(identity);
+		dismissDictatedToast(identity);
+	}, [identity, dictatedRefusal]);
+	/*
+	 * THE REFUSAL TOAST'S "Open chat" NEEDS A ROUTER (bug 2), and this panel is
+	 * where one lives. Registered rather than imported so `dictated-send.ts` stays
+	 * a plain module the node suites can drive without a React tree. Declared below
+	 * with the panel's own `navigate` (line ~1380), which is why it registers in an
+	 * effect there instead of here.
+	 */
 	/*
 	 * The id this pane's STREAM addresses: the session once it exists, the
 	 * minted draft before that (`sessions.draft`'s id — a real bridge on the
@@ -1337,6 +1386,15 @@ function SessionPanel({
 				? undefined
 				: moveUnavailableReason();
 	const navigate = useNavigate();
+	/*
+	 * THE REFUSAL TOAST'S "Open chat" NEEDS A ROUTER (bug 2), and this panel has one.
+	 * Registered rather than imported so `dictated-send.ts` stays a plain module the
+	 * node suites can drive without a React tree; re-registered on a rerender so the
+	 * toast never opens a route through a stale closure.
+	 */
+	useEffect(() => {
+		setDictatedSendNavigate(navigate);
+	}, [navigate]);
 	const rebind = (id: string) => {
 		/* The `/chat` slash finger on the switch; the rule is in `openConversation`. */
 		void openConversation(navigate, id);
@@ -1948,8 +2006,38 @@ function SessionPanel({
 		 * whichever value the first attempt carried.
 		 */
 		inputMode?: "typed" | "dictated" | "mixed",
+		/**
+		 * THE SEND IS BOUND TO THE CONVERSATION IT STARTED IN, WHICHEVER PANE IS ON
+		 * SCREEN (bug 2). Passed by exactly one caller: the composer's dictated-away
+		 * deliverer, which finishes a "send recording" press in the chat the press
+		 * belonged to after the user has moved to another one.
+		 *
+		 * It relaxes exactly two of this function's own refusals, and both are about
+		 * the VIEW rather than about the send:
+		 *
+		 *   - the "the user has already left this conversation" gate below, whose
+		 *     whole point is to stop a press that raced a switch - here the switch is
+		 *     the expected state, and refusing would drop the dictation;
+		 *   - the validation-window hold, which parks a press until THIS pane's stream
+		 *     answers - a pane that is not mounted has no stream to wait on, so an
+		 *     unvalidated origin is refused with a sentence instead of held forever.
+		 *
+		 * It does NOT relax the payload refusals above (an unreadable attachment, the
+		 * size budget): those are about the message, and the voice's words are held to
+		 * the same rules as the keyboard's. Nor does it enable the navigation the
+		 * success path performs - that would yank the reader out of the chat they chose.
+		 */
+		options?: { originBound?: boolean },
 	): Promise<SendOutcome> => {
 		const store = useCanonicalSessionsStore.getState();
+		/*
+		 * READ AFTER THE STORE (round-1 finding, reviewer test pin). The door's shape is
+		 * pinned by `ask-composer-no-routing.test.mjs`: the first statement inside it is
+		 * the store read, which is what makes the test's "no ask branch before the
+		 * store" claim readable at all. A declaration about the CALLER's options sat
+		 * between the two and broke that pin without changing what this function does.
+		 */
+		const originBound = options?.originBound === true;
 		// Same ROW the view reads, so a send can never address a different draft
 		// than the one whose retained text and Discard control are shown. The
 		// resolver rather than `draftIdentityFor` alone: a pane reached by the
@@ -2221,6 +2309,19 @@ function SessionPanel({
 				return false;
 			}
 			/*
+			 * THE SEAM'S ANSWER IS A PAYLOAD, SO IT IS WEIGHED LIKE ONE (bug 1).
+			 *
+			 * Up to this change the press's `content` WAS the whole payload, and the
+			 * refusal above weighed all of it. A `$skill` message now carries its
+			 * typed line here and its `<operator-skills>` block through
+			 * `beforeAdmission` (`message-input.tsx`), so the string the owner receives
+			 * is no longer the string that was weighed - and a skill body is arbitrary
+			 * length. `budgetCheckedSeam` re-weighs the composed answer inside the
+			 * admission and refuses it there; see its own note for why that is the
+			 * failure row rather than this line.
+			 */
+			const admitSeam = budgetCheckedSeam(beforeAdmission, images);
+			/*
 			 * WHILE AN ASIDE IS ATTACHED THE COMPOSER ADDRESSES THE ASIDE.
 			 *
 			 * WHY HERE, BETWEEN THE REFUSALS ABOVE AND EVERYTHING BELOW. Above, because
@@ -2311,6 +2412,33 @@ function SessionPanel({
 					return false;
 				}
 				/*
+				 * THE QUESTION TAKES THE COMPOSED TEXT (bug 1's aside arm). An aside is an
+				 * off-record answer that never enters `admitChatDraft`, so it is the one
+				 * door the store's seam never runs for: the composer hands it the typed
+				 * line now and the `$skill` block rides
+				 * `beforeAdmission` like everywhere else, so the door has to ask the seam
+				 * itself or the question reaches the owner with `$name` as prose.
+				 *
+				 * AND THE ANSWER IS WEIGHED HERE rather than through
+				 * `budgetCheckedSeam`: that wrapper throws, which is right inside the
+				 * store's admission (a failure row) and wrong on this door, where the
+				 * refusal belongs on the composer's own line with the question still in
+				 * the box. `beforeAdmission` is undefined whenever nothing is left to
+				 * compose, so a plain attached send is byte-identical to today's.
+				 */
+				let asideContent = content;
+				if (beforeAdmission) {
+					asideContent = (await beforeAdmission(sessionId)) ?? content;
+					const asideRefusal = messageBudgetRefusal(asideContent, images);
+					if (asideRefusal) {
+						setSendError(asideRefusal);
+						setSendErrorCode(undefined);
+						setSendErrorRetry(false);
+						setSendErrorMuted(false);
+						return false;
+					}
+				}
+				/*
 				 * THE SUBSCRIPTION TRAVELS WITH THE ASK. The stream is read by every
 				 * attached viewer of this session, so an owner that routes `aside_delta`
 				 * to the subscription that asked — rather than broadcasting it — needs to
@@ -2340,7 +2468,7 @@ function SessionPanel({
 				setSendErrorCode(undefined);
 				const ask = askAside(
 					sessionId,
-					content,
+					asideContent,
 					canonical.subscriptionId ?? undefined,
 				);
 				/*
@@ -2417,10 +2545,48 @@ function SessionPanel({
 			 * with this conversation's draft, the same outcome as `abandoned`.
 			 */
 			if (
+				!originBound &&
 				sessionId &&
 				!viewIsOnThisSession(useCanonicalSessionsStore.getState(), sessionId)
 			)
 				return false;
+			/*
+			 * AN ORIGIN-BOUND SEND HAS NO WINDOW TO WAIT IN (bug 2). The hold below parks
+			 * a press until THIS pane's stream answers; a pane that is not mounted has no
+			 * stream and never will while the reader is elsewhere, so the press would sit
+			 * in `awaitWindow()` until something settled it. Refused with the same
+			 * sentence the stream failure uses, and recorded against the origin so the
+			 * reader is told why their dictation did not go - `not-ready` rather than a
+			 * wait they cannot see.
+			 */
+			if (
+				originBound &&
+				sessionId &&
+				isSessionUnvalidated(
+					useCanonicalSessionsStore.getState().validatingSessionId,
+					sessionId,
+				)
+			) {
+				const sentence = sessionUnvalidatedMessage();
+				setSendError(sentence);
+				setSendErrorCode(SESSION_UNVALIDATED_CODE);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
+				/*
+				 * AND THE ORIGIN IS TOLD, not only this pane (bug 2). `setSendError` above
+				 * writes a pane-state notice, and the pane this send belongs to may not be
+				 * mounted: the sentence would be lost with it. The refusal record carries
+				 * the same words to whichever composer holds that conversation next - and,
+				 * because the reader is by definition looking somewhere else, raises the
+				 * persistent toast that names the chat.
+				 */
+				dictatedSends.refuseAway(
+					composerIdentityFor(key, sessionId),
+					"not-ready",
+					sentence,
+				);
+				return false;
+			}
 			if (
 				sessionId &&
 				isSessionUnvalidated(
@@ -2511,7 +2677,7 @@ function SessionPanel({
 					},
 					sessionId,
 					onEchoPainted,
-					beforeAdmission,
+					admitSeam,
 				),
 			);
 			if (!id) return false;
@@ -2542,13 +2708,20 @@ function SessionPanel({
 				canvas.addMentionedFilesBatch(id, sentFiles);
 			}
 			if (
+				!originBound &&
 				draftKey &&
 				useCanonicalSessionsStore.getState().activeSessionId === id
 			)
 				navigate(`/chat/${id}`, { replace: true });
 			void store.fetchSessions();
+			// Activation funnel: once per install; no content (product-events.ts).
+			trackFirstMessageSent();
 			return true;
 		} catch (error) {
+			// The category only - status class or transport - never the text.
+			trackProductEvent("message_send_failed", {
+				reason_category: categorizeSendFailure(error),
+			});
 			/*
 			 * THE BOUNDARY RULE, ON THE SURFACE THAT HAS TO OBEY IT: "a failure raised
 			 * after the optimistic row was painted belongs to the row; before it, the
@@ -5149,6 +5322,20 @@ function SessionPanel({
 					scrollToBottom={scrollToBottom}
 					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}
 					onSendMessage={stableSend}
+					/*
+					 * THIS PAGE APPLIES THE SEAM: `send` forwards it to `admitChatDraft`
+					 * (weighed by `budgetCheckedSeam`) and composes an aside's question
+					 * through it, so the composer may hand the `$skill` read to it and paint
+					 * the typed line first (bug 1). See `MessageInputProps`.
+					 */
+					admissionSeamHonoured
+					/*
+					 * AND THIS PAGE FINISHES A DICTATED SEND IN THE CHAT IT STARTED IN (bug 2):
+					 * `send` accepts an `originBound` call for a conversation this pane is not
+					 * showing, so a "send recording" press survives a session switch instead of
+					 * landing in the next chat's box. See `MessageInputProps`.
+					 */
+					dictatedAwayDelivery
 					/*
 					 * The SAME dispatcher the chips use, handed the planner's own answer (an
 					 * invocation, never the draft) with its outcome handed back: the composer

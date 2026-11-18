@@ -1,0 +1,76 @@
+{
+ "schema": 1,
+ "auditor": "reviewer (lopdev i18n auditor, session f2e66f37f9c0; not the PR coder or the translator of these 16 keys)",
+ "agent": "reviewer (lopdev i18n auditor, session f2e66f37f9c0; not the PR coder or the translator of these 16 keys)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Every catalogue read, fix and verdict in this receipt ran on anthropic/claude-sonnet-5-5 (session header); no provider fallback occurred.",
+ "fallback": "none",
+ "independence": "Separate session (f2e66f37f9c0) from the PR coder and from whoever translated the 16 keys. The verdict was rebuilt from the English source, the en context sidecar, the render sites in dictated-send.ts, sibling keys in the shipped catalogue, origin/main i18n/glossary.md and the locale style guide; the commit message was not used as evidence of translation quality.",
+ "instance": "f2e66f37f9c0-composer-dictated-es",
+ "session": "f2e66f37f9c0",
+ "locale": "es",
+ "namespace": "ui.chat.composer",
+ "branch": "fix/send-instant-and-dictated-send-session",
+ "head": "7040c2b761 (catalogue edits by this audit are uncommitted on top)",
+ "date": "2026-11-17",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "audit_kind": "delta audit of 16 added keys; the other 73 keys are byte-identical to the previously audited row",
+ "scope": "ui.chat.composer: the 16 ui.chat.composer.dictated_away.* keys",
+ "delta_keys_audited": [
+  "ui.chat.composer.dictated_away.not_sent",
+  "ui.chat.composer.dictated_away.not_sent_body",
+  "ui.chat.composer.dictated_away.transcription_failed",
+  "ui.chat.composer.dictated_away.transcription_failed_body",
+  "ui.chat.composer.dictated_away.reason_edited",
+  "ui.chat.composer.dictated_away.reason_command",
+  "ui.chat.composer.dictated_away.reason_gate",
+  "ui.chat.composer.dictated_away.reason_secret",
+  "ui.chat.composer.dictated_away.reason_no_model",
+  "ui.chat.composer.dictated_away.reason_unavailable",
+  "ui.chat.composer.dictated_away.reason_not_ready",
+  "ui.chat.composer.dictated_away.open_chat",
+  "ui.chat.composer.dictated_away.draft_label",
+  "ui.chat.composer.dictated_away.untitled_chat",
+  "ui.chat.composer.dictated_away.origin_gone",
+  "ui.chat.composer.dictated_away.origin_gone_body"
+ ],
+ "sha256": {
+  "en": "8f6ad5094234ec5368a86da0b1864ae94debba3fa355ea1920d20956425991e6",
+  "es": "e964dcb104c09cac1cc1464dc71513f77046af899253d853df005d067e4eeb30",
+  "context": "455aa178b828ac259813f6b3435f38852412743aa0f3de108036a35a2557aeb6"
+ },
+ "reference_sha256": {
+  "glossary (origin/main:i18n/glossary.md)": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+  "style guide (origin/main:i18n/style-guides/es.md)": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+ },
+ "findings": [
+  {
+   "id": "ES-DA-1",
+   "severity": "minor",
+   "key": "ui.chat.composer.dictated_away.not_sent / transcription_failed / origin_gone",
+   "summary": "Quote marks: the es guide mandates “ ” ('angled « » only if an editorial register is ever needed') and the shipped es catalogue uses “{name}” in 137 values against 19 «». The translator used «{title}». en uses “{title}”. Fixed in the three {title} keys (the *_body keys carry no title).",
+   "before": "«{title}»",
+   "after": "“{title}”",
+   "resolution": "fixed by auditor in this change"
+  },
+  {
+   "id": "ES-DA-2",
+   "severity": "minor",
+   "key": "ui.chat.composer.dictated_away.draft_label",
+   "summary": "Shipped es word order for the same en 'New chat' is 'Nuevo chat' (ui.chat.header.new_chat, ui.shell.sidebar_navigation.new_chat, ui.agents.detail.action.new_chat, ui.command_palette.use_palette_sources.new_chat). 'Chat nuevo' named one concept two ways, and this label is the title of the very chat the shipped 'Nuevo chat' opens.",
+   "before": "Chat nuevo",
+   "after": "Nuevo chat",
+   "resolution": "fixed by auditor in this change"
+  }
+ ],
+ "verified": [
+  "key set equal en (89 = 73 carried + 16 added); placeholders {title} / {reason} exact; no ICU plural/select in the delta; no bidi/zero-width characters, no edge or double spaces; NFC",
+  "NEVER claims a send: 'No se envió a “{title}”: …' / 'No se envió: …' + 'Tu texto dictado está en el borrador de ese chat'; origin_gone says the dictated text 'se ha perdido'; transcription_failed says 'La grabación no se conservó'. No string says a message went out",
+  "reason_* are lower-case clauses without final punctuation, correct after 'No se envió…: '; reason_unavailable names no cause; reason_gate 'la pregunta que ese chat está esperando' is acceptable es (not a finding)",
+  "register tú (Tu texto, vuelve a grabarla); neutral Spanish; glossary credenciales -> 'credencial' (reason_secret); 'Abrir chat' = ui.library.composer.open_chat; 'Chat sin título' = ui.chat.canonical.untitled; 'chat' used as in the shipped composer namespace (129 shipped uses next to conversación); es guide: no space before ':' (kept), ' — ' dash with spaces (kept)",
+  "observation, not a finding: 'se ha perdido' (origin_gone*) vs 'No se envió' preterite: shipped es is split 4/4 between 'se ha perdido' and 'se perdió', so no repair was made",
+  "carried 73 keys byte-identical to the last audited row (68a3f14dde44-tc-es): ledger target_sha256 equals HEAD~1's blob; delta is the 16 added keys only; en changes none",
+  "render sites read: dictated-send.ts (same as fr receipt)"
+ ]
+}

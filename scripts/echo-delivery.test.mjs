@@ -41,7 +41,9 @@ const bundle = await build({
 			export { t } from "./src/i18n/messages";
 			export { useConversationInputStore, mergeReturnedText, mergeReturnedPayload } from "./src/renderer/src/shared/store/conversation-input-store";
 			export { EMPTY_TRANSCRIPT, applyEvent } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
-			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
+			export { DesktopControlError, UserFacingError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
+			export { budgetCheckedSeam, messageBudgetRefusal } from "./src/renderer/src/features/chat/utils/message-budget";
+			export { DESKTOP_MESSAGE_MAX_CHARS } from "./src/shared/desktop-contract";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -142,6 +144,10 @@ const {
 	EMPTY_TRANSCRIPT,
 	applyEvent,
 	DesktopControlError,
+	UserFacingError,
+	budgetCheckedSeam,
+	messageBudgetRefusal,
+	DESKTOP_MESSAGE_MAX_CHARS,
 } = module;
 
 /** The payload's REQUEST line, which is its last: see the splice test below. */
@@ -2089,5 +2095,194 @@ test("the press commits the claim and the echo in ONE commit (send flicker, 2026
 		page,
 		/await flushSync\(\(\) =>\s*admitChatDraft\(/,
 		"the admission's synchronous prefix is flushed as one commit",
+	);
+});
+
+/* ============================================ the seam's payload (bug 1) */
+
+/*
+ * THE PRESS NO LONGER COMPOSES EVERY PAYLOAD ITSELF. On a pane whose host
+ * honours `beforeAdmission`, the `$skill` bodies travel through the seam
+ * (`message-input.tsx`): the press paints the TYPED line and the seam's answer
+ * is what the owner receives. These three cases are the store's half of that
+ * contract - the paint, the body that leaves, and the replay that must not lose
+ * the block - driven through the shipped `admitChatDraft`.
+ */
+
+test("an attached send paints the typed line at the press and posts the seam's answer (bug 1)", async () => {
+	reset();
+	const transcript = await mountTranscript(SESSION_ID);
+	const paintedAt = [];
+	const posts = [];
+	let seamSawId = null;
+	let releaseSeam;
+	const held = new Promise((resolve) => {
+		releaseSeam = resolve;
+	});
+	globalThis.__echoRequest = async (request) => {
+		if (request.op === "sessions.message") posts.push(request);
+		return { status: "admitted" };
+	};
+	const typed = "$research Review this";
+	const composed = `${typed}\n\n<operator-skills>fixture</operator-skills>`;
+	const key = `send:${SESSION_ID}`;
+	const admission = admitChatDraft(
+		key,
+		{ ...input, text: typed },
+		SESSION_ID,
+		() => {
+			paintedAt.push("painted");
+		},
+		async (sessionId) => {
+			seamSawId = sessionId;
+			await held;
+			return composed;
+		},
+	);
+	/*
+	 * THE PRESS IS THE PAINT. Everything below is read with the seam still
+	 * pending: the row shows exactly what was typed, the composer has been told,
+	 * and nothing has reached the wire.
+	 */
+	assert.deepEqual(transcript.rows(), [typed], "the bubble is the typed line");
+	assert.deepEqual(paintedAt, ["painted"], "the composer is told at the press");
+	assert.equal(
+		posts.length,
+		0,
+		"no sessions.message while the seam is running",
+	);
+	releaseSeam();
+	assert.equal(await admission, SESSION_ID);
+	assert.equal(
+		seamSawId,
+		SESSION_ID,
+		"the seam is addressed to the session it renders for",
+	);
+	assert.deepEqual(
+		transcript.rows(),
+		[composed],
+		"the row's text is REPLACED by the composed payload, not painted twice",
+	);
+	assert.equal(posts.length, 1);
+	assert.equal(posts[0].text, composed, "and the wire carries it");
+	transcript.unregister();
+});
+
+test("a replay whose create failed still carries the press's block (bug 1)", async () => {
+	reset();
+	/*
+	 * THE ATTEMPT THIS PROTECTS AGAINST is the one that dies BEFORE the seam: the
+	 * create is refused, so nothing rendered and there is no `submittedRendered`
+	 * pin for the retry to replay. On a draft pane the press's payload is the
+	 * typed line now (the block is the seam's), so without the remembered seam the
+	 * second press would silently drop the expansion - the one outcome worse than
+	 * the lag this change removes.
+	 */
+	const key = store
+		.getState()
+		.stageDraft({ kind: "agent", name: "replay-seam" });
+	const posts = [];
+	let creates = 0;
+	globalThis.__echoRequest = async (request) => {
+		if (request.op === "sessions.create") {
+			creates += 1;
+			if (creates === 1) throw new Error("create refused");
+			return { session_id: SESSION_ID, binding: null };
+		}
+		if (request.op === "sessions.message") posts.push(request);
+		return { status: "admitted" };
+	};
+	const typed = "$research Review this";
+	const composed = `${typed}\n\n<operator-skills>fixture</operator-skills>`;
+	await assert.rejects(
+		() =>
+			admitChatDraft(
+				key,
+				{ ...input, text: typed },
+				undefined,
+				undefined,
+				async () => composed,
+			),
+		/the create never answered|create refused/,
+	);
+	assert.equal(creates, 1, "the first attempt died at the create");
+	assert.equal(posts.length, 0, "so nothing rendered and nothing was posted");
+	/*
+	 * SEND AGAIN, with no seam at all: the door that presses this draft a second
+	 * time may be the store's own retry, which never held the composer's read.
+	 */
+	assert.equal(
+		await admitChatDraft(key, { ...input, text: typed }),
+		SESSION_ID,
+	);
+	assert.equal(posts.length, 1);
+	assert.equal(
+		posts[0].text,
+		composed,
+		"the replay re-runs the press's seam instead of sending the typed line",
+	);
+});
+
+test("the seam's answer is weighed, and an over-budget composition leaves a failure row (bug 1)", async () => {
+	/*
+	 * TWO HALVES OF ONE REFUSAL. `budgetCheckedSeam` is what `chat-page.tsx`
+	 * wraps the composer's seam with, and the store turns its `UserFacingError`
+	 * into the row's own sentence because the seam runs inside the admission -
+	 * the failure row, not a second copy of the copy. The over-budget body is
+	 * built from the SHIPPED ceiling, so the fixture cannot drift away from it.
+	 */
+	const oversized = "x".repeat(DESKTOP_MESSAGE_MAX_CHARS + 2);
+	const sentence = messageBudgetRefusal(oversized, []);
+	assert.ok(sentence, "the fixture is over the shipped ceiling");
+	const wrapped = budgetCheckedSeam(async () => oversized, []);
+	await assert.rejects(
+		() => wrapped(SESSION_ID),
+		(error) => {
+			assert.ok(
+				error instanceof UserFacingError,
+				"a refusal the composer can print, not a transport error",
+			);
+			assert.equal(error.message, sentence);
+			return true;
+		},
+	);
+	// A seam that answers nothing stays nothing: nothing to weigh.
+	assert.equal(
+		await budgetCheckedSeam(async () => undefined, [])(SESSION_ID),
+		undefined,
+	);
+
+	reset();
+	const key = store
+		.getState()
+		.stageDraft({ kind: "agent", name: "over-budget-seam" });
+	const posts = [];
+	globalThis.__echoRequest = async (request) => {
+		if (request.op === "sessions.create")
+			return { session_id: SESSION_ID, binding: null };
+		if (request.op === "sessions.message") posts.push(request);
+		return { status: "admitted" };
+	};
+	await assert.rejects(
+		() =>
+			admitChatDraft(
+				key,
+				{ ...input, text: "small line" },
+				undefined,
+				undefined,
+				budgetCheckedSeam(async () => oversized, []),
+			),
+		(error) => error instanceof UserFacingError,
+	);
+	assert.equal(posts.length, 0, "the over-budget body never reaches the wire");
+	assert.equal(
+		store.getState().drafts[key].error,
+		sentence,
+		"the failure row carries the budget's own sentence",
+	);
+	assert.equal(
+		store.getState().drafts[key].errorRetry,
+		false,
+		"and offers no Retry: the same bytes would be refused for the same reason",
 	);
 });

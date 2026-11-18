@@ -27,6 +27,7 @@ import type {
 	AttachmentUploadResult,
 	AttachmentUploadSource,
 } from "../shared/attachment-upload";
+import { BACKEND_RESTART_CHANNEL } from "../shared/backend-startup";
 import {
 	BACKEND_RECONNECT_CHANNEL,
 	BACKEND_STATUS_CHANNEL,
@@ -152,6 +153,7 @@ import {
 } from "./local-config";
 import { createMainLocale } from "./main-locale";
 import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
+import { installTypeOfServiceGuard } from "./net-tos-guard";
 import {
 	NOTIFICATION_SOUND_PLAY_CHANNEL,
 	configureNotificationSound,
@@ -254,6 +256,19 @@ import { attachWindowSurface } from "./window-surface";
  * launch, and the probe cannot reach the operator's running instance.
  */
 runLaunchProbeIfRequested(app);
+
+/*
+ * Before the first socket this process opens: a reset connection must reject its
+ * `fetch`, not reach the `uncaughtException` handler below, which stops the
+ * owned backend and exits the app. Cause, numbers and removal condition are in
+ * `./net-tos-guard.ts`.
+ */
+installTypeOfServiceGuard((error) => {
+	logger.warn(
+		`Absorbed a socket type-of-service failure (nodejs/undici#6075): ${String(error)}`,
+		LogFileType.BACKEND,
+	);
+});
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
 
@@ -4551,6 +4566,15 @@ app
 		ipcMain.handle(BACKEND_RECONNECT_CHANNEL, () =>
 			backendService.reconnectNow(),
 		);
+		/*
+		 * The start-up panel's Restart. Quiet: its outcome is drawn by the same
+		 * panel from the start-up record, so a failure must not also raise a
+		 * modal over the window that already shows it.
+		 */
+		ipcMain.handle(BACKEND_RESTART_CHANNEL, async () => {
+			await backendService.restart({ quiet: true });
+			return backendService.getStatusSnapshot();
+		});
 		backendService.onStatusChange((snapshot) => {
 			if (mainWindow && !mainWindow.isDestroyed()) {
 				mainWindow.webContents.send(BACKEND_STATUS_EVENT, snapshot);
@@ -4688,7 +4712,21 @@ app
 					 * `return` on the other arms exists to skip window creation, and skipping
 					 * it here would leave the operator with the same nothing, only quieter.
 					 */
-					if (backendService.isStartBlockedByOccupiedAddress()) {
+					if (backendService.startupFailureReported()) {
+						/*
+						 * A failed start this app RECORDED - exit code, stderr, the errno
+						 * a blocked executable leaves - keeps the window: its start-up
+						 * panel names the cause and offers Restart and Copy diagnostics.
+						 * The modal-and-quit below said "restart the application" and
+						 * nothing else, and took the only place the cause could be read
+						 * away with it (PostHog D2: 26% of Windows users' sessions carry
+						 * "Server is offline" errors).
+						 */
+						logger.error(
+							"Failed to start backend after installation; keeping the window, whose start-up panel reports the cause.",
+							LogFileType.INSTALLER,
+						);
+					} else if (backendService.isStartBlockedByOccupiedAddress()) {
 						logger.error(
 							"Failed to start backend after installation: every address this app may serve on is held by something it does not own. Continuing without quitting; the status surface names the holder and the app keeps probing.",
 							LogFileType.INSTALLER,
@@ -4734,7 +4772,21 @@ app
 					 * arms exists to skip window creation, and skipping it here would leave the
 					 * operator with the same nothing, only quieter.
 					 */
-					if (backendService.isStartBlockedByOccupiedAddress()) {
+					if (backendService.startupFailureReported()) {
+						/*
+						 * A failed start this app RECORDED - exit code, stderr, the errno
+						 * a blocked executable leaves - keeps the window: its start-up
+						 * panel names the cause and offers Restart and Copy diagnostics.
+						 * The modal-and-quit below said "restart the application" and
+						 * nothing else, and took the only place the cause could be read
+						 * away with it (PostHog D2: 26% of Windows users' sessions carry
+						 * "Server is offline" errors).
+						 */
+						logger.error(
+							"Failed to start backend with existing installation; keeping the window, whose start-up panel reports the cause.",
+							LogFileType.BACKEND,
+						);
+					} else if (backendService.isStartBlockedByOccupiedAddress()) {
 						logger.error(
 							"Failed to start backend with existing installation: every address this app may serve on is held by something it does not own. Continuing without quitting; the status surface names the holder and the app keeps probing.",
 							LogFileType.BACKEND,

@@ -71,7 +71,10 @@ import {
 	OwnerAuditSectionHeader,
 	type OwnerAuditSlot,
 } from "./team-bridge-owner-audit";
-import { TeamBridgePageView } from "./team-bridge-page";
+import {
+	TeamBridgePageView,
+	TeamBridgeRateLimitNote,
+} from "./team-bridge-page";
 import { RailGroupHeader } from "./team-bridge-rail";
 import { scheduledLocalInput } from "./team-bridge-scheduling";
 import { TeamBridgeThreadPaneView } from "./team-bridge-thread-pane";
@@ -1469,6 +1472,38 @@ export const InShellEligibilityGate: Story = {
 			<TeamBridgePageView {...args} />
 		</InTheShell>
 	),
+};
+
+/**
+ * A real outage (or, before 2026-11-17, ANY throttle): the hard unavailable
+ * gate. Kept beside the rate-limited frames so the two can be compared.
+ */
+export const InShellUnavailableGate: Story = {
+	...InShellEligibilityGate,
+	args: { eligibility: "unavailable" },
+};
+
+/**
+ * RATE LIMITED, NOTHING LOADED YET (incident 2026-11-17). The first status
+ * read was throttled by the edge's per-address rule: the soft "Slowing down"
+ * panel, which retries on its own, instead of "Team Bridge is unavailable".
+ */
+export const RateLimitedBeforeLoad: Story = {
+	args: { eligibility: "rate_limited" },
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/**
+ * RATE LIMITED OVER A LOADED PAGE. The runtime kept the READY answer, so the
+ * conversations stay; the notice band says nothing new is arriving and that
+ * the page is retrying by itself.
+ */
+export const RateLimitedWithConversations: Story = {
+	args: { notice: <TeamBridgeRateLimitNote /> },
 };
 
 /**

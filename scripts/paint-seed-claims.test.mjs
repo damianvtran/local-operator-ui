@@ -4,20 +4,24 @@ import { test } from "node:test";
 import { build } from "esbuild";
 
 /*
- * THE PAINT'S TWO CLAIMS, AND THE COMMIT THAT ENDS THEM.
+ * THE PAINT'S CLAIMS, AND THE COMMIT THAT ENDS THEM.
  *
- * The paint cache can carry a reader's place and the fact that a turn was
- * running (see `paint-cache.ts`). Both are claims about the RECENT PAST: the
- * seeded mount reads them in its first frame, and the owner's snapshot - the
- * only authority - keeps or withdraws them in the commit that replaces the
- * rows. This file drives the SHIPPED hook to pin that hand-off, because it is
- * the seam neither the store's suites (which stub the hook) nor the transcript's
- * (which take `paintBusy`/`paintScroll` as props) can see.
+ * The paint cache can carry a reader's place, the fact that a turn was running,
+ * and whether the rows it kept are the WHOLE conversation (see `paint-cache.ts`).
+ * All are claims about the RECENT PAST: the seeded mount reads them in its first
+ * frame, and the owner's snapshot - the only authority - keeps or withdraws them
+ * in the commit that replaces the rows. This file drives the SHIPPED hook to pin
+ * that hand-off, because it is the seam neither the store's suites (which stub
+ * the hook) nor the transcript's (which take `paintBusy`/`paintScroll`/
+ * `paintComplete` as props) can see.
  *
  * WHY THIS FILE EXISTS (agent review C2 on #1883): the seeded half had tests
  * through the props, and the CLEARING half had none - so a snapshot that forgot
  * to withdraw a claim would have left a return painting a working line for a
- * turn that ended while the reader was away, with every suite green.
+ * turn that ended while the reader was away, with every suite green. The same
+ * hole for `complete` is agent review M1 round 1: reverting the seed, the
+ * snapshot's clear, the TSX prop or the seeded leave's carry left every suite
+ * green.
  *
  * The substitutions are the same three `seed-placement.test.mjs` documents:
  * React's scheduler (a cell-based stand-in), the transport (a scripted
@@ -156,6 +160,15 @@ const SESSION = "paint-claims-session";
 const PAINT_CLEANUP_IDENTITY = /pendingSendForView\(identityRef\.current\)/;
 const PAINT_CLEANUP_DEPS =
 	/inFlightOwned\.current\.clear\(\);[\s\S]{0,400}?\}, \[sessionId\]\);/;
+/** The transcript's own read of the view's flag; a dropped prop disables the fix. */
+const PAINT_COMPLETE_PROP = /paintComplete=\{canonical\.view\.paintComplete\}/;
+
+/** A source file with its comments stripped, so a lexical pin reads code alone. */
+function code(path) {
+	return readFileSync(path, "utf8")
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+}
 
 /* ------------------------------------- the React stand-in (one cell per call) */
 
@@ -350,6 +363,17 @@ const PAINTED = {
 	compactingSince: 0,
 	viewEpoch: 0,
 };
+/**
+ * The same paint as the pane that PROVED the conversation whole: its page named
+ * the first row as the cursor and owed nothing older, so the write derives
+ * `complete: true` (the stored copy still carries no cursor - that is the whole
+ * point of the F1 case below).
+ */
+const COMPLETE_PAINTED = {
+	...PAINTED,
+	oldestId: ROW.id,
+	oldestTs: TS,
+};
 
 test("the seeded claims stand in the first frame and the snapshot clears both", async () => {
 	__resetPaintCache();
@@ -474,6 +498,130 @@ test("a seeded claim survives a leave taken before the snapshot", async () => {
 	);
 });
 
+test("a complete seed reaches the pane and the snapshot's page takes over", async () => {
+	/*
+	 * Agent review M1. Three production lines carry this one claim, and reverting
+	 * any of them left every suite green: `complete: cached.complete` in
+	 * `paintSeed`, `paintComplete: null` in the snapshot's commit, and the prop the
+	 * transcript reads. Driven through the SHIPPED hook, the claim is on the first
+	 * frame and the owner's answer is the authority from its commit on.
+	 */
+	__resetPaintCache();
+	writePaint(SESSION, { transcript: COMPLETE_PAINTED });
+	subscriptions.length = 0;
+	requests.length = 0;
+	rafQueue = [];
+	useCanonicalSessionsStore.setState({
+		activeSessionId: null,
+		drafts: {},
+		sessions: [],
+	});
+
+	const runtime = makeRuntime();
+	const frames = [];
+	runtime.render = () => {
+		const view = useCanonicalSessionStream(SESSION, true);
+		frames.push(view);
+		return view;
+	};
+	runtime.rerender();
+	const seeded = frames[0];
+	assert.equal(
+		seeded.stale,
+		true,
+		"the rows are this window's, not the owner's",
+	);
+	assert.equal(
+		seeded.paintComplete,
+		true,
+		"and they are the whole conversation the last visit proved",
+	);
+	deliver(openFrame(1, false));
+	// The snapshot's own page names no rows, and the commit withdraws the claim
+	// regardless: the page, not the cache, is the coverage authority from here on.
+	deliver(snapshotFrame(2, { streaming: false }));
+	await pump();
+	const settled = frames.at(-1);
+	assert.equal(settled.stale, false, "the rows are the owner's now");
+	assert.equal(
+		settled.paintComplete,
+		null,
+		"the seed's claim stops at the page's commit",
+	);
+});
+
+test("a seeded leave before the snapshot keeps the entry's coverage", async () => {
+	/*
+	 * Agent review F1 / QA Q1. The pane is stale, so its transcript is the seeded
+	 * one and has no paging cursor; re-deriving would demote a complete short
+	 * conversation, and the NEXT return would bottom-align it then move every row
+	 * UP when the page landed (253.1 px on a one-turn session, 4/4).
+	 */
+	__resetPaintCache();
+	writePaint(SESSION, { transcript: COMPLETE_PAINTED });
+	subscriptions.length = 0;
+	requests.length = 0;
+	rafQueue = [];
+	useCanonicalSessionsStore.setState({
+		activeSessionId: null,
+		drafts: {},
+		sessions: [],
+	});
+
+	const runtime = makeRuntime();
+	let mountedSession = SESSION;
+	runtime.render = () => useCanonicalSessionStream(mountedSession, true);
+	runtime.rerender();
+	assert.equal(
+		readPaint(SESSION).complete,
+		true,
+		"the seed this mount paints is complete",
+	);
+	// Leave without ever delivering the snapshot: the second toggle.
+	mountedSession = null;
+	runtime.rerender();
+	const left = readPaint(SESSION);
+	assert.equal(
+		left.transcript.oldestId,
+		null,
+		"the stored copy carries no cursor, so the derivation alone would say incomplete",
+	);
+	assert.equal(
+		left.complete,
+		true,
+		"so the claim the stale pane was painting travels with its rows",
+	);
+});
+
+test("a mount with no cached paint reports no paint at all", () => {
+	/*
+	 * Agent review M2: `paintComplete` describes a cache entry, and a mount the
+	 * cache did not seed has none. `false` left `hasEntry` true and contradicted
+	 * the field's own doc, leaving `stale` as the only thing keeping a no-entry
+	 * pane top-anchored.
+	 */
+	__resetPaintCache();
+	useCanonicalSessionsStore.setState({
+		activeSessionId: null,
+		drafts: {},
+		sessions: [],
+	});
+	const runtime = makeRuntime();
+	const frames = [];
+	runtime.render = () => {
+		const view = useCanonicalSessionStream(SESSION, true);
+		frames.push(view);
+		return view;
+	};
+	runtime.rerender();
+	assert.equal(frames[0].stale, false, "nothing was seeded");
+	assert.equal(
+		frames[0].paintComplete,
+		null,
+		"and the flag says so rather than claiming an entry",
+	);
+});
+
 test("the paint's cleanup depends on the conversation, not the identity", () => {
 	/*
 	 * Agent review round 2, C8. A fresh draft's identity moves `draftKey` ->
@@ -490,12 +638,7 @@ test("the paint's cleanup depends on the conversation, not the identity", () => 
 	 * a mounted draft panel, and the two things that must hold are both lexical -
 	 * the ref read at the write, and `sessionId` alone in the array.
 	 */
-	const source = readFileSync(
-		"src/renderer/src/shared/hooks/use-canonical-session.ts",
-		"utf8",
-	)
-		.replace(/\/\*[\s\S]*?\*\//g, "")
-		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+	const source = code("src/renderer/src/shared/hooks/use-canonical-session.ts");
 	assert.match(
 		source,
 		PAINT_CLEANUP_IDENTITY,
@@ -505,5 +648,18 @@ test("the paint's cleanup depends on the conversation, not the identity", () => 
 		source,
 		PAINT_CLEANUP_DEPS,
 		"and the cleanup runs on a conversation change alone",
+	);
+});
+
+test("the transcript is handed the view's coverage flag", () => {
+	/*
+	 * Agent review M1's third line. The hook can seed and clear `paintComplete`
+	 * perfectly and the layout still reads nothing if this prop is dropped: the
+	 * transcript takes the flag as a prop, so the seam is the JSX call site.
+	 */
+	assert.match(
+		code("src/renderer/src/features/chat/components/chat-content.tsx"),
+		PAINT_COMPLETE_PROP,
+		"a dropped or renamed prop disables the anchor rule the whole PR rests on",
 	);
 });

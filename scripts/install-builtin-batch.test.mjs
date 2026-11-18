@@ -36,7 +36,7 @@ const RE_REACT = /^react$/;
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { installBuiltin, installBuiltins, summariseInstalls, summarySentence, summaryExceptionSentence } from "./src/renderer/src/features/agents/install-builtin-batch";
+			export { installBuiltin, installBuiltins, installProgressReading, summariseInstalls, summarySentence, summaryExceptionSentence } from "./src/renderer/src/features/agents/install-builtin-batch";
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 		`,
 		resolveDir: process.cwd(),
@@ -219,4 +219,48 @@ test("the skip line leads with its count and reads as one sentence", async () =>
 		}),
 		null,
 	);
+});
+
+/*
+ * PostHog D6: "Invalid prop value 7..12 supplied to Progress" in ~300 sessions.
+ * The bar's total came from the live missing-starters list, which shrinks as
+ * each install lands, while `done` kept counting. Replays the run against a
+ * list that refetches after every install, the way the profile query does.
+ */
+test("the progress step never exceeds the run's total while the missing list shrinks", async () => {
+	const { installBuiltins, installProgressReading } = await load();
+	const names = Array.from({ length: 12 }, (_, i) => `starter-${i}`);
+	let missing = [...names];
+	const readings = [];
+	await installBuiltins(
+		names,
+		async (name) => {
+			missing = missing.filter((m) => m !== name);
+			return { name };
+		},
+		(progress) => {
+			// Before the fix the component passed `missing.length` here.
+			const buggy = progress.done + (progress.current ? 1 : 0);
+			readings.push({
+				fixed: installProgressReading(
+					progress.done,
+					progress.current,
+					names.length,
+				),
+				buggyOverflow: buggy > missing.length,
+			});
+		},
+	);
+	assert.ok(
+		readings.some((r) => r.buggyOverflow),
+		"control: the live list does overflow, so the scenario reproduces D6",
+	);
+	for (const { fixed } of readings) {
+		assert.ok(fixed.step <= fixed.total, `${fixed.step} of ${fixed.total}`);
+		assert.equal(fixed.total, 12);
+	}
+	assert.deepEqual(readings.at(-1).fixed, { step: 12, total: 12 });
+	// The clamp holds for any caller, not only this run.
+	assert.deepEqual(installProgressReading(9, "x", 4), { step: 4, total: 4 });
+	assert.deepEqual(installProgressReading(-1, null, -3), { step: 0, total: 0 });
 });

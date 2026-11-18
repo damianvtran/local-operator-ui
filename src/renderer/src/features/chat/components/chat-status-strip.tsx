@@ -1,3 +1,7 @@
+import {
+	BackendStartupPanel,
+	startupPanelPhase,
+} from "@shared/components/common/backend-startup-panel";
 import { NOTICE_BAND } from "@shared/components/common/notice-band";
 import { Alert, Button } from "@shared/components/ui";
 import { useConnectivityStatus } from "@shared/hooks/use-connectivity-status";
@@ -316,7 +320,15 @@ export const ChatStatusStrip = () => {
 	 * (§F2) - so presence is `display !== null` and not "expanded". Cleared on
 	 * unmount: a strip that is gone owns nothing.
 	 */
-	const speaking = display !== null;
+	/*
+	 * This app's own server starting or failed to start is stated by the
+	 * start-up band instead (`backend-startup-panel.tsx`): its cause, Restart
+	 * and Copy diagnostics, in place of this strip's generic "stopped" line -
+	 * one voice for one fact. It still counts as the strip speaking, so the
+	 * app-level gate and the sidebar stand down while it is on screen.
+	 */
+	const startupPhase = startupPanelPhase(serverSnapshot);
+	const speaking = display !== null || startupPhase !== null;
 	useEffect(() => {
 		setChatStatusStripPresent(speaking);
 		return () => setChatStatusStripPresent(false);
@@ -395,6 +407,10 @@ export const ChatStatusStrip = () => {
 			void refetchServerStatus();
 		}
 	}, [key, refetchServerStatus]);
+
+	if (startupPhase && serverSnapshot) {
+		return <BackendStartupPanel snapshot={serverSnapshot} />;
+	}
 
 	return (
 		<ChatStatusStripView

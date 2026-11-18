@@ -1,0 +1,92 @@
+{
+ "schema": 1,
+ "kind": "translation-audit-receipt",
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor",
+ "team": "lopdev",
+ "harness": "Local Operator",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "Session model as configured for this run (system prompt): anthropic/claude-opus-5-5. No fallback observed.",
+ "session": "fefcc432a14a",
+ "instance": "317156fde810",
+ "date": "2026-11-17",
+ "locale": "ur",
+ "locale_name": "Urdu",
+ "namespace": "ui.chat",
+ "branch": "feat/i18n-identity-footer",
+ "head": "fdf96a7e2e986f4ccef207fa28ee7da7a98ee1f6",
+ "base": "ccc99372ac60c86963f4384541207c393d1e81d4",
+ "round": 2,
+ "audit_kind": "round-2 independent re-audit by a fresh auditor instance (not the round-1 auditor, not the translator) of the 15 ur keys added for fdf96a7e, on the uncommitted final catalogue bytes",
+ "scope": "15 added ui.chat.header_identity.* ur keys vs en values + en context sidecar; ur style guide + core glossary; ICU parse + arg parity (@formatjs parser, worktree node_modules); Intl.PluralRules('ur') one/other; plural renders; term greps; width; diff 15 added/0 removed. Catalogue-only, LLM audit, not native-speaker review.",
+ "keys_read": 15,
+ "keys_audited": 15,
+ "new_keys_audited": 15,
+ "sha256": {
+  "ur": "bf734e56f62f3cc6d9e29c19ab47e7a4e8284a1913867758380a36cfc0d1f445",
+  "en": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
+  "context": "6d5689ad63e462ba13be05fc16e9d45d2e60aa2d592b9cba0feb8ab456753d33"
+ },
+ "out_of_scope_hashes_confirmed": {
+  "ur/ui.chat.canonical.json": "b15195042f7ab25b7370c22c6935bb59366eac3aa5804da7ee76b5f47e755c54",
+  "ur/ui.chat.slash.json": "071aacb8287a83ecd0f57b8c39ddb2d57f9efdb88a644a6aaf29cf8611f82387"
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+  }
+ },
+ "status": "passed",
+ "unresolved_blocker_major_count": 0,
+ "findings": [
+  {
+   "id": "UR2-1",
+   "severity": "MINOR",
+   "key": "ui.chat.header_identity.footer_partial_agents",
+   "also": [
+    "ui.chat.header_identity.footer_partial_teams"
+   ],
+   "current": "150 ایجنٹوں میں سے 4 مماثل",
+   "problem": "Verbless; reads as a natural status fragment ('4 matching out of 150 agents') and is grammatical, but the sidecar asks for count plus a verb and the sibling footer_match_* carries ہے/ہیں. The ur precedent ui.chat.pickers.analytics_session_state.match_query adds the verb via a nested plural on the matched count.",
+   "suggested": "{total, plural, one {... ایجنٹ میں سے {matches, plural, one {# مماثل ہے} other {# مماثل ہیں}}} other {... ایجنٹوں میں سے {matches, plural, one {# مماثل ہے} other {# مماثل ہیں}}}} (team twin: ٹیم/ٹیموں); optional, not gating"
+  },
+  {
+   "id": "UR2-2",
+   "severity": "NIT",
+   "key": "ui.chat.header_identity.footer_all_agents",
+   "also": [
+    "ui.chat.header_identity.footer_all_teams"
+   ],
+   "current": "کل 150 ایجنٹ ہیں — اسکرول کریں یا فلٹر کے لیے ٹائپ کریں",
+   "problem": "'فلٹر کے لیے' (for a filter) is slightly clipped; the verbal noun is more idiomatic.",
+   "suggested": "… یا فلٹر کرنے کے لیے ٹائپ کریں"
+  },
+  {
+   "id": "UR2-3",
+   "severity": "NIT",
+   "key": "ui.chat.header_identity.needs_delegating_profile",
+   "also": [
+    "no_settable",
+    "no_settable_typed",
+    "team_led_by_manager"
+   ],
+   "current": "کام تفویض کرنے والی پروفائل درکار ہے۔",
+   "problem": "پروفائل is feminine in these keys (and ui.settings) but masculine in ui.chat.pickers/ui.chat.slash ('پروفائل نہیں ملا۔') and ui.teamBridge ('کا پروفائل'). Both genders occur in Urdu; the new keys are internally consistent. Pre-existing catalogue-wide split, not gating.",
+   "suggested": "no change in this PR; pick one gender in a future ur glossary call"
+  }
+ ],
+ "evidence_summary": {
+  "icu": "15/15 parse; argument name/type sets identical to en (count plural+number; matches number; total plural+number; team; label)",
+  "cldr": "Intl.PluralRules('ur') = [one, other]; all 6 plural messages carry one+other",
+  "english_leak": "0 Latin letters outside placeholders/ICU syntax in all 15",
+  "bidi_controls": "none in catalogue; runtime isolates values (src/i18n/bidi.ts), document dir=rtl (use-document-direction.ts)",
+  "width": "needs_delegating_profile 37 chars (<=43); its_manager_label 11 (<=14)",
+  "diff": "git diff --numstat ur/ui.chat.json = 15 0"
+ },
+ "audit_notes_not_execution_log": true
+}

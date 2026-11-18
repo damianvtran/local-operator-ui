@@ -53,6 +53,11 @@
  *   the same reason `resolveConflict` checks it (code round 1, m2).
  */
 
+import {
+	type ProviderSetupFailureReason,
+	categorizeProviderFailure,
+} from "@shared/analytics/first-run-reasons";
+import { trackProductEvent } from "@shared/analytics/product-events";
 import { isTerminalAuthState } from "@shared/api/local-operator/auth-operation";
 import type { PollAuthOperationOptions } from "@shared/api/local-operator/auth-operation";
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
@@ -142,6 +147,34 @@ const TERMINAL_MESSAGES: ReadonlyArray<[RegExp, AuthOperation["state"]]> = [
 	[/^Sign-in expired\b/, "expired"],
 	[/^Sign-in failed\b/, "failed"],
 ];
+
+/**
+ * The funnel event for a sign-in that reached a terminal state: connected, or
+ * failed with the state's own name as the reason (a closed vocabulary - see
+ * `first-run-reasons.ts`). Reads only the provider id and the state.
+ */
+function reportSettled(operation: AuthOperation): void {
+	if (operation.state === "succeeded") {
+		trackProductEvent("provider_connected", {
+			provider: operation.provider,
+			method: "sign_in",
+		});
+		return;
+	}
+	const reason: ProviderSetupFailureReason =
+		operation.state === "cancelled"
+			? "cancelled"
+			: operation.state === "expired"
+				? "expired"
+				: operation.state === "failed"
+					? "failed"
+					: "unknown";
+	trackProductEvent("provider_setup_failed", {
+		provider: operation.provider,
+		method: "sign_in",
+		reason,
+	});
+}
 
 /**
  * The snapshot's real state: a terminal message or a spent deadline on a
@@ -253,6 +286,7 @@ export function createSignInFlow(deps: SignInDeps): SignInFlow {
 			stop();
 			if (lastStarted?.id === operation.id) lastStarted = null;
 			emit({ phase: "settled", operation, opened: sameUrl && state.opened });
+			reportSettled(operation);
 			if (operation.state === "succeeded") deps.onSucceeded?.(operation);
 			return;
 		}
@@ -333,6 +367,10 @@ export function createSignInFlow(deps: SignInDeps): SignInFlow {
 			stop();
 			const previous = state.operation;
 			openedKey = null;
+			trackProductEvent("provider_setup_started", {
+				provider,
+				method: "sign_in",
+			});
 			emit({
 				phase: "starting",
 				operation: null,
@@ -386,6 +424,11 @@ export function createSignInFlow(deps: SignInDeps): SignInFlow {
 						error,
 						t("ui.providers.sign_in_flow.sign_in_could_not_start"),
 					),
+				});
+				trackProductEvent("provider_setup_failed", {
+					provider,
+					method: "sign_in",
+					reason: categorizeProviderFailure(error, "start"),
 				});
 			}
 		},

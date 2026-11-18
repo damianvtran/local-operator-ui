@@ -135,6 +135,15 @@ export type PaintedConversation = {
 	 */
 	busy: boolean;
 	/**
+	 * UTF-8 bytes of the retained rows, as this cache measured them at write.
+	 *
+	 * Part of the READ contract because the open trace reports the size of the
+	 * paint a click actually got (`paintBytes`), and re-measuring on the click path
+	 * would encode the same rows a second time - in exactly the place this cache
+	 * exists to keep cheap.
+	 */
+	bytes: number;
+	/**
 	 * Call ids whose label read the paint was still waiting on when it was stored.
 	 *
 	 * WHY THIS TRAVELS WITH THE ROWS. A cached tool row carries no arguments (the
@@ -181,9 +190,36 @@ export type PaintedConversation = {
 	 * is the behaviour before this existed.
 	 */
 	replayBorn: ReadonlySet<string>;
+	/**
+	 * Whether these rows are the WHOLE conversation, as opposed to its newest
+	 * suffix.
+	 *
+	 * WHY THE PANE NEEDS IT (P2 of the session-switch plan). The two ceilings
+	 * below keep a suffix, and a heavy session's suffix is often shorter than the
+	 * transcript pane. The column top-anchors a conversation that fits
+	 * (`mb-auto`, canonical-transcript.tsx), which is right for a genuinely short
+	 * conversation and wrong for a suffix: when the taller page lands, the column
+	 * overflows, the auto margin resolves to zero, and every row bottom-packs -
+	 * measured on a built renderer, the first visible row moved 200.6 px and the
+	 * last 212.6 px in ONE frame, 26/26 and 16/16 runs at 500/700 KB tool results.
+	 *
+	 * TRUE ONLY WHEN NOTHING WAS DROPPED AND NO OLDER ROWS ARE OWED. "Owed" is
+	 * read from what the pane knew at write, because this module never sees the
+	 * backend: a page that said more rows exist (`hasMore`), no page at all (no
+	 * `oldestId` - a live-only pane, or a mount this cache itself seeded, which
+	 * clears the cursor), and a settings prune still waiting on its older native
+	 * target (`profileHistoryPending`). A trim by either ceiling is a suffix by
+	 * definition, so it is incomplete whatever the page said.
+	 *
+	 * A CLAIM ABOUT COVERAGE, NOT FRESHNESS: `stale` says these rows may be
+	 * behind; this says they are not merely the tail of the conversation. The pane
+	 * reads the two separately, and the layout takes completeness into account
+	 * only while `stale` holds.
+	 */
+	complete: boolean;
 };
 
-type Entry = PaintedConversation & { bytes: number };
+type Entry = PaintedConversation;
 
 const cache = new Map<string, Entry>();
 
@@ -221,6 +257,44 @@ const pendingScroll = new Map<string, PaintedScroll>();
 export const PENDING_SCROLL_MAX = 32;
 
 /**
+ * Why the last paint for an id left no entry, for the open trace's
+ * `paintReason`.
+ *
+ * THE CACHE FORGETS, THE DIAGNOSTIC REMEMBERS. Every path that ends with no
+ * entry under an id - a write whose rows were all in flight or all trimmed away,
+ * and eviction dropping the oldest - deletes the key, so a later `readPaint`
+ * cannot tell "this window never painted it" from "it was trimmed to nothing"
+ * or "it was evicted". Those are different answers about the same click: a cache
+ * that keeps nothing and one that was never asked look identical in a hit rate.
+ * So the reason is kept beside the cache, and nothing that decides what to paint
+ * reads it.
+ */
+export type PaintMiss = "empty-after-trim" | "evicted";
+
+/**
+ * How many miss notes to keep.
+ *
+ * Bounded because a session id comes from the backend and would otherwise be
+ * remembered for every conversation this window ever painted. 64 is several
+ * screens of recent switches - the whole window in which a revisit can be told
+ * apart from a first open - and an aged-out note reads as `no-entry`, which is
+ * the honest answer once the note is gone.
+ */
+const PAINT_MISS_NOTES = 64;
+const misses = new Map<string, PaintMiss>();
+
+function noteMiss(sessionId: string, reason: PaintMiss): void {
+	// Delete before set so the re-inserted key is the newest, as the cache does.
+	misses.delete(sessionId);
+	misses.set(sessionId, reason);
+	while (misses.size > PAINT_MISS_NOTES) {
+		const oldest = misses.keys().next().value;
+		if (oldest === undefined) break;
+		misses.delete(oldest);
+	}
+}
+
+/**
  * UTF-8 bytes of the retained rows, which is the unit the bounds are stated in.
  *
  * Only the ROWS: the anchor and the liveness flag beside them are one id and one
@@ -252,10 +326,14 @@ function measure(records: TranscriptState["records"]): number {
 function trimRecords(records: TranscriptState["records"]): {
 	records: TranscriptState["records"];
 	bytes: number;
+	/** Whether either ceiling dropped a row; see `complete` on the entry. */
+	trimmed: boolean;
 } {
 	const capped = records.slice(-PAINT_CACHE_MAX_ROWS);
+	const trimmedByRows = capped.length < records.length;
 	const bytes = measure(capped);
-	if (bytes <= PAINT_CACHE_SESSION_BYTES) return { records: capped, bytes };
+	if (bytes <= PAINT_CACHE_SESSION_BYTES)
+		return { records: capped, bytes, trimmed: trimmedByRows };
 	/*
 	 * This write runs synchronously in the old pane's unmount cleanup and can
 	 * block renderer work during a switch. Measuring every shrinking suffix encodes
@@ -281,7 +359,30 @@ function trimRecords(records: TranscriptState["records"]): {
 			fitBytes = middleBytes;
 		}
 	}
-	return { records: capped.slice(fit), bytes: fitBytes };
+	return { records: capped.slice(fit), bytes: fitBytes, trimmed: true };
+}
+
+/**
+ * Whether the pane's rows covered the WHOLE conversation when the paint was
+ * taken.
+ *
+ * READ FROM THE INPUT TRANSCRIPT, before the stored copy clears the paging
+ * cursor: the cache cannot KEEP a cursor (see `writePaint`), but the question
+ * this answers is what the pane itself knew at that instant.
+ *
+ * AN ABSENT CURSOR IS NOT A STATEMENT OF COVERAGE. A snapshot page that carries
+ * rows defines `oldestId`; the field is null only until one does (a cleared or
+ * never-loaded view whose rows are live ones) and on every mount this cache
+ * seeded, because the stored transcript carries no cursor. `hasMore` is the
+ * backend's own "there are older rows", and `profileHistoryPending` is a local
+ * prune that still owes its older native target - both make what the pane holds a
+ * window rather than the conversation.
+ */
+function coversWholeConversation(transcript: TranscriptState): boolean {
+	if (transcript.oldestId === null) return false;
+	if (transcript.hasMore) return false;
+	if ((transcript.profileHistoryPending?.length ?? 0) > 0) return false;
+	return true;
 }
 
 /**
@@ -319,6 +420,18 @@ export function writePaint(
 		 * paint has no evidence for: absent means "settled", not "unchanged".
 		 */
 		busy?: boolean;
+		/**
+		 * The coverage claim to CARRY, for a pane that is still painting a cached
+		 * paint when it writes. Such a pane's rows cannot answer
+		 * `coversWholeConversation`: the stored transcript has no paging cursor
+		 * (`oldestId` is cleared on the way in), so re-deriving would demote a
+		 * complete short conversation to incomplete and the NEXT return would
+		 * bottom-align it, then jump up when its page landed (agent review F1 / QA Q1,
+		 * measured 253.1 px on a one-turn session). Supplied only while the pane is
+		 * stale - the snapshot's page is the authority once it lands - and a trim
+		 * still decides first (see `complete` below).
+		 */
+		complete?: boolean;
 	},
 ): void {
 	// In-flight rows are dropped HERE rather than asked of the caller. The
@@ -327,10 +440,11 @@ export function writePaint(
 	// because the deltas that would advance it were consumed by the previous
 	// mount. A caller that forgot would produce a permanently half-written row
 	// that no caption can make honest.
-	const { records, bytes } = trimRecords(
+	const { records, bytes, trimmed } = trimRecords(
 		dropLiveRecords(input.transcript).records,
 	);
 	if (records.length === 0) {
+		noteMiss(sessionId, "empty-after-trim");
 		cache.delete(sessionId);
 		// Nothing to place a reader in: a measured position for an empty
 		// transcript is not a place this cache can keep.
@@ -404,6 +518,22 @@ export function writePaint(
 			transcript.index,
 		),
 		busy: input.busy === true,
+		/*
+		 * A suffix is incomplete by construction, so the trim decides first and the
+		 * pane's own page knowledge decides the rest. Dropping IN-FLIGHT rows does
+		 * not count: those are rows that have not settled, so the page that follows
+		 * can only add below what this paint shows - the direction new rows are
+		 * allowed to arrive in.
+		 *
+		 * A CARRIED claim (a pane still stale at the write) is taken as-is rather
+		 * than OR-ed with the derivation: the cache cleared that transcript's cursor
+		 * on the way in, so the derivation can only ever say "incomplete" there and
+		 * the seed's answer is the only coverage this paint ever had. The trim still
+		 * wins: rows that arrived live during the stale window can push the paint
+		 * over a ceiling, and what survives is then a suffix whatever the entry said.
+		 */
+		complete:
+			!trimmed && (input.complete ?? coversWholeConversation(input.transcript)),
 	};
 	// The measurement belongs to THIS write; a later paint of this conversation
 	// measures its own.
@@ -411,6 +541,8 @@ export function writePaint(
 	// Delete before set so the re-inserted key is the newest for eviction order.
 	cache.delete(sessionId);
 	cache.set(sessionId, entry);
+	// A stored paint ANSWERS the question the note existed to answer.
+	misses.delete(sessionId);
 	evict();
 }
 
@@ -462,14 +594,22 @@ function retainedScroll(
 
 /** The cached paint for `sessionId`, or null. Does not change eviction order. */
 export function readPaint(sessionId: string): PaintedConversation | null {
-	const entry = cache.get(sessionId);
-	if (!entry) return null;
-	const { bytes: _bytes, ...paint } = entry;
-	return paint;
+	return cache.get(sessionId) ?? null;
+}
+
+/**
+ * Why `sessionId` has no paint, when this cache can still say: `empty-after-trim`
+ * (the last write had nothing durable to keep) or `evicted` (the byte bound
+ * dropped it). Null when it never painted here, or the note has aged out - both
+ * of which the trace reports as `no-entry`. Diagnostic only.
+ */
+export function paintMissReason(sessionId: string): PaintMiss | null {
+	return misses.get(sessionId) ?? null;
 }
 
 /** Forget one conversation. Used when the backend says it is gone (M6). */
 export function dropPaint(sessionId: string): void {
+	misses.delete(sessionId);
 	cache.delete(sessionId);
 	// A place measured for the paint that will never be written describes rows
 	// this window no longer holds.
@@ -528,6 +668,7 @@ function evict(): void {
 		// An evicted conversation's rows are gone; a place for the paint that was
 		// never written describes the same gone rows.
 		pendingScroll.delete(oldest);
+		noteMiss(oldest, "evicted");
 		total -= entry?.bytes ?? 0;
 	}
 }
@@ -551,4 +692,5 @@ export function __paintCacheStats(): {
 export function __resetPaintCache(): void {
 	cache.clear();
 	pendingScroll.clear();
+	misses.clear();
 }

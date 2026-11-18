@@ -1,0 +1,55 @@
+{
+	"schema": 1,
+	"scope": "PR #1963, 8e64b0ccd0..2844a58df3a19751f7eea4703a045ad2973732f9, eight translated keys × seven locales. Unchanged values are retained from round 1; the explicitly listed changed values outside the requested scope are not a new linguistic sign-off.",
+	"records": [
+		{
+			"locale": "es",
+			"canonical_record": "i18n/audits/evidence/es/ui.common.backend_startup/pr1963-r2-es-backendstartup-b22ce71917f9/record.json",
+			"receipt": "i18n/receipts/pr1963-r2-es-backendstartup-b22ce71917f9.json",
+			"sha256": "924946eb458c76254c3bca379a854895080a519efeb8e16767dd5ae44184ca05",
+			"result": "clean"
+		},
+		{
+			"locale": "fr",
+			"canonical_record": "i18n/audits/evidence/fr/ui.common.backend_startup/pr1963-r2-fr-backendstartup-b22ce71917f9/record.json",
+			"receipt": "i18n/receipts/pr1963-r2-fr-backendstartup-b22ce71917f9.json",
+			"sha256": "5dc2bba834f46f91022de82d1f7b2907045db5fd387dd6766abf2ea95a862c57",
+			"result": "clean"
+		},
+		{
+			"locale": "hi",
+			"canonical_record": "i18n/audits/evidence/hi/ui.common.backend_startup/pr1963-r2-hi-backendstartup-b22ce71917f9/record.json",
+			"receipt": "i18n/receipts/pr1963-r2-hi-backendstartup-b22ce71917f9.json",
+			"sha256": "ca4a856d06fb6e615bdd95e9c6cab8f1aad981e777795cf53cc65874e9a7a718",
+			"result": "clean"
+		},
+		{
+			"locale": "ru",
+			"canonical_record": "i18n/audits/evidence/ru/ui.common.backend_startup/pr1963-r2-ru-backendstartup-b22ce71917f9/record.json",
+			"receipt": "i18n/receipts/pr1963-r2-ru-backendstartup-b22ce71917f9.json",
+			"sha256": "50658177a8ebd9a15c7ac9e13bd2c0245270413bf2b6bc0f74b3f51de89a1161",
+			"result": "clean"
+		},
+		{
+			"locale": "ur",
+			"canonical_record": "i18n/audits/evidence/ur/ui.common.backend_startup/pr1963-r2-ur-backendstartup-b22ce71917f9/record.json",
+			"receipt": "i18n/receipts/pr1963-r2-ur-backendstartup-b22ce71917f9.json",
+			"sha256": "4db0fba55f8d66ba7aa70801006b959b8aee1eb80760184ac87db1ea40d92bb9",
+			"result": "clean"
+		},
+		{
+			"locale": "vi",
+			"canonical_record": "i18n/audits/evidence/vi/ui.common.backend_startup/pr1963-r2-vi-backendstartup-b22ce71917f9/record.json",
+			"receipt": "i18n/receipts/pr1963-r2-vi-backendstartup-b22ce71917f9.json",
+			"sha256": "671ad9eb7940f9193e63084c5038fc8b5c8aebdf08dad9196b38e4544dad74d2",
+			"result": "clean"
+		},
+		{
+			"locale": "zh-CN",
+			"canonical_record": "i18n/audits/evidence/zh-CN/ui.common.backend_startup/pr1963-r2-zh-cn-backendstartup-b22ce71917f9/record.json",
+			"receipt": "i18n/receipts/pr1963-r2-zh-cn-backendstartup-b22ce71917f9.json",
+			"sha256": "12cb8d52640e627d35c821beef9d318c47f0f798581d84a81acdccfb7fbe4553",
+			"result": "clean"
+		}
+	]
+}

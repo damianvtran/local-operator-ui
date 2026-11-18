@@ -1750,6 +1750,15 @@
 			"duration": "already formatted elapsed duration from formatDuration, e.g. 2m 4s; preserve as supplied"
 		}
 	},
+	"ui.chat.canonical.transcript.took_duration": {
+		"role": "clause of the turn bar's spoken summary and its copied text, stating how long the turn took",
+		"tone": "lowercase past-tense clause, no trailing punctuation",
+		"length": "Short clause inside a comma-separated list.",
+		"note": "Never painted on screen: it is read aloud when a turn condenses and is the text the turn bar's context menu copies. It sits in a list with an action count (`Turn condensed: took 2m 4s, 5 actions.`), so it must read as one clause and carry no full stop. Pair with worked_for, which is the painted footer form.",
+		"placeholders": {
+			"duration": "already formatted elapsed duration from formatDuration, e.g. 2m 4s; preserve as supplied"
+		}
+	},
 	"ui.chat.canonical.transcript.job_suffix": {
 		"role": "job identifier suffix after a hub receipt identity",
 		"tone": "compact noun label, sentence case, no trailing punctuation",
@@ -3512,9 +3521,20 @@
 		"role": "state line of a finished generation card (single item)",
 		"tone": "sentence case, past tense, no punctuation",
 		"length": "Two to three words.",
-		"note": "Receipt for one finished item. Also the model for the per-item aria/alt label (see remainder R5).",
+		"note": "Receipt for one finished item, shown as the card's status line. It is a STATUS message and may be a clause in a language that has no participle noun phrase; it is NOT the per-item media label (that is `ui.chat.canonical.image_gen.result_label`).",
 		"placeholders": {
 			"material": "which kind of media the call generates: one of image, video, voiceover, sound_effect (callsite maps the wire's `sound-effect`); drives a select, so supply every branch"
+		}
+	},
+	"ui.chat.canonical.image_gen.result_label": {
+		"role": "accessible name and broken-media subject of one generated media item (image, video, voiceover or sound effect) inside a generation card; numbered when the card holds several",
+		"tone": "BARE NOUN PHRASE: no verb, no clause, no punctuation, capitalised only as the language's sentence start would be; the number goes where the language puts it",
+		"length": "Two to four words.",
+		"note": "NOT the state.done status line. It is spliced as the subject into `{name} could not be played` / `{name} could not be displayed` (a sentence that must stay grammatical), read aloud as the player's name (video aria-label, play/pause/position labels, retry tile title) and used as image alt. English reads `Generated video` / `Generated image 2`; a language whose finished-state wording is a clause (e.g. `Video created`) must write a noun phrase here (the thing that was generated), never reuse the clause. Every branch is complete on its own (material select wraps the count plural) so the numeral can be placed freely, including before the noun. The numeral is plain digits with no grouping separator.",
+		"placeholders": {
+			"material": "which kind of media the item is: one of image, video, voiceover, sound_effect (callsite maps the wire's `sound-effect`); drives a select, so supply every branch; unknown materials fall to `other` (image wording)",
+			"count": "how many items the card holds; number; `=1` selects the unnumbered form",
+			"position": "one-based position of this item within the card; number"
 		}
 	},
 	"ui.chat.canonical.image_gen.state.done_batch": {

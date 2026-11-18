@@ -16,6 +16,7 @@ import type {
 	AttachmentUploadResult,
 	AttachmentUploadSource,
 } from "../shared/attachment-upload";
+import { BACKEND_RESTART_CHANNEL } from "../shared/backend-startup";
 import {
 	BACKEND_RECONNECT_CHANNEL,
 	BACKEND_STATUS_CHANNEL,
@@ -623,6 +624,13 @@ const api = {
 			ipcRenderer.invoke(BACKEND_STATUS_CHANNEL),
 		reconnect: (): Promise<DaemonStatusSnapshot> =>
 			ipcRenderer.invoke(BACKEND_RECONNECT_CHANNEL),
+		/*
+		 * The start-up panel's Restart: stop this app's own server and start it
+		 * again. Distinct from `reconnect`, which only re-discovers - a server
+		 * that failed to start is not one waiting to be found.
+		 */
+		restart: (): Promise<DaemonStatusSnapshot> =>
+			ipcRenderer.invoke(BACKEND_RESTART_CHANNEL),
 		onStatusChange: (callback: (snapshot: DaemonStatusSnapshot) => void) => {
 			const handler = (_event: unknown, snapshot: DaemonStatusSnapshot) =>
 				callback(snapshot);

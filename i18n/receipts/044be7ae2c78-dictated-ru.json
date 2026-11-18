@@ -1,0 +1,85 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev reviewer-role session 044be7ae2c78, i18n-audit-hi-ru-ur-vi; not the PR coder / translator of 7040c2b761)",
+ "agent": "translation-auditor (lopdev reviewer-role session 044be7ae2c78, i18n-audit-hi-ru-ur-vi; not the PR coder / translator of 7040c2b761)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Every catalogue read, finding and in-place fix in this receipt ran on anthropic/claude-sonnet-5-5 (session header); no fallback occurred.",
+ "fallback": "none",
+ "independence": "Separate session (044be7ae2c78) from the PR coder, who wrote and translated 7040c2b761 (its commit message says the 16 keys were translated by that session). The translator's work was audited as claims to check, rebuilt from the English source, the en context, the render sites in the PR diff, sibling shipped keys, the core glossary and the locale style guide.",
+ "instance": "044be7ae2c78-dictated-ru",
+ "session": "044be7ae2c78",
+ "locale": "ru",
+ "branch": "fix/send-instant-and-dictated-send-session",
+ "head": "7040c2b761 (+ uncommitted catalogue edits by this audit)",
+ "pr": "damianvtran/local-operator-ui (send-instant-dictated worktree; PR number not assigned at audit time)",
+ "date": "2026-11-17",
+ "status": "passed",
+ "scope": "ui.chat.composer: delta audit of the 16 new ui.chat.composer.dictated_away.* keys for ru (7040c2b761). The 73 carried keys are unchanged: the en and ru blobs at HEAD~1 hash to the ledger row's last audited source_sha256 (a90cc99706b0…) and target_sha256, and a key-by-key comparison of parsed values shows 0 changed, 0 removed, 16 added (en also gains a trailing comma after secret_closure_notice).",
+ "inputs_sha256": {
+  "en_context (ui.chat.composer.context.json)": "455aa178b828ac259813f6b3435f38852412743aa0f3de108036a35a2557aeb6",
+  "glossary (local-operator/i18n/glossary.md @ origin/main b2312e9f97)": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+  "style guide (local-operator/i18n/style-guides/ru.md @ origin/main b2312e9f97)": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+ },
+ "verified": [
+  "key set equals en (89 keys); every ICU argument identical to en: {title}/{reason} appear exactly where en has them, no plural/select arms exist in these keys; no bidi/zero-width/BOM characters; no edge or double spaces; NFC",
+  "the toast/notice wording never claims a send happened: not_sent/not_sent_body say the dictation was NOT sent ('नहीं भेजा गया' / 'Не отправлено' / 'نہیں بھیجا گیا' / 'Chưa gửi'), and say the text sits in that chat's draft; origin_gone(+_body) and transcription_failed(+_body) never promise a draft, only that the text/recording is gone, as the render-site comment in the PR requires",
+  "reason clauses are lower-case clauses that follow a colon and complete the sentence; reason_unavailable names no cause",
+  "terms: glossary credentials/model/session rendering kept; chat/open chat/new chat/untitled chat match shipped strings (ui.library.composer.open_chat, ui.shell.sidebar_navigation.new_chat, ui.chat.canonical.untitled)",
+  "carried ui.chat.composer keys unchanged; en differs from the audited blob only by the 16 added keys (+ the trailing comma after secret_closure_notice)"
+ ],
+ "namespaces": {
+  "ui.chat.composer": {
+   "namespace": "ui.chat.composer",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 89,
+   "delta_keys_audited": [
+    "ui.chat.composer.dictated_away.not_sent",
+    "ui.chat.composer.dictated_away.not_sent_body",
+    "ui.chat.composer.dictated_away.transcription_failed",
+    "ui.chat.composer.dictated_away.transcription_failed_body",
+    "ui.chat.composer.dictated_away.reason_edited",
+    "ui.chat.composer.dictated_away.reason_command",
+    "ui.chat.composer.dictated_away.reason_gate",
+    "ui.chat.composer.dictated_away.reason_secret",
+    "ui.chat.composer.dictated_away.reason_no_model",
+    "ui.chat.composer.dictated_away.reason_unavailable",
+    "ui.chat.composer.dictated_away.reason_not_ready",
+    "ui.chat.composer.dictated_away.open_chat",
+    "ui.chat.composer.dictated_away.draft_label",
+    "ui.chat.composer.dictated_away.untitled_chat",
+    "ui.chat.composer.dictated_away.origin_gone",
+    "ui.chat.composer.dictated_away.origin_gone_body"
+   ],
+   "sha256": {
+    "ru": "4adb0e2146439fcbdc0bb65f9aea0b5d450c4e3baafe21e5e910ad2ac6f3ba98",
+    "en": "8f6ad5094234ec5368a86da0b1864ae94debba3fa355ea1920d20956425991e6"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.composer.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.composer.json",
+    "context": "src/i18n/catalogues/en/ui.chat.composer.context.json"
+   },
+   "findings": [
+    {
+     "id": "RU-1",
+     "severity": "minor",
+     "key": "ui.chat.composer.dictated_away.reason_gate",
+     "summary": "'вопрос, которого этот чат ждёт' says the chat is waiting FOR the question; the chat is waiting for the reader's ANSWER to it. 'ждать' takes the thing awaited in the genitive, so the relative clause names the wrong object. 'на который этот чат ждёт ответа' is the correct construction. Fits maxCells 70.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "слова ответили бы на вопрос, которого этот чат ждёт",
+     "after": "слова ответили бы на вопрос, на который этот чат ждёт ответа"
+    },
+    {
+     "id": "RU-2",
+     "severity": "nit",
+     "key": "ui.chat.composer.dictated_away.reason_command",
+     "summary": "'слова выполнились бы как команда' is a calque (reflexive-intransitive 'выполняться' for a deliberate run). 'были бы выполнены как команда' is the standard passive for commands.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "слова выполнились бы как команда",
+     "after": "слова были бы выполнены как команда"
+    }
+   ]
+  }
+ }
+}
