@@ -986,7 +986,7 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	);
 	assert.match(
 		dialog,
-		/<span className="min-w-0 truncate">\{titleParts\.name\}<\/span>/,
+		/<span dir="auto" className="min-w-0 truncate">\s*\{titleParts\.name\}\s*<\/span>/,
 	);
 	/*
 	 * The operator explicitly wants the archive confirmation's danger treatment,
