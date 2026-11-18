@@ -67,6 +67,13 @@ const TRANSPORTS: Record<string, BridgeCardBodyTransport | null> = {
 		],
 		more: 0,
 	}),
+	heldTransient: answer({
+		v: 1,
+		items: [
+			item({ state: "held", hold: { class: "transient", held_for_s: 3 } }),
+		],
+		more: 0,
+	}),
 	refused: answer({ v: 1, items: [item({ state: "refused" })], more: 0 }),
 	pending: answer({ v: 1, items: [item({ state: "pending" })], more: 0 }),
 	notAdmitted: answer({
@@ -77,6 +84,11 @@ const TRANSPORTS: Record<string, BridgeCardBodyTransport | null> = {
 	unavailable: answer({
 		v: 1,
 		items: [item({ state: "unavailable", reason: "other_account" })],
+		more: 0,
+	}),
+	unavailableOffline: answer({
+		v: 1,
+		items: [item({ state: "unavailable", reason: "offline" })],
 		more: 0,
 	}),
 	coalesced: answer({
@@ -97,13 +109,16 @@ const TRANSPORTS: Record<string, BridgeCardBodyTransport | null> = {
 /** The pane exactly as `BridgeIncomingRow` composes it, open. */
 const Pane: FC<{ state: string }> = ({ state }) => {
 	const transport = TRANSPORTS[state] ?? undefined;
+	const offered = TRANSPORTS[state] !== null;
 	return (
 		<BridgeDetail
 			isError={false}
 			view={{
 				headline: "Received from Ola Fagbemi · Direct message",
 				body: null,
-				outcome: null,
+				// As the row does (review R3): without the read, today's sentence
+				// stays in the outcome slot above the provenance line.
+				outcome: offered ? null : t("ui.chat.bridgeReceipt.unavailable"),
 				internals: [],
 				raw: "[team_bridge message envelope]",
 			}}
@@ -113,12 +128,14 @@ const Pane: FC<{ state: string }> = ({ state }) => {
 				{/* i18n: ignore - fixed story timestamp, not product copy */}
 				<time>Nov 18, 2026, 9:41 AM</time>
 			</div>
-			<BridgeCardBodySection
-				sessionId="a1b2c3d4e5f6"
-				entryId={`story${state}`}
-				enabled={TRANSPORTS[state] !== null}
-				transport={transport}
-			/>
+			{offered ? (
+				<BridgeCardBodySection
+					sessionId="a1b2c3d4e5f6"
+					entryId={`story${state}`}
+					enabled
+					transport={transport}
+				/>
+			) : null}
 		</BridgeDetail>
 	);
 };
@@ -156,10 +173,14 @@ export const LongExpanded: Story = {
 	},
 };
 export const Held: Story = { args: { state: "held" } };
+export const HeldTransient: Story = { args: { state: "heldTransient" } };
 export const Refused: Story = { args: { state: "refused" } };
 export const Pending: Story = { args: { state: "pending" } };
 export const NotAdmitted: Story = { args: { state: "notAdmitted" } };
 export const Unavailable: Story = { args: { state: "unavailable" } };
+export const UnavailableOffline: Story = {
+	args: { state: "unavailableOffline" },
+};
 export const Coalesced: Story = { args: { state: "coalesced" } };
 
 /** Every state on one page, so one navigation captures the whole set. */

@@ -107,6 +107,15 @@ export type BridgeCardBodyItem = {
 	/** Present only on an `admitted` item: the admitted markdown, untrusted. */
 	body?: string;
 	reason?: BridgeCardBodyReason;
+	/**
+	 * Present only on a `held` item whose server hold says `class: "transient"`:
+	 * screening has not run yet or delivery has not finished, so nobody decided
+	 * anything (core `card_body._hold_view`). The card must not read that as a
+	 * moderation decision (core #4238 review R4 / design D3). Any other or
+	 * missing class keeps "Held by moderation": an unknown class is never
+	 * softened into "waiting".
+	 */
+	transient?: true;
 };
 
 export type BridgeCardBody = {
@@ -169,12 +178,14 @@ function itemOf(value: unknown): BridgeCardBodyItem | null {
 		REASONS.has(raw.reason)
 			? (raw.reason as BridgeCardBodyReason)
 			: undefined;
+	const transient = state === "held" && object(raw.hold).class === "transient";
 	return {
 		messageId,
 		conversationId,
 		state,
 		...(admitted ? { body: raw.body as string } : {}),
 		...(reason ? { reason } : {}),
+		...(transient ? { transient: true as const } : {}),
 	};
 }
 

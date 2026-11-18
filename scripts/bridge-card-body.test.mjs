@@ -380,6 +380,16 @@ for (const [state, extra, sentence] of [
 		{ hold: { class: "awaiting_review", held_for_s: 12 } },
 		"Held by moderation.",
 	],
+	// A transient hold is screening not yet run / delivery unfinished: nobody
+	// decided anything, so it must not read as moderation (core #4238 D3/R4).
+	[
+		"held",
+		{ hold: { class: "transient", held_for_s: 3 } },
+		"Waiting for screening — not shown to your agent yet.",
+	],
+	// No class, or one this client does not know, keeps the firm sentence.
+	["held", {}, "Held by moderation."],
+	["held", { hold: { class: "later_kind" } }, "Held by moderation."],
 	["refused", {}, "Refused by moderation."],
 	["pending", {}, "Still being delivered."],
 	["not_admitted", {}, "Not delivered to this agent."],
@@ -395,12 +405,18 @@ for (const [state, extra, sentence] of [
 		"Message body unavailable. Sign in to Team Bridge to load it.",
 	],
 	["unavailable", { reason: "deleted" }, "This message was deleted."],
+	[
+		"unavailable",
+		{ reason: "offline" },
+		"Couldn't reach Radient — close and reopen to retry.",
+	],
 ]) {
-	test(`${state}${extra.reason ? `/${extra.reason}` : ""} says so, never 'unavailable' for a moderation outcome`, async () => {
+	const variant = extra.reason ?? extra.hold?.class ?? "";
+	test(`${state}${variant ? `/${variant}` : ""} says so, never 'unavailable' for a moderation outcome`, async () => {
 		const view = await mount(
 			{
 				sessionId: SESSION,
-				entryId: `entry${state}${extra.reason ?? ""}`,
+				entryId: `entry${state}${variant.replaceAll("_", "")}`,
 				enabled: true,
 			},
 			ok({ v: 1, items: [item({ state, ...extra })], more: 0 }),

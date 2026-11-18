@@ -4923,6 +4923,7 @@ export type MessageParams = {
 	"ui.chat.attachments.saved_path_copied": undefined;
 	"ui.chat.attachments.volume": undefined;
 	"ui.chat.bridgeReceipt.held": undefined;
+	"ui.chat.bridgeReceipt.held_transient": undefined;
 	"ui.chat.bridgeReceipt.loading": undefined;
 	"ui.chat.bridgeReceipt.more": { count: number };
 	"ui.chat.bridgeReceipt.not_admitted": undefined;

@@ -82,7 +82,11 @@ function stateSentence(item: BridgeCardBodyItem): string {
 		case "pending":
 			return t("ui.chat.bridgeReceipt.pending");
 		case "held":
-			return t("ui.chat.bridgeReceipt.held");
+			// A transient hold (screening not run / delivery unfinished) is not a
+			// moderation decision; same ruling as the TUI (core #4238 D3/R4).
+			return item.transient
+				? t("ui.chat.bridgeReceipt.held_transient")
+				: t("ui.chat.bridgeReceipt.held");
 		case "refused":
 			return t("ui.chat.bridgeReceipt.refused");
 		case "not_admitted":
@@ -173,8 +177,20 @@ const Item: FC<{ item: BridgeCardBodyItem }> = ({ item }) =>
  *
  * `enabled` is the capability gate (`features.team_bridge_card_body`) plus the
  * conditions under which this app can ask at all (a local, top-level session).
- * Closed, the section is today's sentence verbatim and nothing is requested, so
- * an older backend renders exactly as before.
+ * Closed, the section is today's sentence and nothing is requested. The
+ * transcript row does not mount this section at all when the read is not
+ * offered: it keeps the sentence in `BridgeDetail`'s outcome slot, above the
+ * provenance line, so an older backend's pane is unchanged (review R3). The
+ * closed branch here is the defensive fallback for any other caller.
+ *
+ * WHY THE READ STAYS ON OPEN (core #4238 design D1 analog). The TUI resolves
+ * cards on mount because its collapsed header used to say "no preview"; core
+ * gave it a `local_only` resolver for that. The desktop route has no local-only
+ * mode (every call is the full resolver, which can make a hub history read),
+ * and the collapsed desktop row never said "unavailable" — it reads
+ * `Received from <sender> · <conversation>`, which stays true. Reading on
+ * mount would buy no truer collapsed row and cost one hub read per visible
+ * card, so the read stays on open.
  */
 export const BridgeCardBodySection: FC<{
 	sessionId: string | null;

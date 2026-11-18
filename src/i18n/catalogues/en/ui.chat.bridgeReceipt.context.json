@@ -26,6 +26,10 @@
 		"role": "Incoming Bridge body held",
 		"note": "Moderation is holding the message for this agent. Never name a reason or category."
 	},
+	"ui.chat.bridgeReceipt.held_transient": {
+		"role": "Incoming Bridge body held, transient",
+		"note": "Screening has not run yet or the message is still being delivered; nothing was decided. Never imply moderation acted. Same words as core tui.bridge_card.body.held_transient."
+	},
 	"ui.chat.bridgeReceipt.refused": {
 		"role": "Incoming Bridge body refused",
 		"note": "Moderation refused the message for this agent. Terminal; never name a reason."
@@ -56,7 +60,7 @@
 	},
 	"ui.chat.bridgeReceipt.unavailable_reason.offline": {
 		"role": "Incoming Bridge body unavailable: offline",
-		"note": "The hub could not be reached to load an older body."
+		"note": "Radient (the Team Bridge hub) could not be reached to load the body. Closing and reopening the card retries the read. Same words as core tui.bridge_card.body.offline."
 	},
 	"ui.chat.bridgeReceipt.show_more": {
 		"role": "Expand long Bridge body",

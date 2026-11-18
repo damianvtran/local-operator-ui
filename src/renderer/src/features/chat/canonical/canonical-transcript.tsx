@@ -3322,11 +3322,14 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 							headline: [received, target].filter(Boolean).join(" · "),
 							body: null,
 							/*
-							 * The body section below owns the outcome sentence in every
-							 * state (including today's, when the read is not offered), so
-							 * the pane's own outcome line stays empty.
+							 * When the read is offered, the body section below owns the
+							 * outcome sentence. When it is not (older backend, child or
+							 * remote transcript), today's sentence stays in this slot, above
+							 * the provenance line, so that pane is unchanged (review R3).
 							 */
-							outcome: null,
+							outcome: bodyEnabled
+								? null
+								: t("ui.chat.bridgeReceipt.unavailable"),
 							internals: [],
 							raw: record.text,
 						}}
@@ -3351,11 +3354,13 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 						 * Under the provenance line on purpose: the label is what frames
 						 * the text that follows as someone else's untrusted words.
 						 */}
-						<BridgeCardBodySection
-							sessionId={sessionId}
-							entryId={record.id}
-							enabled={bodyEnabled}
-						/>
+						{bodyEnabled ? (
+							<BridgeCardBodySection
+								sessionId={sessionId}
+								entryId={record.id}
+								enabled
+							/>
+						) : null}
 					</BridgeDetailPane>
 				}
 			/>
