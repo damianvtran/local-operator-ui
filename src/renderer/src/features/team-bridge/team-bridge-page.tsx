@@ -203,6 +203,7 @@ import {
 	targetConversation,
 	teamBridgeEligibility,
 	teamBridgeRateLimit,
+	teamBridgeSenderHasProfile,
 	unmatchedDirects,
 	visibleConversationRows,
 } from "./team-bridge-model";
@@ -1562,7 +1563,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	/* A profile (photo, card, DM) belongs to a person or an agent only: an app
 	   or unknown sender kind resolves to none, whatever its id. */
 	const profileFor = (sender: TeamBridgeMessage["sender"], tenantId: string) =>
-		sender.kind === "human" || sender.kind === "agent"
+		teamBridgeSenderHasProfile(sender)
 			? rosterFor(tenantId).find(
 					(member) => member.account_id === sender.account_id,
 				)
@@ -1574,7 +1575,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		// Only a person or an agent has a DM to open: an integration app (or a
 		// sender kind this build does not know) is never a directory member, and
 		// must not resolve to one even if an id happened to match.
-		if (sender.kind !== "human" && sender.kind !== "agent") return null;
+		if (!teamBridgeSenderHasProfile(sender)) return null;
 		const member = profileFor(sender, tenantId);
 		if (
 			!identityKnown ||
@@ -7478,7 +7479,7 @@ export function profileMessageTarget(
 ): TeamBridgeTarget | null {
 	// An app or unknown kind has no person/chief target; "person" would be the
 	// wrong fallback (it would open a DM with whoever owns that id).
-	if (sender.kind !== "human" && sender.kind !== "agent") return null;
+	if (!teamBridgeSenderHasProfile(sender)) return null;
 	const next: TeamBridgeTarget = {
 		type: sender.kind === "agent" ? "chief" : "person",
 		accountId: sender.account_id,

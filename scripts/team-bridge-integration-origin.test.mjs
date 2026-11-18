@@ -36,7 +36,8 @@ const bundle = await build({
 		contents: `
 export { TeamBridgeMessageList } from './src/renderer/src/features/team-bridge/team-bridge-message-list';
 export { teamBridgeMessageSchema, teamBridgeMessagePageSchema } from './src/shared/team-bridge-contract';
-export { teamBridgeSenderPresentation, participantLabel } from './src/renderer/src/features/team-bridge/team-bridge-model';
+export { teamBridgeSenderPresentation, teamBridgeSenderHasProfile, participantLabel } from './src/renderer/src/features/team-bridge/team-bridge-model';
+export { TeamBridgeThreadRow } from './src/renderer/src/features/team-bridge/team-bridge-thread-row';
 export { threadParticipants } from './src/renderer/src/features/team-bridge/team-bridge-threads-model';
 export { ownerAuditToBridgeMessage, ownerAuditSenderProfile } from './src/renderer/src/features/team-bridge/team-bridge-owner-audit-model';
 export { teamBridgeDeliveryLines } from './src/renderer/src/features/team-bridge/team-bridge-delivery-annotation-model';
@@ -217,6 +218,40 @@ test("the owner audit keeps an app an app and resolves no profile for it", () =>
 	);
 });
 
+test("the owner audit draws an unknown sender kind as unknown, not as a person", () => {
+	// Review R1: the same wire row a channel parses to `unknown` (neutral
+	// glyph, "Unknown sender") must not become a person-style plate in the
+	// audit; the marker still refuses any directory lookup.
+	const mapped = m.ownerAuditToBridgeMessage({
+		...humanMessage(),
+		sender: { account_id: "acct_ada", kind: "service", display_label: "" },
+		body: "x",
+		delivery_states: [],
+	});
+	assert.equal(mapped.sender.kind, "unknown");
+	assert.equal(mapped.sender.audit_unknown_kind, true);
+	assert.equal(m.teamBridgeSenderPresentation(mapped), "unknown");
+	assert.equal(
+		m.ownerAuditSenderProfile(mapped.sender, [
+			{ account_id: "acct_ada", display_label: "Ada" },
+		]),
+		undefined,
+	);
+	const row = rowOf(listMarkup({ messages: [mapped] }), "bcm_ada");
+	assert.match(row, /data-sender-avatar="unknown"/);
+	assert.match(row, />Unknown sender</);
+});
+
+test("only a person or an agent can own a profile, card or DM", () => {
+	// The page's profileFor / messageTarget / profileMessageTarget all gate on
+	// this one predicate (review R2); profileMessageTarget is also driven end to
+	// end in team-bridge-directory.test.mjs.
+	assert.equal(m.teamBridgeSenderHasProfile({ kind: "human" }), true);
+	assert.equal(m.teamBridgeSenderHasProfile({ kind: "agent" }), true);
+	assert.equal(m.teamBridgeSenderHasProfile({ kind: "integration" }), false);
+	assert.equal(m.teamBridgeSenderHasProfile({ kind: "unknown" }), false);
+});
+
 test("an app row discloses no refusal class (only explicit human origin does)", () => {
 	const lines = m.teamBridgeDeliveryLines(
 		[
@@ -315,4 +350,69 @@ test("an unnamed app reads as a placeholder, not as a blank or a person", () => 
 	const row = rowOf(html, "bcm_app");
 	assert.match(row, />Unknown app</);
 	assert.doesNotMatch(row, /Unknown person/);
+});
+
+test("an unknown sender with no stored name reads Unknown sender, not Unknown person", () => {
+	// Review R3: the unnamed variant of the unknown-origin row. The wire
+	// requires a non-empty label, so "no name" arrives as the legacy
+	// placeholder `storedLabel` treats as absent.
+	const parsed = m.teamBridgeMessageSchema.parse(
+		humanMessage({
+			id: "bcm_blank",
+			origin: "workflow",
+			sender: { account_id: "x_1", kind: "robot", display_label: "Member" },
+		}),
+	);
+	const row = rowOf(listMarkup({ messages: [parsed] }), "bcm_blank");
+	assert.match(row, /data-sender-kind="unknown"/);
+	assert.match(row, />Unknown sender</);
+	assert.doesNotMatch(row, /Unknown person/);
+});
+
+test("the thread facepile draws an app replier as the app plate, never a lookup", () => {
+	// Review R3. The app is the SECOND replier, so its glyph is also the one
+	// pinned into the uncovered crescent (design D2).
+	const looked = [];
+	const root = m.teamBridgeMessageSchema.parse(
+		humanMessage({
+			reply_count: 2,
+			reply_participants: ["Ada", "Grafana"],
+			reply_participant_ids: [
+				{ account_id: "acct_ada", kind: "human" },
+				{ account_id: APP_ID, kind: "integration" },
+			],
+			last_reply_at: "2026-11-17T14:05:00Z",
+		}),
+	);
+	const html = m.renderToStaticMarkup(
+		m.createElement(m.TeamBridgeThreadRow, {
+			message: root,
+			onOpen: () => {},
+			locale: "en",
+			now: new Date("2026-11-17T15:00:00Z"),
+			profileFor: (sender) => {
+				looked.push(sender.account_id);
+				return undefined;
+			},
+		}),
+	);
+	const faces = [...html.matchAll(/data-thread-face="([^"]+)"[^>]*>/g)];
+	const app = faces.find((face) => face[1] === "app");
+	assert.ok(app, "an app face is drawn");
+	assert.match(app[0], /justify-end/, "glyph pinned to the visible side");
+	assert.equal(
+		looked.includes(APP_ID),
+		false,
+		"no directory lookup for an app",
+	);
+	assert.equal(
+		looked.includes("acct_ada"),
+		true,
+		"control: a person is looked up",
+	);
+	// No initial on the app plate: its content is the glyph (an <svg>).
+	const appStart = html.indexOf('data-thread-face="app"');
+	const appEnd = html.indexOf("</span>", appStart);
+	assert.match(html.slice(appStart, appEnd), /<svg/);
+	assert.doesNotMatch(html.slice(appStart, appEnd), />G</);
 });

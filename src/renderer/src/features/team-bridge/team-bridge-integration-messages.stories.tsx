@@ -230,3 +230,37 @@ export const UnknownOrigin: Story = {
 		],
 	},
 };
+
+/* The placeholders (copy round 1, C2): an app and an unknown-kind sender that
+   arrive with no usable stored name. The wire requires a non-empty label, so
+   "no name" is the legacy `Member` placeholder, which `storedLabel` treats as
+   absent - the rows must then read "Unknown app" (still with the App badge)
+   and "Unknown sender", never a blank and never "Unknown person". */
+export const UnnamedSenders: Story = {
+	args: {
+		messages: [
+			{
+				id: "bcmsg_unnamed_app",
+				conversation_id: "bcv_alerts_prod",
+				seq: 1,
+				sender: { ...grafanaSender, display_label: "Member" },
+				body: "**[FIRING:1] DiskFull** `db-prod-2` - 94% used.",
+				origin: "integration",
+				created_at: at(1),
+			},
+			{
+				id: "bcmsg_unnamed_unknown",
+				conversation_id: "bcv_alerts_prod",
+				seq: 2,
+				sender: {
+					account_id: "acct_future",
+					kind: "unknown",
+					display_label: "Member",
+				},
+				body: "Nightly export finished.",
+				origin: "unknown",
+				created_at: at(3),
+			},
+		],
+	},
+};

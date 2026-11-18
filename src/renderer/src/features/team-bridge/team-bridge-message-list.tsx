@@ -1340,12 +1340,17 @@ const MessageRowView: FC<MessageRowProps> = ({
 							</span>
 						)}
 						{/* The badge is what says "this is software, not a teammate"
-						    when an app's name could pass for a person's. */}
+						    when an app's name could pass for a person's. Compact
+						    (`py-0 leading-4`: 16px + 2px border = 18px) so it fits
+						    the `leading-5` header line; the stock badge is 23.4px
+						    and pushed an app's header 3.4px taller than a person's
+						    or agent's, dropping its body below theirs (design
+						    round 1, D1). */}
 						{app && (
 							<Badge
 								variant="neutral"
 								data-sender-badge="app"
-								className="shrink-0 self-center"
+								className="shrink-0 self-center py-0 leading-4"
 							>
 								{t("ui.teamBridge.sender.app_badge")}
 							</Badge>

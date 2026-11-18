@@ -1699,6 +1699,21 @@ export function teamBridgeSenderPresentation(message: {
 	return message.sender.kind;
 }
 
+/**
+ * Whether a sender can own a profile at all - a photo, a profile card, a DM.
+ * Only a person or an agent is a directory member; an integration app or a
+ * sender kind this build does not know never is, so the page refuses to look
+ * one up by id (an app id colliding with a member's must not open that
+ * member's card or DM). One predicate so the page's three lookups
+ * (`profileFor`, `messageTarget`, `profileMessageTarget`) cannot drift apart
+ * and so the rule is testable without mounting the page (review R2).
+ */
+export function teamBridgeSenderHasProfile(sender: {
+	kind: TeamBridgeSenderKind;
+}): boolean {
+	return sender.kind === "human" || sender.kind === "agent";
+}
+
 /** A stored label, or null when it is blank or the legacy placeholder. */
 export function storedLabel(label: string): string | null {
 	const trimmed = label.trim();
