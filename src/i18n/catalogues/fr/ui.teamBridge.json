@@ -237,7 +237,7 @@
 	"ui.teamBridge.sender.unknown_person": "Personne inconnue",
 	"ui.teamBridge.sender.unknown_agent": "Agent inconnu",
 	"ui.teamBridge.sender.app_badge": "Appli",
-	"ui.teamBridge.sender.unknown_app": "Appli inconnue",
+	"ui.teamBridge.sender.unknown_app": "Application inconnue",
 	"ui.teamBridge.sender.unknown_sender": "Expéditeur inconnu",
 	"ui.teamBridge.reactions.add": "Ajouter une réaction",
 	"ui.teamBridge.reactions.search": "Rechercher un émoji",
