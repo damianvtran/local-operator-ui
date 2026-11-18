@@ -93,6 +93,7 @@ import type {
 	DefaultsApplied,
 	SaveKeyResult,
 } from "../../../../shared/desktop-contract";
+import { voiceKeys } from "../voice/use-voice-status";
 import { PhoneAccessBlock } from "./phone-access-block";
 import {
 	brandOf,
@@ -245,6 +246,14 @@ type ProviderDetailProps = {
 	readiness?: ProviderReadiness | null;
 };
 
+/**
+ * What a STORED key looks like in the field: dots in the placeholder, nothing
+ * else. The daemon never returns a key, so there is nothing to show - this only
+ * says "one is saved", and it is not the field's value, so it can be neither
+ * edited nor submitted.
+ */
+const STORED_KEY_MASK = "\u2022".repeat(16);
+
 const SecretInput: FC<{
 	id: string;
 	value: string;
@@ -252,7 +261,8 @@ const SecretInput: FC<{
 	label: string;
 	invalid?: boolean;
 	describedBy?: string;
-}> = ({ id, value, onChange, label, invalid, describedBy }) => {
+	placeholder?: string;
+}> = ({ id, value, onChange, label, invalid, describedBy, placeholder }) => {
 	useI18nLocale();
 	const [visible, setVisible] = useState(false);
 	return (
@@ -261,6 +271,7 @@ const SecretInput: FC<{
 				id={id}
 				type={visible ? "text" : "password"}
 				value={value}
+				placeholder={placeholder}
 				onChange={(event) => onChange(event.target.value)}
 				autoComplete="off"
 				spellCheck={false}
@@ -613,6 +624,9 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	const [methodId, setMethodId] = useState<string | null>(null);
 	const [keyValue, setKeyValue] = useState("");
 	const [keySaving, setKeySaving] = useState(false);
+	// Removing a stored key asks first: "ask" is the confirm, "busy" the request.
+	const [removeStep, setRemoveStep] = useState<"idle" | "ask" | "busy">("idle");
+	const [removeError, setRemoveError] = useState<string | null>(null);
 	const [keyError, setKeyError] = useState<string | null>(
 		() => peekKeyOutcome(provider.id).error,
 	);
@@ -666,6 +680,13 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		 * same event as far as the catalogue is concerned.
 		 */
 		void queryClient.invalidateQueries({ queryKey: desktopKeys.catalogue });
+		/*
+		 * AND THE VOICE STATUS: whether a speech provider is ready is a function of
+		 * its credential, and Settings (and main, which decides whether voice may
+		 * listen) read that readiness from it. A key saved or removed here would
+		 * otherwise leave "No ElevenLabs API key is stored." on screen until the poll.
+		 */
+		void queryClient.invalidateQueries({ queryKey: voiceKeys.status });
 		/*
 		 * THE ACCOUNT READ, when the credential that just landed is Radient's own.
 		 *
@@ -959,6 +980,23 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		provider.suggested_model?.id,
 	]);
 
+	const removeKey = useCallback(async () => {
+		setRemoveStep("busy");
+		setRemoveError(null);
+		try {
+			await desktopResult({ op: "auth.logout", provider: provider.id });
+			refreshProviders();
+			setRemoveStep("idle");
+		} catch (error) {
+			setRemoveError(
+				error instanceof Error && error.message
+					? error.message
+					: t("ui.providers.stored_key.remove_failed"),
+			);
+			setRemoveStep("idle");
+		}
+	}, [provider.id, refreshProviders]);
+
 	const doneLabel =
 		context === "dialog"
 			? t("ui.providers.provider_detail.continue")
@@ -1084,6 +1122,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 						})}
 						invalid={keyError !== null}
 						describedBy={keyHelpId}
+						placeholder={provider.has_credential ? STORED_KEY_MASK : undefined}
 					/>
 					<p
 						id={keyHelpId}
@@ -1112,9 +1151,48 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							{keySaving ? <Spinner size="sm" /> : null}
 							{keySaving
 								? t("ui.providers.provider_detail.checking_key")
-								: t("ui.providers.provider_detail.save_key")}
+								: provider.has_credential
+									? t("ui.providers.stored_key.replace")
+									: t("ui.providers.provider_detail.save_key")}
 						</Button>
+						{provider.has_credential && removeStep === "idle" ? (
+							<Button
+								variant="ghost"
+								size="sm"
+								className="ml-2"
+								onClick={() => setRemoveStep("ask")}
+							>
+								{t("ui.providers.stored_key.remove")}
+							</Button>
+						) : null}
 					</div>
+					{provider.has_credential && removeStep !== "idle" ? (
+						<div className="flex flex-wrap items-center gap-2 text-body-sm">
+							<span>{t("ui.providers.stored_key.remove_confirm")}</span>
+							<Button
+								variant="danger"
+								size="sm"
+								disabled={removeStep === "busy"}
+								onClick={() => void removeKey()}
+							>
+								{removeStep === "busy" ? <Spinner size="sm" /> : null}
+								{t("ui.providers.stored_key.remove_yes")}
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								disabled={removeStep === "busy"}
+								onClick={() => setRemoveStep("idle")}
+							>
+								{t("ui.providers.provider_detail.cancel")}
+							</Button>
+						</div>
+					) : null}
+					{removeError ? (
+						<p role="alert" className="text-danger text-meta">
+							{removeError}
+						</p>
+					) : null}
 				</div>
 			</div>
 		);

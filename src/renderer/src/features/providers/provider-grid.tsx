@@ -65,6 +65,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal, Search, X } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { voiceKeys } from "../voice/use-voice-status";
 import {
 	FEATURED_PROVIDER_IDS,
 	GROUP_HEADINGS,
@@ -479,6 +480,8 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 			await queryClient.invalidateQueries({
 				queryKey: desktopKeys.providers,
 			});
+			// A removed credential changes whether a speech provider is ready.
+			void queryClient.invalidateQueries({ queryKey: voiceKeys.status });
 			onConnected?.();
 		} catch (error) {
 			showErrorToast(

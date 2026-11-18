@@ -60,6 +60,7 @@ import enUiMesh from "./catalogues/en/ui.mesh.json";
 import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
 import enUiProviders from "./catalogues/en/ui.providers.json";
+import enUiProvidersStoredKey from "./catalogues/en/ui.providers.stored_key.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
 import enUiSettingsAccount from "./catalogues/en/ui.settings.account.json";
 import enUiSettingsAppearance from "./catalogues/en/ui.settings.appearance.json";
@@ -293,6 +294,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiOnboarding,
 	...enUiProjects,
 	...enUiProviders,
+	...enUiProvidersStoredKey,
 	...enUiSchedules,
 	...enUiSettingsAccount,
 	...enUiSettingsAppearance,
@@ -3034,6 +3036,11 @@ export type MessageParams = {
 	"ui.providers.provider_labels.this_app_could_not_confirm_the_sign": undefined;
 	"ui.providers.provider_labels.unavailable": undefined;
 	"ui.providers.sign_in_flow.sign_in_could_not_start": undefined;
+	"ui.providers.stored_key.remove": undefined;
+	"ui.providers.stored_key.remove_confirm": undefined;
+	"ui.providers.stored_key.remove_failed": undefined;
+	"ui.providers.stored_key.remove_yes": undefined;
+	"ui.providers.stored_key.replace": undefined;
 	"ui.schedules.count.hidden": { hidden: number };
 	"ui.schedules.count.keep_runs": { left: number };
 	"ui.schedules.count.list_truncated": { shown: number; total: number };
