@@ -37,7 +37,7 @@
 	"ui.chat.status.pill_aria": {
 		"role": "Accessible name of the collapsed connection-status pill",
 		"tone": "Label, then statements, then an imperative",
-		"length_hint": "One line",
+		"length": "One line",
 		"note": "Reads the strip's title, then Retry's outcome when there is one, then the action the pill performs.",
 		"placeholders": {
 			"title": "The strip's already-localised title; interpolate as-is.",

@@ -86,20 +86,48 @@
 		"role": "button that opens the dismissal chooser on an open ask card",
 		"tone": "verb with an ellipsis, sentence case"
 	},
-	"ui.chat.asks.other_label": "Answer option that is not one of the offered choices; also the label of that answer in the summary.",
-	"ui.chat.asks.urgent": "Screen-reader-only prefix marking the ask as urgent.",
-	"ui.chat.asks.no_answer": "Shown in an ask's summary when the reader answered nothing.",
-	"ui.chat.asks.changed_handoff": "State of an answer edited after it was sent but not yet passed to the agent.",
-	"ui.chat.asks.send_answer": "Primary button that sends the answer to the agent.",
-	"ui.chat.asks.decline": "Secondary button that declines the agent's ask.",
-	"ui.chat.asks.update_answer": "Button that saves an edited answer, replacing the one already sent.",
-	"ui.chat.asks.cancel": "Button that discards an answer edit.",
-	"ui.chat.asks.change_answer": "Button that re-opens an already-sent answer for editing.",
-	"ui.chat.asks.filter_label": "Accessible name of the fieldset that filters the ask list.",
-	"ui.chat.asks.settled_heading": "Heading over the settled (resolved) half of the ask list.",
-	"ui.chat.asks.close_asks": "Tooltip and accessible name of the control that closes the asks drawer.",
-	"ui.chat.asks.all_asks": "Accessible name of the asks drawer when it shows every session's asks.",
-	"ui.chat.asks.conversation_asks": "Accessible name of the asks drawer when it shows the open conversation's asks.",
+	"ui.chat.asks.other_label": {
+		"note": "Answer option that is not one of the offered choices; also the label of that answer in the summary."
+	},
+	"ui.chat.asks.urgent": {
+		"note": "Screen-reader-only prefix marking the ask as urgent."
+	},
+	"ui.chat.asks.no_answer": {
+		"note": "Shown in an ask's summary when the reader answered nothing."
+	},
+	"ui.chat.asks.changed_handoff": {
+		"note": "State of an answer edited after it was sent but not yet passed to the agent."
+	},
+	"ui.chat.asks.send_answer": {
+		"note": "Primary button that sends the answer to the agent."
+	},
+	"ui.chat.asks.decline": {
+		"note": "Secondary button that declines the agent's ask."
+	},
+	"ui.chat.asks.update_answer": {
+		"note": "Button that saves an edited answer, replacing the one already sent."
+	},
+	"ui.chat.asks.cancel": {
+		"note": "Button that discards an answer edit."
+	},
+	"ui.chat.asks.change_answer": {
+		"note": "Button that re-opens an already-sent answer for editing."
+	},
+	"ui.chat.asks.filter_label": {
+		"note": "Accessible name of the fieldset that filters the ask list."
+	},
+	"ui.chat.asks.settled_heading": {
+		"note": "Heading over the settled (resolved) half of the ask list."
+	},
+	"ui.chat.asks.close_asks": {
+		"note": "Tooltip and accessible name of the control that closes the asks drawer."
+	},
+	"ui.chat.asks.all_asks": {
+		"note": "Accessible name of the asks drawer when it shows every session's asks."
+	},
+	"ui.chat.asks.conversation_asks": {
+		"note": "Accessible name of the asks drawer when it shows the open conversation's asks."
+	},
 	"ui.chat.asks.answer_options": {
 		"role": "group name",
 		"tone": "plain",
@@ -127,7 +155,7 @@
 	"ui.chat.asks.outstanding_count": {
 		"role": "Count of outstanding asks on a sidebar conversation row",
 		"tone": "Plain phrase, sentence case",
-		"length_hint": "Number plus a noun",
+		"length": "Number plus a noun",
 		"note": "Number plus the noun 'ask' (a question the agent put to the person).",
 		"placeholders": {
 			"count": "Numeric count for CLDR plural selection, separate from count_display. English uses exact =1 to preserve the original strict count === 1 branch, including negative inputs.",
@@ -137,7 +165,7 @@
 	"ui.chat.asks.outstanding_aria": {
 		"role": "Accessible name of the outstanding-asks chip",
 		"tone": "Two short statements",
-		"length_hint": "Two short sentences",
+		"length": "Two short sentences",
 		"note": "Reassures that the agent keeps working while asks wait; the label is the count phrase above.",
 		"placeholders": {
 			"label": "The already-localised count phrase (for example '2 asks'); interpolate as-is."
@@ -146,7 +174,7 @@
 	"ui.chat.asks.answer_aria": {
 		"role": "Accessible name of the free-text answer field of an ask",
 		"tone": "Label plus the question",
-		"length_hint": "Four words plus the question",
+		"length": "Four words plus the question",
 		"note": "The question is the agent's own text.",
 		"placeholders": {
 			"question": "The agent's question text; do not translate."
