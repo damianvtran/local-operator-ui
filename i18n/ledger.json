@@ -115741,12 +115741,15 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.common.backend_startup",
-			"source_sha256": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6",
-			"target_sha256": "e53586876f6e31187407861aaed8ed86bc0bb40b33683fa5d77166b08ee25e8a",
+			"source_sha256": "9c9cc5470736e507a580880bf1c1fe59146e8ed1995427bb2dc7cc13db6858e6",
+			"target_sha256": "5068e8ec55249c0000608fc183a7386fde8070a40f22406ee67cc6647ccd4a3e",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-17"
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-17",
+				"session": "439ea8d6a679",
+				"job": "64924c4e39e8",
+				"fallback": "None indicated in manager-verified completed candidate-author transcript."
 			},
 			"auditors": [
 				{
@@ -115754,16 +115757,16 @@
 					"model": "openai/gpt-6.2-sol",
 					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "pr1963-r2-fr-backendstartup-b22ce71917f9",
+					"instance": "pr1963-r3-fr-backendstartup-4f13c326b41f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1963-r2-fr-backendstartup-b22ce71917f9.json",
-					"receipt_sha256": "5dc2bba834f46f91022de82d1f7b2907045db5fd387dd6766abf2ea95a862c57",
-					"scope": "PR #1963 round 2 (8e64b0ccd0..2844a58df3a19751f7eea4703a045ad2973732f9): eight backend startup keys only; see checked-in receipt for exact coverage."
+					"receipt": "i18n/receipts/pr1963-r3-fr-backendstartup-4f13c326b41f.json",
+					"receipt_sha256": "2458d64d3fd91f2523a4d872e7e5a624e506ce729eb1b8577f26a6e6e4d30c75",
+					"scope": "PR #1963 round 3 (f879a8a302..3fbc7703cda0eb8dcbf42c4156f92facc4ae735b): four backend-startup recovery reasons only."
 				}
 			],
 			"status": "audited",
@@ -115791,18 +115794,49 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6",
+					"target_sha256": "e53586876f6e31187407861aaed8ed86bc0bb40b33683fa5d77166b08ee25e8a",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1963-r2-fr-backendstartup-b22ce71917f9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1963-r2-fr-backendstartup-b22ce71917f9.json",
+							"receipt_sha256": "5dc2bba834f46f91022de82d1f7b2907045db5fd387dd6766abf2ea95a862c57",
+							"scope": "PR #1963 round 2 (8e64b0ccd0..2844a58df3a19751f7eea4703a045ad2973732f9): eight backend startup keys only; see checked-in receipt for exact coverage."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "lopdev coder",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-11-17"
+					}
 				}
 			]
 		},
 		{
 			"locale": "es",
 			"namespace": "ui.common.backend_startup",
-			"source_sha256": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6",
-			"target_sha256": "8ef17b55d052299e91b21e581e080b933d10d8319a70d7e1ea6e7dd0631577f7",
+			"source_sha256": "9c9cc5470736e507a580880bf1c1fe59146e8ed1995427bb2dc7cc13db6858e6",
+			"target_sha256": "bdfab6412849a089ada1c47802d2ffdbab2037be513bbb7e12d2fedc5fdaee5f",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-17"
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-17",
+				"session": "439ea8d6a679",
+				"job": "64924c4e39e8",
+				"fallback": "None indicated in manager-verified completed candidate-author transcript."
 			},
 			"auditors": [
 				{
@@ -115810,16 +115844,16 @@
 					"model": "openai/gpt-6.2-sol",
 					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "pr1963-r2-es-backendstartup-b22ce71917f9",
+					"instance": "pr1963-r3-es-backendstartup-4f13c326b41f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1963-r2-es-backendstartup-b22ce71917f9.json",
-					"receipt_sha256": "924946eb458c76254c3bca379a854895080a519efeb8e16767dd5ae44184ca05",
-					"scope": "PR #1963 round 2 (8e64b0ccd0..2844a58df3a19751f7eea4703a045ad2973732f9): eight backend startup keys only; see checked-in receipt for exact coverage."
+					"receipt": "i18n/receipts/pr1963-r3-es-backendstartup-4f13c326b41f.json",
+					"receipt_sha256": "2c2ef30c6fb0cc6640cfd49fd35612abaf4f70f5febb79ea197e206297d63ff5",
+					"scope": "PR #1963 round 3 (f879a8a302..3fbc7703cda0eb8dcbf42c4156f92facc4ae735b): four backend-startup recovery reasons only."
 				}
 			],
 			"status": "audited",
@@ -115847,18 +115881,49 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6",
+					"target_sha256": "8ef17b55d052299e91b21e581e080b933d10d8319a70d7e1ea6e7dd0631577f7",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1963-r2-es-backendstartup-b22ce71917f9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1963-r2-es-backendstartup-b22ce71917f9.json",
+							"receipt_sha256": "924946eb458c76254c3bca379a854895080a519efeb8e16767dd5ae44184ca05",
+							"scope": "PR #1963 round 2 (8e64b0ccd0..2844a58df3a19751f7eea4703a045ad2973732f9): eight backend startup keys only; see checked-in receipt for exact coverage."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "lopdev coder",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-11-17"
+					}
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.common.backend_startup",
-			"source_sha256": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6",
-			"target_sha256": "d3485ec7796c2eb3514e145bdfcb0938120938d3c2b11430128e8cfe262e75d5",
+			"source_sha256": "9c9cc5470736e507a580880bf1c1fe59146e8ed1995427bb2dc7cc13db6858e6",
+			"target_sha256": "6fe28cf6ed7f92de2fb3ba1b2b28cfb1920ee856f0029f4b0c3e0371d28797fd",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-17"
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-17",
+				"session": "439ea8d6a679",
+				"job": "64924c4e39e8",
+				"fallback": "None indicated in manager-verified completed candidate-author transcript."
 			},
 			"auditors": [
 				{
@@ -115866,16 +115931,16 @@
 					"model": "openai/gpt-6.2-sol",
 					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "pr1963-r2-zh-cn-backendstartup-b22ce71917f9",
+					"instance": "pr1963-r3-zh-cn-backendstartup-4f13c326b41f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1963-r2-zh-cn-backendstartup-b22ce71917f9.json",
-					"receipt_sha256": "12cb8d52640e627d35c821beef9d318c47f0f798581d84a81acdccfb7fbe4553",
-					"scope": "PR #1963 round 2 (8e64b0ccd0..2844a58df3a19751f7eea4703a045ad2973732f9): eight backend startup keys only; see checked-in receipt for exact coverage."
+					"receipt": "i18n/receipts/pr1963-r3-zh-cn-backendstartup-4f13c326b41f.json",
+					"receipt_sha256": "dce742b80cfcfaf8d5359456b8ba22c82e127cc23bf9ad9c72cb30fc721f4f18",
+					"scope": "PR #1963 round 3 (f879a8a302..3fbc7703cda0eb8dcbf42c4156f92facc4ae735b): four backend-startup recovery reasons only."
 				}
 			],
 			"status": "audited",
@@ -115903,18 +115968,49 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6",
+					"target_sha256": "d3485ec7796c2eb3514e145bdfcb0938120938d3c2b11430128e8cfe262e75d5",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1963-r2-zh-cn-backendstartup-b22ce71917f9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1963-r2-zh-cn-backendstartup-b22ce71917f9.json",
+							"receipt_sha256": "12cb8d52640e627d35c821beef9d318c47f0f798581d84a81acdccfb7fbe4553",
+							"scope": "PR #1963 round 2 (8e64b0ccd0..2844a58df3a19751f7eea4703a045ad2973732f9): eight backend startup keys only; see checked-in receipt for exact coverage."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "lopdev coder",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-11-17"
+					}
 				}
 			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.common.backend_startup",
-			"source_sha256": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6",
-			"target_sha256": "5ad52791ae83fcc9406ff5520d9653bb9b8fcf88dff10ad28d7c9c04149df191",
+			"source_sha256": "9c9cc5470736e507a580880bf1c1fe59146e8ed1995427bb2dc7cc13db6858e6",
+			"target_sha256": "a3f50aff5ffb14c578298057c8011cb1e7489753ec47fb05f5860d6fa7fa8e80",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-17"
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-17",
+				"session": "439ea8d6a679",
+				"job": "64924c4e39e8",
+				"fallback": "None indicated in manager-verified completed candidate-author transcript."
 			},
 			"auditors": [
 				{
@@ -115922,16 +116018,16 @@
 					"model": "openai/gpt-6.2-sol",
 					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "pr1963-r2-ru-backendstartup-b22ce71917f9",
+					"instance": "pr1963-r3-ru-backendstartup-4f13c326b41f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1963-r2-ru-backendstartup-b22ce71917f9.json",
-					"receipt_sha256": "50658177a8ebd9a15c7ac9e13bd2c0245270413bf2b6bc0f74b3f51de89a1161",
-					"scope": "PR #1963 round 2 (8e64b0ccd0..2844a58df3a19751f7eea4703a045ad2973732f9): eight backend startup keys only; see checked-in receipt for exact coverage."
+					"receipt": "i18n/receipts/pr1963-r3-ru-backendstartup-4f13c326b41f.json",
+					"receipt_sha256": "0d4e8d5e9f229c88256bf215212538bcd23293f38e0340e1369ce302a1236aed",
+					"scope": "PR #1963 round 3 (f879a8a302..3fbc7703cda0eb8dcbf42c4156f92facc4ae735b): four backend-startup recovery reasons only."
 				}
 			],
 			"status": "audited",
@@ -115959,18 +116055,49 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6",
+					"target_sha256": "5ad52791ae83fcc9406ff5520d9653bb9b8fcf88dff10ad28d7c9c04149df191",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1963-r2-ru-backendstartup-b22ce71917f9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1963-r2-ru-backendstartup-b22ce71917f9.json",
+							"receipt_sha256": "50658177a8ebd9a15c7ac9e13bd2c0245270413bf2b6bc0f74b3f51de89a1161",
+							"scope": "PR #1963 round 2 (8e64b0ccd0..2844a58df3a19751f7eea4703a045ad2973732f9): eight backend startup keys only; see checked-in receipt for exact coverage."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "lopdev coder",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-11-17"
+					}
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.common.backend_startup",
-			"source_sha256": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6",
-			"target_sha256": "a7f8b32e85f989be846ad452b246f7191e9497b8600c1bbaaae95701797c7b1a",
+			"source_sha256": "9c9cc5470736e507a580880bf1c1fe59146e8ed1995427bb2dc7cc13db6858e6",
+			"target_sha256": "0db3f40a8fb990ecbb260a64e66ea62480c3b75193ca7c8c21115905791913f8",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-17"
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-17",
+				"session": "439ea8d6a679",
+				"job": "64924c4e39e8",
+				"fallback": "None indicated in manager-verified completed candidate-author transcript."
 			},
 			"auditors": [
 				{
@@ -115978,16 +116105,16 @@
 					"model": "openai/gpt-6.2-sol",
 					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "pr1963-r2-vi-backendstartup-b22ce71917f9",
+					"instance": "pr1963-r3-vi-backendstartup-4f13c326b41f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1963-r2-vi-backendstartup-b22ce71917f9.json",
-					"receipt_sha256": "671ad9eb7940f9193e63084c5038fc8b5c8aebdf08dad9196b38e4544dad74d2",
-					"scope": "PR #1963 round 2 (8e64b0ccd0..2844a58df3a19751f7eea4703a045ad2973732f9): eight backend startup keys only; see checked-in receipt for exact coverage."
+					"receipt": "i18n/receipts/pr1963-r3-vi-backendstartup-4f13c326b41f.json",
+					"receipt_sha256": "d650ff6055bc6d468c69d77dcbcf71a3ceafda2ed6a4dc0efc07d541acfcbc67",
+					"scope": "PR #1963 round 3 (f879a8a302..3fbc7703cda0eb8dcbf42c4156f92facc4ae735b): four backend-startup recovery reasons only."
 				}
 			],
 			"status": "audited",
@@ -116015,18 +116142,49 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6",
+					"target_sha256": "a7f8b32e85f989be846ad452b246f7191e9497b8600c1bbaaae95701797c7b1a",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1963-r2-vi-backendstartup-b22ce71917f9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1963-r2-vi-backendstartup-b22ce71917f9.json",
+							"receipt_sha256": "671ad9eb7940f9193e63084c5038fc8b5c8aebdf08dad9196b38e4544dad74d2",
+							"scope": "PR #1963 round 2 (8e64b0ccd0..2844a58df3a19751f7eea4703a045ad2973732f9): eight backend startup keys only; see checked-in receipt for exact coverage."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "lopdev coder",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-11-17"
+					}
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.common.backend_startup",
-			"source_sha256": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6",
-			"target_sha256": "8305f2d90fc7630cba29d9afd34628f39108aeef31af0703f0e4f6cc6e2981ed",
+			"source_sha256": "9c9cc5470736e507a580880bf1c1fe59146e8ed1995427bb2dc7cc13db6858e6",
+			"target_sha256": "8b506b7a28b2f3ed4b6c2a108ae956220bd01b0f62c5c0dcac0a81224072202a",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-17"
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-17",
+				"session": "439ea8d6a679",
+				"job": "64924c4e39e8",
+				"fallback": "None indicated in manager-verified completed candidate-author transcript."
 			},
 			"auditors": [
 				{
@@ -116034,16 +116192,16 @@
 					"model": "openai/gpt-6.2-sol",
 					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "pr1963-r2-ur-backendstartup-b22ce71917f9",
+					"instance": "pr1963-r3-ur-backendstartup-4f13c326b41f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1963-r2-ur-backendstartup-b22ce71917f9.json",
-					"receipt_sha256": "4db0fba55f8d66ba7aa70801006b959b8aee1eb80760184ac87db1ea40d92bb9",
-					"scope": "PR #1963 round 2 (8e64b0ccd0..2844a58df3a19751f7eea4703a045ad2973732f9): eight backend startup keys only; see checked-in receipt for exact coverage."
+					"receipt": "i18n/receipts/pr1963-r3-ur-backendstartup-4f13c326b41f.json",
+					"receipt_sha256": "437f27a0c473503a1ae8cf878333272f6f10828a8e4157b95a57bc82a8dc7f7c",
+					"scope": "PR #1963 round 3 (f879a8a302..3fbc7703cda0eb8dcbf42c4156f92facc4ae735b): four backend-startup recovery reasons only."
 				}
 			],
 			"status": "audited",
@@ -116071,18 +116229,49 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6",
+					"target_sha256": "8305f2d90fc7630cba29d9afd34628f39108aeef31af0703f0e4f6cc6e2981ed",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1963-r2-ur-backendstartup-b22ce71917f9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1963-r2-ur-backendstartup-b22ce71917f9.json",
+							"receipt_sha256": "4db0fba55f8d66ba7aa70801006b959b8aee1eb80760184ac87db1ea40d92bb9",
+							"scope": "PR #1963 round 2 (8e64b0ccd0..2844a58df3a19751f7eea4703a045ad2973732f9): eight backend startup keys only; see checked-in receipt for exact coverage."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "lopdev coder",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-11-17"
+					}
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.common.backend_startup",
-			"source_sha256": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6",
-			"target_sha256": "c28dc9d644fc181560bf8e631533c889428d5679dcedaf35a3bb838ec4e429e0",
+			"source_sha256": "9c9cc5470736e507a580880bf1c1fe59146e8ed1995427bb2dc7cc13db6858e6",
+			"target_sha256": "0d8d361d70da4bd2a8325ebc8a02544f6c4679c8bdb107fcedc1b019fdac191a",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-17"
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-17",
+				"session": "439ea8d6a679",
+				"job": "64924c4e39e8",
+				"fallback": "None indicated in manager-verified completed candidate-author transcript."
 			},
 			"auditors": [
 				{
@@ -116090,16 +116279,16 @@
 					"model": "openai/gpt-6.2-sol",
 					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "pr1963-r2-hi-backendstartup-b22ce71917f9",
+					"instance": "pr1963-r3-hi-backendstartup-4f13c326b41f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1963-r2-hi-backendstartup-b22ce71917f9.json",
-					"receipt_sha256": "ca4a856d06fb6e615bdd95e9c6cab8f1aad981e777795cf53cc65874e9a7a718",
-					"scope": "PR #1963 round 2 (8e64b0ccd0..2844a58df3a19751f7eea4703a045ad2973732f9): eight backend startup keys only; see checked-in receipt for exact coverage."
+					"receipt": "i18n/receipts/pr1963-r3-hi-backendstartup-4f13c326b41f.json",
+					"receipt_sha256": "71fc9e0368734087f9f3ec89a0c6845ecf6016d12f7f3c3e9c3edf9ce88890a2",
+					"scope": "PR #1963 round 3 (f879a8a302..3fbc7703cda0eb8dcbf42c4156f92facc4ae735b): four backend-startup recovery reasons only."
 				}
 			],
 			"status": "audited",
@@ -116127,6 +116316,34 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6",
+					"target_sha256": "c28dc9d644fc181560bf8e631533c889428d5679dcedaf35a3bb838ec4e429e0",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "openai/gpt-6.2-sol",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1963-r2-hi-backendstartup-b22ce71917f9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1963-r2-hi-backendstartup-b22ce71917f9.json",
+							"receipt_sha256": "ca4a856d06fb6e615bdd95e9c6cab8f1aad981e777795cf53cc65874e9a7a718",
+							"scope": "PR #1963 round 2 (8e64b0ccd0..2844a58df3a19751f7eea4703a045ad2973732f9): eight backend startup keys only; see checked-in receipt for exact coverage."
+						}
+					],
+					"status": "audited",
+					"translator": {
+						"agent": "lopdev coder",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-11-17"
+					}
 				}
 			]
 		}
