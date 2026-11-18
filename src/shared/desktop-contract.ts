@@ -5940,6 +5940,8 @@ export type QwenRigState = "stopped" | "starting" | "ready" | "error";
 export type QwenVoiceStatus = {
 	rig: QwenRigState;
 	webui_url: string | null;
+	/** The engine in effect (see `QwenVoiceEngine`); `rig` is only about `local`. */
+	engine?: QwenVoiceEngine;
 	reason?: string | null;
 	/**
 	 * Voice pages connected to the Gateway (the launcher's `client_attached` /
@@ -5975,11 +5977,29 @@ export type QwenVoiceEvent = {
 export type QwenVoiceResult =
 	| { taskId: string; ok: true }
 	| { taskId: string; ok: false; code: string };
+/**
+ * WHICH ENGINE HEARS AND SPEAKS (the voice switch's second setting).
+ *
+ * - `local`: the Qwen speech models on this machine (~5 GB). The default, and
+ *   what every profile from before this setting existed gets.
+ * - `byok`: bring your own key. Listening and speaking go through the person's
+ *   own ElevenLabs key held by the daemon; nothing local loads.
+ * - `radient`: Radient's cloud, billed in Radient credit. A PLACEHOLDER: shown,
+ *   never selectable, never stored and never in effect.
+ */
+export type QwenVoiceEngine = "local" | "byok" | "radient";
+/** The engines a person can choose today (`radient` is shown disabled). */
+export const SELECTABLE_QWEN_VOICE_ENGINES = ["local", "byok"] as const;
 export type QwenVoiceBridge = {
 	/** The person's voice switch (default OFF), owned by main. */
 	getEnabled: () => Promise<boolean>;
 	setEnabled: (on: boolean) => Promise<boolean>;
 	onEnabled: (listener: (enabled: boolean) => void) => () => void;
+	/** The engine in effect (`local` unless the person chose another). */
+	getEngine: () => Promise<QwenVoiceEngine>;
+	/** Choose an engine; answers the one now in effect (a refusal keeps the old). */
+	setEngine: (engine: QwenVoiceEngine) => Promise<QwenVoiceEngine>;
+	onEngine: (listener: (engine: QwenVoiceEngine) => void) => () => void;
 	onTake: (listener: (take: QwenVoiceTake) => void) => () => void;
 	result: (result: QwenVoiceResult) => Promise<boolean>;
 	speak: (input: {

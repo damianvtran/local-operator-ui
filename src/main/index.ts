@@ -155,8 +155,11 @@ import {
 	voicePageAllowed,
 } from "./voice/qwen-voice-page";
 import {
+	isSelectableEngine,
 	readQwenVoiceEnabled,
+	readQwenVoiceEngine,
 	writeQwenVoiceEnabled,
+	writeQwenVoiceEngine,
 } from "./voice/qwen-voice-setting";
 import { resolveLaunchWindowChrome } from "./window-chrome";
 import {
@@ -1667,6 +1670,7 @@ const qwenVoice: QwenVoice = new QwenVoice({
  * THE VOICE SWITCH, read synchronously before anything voice runs. Default OFF:
  * a fresh profile has no file, so nothing below is ever started for it.
  */
+void qwenVoice.setEngine(readQwenVoiceEngine(app.getPath("userData")));
 void qwenVoice.setEnabled(readQwenVoiceEnabled(app.getPath("userData")));
 
 /**
@@ -3100,6 +3104,18 @@ app
 					if (!window.isDestroyed())
 						window.webContents.send("voice.qwen.enabled", on);
 				return on;
+			},
+			getEngine: () => qwenVoice.getEngine(),
+			setEngine: async (engine) => {
+				// Main validates: the placeholder and garbage change nothing.
+				if (!isSelectableEngine(engine)) return qwenVoice.getEngine();
+				if (!writeQwenVoiceEngine(app.getPath("userData"), engine))
+					throw new Error("Could not save the voice setting.");
+				const inEffect = await qwenVoice.setEngine(engine);
+				for (const window of BrowserWindow.getAllWindows())
+					if (!window.isDestroyed())
+						window.webContents.send("voice.qwen.engine", inEffect);
+				return inEffect;
 			},
 			result: (input) => qwenVoice.result(input),
 			speak: (input) => qwenVoice.speak(input),

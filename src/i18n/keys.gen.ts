@@ -3994,6 +3994,17 @@ export type MessageParams = {
 	};
 	"ui.settings.updates.update_following.update_notifications": undefined;
 	"ui.settings.voice.description": undefined;
+	"ui.settings.voice.engine.byok.description": undefined;
+	"ui.settings.voice.engine.byok.label": undefined;
+	"ui.settings.voice.engine.byok.missing": undefined;
+	"ui.settings.voice.engine.byok.ready": undefined;
+	"ui.settings.voice.engine.description": undefined;
+	"ui.settings.voice.engine.label": undefined;
+	"ui.settings.voice.engine.local.description": undefined;
+	"ui.settings.voice.engine.local.label": undefined;
+	"ui.settings.voice.engine.radient.description": undefined;
+	"ui.settings.voice.engine.radient.label": undefined;
+	"ui.settings.voice.engine.soon": undefined;
 	"ui.settings.voice.label": undefined;
 	"ui.shell.collapsible_app_logo.local_operator": undefined;
 	"ui.shell.panel_rail.panels": undefined;

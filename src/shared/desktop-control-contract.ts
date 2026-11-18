@@ -729,6 +729,13 @@ export type DesktopVoiceActive = {
 export type DesktopVoiceState = {
 	active: DesktopVoiceActive;
 	settings: { max_spoken_chars: number };
+	/**
+	 * Whether bring-your-own-key voice can run (the backend's `byok`, V16).
+	 * ABSENT on a backend that predates pinned voice: read absence as "unknown",
+	 * never as "ready". `ready` is false when no ElevenLabs key is stored, even
+	 * if another provider's login is; pinned voice never falls through to one.
+	 */
+	byok?: { provider: "elevenlabs"; ready: boolean; reason: string };
 };
 
 /** `POST /v1/desktop/voice/text`'s answer: the words to speak, already cleaned. */

@@ -37,6 +37,7 @@
  */
 
 import { totalmem } from "node:os";
+import type { QwenVoiceEngine } from "../../shared/desktop-contract";
 import type { GatewayDownMessage, GatewayUpMessage } from "./qwen-gateway";
 import { qwenMachineTooSmall } from "./qwen-rig";
 import {
@@ -45,6 +46,7 @@ import {
 	type QwenMicSettled,
 	type QwenVoicePagePort,
 } from "./qwen-voice-page";
+import { isSelectableEngine } from "./qwen-voice-setting";
 
 export type QwenRigState = "stopped" | "starting" | "ready" | "error";
 
@@ -65,6 +67,8 @@ export type QwenVoiceEvent = {
 export type QwenVoiceStatus = {
 	rig: QwenRigState;
 	webui_url: string | null;
+	/** The engine in effect; `rig` describes the local rig only. */
+	engine?: QwenVoiceEngine;
 	/** Why the rig is in `error`, as one sentence; null otherwise. */
 	reason?: string | null;
 	/** Voice pages connected to the Gateway right now. */
@@ -202,6 +206,11 @@ export class QwenVoice {
 	 */
 	private enabled = false;
 	/**
+	 * Which engine hears and speaks. Only `local` ever starts the rig: `byok`
+	 * and the placeholder never load a model, which is the point of choosing them.
+	 */
+	private engine: QwenVoiceEngine = "local";
+	/**
 	 * The two controls of the strip that main owns, mirrored into `status` so the
 	 * renderer never holds a second copy that can disagree (see `QwenVoiceStatus`).
 	 */
@@ -259,11 +268,40 @@ export class QwenVoice {
 	}
 
 	getStatus(): QwenVoiceStatus {
-		return { ...this.status };
+		return { ...this.status, engine: this.engine };
 	}
 
 	isEnabled(): boolean {
 		return this.enabled;
+	}
+
+	getEngine(): QwenVoiceEngine {
+		return this.engine;
+	}
+
+	/**
+	 * Choose the engine; answers the one NOW in effect. A value that is not a
+	 * selectable engine (the `radient` placeholder, garbage from a renderer) is
+	 * refused and changes nothing.
+	 *
+	 * Leaving `local` while the rig is up stops it at once, like turning the
+	 * switch off but keeping the switch on: the models are the RAM the other
+	 * engines exist to save. Entering `local` starts nothing by itself; the
+	 * usual enable path does, exactly as when the switch goes on.
+	 */
+	async setEngine(next: unknown): Promise<QwenVoiceEngine> {
+		if (!isSelectableEngine(next) || next === this.engine) return this.engine;
+		this.engine = next;
+		this.log(`qwen-voice: engine is now ${next}`);
+		if (next !== "local") {
+			this.applySlot(null, { start: false });
+			this.relayed = [];
+			this.awaitingMic = false;
+			this.starting = null;
+			await this.stop();
+		}
+		this.setStatus(this.status);
+		return this.engine;
 	}
 
 	/**
@@ -450,6 +488,8 @@ export class QwenVoice {
 	 */
 	start(reason: "enable" | "renderer"): Promise<QwenVoiceStatus> {
 		if (!this.enabled) return Promise.resolve(this.getStatus());
+		// Only the local engine has a rig. Another engine loads nothing here.
+		if (this.engine !== "local") return Promise.resolve(this.getStatus());
 		if (this.rigUp()) return this.readyAgain(reason);
 		/*
 		 * A MACHINE THAT CANNOT HOLD THE RIG IS TOLD SO, FIRST (review R1): the

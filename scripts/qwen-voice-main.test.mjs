@@ -38,7 +38,7 @@ const bundle = await build({
 			'export { QwenSpeechProcess, resolveQwenPorts, s2sArgs, s2sEnv, s2sLauncherPathFor, qwenMemoryBudget, qwenMachineTooSmall, QWEN_MEM_BUDGET_BYTES, QWEN_MIN_MACHINE_BYTES, QWEN_MACHINE_TOO_SMALL, FOOTPRINT_INTERVAL_MS, DEFAULT_QWEN_PORTS, isOurS2s, S2S_RECORD_FILE } from "./src/main/voice/qwen-rig";',
 			'export { appVoicePageUrl, isAppVoicePageUrl, appVoicePageVerdict } from "./src/main/voice/qwen-voice-page";',
 			'export { QwenVoicePage, noQwenVoicePage, voicePageUrl, voicePageAllowed, QWEN_NO_VOICE_WINDOW, QWEN_VOICE_PARTITION, PAGE_CRASH_WINDOW_MS } from "./src/main/voice/qwen-voice-page";',
-			'export { readQwenVoiceEnabled, writeQwenVoiceEnabled } from "./src/main/voice/qwen-voice-setting";',
+			'export { readQwenVoiceEnabled, writeQwenVoiceEnabled, readQwenVoiceEngine, writeQwenVoiceEngine } from "./src/main/voice/qwen-voice-setting";',
 			'export { requestDesktopMedia } from "./src/main/desktop-media";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -2314,6 +2314,130 @@ test("SWITCH: a fresh profile is off; only an explicit stored true is on", async
 	setting.writeQwenVoiceEnabled(dir, true);
 	assert.equal(setting.readQwenVoiceEnabled(dir), true);
 	rmSync(dir, { recursive: true, force: true });
+});
+
+/* ------------------------------------------------------------------------ */
+/* THE ENGINE: local | byok | radient (placeholder)                           */
+/* ------------------------------------------------------------------------ */
+
+test("ENGINE: missing, malformed, unknown and placeholder values all read as local", async () => {
+	const dir = mkdtempSync(join(tmpdir(), "qwen-engine-"));
+	const file = join(dir, "voice-setting.json");
+	assert.equal(m.readQwenVoiceEngine(dir), "local", "no file");
+	writeFileSync(file, '{"enabled":true}');
+	assert.equal(
+		m.readQwenVoiceEngine(dir),
+		"local",
+		"a profile from before the engine existed",
+	);
+	writeFileSync(file, "{not json");
+	assert.equal(m.readQwenVoiceEngine(dir), "local", "corrupt");
+	writeFileSync(file, '{"enabled":true,"engine":"weird"}');
+	assert.equal(m.readQwenVoiceEngine(dir), "local", "unknown");
+	writeFileSync(file, '{"enabled":true,"engine":"radient"}');
+	assert.equal(
+		m.readQwenVoiceEngine(dir),
+		"local",
+		"radient is a placeholder, never in effect",
+	);
+	writeFileSync(file, '{"enabled":true,"engine":"byok"}');
+	assert.equal(m.readQwenVoiceEngine(dir), "byok");
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("ENGINE: writing the engine keeps the switch, and writing the switch keeps the engine", async () => {
+	const dir = mkdtempSync(join(tmpdir(), "qwen-engine-"));
+	m.writeQwenVoiceEnabled(dir, true);
+	assert.equal(m.writeQwenVoiceEngine(dir, "byok"), true);
+	assert.equal(
+		m.readQwenVoiceEnabled(dir),
+		true,
+		"the switch survived the engine write",
+	);
+	assert.equal(m.readQwenVoiceEngine(dir), "byok");
+	m.writeQwenVoiceEnabled(dir, false);
+	assert.equal(
+		m.readQwenVoiceEngine(dir),
+		"byok",
+		"the engine survived the switch write",
+	);
+	assert.equal(m.readQwenVoiceEnabled(dir), false);
+	assert.equal(
+		m.writeQwenVoiceEngine(dir, "radient"),
+		false,
+		"a placeholder cannot be stored",
+	);
+	assert.equal(m.readQwenVoiceEngine(dir), "byok");
+	rmSync(dir, { recursive: true, force: true });
+});
+
+test("ENGINE: a fresh coordinator is local and says so in its status", async () => {
+	const r = rig();
+	assert.equal(r.voice.getEngine(), "local");
+	assert.equal(r.voice.getStatus().engine, "local");
+});
+
+test("ENGINE byok: an enable frame and the renderer's start load nothing", async () => {
+	const r = rig();
+	await r.voice.setEngine("byok");
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	const status = await r.voice.start("renderer");
+	await settle();
+	assert.equal(r.calls.gatewayStart, 0, "no Gateway");
+	assert.equal(
+		r.calls.speechStart,
+		0,
+		"no speech models: that is the RAM the cloud engine saves",
+	);
+	assert.deepEqual(r.opened, [], "no hidden page");
+	assert.equal(status.rig, "stopped");
+	assert.equal(status.engine, "byok");
+	assert.equal(
+		r.order.includes("mic"),
+		false,
+		"the rig's microphone preflight never ran",
+	);
+});
+
+test("ENGINE: switching to byok while the rig is up stops it; switching back starts nothing", async () => {
+	const r = rig();
+	r.voice.observeFrame(voiceFrame("aaaaaaaaaaaa"));
+	await settle();
+	await settle();
+	assert.equal(r.voice.getStatus().rig, "ready");
+	assert.equal(await r.voice.setEngine("byok"), "byok");
+	await settle();
+	assert.equal(
+		r.calls.gatewayStop >= 1 && r.calls.speechStop >= 1,
+		true,
+		"the rig stopped",
+	);
+	assert.equal(r.voice.isEnabled(), true, "the person's switch is untouched");
+	assert.equal(r.voice.getStatus().rig, "stopped");
+	assert.equal(r.voice.getStatus().engine, "byok");
+	const starts = r.calls.gatewayStart;
+	assert.equal(await r.voice.setEngine("local"), "local");
+	await settle();
+	assert.equal(
+		r.calls.gatewayStart,
+		starts,
+		"going back to local loads nothing by itself",
+	);
+});
+
+test("ENGINE: the radient placeholder and garbage are refused; the engine in effect is returned", async () => {
+	const r = rig();
+	assert.equal(await r.voice.setEngine("radient"), "local");
+	assert.equal(await r.voice.setEngine("quantum"), "local");
+	assert.equal(await r.voice.setEngine(undefined), "local");
+	assert.equal(r.voice.getEngine(), "local");
+	await r.voice.setEngine("byok");
+	assert.equal(
+		await r.voice.setEngine("radient"),
+		"byok",
+		"refusal keeps what was chosen",
+	);
 });
 
 test("SWITCH: off means no start, no spawn, no page, no timer, no message, whatever arrives", async () => {

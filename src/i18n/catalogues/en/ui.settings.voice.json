@@ -1,4 +1,15 @@
 {
 	"ui.settings.voice.label": "Session voice",
-	"ui.settings.voice.description": "Lets you talk to a conversation hands-free. Off by default. While it is off, nothing for voice runs: no microphone, no speech models and no background checks. Turning it on adds a voice button to the composer; turning it off stops voice at once and releases the microphone."
+	"ui.settings.voice.description": "Lets you talk to a conversation hands-free. Off by default. While it is off, nothing for voice runs: no microphone, no speech models and no background checks. Turning it on adds a voice button to the composer; turning it off stops voice at once and releases the microphone.",
+	"ui.settings.voice.engine.label": "Voice engine",
+	"ui.settings.voice.engine.description": "Where listening and speaking happen. Applies to session voice only.",
+	"ui.settings.voice.engine.local.label": "Local",
+	"ui.settings.voice.engine.local.description": "Speech models on this computer. Uses about 5 GB of memory while voice is on.",
+	"ui.settings.voice.engine.byok.label": "Bring your own key (ElevenLabs)",
+	"ui.settings.voice.engine.byok.description": "Uses your own ElevenLabs account, so nothing loads on this computer. ElevenLabs charges your account for the speech.",
+	"ui.settings.voice.engine.byok.ready": "ElevenLabs key found.",
+	"ui.settings.voice.engine.byok.missing": "No ElevenLabs key yet. In Local Operator, run /login elevenlabs and paste your key.",
+	"ui.settings.voice.engine.radient.label": "Radient cloud",
+	"ui.settings.voice.engine.radient.description": "Speech billed with your Radient credit.",
+	"ui.settings.voice.engine.soon": "Coming soon"
 }

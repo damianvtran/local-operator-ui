@@ -54,6 +54,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import { useLocation } from "react-router-dom";
+import { VoiceEngineSetting } from "./voice-engine-setting";
 import { VoiceSwitchSetting } from "./voice-switch-setting";
 import { WindowGlassSetting } from "./window-glass-setting";
 
@@ -1455,6 +1456,7 @@ export const SettingsPage: FC = () => {
 								<WindowGlassSetting state={glass.state} onChange={glass.set} />
 								{/* Session voice: OFF by default; off means nothing voice runs. */}
 								<VoiceSwitchSetting />
+								<VoiceEngineSetting />
 							</div>
 						</SettingsSection>
 
