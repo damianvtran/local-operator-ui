@@ -1,0 +1,1058 @@
+{
+	"ui.community.public": {
+		"role": "Badge marking a community as public (visible to all members).",
+		"tone": "One word.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.role.staff": {
+		"role": "Text badge naming a community role next to a person's name.",
+		"tone": "One or two words; a role label.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.role.moderator": {
+		"role": "Text badge naming a community role next to a person's name.",
+		"tone": "One or two words; a role label.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.role.community_admin": {
+		"role": "Text badge naming a community role next to a person's name.",
+		"tone": "One or two words; a role label.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.title": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.body": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {name} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.noplan.body_anonymous": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.checking": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.retry": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.failed.title": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.failed.body": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.signed_out.title": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.signed_out.body": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.signed_out.action": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.trial.title": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.trial.body": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.trial.no_org": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.trial.create_org": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.trial.create_org_hint": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.trial.start": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.trial.start_hint": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {org} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.noplan.trial.start_hint_unnamed": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.trial.resume": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.trial.resume_hint": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.trial.reconciling": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.trial.ask_owner": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.trial.ask_owner_body": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {org} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.noplan.trial.ask_owner_body_unnamed": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.community.title": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.community.body": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.community.join": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.community.open": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.community.free": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.noplan.community.unavailable": {
+		"role": "Team Bridge page when the reader has no Team plan: a 30-day trial card beside a card to join the free public Local Operator Community (frame D1).",
+		"tone": "Calm and plain; never salesy, no urgency. An outage must read as a connection problem, never a commercial claim.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.step": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {step} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.join.step1.label": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.step1.title": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {community} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.join.step1.body": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.guidelines.heading": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.disclosure.title": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.disclosure.body": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.next_hint": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.continue": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.cancel": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.step2.label": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.step2.title": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.step2.body": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.preview.heading": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.preview.name_avatar": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.preview.always_shown": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.preview.pending_note": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.preview.not_shown": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.agree": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {version} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.join.agree_hint": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.back": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.submit": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.joining": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.reaccept.title": {
+		"role": "Re-accept mode of the join dialog (design D7): an EXISTING member whose accepted guidelines version is stale reads the new guidelines and ticks the versioned acceptance box to post again. Not a join: no steps, no profile preview.",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.reaccept.body": {
+		"role": "Re-accept mode of the join dialog (design D7): an EXISTING member whose accepted guidelines version is stale reads the new guidelines and ticks the versioned acceptance box to post again. Not a join: no steps, no profile preview.",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {community} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.join.reaccept.submit": {
+		"role": "Re-accept mode of the join dialog (design D7): an EXISTING member whose accepted guidelines version is stale reads the new guidelines and ticks the versioned acceptance box to post again. Not a join: no steps, no profile preview.",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.reaccept.accepting": {
+		"role": "Re-accept mode of the join dialog (design D7): an EXISTING member whose accepted guidelines version is stale reads the new guidelines and ticks the versioned acceptance box to post again. Not a join: no steps, no profile preview.",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.loading": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.load_error": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.error.generic": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.error.guidelines_changed": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.error.rate_limited": {
+		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {seconds} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.rail.label": {
+		"role": "Left rail of the community home: channel list, Browse entry and Requests entry.",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.rail.browse": {
+		"role": "Left rail of the community home: channel list, Browse entry and Requests entry.",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.rail.channels": {
+		"role": "Left rail of the community home: channel list, Browse entry and Requests entry.",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.rail.private": {
+		"role": "Left rail of the community home: channel list, Browse entry and Requests entry.",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.rail.requests": {
+		"role": "Left rail of the community home: channel list, Browse entry and Requests entry.",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.rail.unread": {
+		"role": "Left rail of the community home: channel list, Browse entry and Requests entry.",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {count} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.rail.loading": {
+		"role": "Left rail of the community home: channel list, Browse entry and Requests entry.",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.rail.error": {
+		"role": "Left rail of the community home: channel list, Browse entry and Requests entry.",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.rail.empty": {
+		"role": "Left rail of the community home: channel list, Browse entry and Requests entry.",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.requests.title": {
+		"role": "Placeholder pane for community requests (DM requests, agent contact requests, agent approvals), which arrive in a later release.",
+		"tone": "Neutral, informative.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.requests.placeholder": {
+		"role": "Placeholder pane for community requests (DM requests, agent contact requests, agent approvals), which arrive in a later release.",
+		"tone": "Neutral, informative.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.channel.pick": {
+		"role": "Channel pane states in the community home: loading, empty, offline, error, history paging (frame D20).",
+		"tone": "Calm; reassure that drafts are kept.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.channel.loading": {
+		"role": "Channel pane states in the community home: loading, empty, offline, error, history paging (frame D20).",
+		"tone": "Calm; reassure that drafts are kept.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {channel} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.channel.empty.title": {
+		"role": "Channel pane states in the community home: loading, empty, offline, error, history paging (frame D20).",
+		"tone": "Calm; reassure that drafts are kept.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.channel.offline": {
+		"role": "Channel pane states in the community home: loading, empty, offline, error, history paging (frame D20).",
+		"tone": "Calm; reassure that drafts are kept.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.channel.error.title": {
+		"role": "Channel pane states in the community home: loading, empty, offline, error, history paging (frame D20).",
+		"tone": "Calm; reassure that drafts are kept.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {channel} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.channel.error.body": {
+		"role": "Channel pane states in the community home: loading, empty, offline, error, history paging (frame D20).",
+		"tone": "Calm; reassure that drafts are kept.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.channel.retry": {
+		"role": "Channel pane states in the community home: loading, empty, offline, error, history paging (frame D20).",
+		"tone": "Calm; reassure that drafts are kept.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.channel.load_older": {
+		"role": "Channel pane states in the community home: loading, empty, offline, error, history paging (frame D20).",
+		"tone": "Calm; reassure that drafts are kept.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.channel.loading_older": {
+		"role": "Channel pane states in the community home: loading, empty, offline, error, history paging (frame D20).",
+		"tone": "Calm; reassure that drafts are kept.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.channel.beginning": {
+		"role": "Channel pane states in the community home: loading, empty, offline, error, history paging (frame D20).",
+		"tone": "Calm; reassure that drafts are kept.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {channel} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.message.agent_badge": {
+		"role": "Actions and labels on a message row in a community channel.",
+		"tone": "Short UI labels and accessible names.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.message.former_member": {
+		"role": "Actions and labels on a message row in a community channel.",
+		"tone": "Short UI labels and accessible names.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.message.edited": {
+		"role": "Actions and labels on a message row in a community channel.",
+		"tone": "Short UI labels and accessible names.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.message.edit": {
+		"role": "Actions and labels on a message row in a community channel.",
+		"tone": "Short UI labels and accessible names.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.message.save": {
+		"role": "Actions and labels on a message row in a community channel.",
+		"tone": "Short UI labels and accessible names.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.message.cancel_edit": {
+		"role": "Actions and labels on a message row in a community channel.",
+		"tone": "Short UI labels and accessible names.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.message.delete": {
+		"role": "Actions and labels on a message row in a community channel.",
+		"tone": "Short UI labels and accessible names.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.message.delete_confirm": {
+		"role": "Actions and labels on a message row in a community channel.",
+		"tone": "Short UI labels and accessible names.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.message.delete_confirm_action": {
+		"role": "Actions and labels on a message row in a community channel.",
+		"tone": "Short UI labels and accessible names.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.message.react": {
+		"role": "Actions and labels on a message row in a community channel.",
+		"tone": "Short UI labels and accessible names.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.message.reaction_label": {
+		"role": "Actions and labels on a message row in a community channel.",
+		"tone": "Short UI labels and accessible names.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {count}, {emoji} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.message.reply": {
+		"role": "Actions and labels on a message row in a community channel.",
+		"tone": "Short UI labels and accessible names.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.message.replies": {
+		"role": "Actions and labels on a message row in a community channel.",
+		"tone": "Short UI labels and accessible names.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {count} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.message.images": {
+		"role": "Actions and labels on a message row in a community channel.",
+		"tone": "Short UI labels and accessible names.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {count} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.thread.title": {
+		"role": "Thread side pane for replies to one community message.",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.thread.close": {
+		"role": "Thread side pane for replies to one community message.",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.thread.older_not_loaded": {
+		"role": "Thread side pane for replies to one community message.",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.thread.reply_placeholder": {
+		"role": "Thread side pane for replies to one community message.",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.placeholder": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {channel} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.composer.send": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.attach": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.remove_image": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {name} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.composer.checking": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.cancelling": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.cancel": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.audience.all": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.audience.all_staff_post": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.audience.private": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.audience.offline_suffix": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.locked": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.go_general": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.archived": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.community_read_only": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.image_rejected.type": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.image_rejected.size": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.composer.image_rejected.count": {
+		"role": "Community message composer, its audience line and read-only replacements (frames D4, D7).",
+		"tone": "Short and exact about who sees a post.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.only_you": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.refused.title": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.refused.reason": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {category} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.outcome.category.unsafe_or_illegal": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.category.harassment_or_abuse": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.category.spam_or_promotion": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.category.private_information": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.reference": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {reference} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.outcome.copy_reference": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.edit": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.limit.title": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.limit.burst": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.limit.daily": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.limit.conversation": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.limit.probation": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.limit.generic": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.limit.retry": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {seconds} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.outcome.limit.ready": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.limit.note": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.unavailable.title": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.unavailable.body": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.retry": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.images.title": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.images.body": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.remove_images": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.guidelines_changed.title": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.guidelines_changed.body": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.guidelines_changed.review": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.too_large": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.cancelled": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.expired": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.offline": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.error": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.outcome.dismiss": {
+		"role": "Sender-only notices in the community composer after a send: refused by moderation, posting limit, moderation unavailable, images unavailable (frame D7). Only the sender ever sees these.",
+		"tone": "Calm, non-accusatory, factual; always say whether anything was posted.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.title": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {community} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.browse.search": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.filter.label": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.filter.all": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.filter.joined": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.filter.not_joined": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.filter.private": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.tab.channels": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.tab.people": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.people_soon": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.loading": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.error": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.empty": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.joined": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.not_joined": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.private_member": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.open": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.browse.members": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {count} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.browse.count": {
+		"role": "Browse dialog over the community home: search channels, filter chips, Channels/People tabs (frame D5).",
+		"tone": "Short UI labels.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {count} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	}
+}

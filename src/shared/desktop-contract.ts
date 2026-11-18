@@ -1486,7 +1486,186 @@ const SEEN_INPUT_KIND = {
 	wheel: "wheel",
 } as const;
 
+/*
+ * THE COMMUNITY OPS (RFC v2.4 §7.2): the renderer reaches the Local Operator
+ * Community through the local daemon's `/v1/desktop/community/*` door
+ * (local-operator `server/routes/desktop_community.py`), which registers exactly
+ * the thirteen member operations of `community/member_ops.py` and nothing else.
+ * These schemas mirror that table one-to-one, so an op the daemon does not
+ * expose cannot be spelled here either, and a staff or moderation operation has
+ * no op at all ("member operations only").
+ *
+ * BOUNDS ARE THE DAEMON'S, copied rather than invented: the community id grammar
+ * (`COMMUNITY_ID_PATTERN`), the opaque-id charset that cannot reshape a URL
+ * (`OPAQUE_ID_PATTERN`), the idempotency-key grammar, 4,000 characters of text,
+ * four images of at most 5 MiB (whose base64 is `4 * ceil(5 MiB / 3)`), 32
+ * characters of emoji and 512 of cursor. A body the daemon would refuse on shape
+ * is refused here instead, before it crosses IPC.
+ *
+ * `expected_account_id` is the owner receipt every community op carries: the
+ * account the renderer showed when the reader acted. The daemon compares it with
+ * its pinned Radient account and answers 409 `account_mismatch` on a difference.
+ */
+const communityId = z.string().regex(/^[a-z0-9][a-z0-9-]{2,62}$/);
+const communityOpaqueId = z
+	.string()
+	.min(1)
+	.max(128)
+	.regex(/^[A-Za-z0-9_-]+$/);
+export const COMMUNITY_IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
+const communityIdempotencyKey = z
+	.string()
+	.regex(COMMUNITY_IDEMPOTENCY_KEY_PATTERN);
+const communityCursor = z.string().min(1).max(512);
+export const COMMUNITY_MAX_TEXT_CHARS = 4000;
+export const COMMUNITY_MAX_IMAGES = 4;
+export const COMMUNITY_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const COMMUNITY_MAX_IMAGE_BASE64_CHARS =
+	4 * Math.ceil(COMMUNITY_MAX_IMAGE_BYTES / 3);
+const communityImage = z
+	.object({
+		content_type: z.enum(["image/png", "image/jpeg", "image/webp"]),
+		data_base64: z.string().min(1).max(COMMUNITY_MAX_IMAGE_BASE64_CHARS),
+	})
+	.strict();
+const communityOwner = { expected_account_id: id.optional() };
+const communityRequestMembers = [
+	z
+		.object({ op: z.literal("community.communities.list"), ...communityOwner })
+		.strict(),
+	z
+		.object({
+			op: z.literal("community.bootstrap"),
+			community_id: communityId,
+			...communityOwner,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("community.join"),
+			community_id: communityId,
+			guidelines_version: z.string().min(1).max(128),
+			// Literal true: joining is an explicit acceptance, never a default.
+			accept_guidelines: z.literal(true),
+			...communityOwner,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("community.leave"),
+			community_id: communityId,
+			...communityOwner,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("community.channels"),
+			community_id: communityId,
+			q: z.string().max(100).optional(),
+			filter: z
+				.enum(["all", "joined", "public", "private", "people", "agents"])
+				.optional(),
+			cursor: communityCursor.optional(),
+			...communityOwner,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("community.history"),
+			community_id: communityId,
+			conversation_id: communityOpaqueId,
+			cursor: communityCursor.optional(),
+			...communityOwner,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("community.submit"),
+			community_id: communityId,
+			conversation_id: communityOpaqueId,
+			text: z.string().max(COMMUNITY_MAX_TEXT_CHARS),
+			images: z.array(communityImage).max(COMMUNITY_MAX_IMAGES).optional(),
+			thread_root_id: communityOpaqueId.optional(),
+			guidelines_version: z.string().min(1).max(128).optional(),
+			idempotency_key: communityIdempotencyKey.optional(),
+			...communityOwner,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("community.submission.status"),
+			community_id: communityId,
+			idempotency_key: communityIdempotencyKey,
+			...communityOwner,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("community.submission.cancel"),
+			community_id: communityId,
+			idempotency_key: communityIdempotencyKey,
+			...communityOwner,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("community.edit"),
+			community_id: communityId,
+			message_id: communityOpaqueId,
+			text: z.string().max(COMMUNITY_MAX_TEXT_CHARS),
+			images: z.array(communityImage).max(COMMUNITY_MAX_IMAGES).optional(),
+			guidelines_version: z.string().min(1).max(128).optional(),
+			idempotency_key: communityIdempotencyKey.optional(),
+			...communityOwner,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("community.delete"),
+			community_id: communityId,
+			message_id: communityOpaqueId,
+			...communityOwner,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("community.react"),
+			community_id: communityId,
+			message_id: communityOpaqueId,
+			emoji: z.string().min(1).max(32),
+			remove: z.boolean().optional(),
+			...communityOwner,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("community.events"),
+			community_id: communityId,
+			after: communityCursor.optional(),
+			...communityOwner,
+		})
+		.strict(),
+] as const;
+
+/** The community op names, in the daemon's allowlist order. */
+export const COMMUNITY_OPS = [
+	"community.communities.list",
+	"community.bootstrap",
+	"community.join",
+	"community.leave",
+	"community.channels",
+	"community.history",
+	"community.submit",
+	"community.submission.status",
+	"community.submission.cancel",
+	"community.edit",
+	"community.delete",
+	"community.react",
+	"community.events",
+] as const;
+
 const desktopRequestUnion = z.discriminatedUnion("op", [
+	...communityRequestMembers,
 	z.object({ op: z.literal("capabilities") }).strict(),
 	/*
 	 * THE MACHINE'S RUNTIME ROSTER, read for the straggler census a completed
@@ -7369,6 +7548,18 @@ export type ThreadFindAnswer = {
  */
 const DESKTOP_MESSAGE_BYTE_BUDGET = 880_000;
 const DESKTOP_CONTROL_BYTE_BUDGET = 262_144;
+/*
+ * A community submission's budget, sized to its own schema like the system
+ * prompt's: four images at the base64 ceiling the daemon's `ImageIn` accepts,
+ * 4,000 characters of text at the worst-case four UTF-8 bytes each, and 4 KiB
+ * for the envelope (ids, key, version, field names). Images travel as base64
+ * inside JSON because the daemon refuses to spool a submission body to disk
+ * (RFC §6.5); any smaller number would refuse a body the route accepts.
+ */
+const COMMUNITY_SUBMIT_BYTE_BUDGET =
+	COMMUNITY_MAX_IMAGES * COMMUNITY_MAX_IMAGE_BASE64_CHARS +
+	COMMUNITY_MAX_TEXT_CHARS * 4 +
+	4096;
 
 /**
  * The budget for `legacy.agent.systemPrompt.update`, sized to its own schema.
@@ -7434,6 +7625,8 @@ const MESSAGE_OPS: ReadonlySet<string> = new Set([
 export function desktopRequestByteBudget(op: DesktopRequest["op"]): number {
 	if (op === "legacy.agent.systemPrompt.update")
 		return DESKTOP_SYSTEM_PROMPT_BYTE_BUDGET;
+	if (op === "community.submit" || op === "community.edit")
+		return COMMUNITY_SUBMIT_BYTE_BUDGET;
 	return MESSAGE_OPS.has(op) || IMPORT_OPS.has(op)
 		? DESKTOP_MESSAGE_BYTE_BUDGET
 		: DESKTOP_CONTROL_BYTE_BUDGET;
@@ -7580,7 +7773,23 @@ const MESH_WRITE_OPS: ReadonlySet<string> = new Set([
  * (`PROVIDER_WRITE_OPS`), and a set called `LONG_READ_OPS` that contains a
  * spend is the kind of name the next author trusts instead of reading.
  */
+/*
+ * COMMUNITY OPS WHOSE BACKEND BOUND IS ABOVE THE CONTROL BUDGET. Both numbers are
+ * the daemon's own (`local_operator/community/client.py`): a submission or an
+ * edit is moderated INSIDE the hub request, under `REQUEST_TIMEOUT_S = 30.0`, and
+ * the events long poll is held up to the contract's 25 s plus 10 s of headroom
+ * (`EVENTS_TIMEOUT_S = 35.0`). On the 20 s control budget a slow verdict would
+ * be abandoned as a dead backend and a healthy empty poll cut off; the long-read
+ * budget sits above both, which is the rule `desktopRequestDeadlineMs` states.
+ */
+const COMMUNITY_LONG_OPS: ReadonlySet<string> = new Set([
+	"community.submit",
+	"community.edit",
+	"community.events",
+]);
+
 const LONG_CONTROL_OPS: ReadonlySet<string> = new Set([
+	...COMMUNITY_LONG_OPS,
 	...LEDGER_READ_OPS,
 	...PROVIDER_READ_OPS,
 	...MESH_READ_OPS,
@@ -7915,6 +8124,12 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.decisions.list",
 	"team_bridge.directory",
 	"team_bridge.status",
+	"community.communities.list",
+	"community.bootstrap",
+	"community.channels",
+	"community.history",
+	"community.submission.status",
+	"community.events",
 	"accounts.list",
 	"analytics.get",
 	"analytics.models",
@@ -9257,6 +9472,135 @@ function tenantQuery(tenantId: string | undefined): string {
 	return tenantId === undefined
 		? ""
 		: `?tenant_id=${encodeURIComponent(tenantId)}`;
+}
+
+type CommunityRequest = Extract<
+	DesktopRequest,
+	{ op: (typeof COMMUNITY_OPS)[number] }
+>;
+
+/**
+ * One community op's local route. Kept out of the big switch so the thirteen
+ * rows read as one table beside the daemon's `MEMBER_OPERATIONS`.
+ *
+ * The owner receipt rides the QUERY on every op (the daemon's `_ACCOUNT` query
+ * parameter), and only the body fields the daemon's strict input model declares
+ * travel in the body: its `extra="forbid"` refuses anything else.
+ */
+function communityEndpoint(request: CommunityRequest): {
+	path: string;
+	method: string;
+	body?: unknown;
+} {
+	const base = "/v1/desktop/community/communities";
+	const c =
+		"community_id" in request
+			? `${base}/${encodeURIComponent(request.community_id)}`
+			: base;
+	const query = new URLSearchParams();
+	if (request.expected_account_id)
+		query.set("expected_account_id", request.expected_account_id);
+	const withQuery = (path: string) =>
+		query.size > 0 ? `${path}?${query.toString()}` : path;
+	switch (request.op) {
+		case "community.communities.list":
+			return { path: withQuery(base), method: "GET" };
+		case "community.bootstrap":
+			return { path: withQuery(`${c}/bootstrap`), method: "GET" };
+		case "community.join":
+			return {
+				path: withQuery(`${c}/join`),
+				method: "POST",
+				body: {
+					guidelines_version: request.guidelines_version,
+					accept_guidelines: request.accept_guidelines,
+				},
+			};
+		case "community.leave":
+			return { path: withQuery(`${c}/leave`), method: "POST" };
+		case "community.channels":
+			if (request.q) query.set("q", request.q);
+			if (request.filter) query.set("filter", request.filter);
+			if (request.cursor) query.set("cursor", request.cursor);
+			return { path: withQuery(`${c}/channels`), method: "GET" };
+		case "community.history":
+			if (request.cursor) query.set("cursor", request.cursor);
+			return {
+				path: withQuery(
+					`${c}/conversations/${encodeURIComponent(request.conversation_id)}/messages`,
+				),
+				method: "GET",
+			};
+		case "community.submit":
+			return {
+				path: withQuery(
+					`${c}/conversations/${encodeURIComponent(request.conversation_id)}/messages`,
+				),
+				method: "POST",
+				body: {
+					text: request.text,
+					images: request.images ?? [],
+					...(request.thread_root_id
+						? { thread_root_id: request.thread_root_id }
+						: {}),
+					...(request.guidelines_version
+						? { guidelines_version: request.guidelines_version }
+						: {}),
+					...(request.idempotency_key
+						? { idempotency_key: request.idempotency_key }
+						: {}),
+				},
+			};
+		case "community.submission.status":
+			return {
+				path: withQuery(
+					`${c}/submissions/${encodeURIComponent(request.idempotency_key)}`,
+				),
+				method: "GET",
+			};
+		case "community.submission.cancel":
+			return {
+				path: withQuery(
+					`${c}/submissions/${encodeURIComponent(request.idempotency_key)}/cancel`,
+				),
+				method: "POST",
+			};
+		case "community.edit":
+			return {
+				path: withQuery(
+					`${c}/messages/${encodeURIComponent(request.message_id)}/edit`,
+				),
+				method: "POST",
+				body: {
+					text: request.text,
+					images: request.images ?? [],
+					...(request.guidelines_version
+						? { guidelines_version: request.guidelines_version }
+						: {}),
+					...(request.idempotency_key
+						? { idempotency_key: request.idempotency_key }
+						: {}),
+				},
+			};
+		case "community.delete":
+			return {
+				path: withQuery(
+					`${c}/messages/${encodeURIComponent(request.message_id)}`,
+				),
+				method: "DELETE",
+			};
+		case "community.react":
+			return {
+				path: withQuery(
+					`${c}/messages/${encodeURIComponent(request.message_id)}/reactions`,
+				),
+				method: "POST",
+				body: { emoji: request.emoji, remove: request.remove ?? false },
+			};
+		case "community.events":
+			if (request.after) query.set("after", request.after);
+			return { path: withQuery(`${c}/events`), method: "GET" };
+	}
 }
 
 export function desktopEndpoint(request: DesktopRequest): {
@@ -11553,6 +11897,28 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 * sends no query at all rather than the literal `undefined` the sibling
 		 * op would emit for a missing value.
 		 */
+		/*
+		 * THE COMMUNITY DOOR: `/v1/desktop/community/*`, one case per daemon
+		 * member operation. Every id that lands in a PATH is already held to a
+		 * grammar with no `/`, `.`, `?` or `%` by its schema, and is still
+		 * encoded, so the shape of the URL is the case's and never the value's.
+		 * Query values (cursor, search, the owner receipt) go through
+		 * `URLSearchParams`, so a crafted cursor cannot add a parameter.
+		 */
+		case "community.communities.list":
+		case "community.bootstrap":
+		case "community.join":
+		case "community.leave":
+		case "community.channels":
+		case "community.history":
+		case "community.submit":
+		case "community.submission.status":
+		case "community.submission.cancel":
+		case "community.edit":
+		case "community.delete":
+		case "community.react":
+		case "community.events":
+			return communityEndpoint(request);
 		case "team_bridge.status": {
 			const query = new URLSearchParams();
 			if (request.boundary) query.set("boundary", request.boundary);
