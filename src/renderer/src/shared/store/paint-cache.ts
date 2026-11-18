@@ -420,6 +420,18 @@ export function writePaint(
 		 * paint has no evidence for: absent means "settled", not "unchanged".
 		 */
 		busy?: boolean;
+		/**
+		 * The coverage claim to CARRY, for a pane that is still painting a cached
+		 * paint when it writes. Such a pane's rows cannot answer
+		 * `coversWholeConversation`: the stored transcript has no paging cursor
+		 * (`oldestId` is cleared on the way in), so re-deriving would demote a
+		 * complete short conversation to incomplete and the NEXT return would
+		 * bottom-align it, then jump up when its page landed (agent review F1 / QA Q1,
+		 * measured 253.1 px on a one-turn session). Supplied only while the pane is
+		 * stale - the snapshot's page is the authority once it lands - and a trim
+		 * still decides first (see `complete` below).
+		 */
+		complete?: boolean;
 	},
 ): void {
 	// In-flight rows are dropped HERE rather than asked of the caller. The
@@ -512,8 +524,16 @@ export function writePaint(
 		 * not count: those are rows that have not settled, so the page that follows
 		 * can only add below what this paint shows - the direction new rows are
 		 * allowed to arrive in.
+		 *
+		 * A CARRIED claim (a pane still stale at the write) is taken as-is rather
+		 * than OR-ed with the derivation: the cache cleared that transcript's cursor
+		 * on the way in, so the derivation can only ever say "incomplete" there and
+		 * the seed's answer is the only coverage this paint ever had. The trim still
+		 * wins: rows that arrived live during the stale window can push the paint
+		 * over a ceiling, and what survives is then a suffix whatever the entry said.
 		 */
-		complete: !trimmed && coversWholeConversation(input.transcript),
+		complete:
+			!trimmed && (input.complete ?? coversWholeConversation(input.transcript)),
 	};
 	// The measurement belongs to THIS write; a later paint of this conversation
 	// measures its own.

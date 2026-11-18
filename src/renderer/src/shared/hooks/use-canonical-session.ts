@@ -2393,8 +2393,12 @@ function paintSeed(sessionId: string): {
 	markLabels: ReadonlySet<string>;
 	scroll: PaintedScroll | null;
 	busy: boolean;
-	/** The paint's `complete`; false when this window has no entry (see the view). */
-	complete: boolean;
+	/**
+	 * The paint's `complete`; null when this window has no entry (the view seeds
+	 * the same null, so `hasEntry` is false and the anchor rule has no fragment
+	 * to place).
+	 */
+	complete: boolean | null;
 } {
 	const cached = readPaint(sessionId);
 	if (!cached) {
@@ -2405,7 +2409,7 @@ function paintSeed(sessionId: string): {
 			markLabels: NO_LABELS_MARKED,
 			scroll: null,
 			busy: false,
-			complete: false,
+			complete: null,
 		};
 	}
 	return {
@@ -6810,6 +6814,23 @@ export function useCanonicalSessionStream(
 						viewRef.current,
 						pendingSendForView(identityRef.current) !== null,
 					),
+					/*
+					 * AND THE PAINT'S COVERAGE WHEN ITS SNAPSHOT NEVER LANDED (agent review
+					 * round 1, F1 / QA Q1). A pane still `stale` here is painting the rows
+					 * this cache seeded, and their transcript carries no paging cursor - so
+					 * re-deriving `complete` from it demotes a short conversation the last
+					 * visit had proved whole. The next return then bottom-aligns it and the
+					 * page that lands moves every row UP (measured 253.1 px on a one-turn
+					 * session, 4/4). `writePaint` takes the seed's answer instead; once the
+					 * snapshot lands it withdraws the field (`paintComplete: null`) and the
+					 * derivation is the authority again, exactly as for a live pane.
+					 *
+					 * Read from the same ref as the rows, so it is the claim the last
+					 * committed frame was painting.
+					 */
+					complete: viewRef.current.stale
+						? (viewRef.current.paintComplete ?? undefined)
+						: undefined,
 				});
 			/*
 			 * AND THIS PANE'S OUTSTANDING READS GO WITH IT (agent review round 3, M2's

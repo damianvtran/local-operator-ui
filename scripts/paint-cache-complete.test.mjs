@@ -22,8 +22,11 @@ import { build } from "esbuild";
  *
  * - complete ONLY when nothing was trimmed AND no older rows are owed;
  * - owed means: the page said so (`hasMore`), no page named a start at all
- *   (`oldestId` null - a live-only or cache-seeded pane), or a settings prune
+ *   (`oldestId` null - a live-only pane), or a settings prune
  *   is waiting on its older native target (`profileHistoryPending`);
+ * - a pane still STALE at its write carries the seed's claim instead of
+ *   re-deriving it, because the cache cleared that transcript's cursor and the
+ *   derivation can only answer "incomplete" there (agent review F1);
  * - a trim by either ceiling makes it incomplete, because a suffix that
  *   dropped rows is the exact shape the jump was measured on;
  * - a paint trimmed to nothing still leaves no entry - the flag must not
@@ -134,9 +137,11 @@ test("a page that owes older rows is cached incomplete", () => {
 
 test("a pane no page named a start for is cached incomplete", () => {
 	reset();
-	// A seeded mount (the cache clears `oldestId`) or a pane that has so far
-	// seen only live rows: nothing here says the conversation begins at u3, and
-	// an absent cursor is not a statement that the transcript is whole.
+	// A pane that is NOT stale - no cached entry is behind these rows, so they are
+	// the live ones: nothing here says the conversation begins at u3, and an
+	// absent cursor is not a statement that the transcript is whole. This is the
+	// demotion the cache intends, and it stays (agent review F1): only a pane still
+	// painting a seeded entry has a coverage claim its own rows cannot re-derive.
 	paintCache.writePaint(session, {
 		transcript: transcriptOf([user("u3")], { oldestId: null, oldestTs: 0 }),
 	});
@@ -144,6 +149,94 @@ test("a pane no page named a start for is cached incomplete", () => {
 		paintCache.readPaint(session)?.complete,
 		false,
 		"no page named the start, so completeness is unknown and is not claimed",
+	);
+});
+
+test("a stale pane's leave keeps the coverage its seed claimed", () => {
+	reset();
+	// The population agent review F1 / QA Q1 measured: a short conversation the
+	// last visit proved whole, left AGAIN before its snapshot landed. The return's
+	// transcript has no paging cursor (the cache clears it on the way in), so
+	// re-deriving would demote the entry and the NEXT return would bottom-align
+	// it, then move every row up when the page landed (253.1 px on one turn).
+	paintCache.writePaint(session, {
+		transcript: transcriptOf([user("u1"), answer("a1")]),
+	});
+	const seeded = paintCache.readPaint(session);
+	assert.equal(
+		seeded?.complete,
+		true,
+		"the first visit's page proved the whole conversation",
+	);
+	assert.equal(
+		seeded?.transcript.oldestId,
+		null,
+		"and the stored copy carries no cursor, which is what makes the derivation fail",
+	);
+	paintCache.writePaint(session, {
+		transcript: seeded.transcript,
+		complete: seeded.complete,
+	});
+	assert.equal(
+		paintCache.readPaint(session)?.complete,
+		true,
+		"the claim the stale pane was painting travels with its rows, so the next return still top-anchors",
+	);
+});
+
+test("a stale pane cannot claim coverage its seed did not have", () => {
+	reset();
+	paintCache.writePaint(session, {
+		transcript: transcriptOf([user("u2")], { hasMore: true }),
+	});
+	const seeded = paintCache.readPaint(session);
+	assert.equal(seeded?.complete, false, "the page said older rows exist");
+	paintCache.writePaint(session, {
+		transcript: seeded.transcript,
+		complete: seeded.complete,
+	});
+	assert.equal(
+		paintCache.readPaint(session)?.complete,
+		false,
+		"an incomplete seed stays incomplete; carrying is not an upgrade",
+	);
+});
+
+test("a carried claim cannot outvote a trim", () => {
+	reset();
+	// Rows that arrived live during the stale window can push the paint over a
+	// ceiling, and what survives is then a suffix whatever the seed knew.
+	const rows = Array.from({ length: 205 }, (_, index) => user(`u${index}`));
+	paintCache.writePaint(session, {
+		transcript: transcriptOf(rows),
+		complete: true,
+	});
+	assert.equal(
+		paintCache.readPaint(session)?.complete,
+		false,
+		"the trim decides before the carried claim does",
+	);
+});
+
+test("a pane whose snapshot landed derives from its page again", () => {
+	reset();
+	// Once the page lands the pane is not stale and the hook carries nothing: the
+	// cursor and `hasMore` are the authority, as before the seed-window fix.
+	paintCache.writePaint(session, {
+		transcript: transcriptOf([user("u5"), answer("a5")]),
+	});
+	assert.equal(
+		paintCache.readPaint(session)?.complete,
+		true,
+		"the snapshot named the conversation's start and owed nothing older",
+	);
+	paintCache.writePaint(session, {
+		transcript: transcriptOf([user("u5"), answer("a5")], { hasMore: true }),
+	});
+	assert.equal(
+		paintCache.readPaint(session)?.complete,
+		false,
+		"and the same pane owing older rows is incomplete, with nothing carried to override it",
 	);
 });
 
