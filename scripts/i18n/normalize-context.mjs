@@ -45,14 +45,22 @@ import { fileURLToPath } from "node:url";
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const CATALOGUES = join(REPO, "src", "i18n", "catalogues");
 
-/** Drifted string fields folded into `note`, with the clause label each gets. */
+/**
+ * Drifted string fields folded into `note`, with the clause label each gets.
+ *
+ * The labels are English prefixes written into translator-context notes by this
+ * one-time migration; they never reach the product UI. The literal-copy guard
+ * reads `placeholder:` / `description:` as copy-bearing property names, so the
+ * two entries it flags carry a per-line `i18n: ignore` pragma (a pragma covers
+ * only its own literal, so the rest of the map stays scanned).
+ */
 const NOTE_CLAUSES = {
-	placeholder: "Placeholder",
+	placeholder: "Placeholder", // i18n: ignore migration-only clause label written into English translator-context notes, never product UI
 	plural_guidance: "Plural",
 	plural: "Plural",
 	select_guidance: "Select",
 	context: "Context",
-	description: "Description",
+	description: "Description", // i18n: ignore migration-only clause label written into English translator-context notes, never product UI
 };
 
 const SENTENCE_END = /[.!?:;]$/;
