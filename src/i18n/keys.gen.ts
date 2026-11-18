@@ -126,6 +126,7 @@ import enUiCommonSpeech from "./catalogues/en/ui.common.speech.json";
 import enUiCommonTime from "./catalogues/en/ui.common.time.json";
 import enUiCommonUpdates from "./catalogues/en/ui.common.updates.json";
 import enUiCommonViewer from "./catalogues/en/ui.common.viewer.json";
+import enUiCommunity from "./catalogues/en/ui.community.json";
 import enUiConsoleErrors from "./catalogues/en/ui.console.errors.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
 import enUiHubAdoption from "./catalogues/en/ui.hub.adoption.json";
@@ -299,6 +300,7 @@ import esUiCommonSpeech from "./catalogues/es/ui.common.speech.json";
 import esUiCommonTime from "./catalogues/es/ui.common.time.json";
 import esUiCommonUpdates from "./catalogues/es/ui.common.updates.json";
 import esUiCommonViewer from "./catalogues/es/ui.common.viewer.json";
+import esUiCommunity from "./catalogues/es/ui.community.json";
 import esUiConsoleErrors from "./catalogues/es/ui.console.errors.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
 import esUiHubAdoption from "./catalogues/es/ui.hub.adoption.json";
@@ -472,6 +474,7 @@ import frUiCommonSpeech from "./catalogues/fr/ui.common.speech.json";
 import frUiCommonTime from "./catalogues/fr/ui.common.time.json";
 import frUiCommonUpdates from "./catalogues/fr/ui.common.updates.json";
 import frUiCommonViewer from "./catalogues/fr/ui.common.viewer.json";
+import frUiCommunity from "./catalogues/fr/ui.community.json";
 import frUiConsoleErrors from "./catalogues/fr/ui.console.errors.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiHubAdoption from "./catalogues/fr/ui.hub.adoption.json";
@@ -645,6 +648,7 @@ import hiUiCommonSpeech from "./catalogues/hi/ui.common.speech.json";
 import hiUiCommonTime from "./catalogues/hi/ui.common.time.json";
 import hiUiCommonUpdates from "./catalogues/hi/ui.common.updates.json";
 import hiUiCommonViewer from "./catalogues/hi/ui.common.viewer.json";
+import hiUiCommunity from "./catalogues/hi/ui.community.json";
 import hiUiConsoleErrors from "./catalogues/hi/ui.console.errors.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
 import hiUiHubAdoption from "./catalogues/hi/ui.hub.adoption.json";
@@ -818,6 +822,7 @@ import ruUiCommonSpeech from "./catalogues/ru/ui.common.speech.json";
 import ruUiCommonTime from "./catalogues/ru/ui.common.time.json";
 import ruUiCommonUpdates from "./catalogues/ru/ui.common.updates.json";
 import ruUiCommonViewer from "./catalogues/ru/ui.common.viewer.json";
+import ruUiCommunity from "./catalogues/ru/ui.community.json";
 import ruUiConsoleErrors from "./catalogues/ru/ui.console.errors.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
 import ruUiHubAdoption from "./catalogues/ru/ui.hub.adoption.json";
@@ -991,6 +996,7 @@ import urUiCommonSpeech from "./catalogues/ur/ui.common.speech.json";
 import urUiCommonTime from "./catalogues/ur/ui.common.time.json";
 import urUiCommonUpdates from "./catalogues/ur/ui.common.updates.json";
 import urUiCommonViewer from "./catalogues/ur/ui.common.viewer.json";
+import urUiCommunity from "./catalogues/ur/ui.community.json";
 import urUiConsoleErrors from "./catalogues/ur/ui.console.errors.json";
 import urUiConsole from "./catalogues/ur/ui.console.json";
 import urUiHubAdoption from "./catalogues/ur/ui.hub.adoption.json";
@@ -1164,6 +1170,7 @@ import viUiCommonSpeech from "./catalogues/vi/ui.common.speech.json";
 import viUiCommonTime from "./catalogues/vi/ui.common.time.json";
 import viUiCommonUpdates from "./catalogues/vi/ui.common.updates.json";
 import viUiCommonViewer from "./catalogues/vi/ui.common.viewer.json";
+import viUiCommunity from "./catalogues/vi/ui.community.json";
 import viUiConsoleErrors from "./catalogues/vi/ui.console.errors.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
 import viUiHubAdoption from "./catalogues/vi/ui.hub.adoption.json";
@@ -1337,6 +1344,7 @@ import zhCNUiCommonSpeech from "./catalogues/zh-CN/ui.common.speech.json";
 import zhCNUiCommonTime from "./catalogues/zh-CN/ui.common.time.json";
 import zhCNUiCommonUpdates from "./catalogues/zh-CN/ui.common.updates.json";
 import zhCNUiCommonViewer from "./catalogues/zh-CN/ui.common.viewer.json";
+import zhCNUiCommunity from "./catalogues/zh-CN/ui.community.json";
 import zhCNUiConsoleErrors from "./catalogues/zh-CN/ui.console.errors.json";
 import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
 import zhCNUiHubAdoption from "./catalogues/zh-CN/ui.hub.adoption.json";
@@ -1513,6 +1521,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiCommonTime,
 	...enUiCommonUpdates,
 	...enUiCommonViewer,
+	...enUiCommunity,
 	...enUiConsoleErrors,
 	...enUiConsole,
 	...enUiHubAdoption,
@@ -1694,6 +1703,7 @@ export const bundledCatalogues: Readonly<
 		...esUiCommonTime,
 		...esUiCommonUpdates,
 		...esUiCommonViewer,
+		...esUiCommunity,
 		...esUiConsoleErrors,
 		...esUiConsole,
 		...esUiHubAdoption,
@@ -1869,6 +1879,7 @@ export const bundledCatalogues: Readonly<
 		...frUiCommonTime,
 		...frUiCommonUpdates,
 		...frUiCommonViewer,
+		...frUiCommunity,
 		...frUiConsoleErrors,
 		...frUiConsole,
 		...frUiHubAdoption,
@@ -2044,6 +2055,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiCommonTime,
 		...hiUiCommonUpdates,
 		...hiUiCommonViewer,
+		...hiUiCommunity,
 		...hiUiConsoleErrors,
 		...hiUiConsole,
 		...hiUiHubAdoption,
@@ -2219,6 +2231,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiCommonTime,
 		...ruUiCommonUpdates,
 		...ruUiCommonViewer,
+		...ruUiCommunity,
 		...ruUiConsoleErrors,
 		...ruUiConsole,
 		...ruUiHubAdoption,
@@ -2394,6 +2407,7 @@ export const bundledCatalogues: Readonly<
 		...urUiCommonTime,
 		...urUiCommonUpdates,
 		...urUiCommonViewer,
+		...urUiCommunity,
 		...urUiConsoleErrors,
 		...urUiConsole,
 		...urUiHubAdoption,
@@ -2569,6 +2583,7 @@ export const bundledCatalogues: Readonly<
 		...viUiCommonTime,
 		...viUiCommonUpdates,
 		...viUiCommonViewer,
+		...viUiCommunity,
 		...viUiConsoleErrors,
 		...viUiConsole,
 		...viUiHubAdoption,
@@ -2744,6 +2759,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiCommonTime,
 		...zhCNUiCommonUpdates,
 		...zhCNUiCommonViewer,
+		...zhCNUiCommunity,
 		...zhCNUiConsoleErrors,
 		...zhCNUiConsole,
 		...zhCNUiHubAdoption,
@@ -8868,6 +8884,178 @@ export type MessageParams = {
 	"ui.common.viewer.reset_view": undefined;
 	"ui.common.viewer.zoom_in": undefined;
 	"ui.common.viewer.zoom_out": undefined;
+	"ui.community.browse.count": { count: number };
+	"ui.community.browse.empty": undefined;
+	"ui.community.browse.error": undefined;
+	"ui.community.browse.filter.all": undefined;
+	"ui.community.browse.filter.joined": undefined;
+	"ui.community.browse.filter.label": undefined;
+	"ui.community.browse.filter.not_joined": undefined;
+	"ui.community.browse.filter.private": undefined;
+	"ui.community.browse.joined": undefined;
+	"ui.community.browse.loading": undefined;
+	"ui.community.browse.members": { count: number };
+	"ui.community.browse.not_joined": undefined;
+	"ui.community.browse.open": undefined;
+	"ui.community.browse.people_soon": undefined;
+	"ui.community.browse.private_member": undefined;
+	"ui.community.browse.search": undefined;
+	"ui.community.browse.tab.channels": undefined;
+	"ui.community.browse.tab.people": undefined;
+	"ui.community.browse.title": { community: string };
+	"ui.community.channel.beginning": { channel: string };
+	"ui.community.channel.empty.title": undefined;
+	"ui.community.channel.error.body": undefined;
+	"ui.community.channel.error.title": { channel: string };
+	"ui.community.channel.load_older": undefined;
+	"ui.community.channel.loading": { channel: string };
+	"ui.community.channel.loading_older": undefined;
+	"ui.community.channel.offline": undefined;
+	"ui.community.channel.pick": undefined;
+	"ui.community.channel.retry": undefined;
+	"ui.community.composer.archived": undefined;
+	"ui.community.composer.attach": undefined;
+	"ui.community.composer.audience.all": undefined;
+	"ui.community.composer.audience.all_staff_post": undefined;
+	"ui.community.composer.audience.offline_suffix": undefined;
+	"ui.community.composer.audience.private": undefined;
+	"ui.community.composer.cancel": undefined;
+	"ui.community.composer.cancelling": undefined;
+	"ui.community.composer.checking": undefined;
+	"ui.community.composer.community_read_only": undefined;
+	"ui.community.composer.go_general": undefined;
+	"ui.community.composer.image_rejected.count": undefined;
+	"ui.community.composer.image_rejected.size": undefined;
+	"ui.community.composer.image_rejected.type": undefined;
+	"ui.community.composer.locked": undefined;
+	"ui.community.composer.placeholder": { channel: string };
+	"ui.community.composer.remove_image": { name: string };
+	"ui.community.composer.send": undefined;
+	"ui.community.join.agree": { version: string };
+	"ui.community.join.agree_hint": undefined;
+	"ui.community.join.back": undefined;
+	"ui.community.join.cancel": undefined;
+	"ui.community.join.continue": undefined;
+	"ui.community.join.disclosure.body": undefined;
+	"ui.community.join.disclosure.title": undefined;
+	"ui.community.join.error.generic": undefined;
+	"ui.community.join.error.guidelines_changed": undefined;
+	"ui.community.join.error.rate_limited": { seconds: number };
+	"ui.community.join.guidelines.heading": undefined;
+	"ui.community.join.joining": undefined;
+	"ui.community.join.load_error": undefined;
+	"ui.community.join.loading": undefined;
+	"ui.community.join.next_hint": undefined;
+	"ui.community.join.preview.always_shown": undefined;
+	"ui.community.join.preview.heading": undefined;
+	"ui.community.join.preview.name_avatar": undefined;
+	"ui.community.join.preview.not_shown": undefined;
+	"ui.community.join.preview.pending_note": undefined;
+	"ui.community.join.step": { step: string };
+	"ui.community.join.step1.body": undefined;
+	"ui.community.join.step1.label": undefined;
+	"ui.community.join.step1.title": { community: string };
+	"ui.community.join.step2.body": undefined;
+	"ui.community.join.step2.label": undefined;
+	"ui.community.join.step2.title": undefined;
+	"ui.community.join.submit": undefined;
+	"ui.community.message.agent_badge": undefined;
+	"ui.community.message.cancel_edit": undefined;
+	"ui.community.message.delete": undefined;
+	"ui.community.message.delete_confirm": undefined;
+	"ui.community.message.delete_confirm_action": undefined;
+	"ui.community.message.edit": undefined;
+	"ui.community.message.edited": undefined;
+	"ui.community.message.former_member": undefined;
+	"ui.community.message.images": { count: number };
+	"ui.community.message.react": undefined;
+	"ui.community.message.reaction_label": { emoji: string; count: number };
+	"ui.community.message.replies": { count: number };
+	"ui.community.message.reply": undefined;
+	"ui.community.message.save": undefined;
+	"ui.community.noplan.body": { name: string };
+	"ui.community.noplan.body_anonymous": undefined;
+	"ui.community.noplan.checking": undefined;
+	"ui.community.noplan.community.body": undefined;
+	"ui.community.noplan.community.free": undefined;
+	"ui.community.noplan.community.join": undefined;
+	"ui.community.noplan.community.open": undefined;
+	"ui.community.noplan.community.title": undefined;
+	"ui.community.noplan.community.unavailable": undefined;
+	"ui.community.noplan.failed.body": undefined;
+	"ui.community.noplan.failed.title": undefined;
+	"ui.community.noplan.retry": undefined;
+	"ui.community.noplan.signed_out.action": undefined;
+	"ui.community.noplan.signed_out.body": undefined;
+	"ui.community.noplan.signed_out.title": undefined;
+	"ui.community.noplan.title": undefined;
+	"ui.community.noplan.trial.ask_owner": undefined;
+	"ui.community.noplan.trial.ask_owner_body": { org: string };
+	"ui.community.noplan.trial.ask_owner_body_unnamed": undefined;
+	"ui.community.noplan.trial.body": undefined;
+	"ui.community.noplan.trial.create_org": undefined;
+	"ui.community.noplan.trial.create_org_hint": undefined;
+	"ui.community.noplan.trial.no_org": undefined;
+	"ui.community.noplan.trial.reconciling": undefined;
+	"ui.community.noplan.trial.resume": undefined;
+	"ui.community.noplan.trial.resume_hint": undefined;
+	"ui.community.noplan.trial.start": undefined;
+	"ui.community.noplan.trial.start_hint": { org: string };
+	"ui.community.noplan.trial.start_hint_unnamed": undefined;
+	"ui.community.noplan.trial.title": undefined;
+	"ui.community.outcome.cancelled": undefined;
+	"ui.community.outcome.category.harassment_or_abuse": undefined;
+	"ui.community.outcome.category.private_information": undefined;
+	"ui.community.outcome.category.spam_or_promotion": undefined;
+	"ui.community.outcome.category.unsafe_or_illegal": undefined;
+	"ui.community.outcome.copy_reference": undefined;
+	"ui.community.outcome.dismiss": undefined;
+	"ui.community.outcome.edit": undefined;
+	"ui.community.outcome.error": undefined;
+	"ui.community.outcome.expired": undefined;
+	"ui.community.outcome.guidelines_changed.body": undefined;
+	"ui.community.outcome.guidelines_changed.review": undefined;
+	"ui.community.outcome.guidelines_changed.title": undefined;
+	"ui.community.outcome.images.body": undefined;
+	"ui.community.outcome.images.title": undefined;
+	"ui.community.outcome.limit.burst": undefined;
+	"ui.community.outcome.limit.conversation": undefined;
+	"ui.community.outcome.limit.daily": undefined;
+	"ui.community.outcome.limit.generic": undefined;
+	"ui.community.outcome.limit.note": undefined;
+	"ui.community.outcome.limit.probation": undefined;
+	"ui.community.outcome.limit.ready": undefined;
+	"ui.community.outcome.limit.retry": { seconds: number };
+	"ui.community.outcome.limit.title": undefined;
+	"ui.community.outcome.offline": undefined;
+	"ui.community.outcome.only_you": undefined;
+	"ui.community.outcome.reference": { reference: string };
+	"ui.community.outcome.refused.reason": { category: string };
+	"ui.community.outcome.refused.title": undefined;
+	"ui.community.outcome.remove_images": undefined;
+	"ui.community.outcome.retry": undefined;
+	"ui.community.outcome.too_large": undefined;
+	"ui.community.outcome.unavailable.body": undefined;
+	"ui.community.outcome.unavailable.title": undefined;
+	"ui.community.public": undefined;
+	"ui.community.rail.browse": undefined;
+	"ui.community.rail.channels": undefined;
+	"ui.community.rail.empty": undefined;
+	"ui.community.rail.error": undefined;
+	"ui.community.rail.label": undefined;
+	"ui.community.rail.loading": undefined;
+	"ui.community.rail.private": undefined;
+	"ui.community.rail.requests": undefined;
+	"ui.community.rail.unread": { count: number };
+	"ui.community.requests.placeholder": undefined;
+	"ui.community.requests.title": undefined;
+	"ui.community.role.community_admin": undefined;
+	"ui.community.role.moderator": undefined;
+	"ui.community.role.staff": undefined;
+	"ui.community.thread.close": undefined;
+	"ui.community.thread.older_not_loaded": undefined;
+	"ui.community.thread.reply_placeholder": undefined;
+	"ui.community.thread.title": undefined;
 	"ui.console.errors.console_unavailable": undefined;
 	"ui.console.capacity.archived": { archived: number };
 	"ui.console.capacity.full": undefined;
