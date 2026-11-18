@@ -115,6 +115,7 @@ import {
 	TEAM_BRIDGE_MAX_RETAINED_MESSAGES,
 	TEAM_BRIDGE_PAGE_SIZE,
 } from "./team-bridge-channel-cache";
+import { useTeamBridgeCommunities } from "./team-bridge-communities";
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
 import {
 	TeamBridgeComposer,
@@ -162,6 +163,7 @@ import {
 import {
 	type ChiefLabels,
 	TEAM_BRIDGE_ALL_SCOPE,
+	type TeamBridgeCommunity,
 	type TeamBridgeEligibility,
 	type TeamBridgeOrganization,
 	type TeamBridgeRecipient,
@@ -268,10 +270,13 @@ import {
 	scheduledTargetAfterSuccess,
 } from "./team-bridge-scheduling";
 import {
+	browserSessionStorage,
 	readScopePreference,
+	readSessionScope,
 	resolveOpeningScope,
 	snapshotForScope,
 	writeScopePreference,
+	writeSessionScope,
 } from "./team-bridge-scope-preference";
 import { uploadStagedImages } from "./team-bridge-staged-upload";
 import type { StagedUploadFailure } from "./team-bridge-staged-upload";
@@ -1100,6 +1105,12 @@ export type TeamBridgePageViewProps = {
 	 */
 	onChooseOrganization?: (scope: TeamBridgeScope) => void;
 	onRetryMemberships?: () => void;
+	/**
+	 * Joined communities and the community flag, for the switcher's separate
+	 * Communities group (Amendment A). Never merged into `organizations`.
+	 */
+	communities?: readonly TeamBridgeCommunity[];
+	communitiesEnabled?: boolean;
 };
 
 export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
@@ -1203,6 +1214,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onScopeChange,
 	onChooseOrganization,
 	onRetryMemberships,
+	communities,
+	communitiesEnabled,
 }) => {
 	useI18nLocale();
 	/* Whether the rail is drawn in the shell's column; see the thread takeover. */
@@ -3047,6 +3060,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					organizationsFailed={organizationsFailed}
 					unreadRefreshing={refreshingUnread}
 					onRetry={onRetryMemberships}
+					communities={communities}
+					communitiesEnabled={communitiesEnabled}
 				/>
 				{/*
 				 * STALE-WHILE-REVALIDATE, VISIBLY (tb-instant-open). Cached rows stay
@@ -5390,12 +5405,29 @@ const TeamBridgeOwnedPage: FC<{
 					readScopePreference(storage, accountId))
 			: undefined;
 	}, [accountId]);
+	/*
+	 * WHERE THE READER IS IN THIS APP SESSION (RFC v2.4 Amendment A). The stored
+	 * values above outlive a restart, and Amendment A wants a restart to reopen on
+	 * the pending invitation or default private org instead; this one lives in
+	 * `sessionStorage`, so it keeps the reader's scope across leaving and
+	 * re-entering Team Bridge and is gone after a restart. It seeds the first
+	 * paint ahead of the durable value for the same no-correction reason.
+	 */
+	const sessionScope = useMemo(() => {
+		const storage = browserSessionStorage();
+		return storage && accountId
+			? readSessionScope(storage, accountId)
+			: undefined;
+	}, [accountId]);
 	/* A click a previous owner consumed (see `clickCarry`) opens like the click. */
 	const carriedClick = useRef(requestedAny ? null : clickCarry.current).current;
 	const [scope, setScope] = useState<TeamBridgeScope>(() =>
 		requestedTenant
 			? asTeamBridgeTenantId(requestedTenant)
-			: (carriedClick?.scope ?? storedScope ?? TEAM_BRIDGE_ALL_SCOPE),
+			: (carriedClick?.scope ??
+				sessionScope ??
+				storedScope ??
+				TEAM_BRIDGE_ALL_SCOPE),
 	);
 	/*
 	 * WHERE THE READER WAS IN THIS SCOPE (the operator's "it always defaults back
@@ -5553,6 +5585,8 @@ const TeamBridgeOwnedPage: FC<{
 	 */
 	const unreadView = useTeamBridgeUnreadView(selfAccountId);
 	const memberships = useMembershipsQuery({ enabled: readsEnabled });
+	// Empty until the community client lands; the flag alone draws the group.
+	const communityList = useTeamBridgeCommunities();
 	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE, {
 		accountId,
 	});
@@ -5573,6 +5607,19 @@ const TeamBridgeOwnedPage: FC<{
 	const { pending: organizationsPending, failed: organizationsFailed } =
 		organizationsReadState(hubTenants, memberships);
 	/*
+	 * The account's DEFAULT private org (Amendment A rule 2): the Radient home
+	 * tenant, which `GET /v1/me/memberships` marks `is_home`. Only an active row
+	 * counts, and `resolveOpeningScope` further requires it to be one of this
+	 * page's organizations, so a plan-less personal home tenant changes nothing.
+	 */
+	const defaultTenantId = useMemo(
+		() =>
+			memberships.memberships.find(
+				(membership) => membership.is_home && membership.status === "active",
+			)?.tenant_id ?? null,
+		[memberships.memberships],
+	);
+	/*
 	 * THE SCOPE IS DECIDED BEFORE THE LIST IS READ (tb-instant-open).
 	 *
 	 * The organization set comes from the status payload this container already
@@ -5591,6 +5638,8 @@ const TeamBridgeOwnedPage: FC<{
 		resolveOpeningScope({
 			organizations,
 			stored: storedScope,
+			session: sessionScope,
+			defaultTenantId,
 			requestedTenant,
 			chosen: scopeChosen.current,
 			current: scope,
@@ -6009,13 +6058,35 @@ const TeamBridgeOwnedPage: FC<{
 			resolveOpeningScope({
 				organizations,
 				stored: storedScope,
+				session: sessionScope,
+				defaultTenantId,
 				requestedTenant,
 				chosen: scopeChosen.current,
 				current,
 				snapshotRows: openingRows,
 			}),
 		);
-	}, [organizations, openingRows, storedScope, requestedTenant]);
+	}, [
+		organizations,
+		openingRows,
+		storedScope,
+		sessionScope,
+		defaultTenantId,
+		requestedTenant,
+	]);
+
+	/*
+	 * Record the scope the reader is IN, once it is decided, for this app session
+	 * (`writeSessionScope`). Every route - a switcher pick, a union row's org
+	 * switch, a deep link, the opening rule's own answer - lands here, so leaving
+	 * Team Bridge and coming back reopens exactly where the reader was. Writing
+	 * before `scopeDecided` would record an interim seed the list never read.
+	 */
+	useEffect(() => {
+		if (!scopeDecided || !accountId) return;
+		const storage = browserSessionStorage();
+		if (storage) writeSessionScope(storage, accountId, scope);
+	}, [scope, scopeDecided, accountId]);
 
 	const visibleConversations = useMemo(
 		() => visibleConversationRows(conversations, scope, organizations),
@@ -7433,6 +7504,8 @@ const TeamBridgeOwnedPage: FC<{
 				onRetryMemberships={() => {
 					void memberships.refetch();
 				}}
+				communities={communityList.communities}
+				communitiesEnabled={communityList.enabled}
 			/>
 			<TeamBridgeCreateDialog
 				open={channelFormOpen}

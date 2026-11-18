@@ -1,0 +1,396 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { test } from "node:test";
+import { build } from "esbuild";
+
+/**
+ * RFC v2.4 Amendment A, client half: the switcher's two groups and the
+ * opening rule. Executed through esbuild so the test runs the SAME TypeScript
+ * the renderer bundles - the house pattern of `team-bridge-scope-preference.test.mjs`.
+ *
+ * WHAT IS PINNED, AND WHY HERE.
+ * - "All organizations" merges private orgs only: a community never lands in
+ *   the Organizations group or its unread total, even when an untyped boundary
+ *   casts one into the organization array.
+ * - The opening rule's precedence (session scope, pending private invitation,
+ *   default private org, one org, durable last-used, union, community-only).
+ *   The failures that matter are precedence ones - a community or yesterday's
+ *   pick outranking the default org after a restart - so every permutation the
+ *   amendment names has a case.
+ * - The session store: `sessionStorage`-shaped, per account, separate key from
+ *   the durable preference, so a restart (an empty session store) reapplies the
+ *   rule.
+ */
+const bundle = await build({
+	stdin: {
+		contents: [
+			`export * from "./src/renderer/src/features/team-bridge/team-bridge-scope-preference";`,
+			`export { teamBridgeSwitcherGroups, TEAM_BRIDGE_COMMUNITY_SEARCH_THRESHOLD } from "./src/renderer/src/features/team-bridge/team-bridge-model";`,
+		].join("\n"),
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "neutral",
+	write: false,
+});
+const m = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
+
+const ALL = "all";
+const org = (tenantId, extra = {}) => ({
+	tenantId,
+	name: tenantId,
+	role: "member",
+	unread: 0,
+	...extra,
+});
+const community = (communityId, unread = 0) => ({
+	kind: "community",
+	communityId,
+	name: communityId,
+	unread,
+});
+const minerva = org("tnt_minerva", {
+	name: "Minerva",
+	role: "owner",
+	unread: 9,
+});
+const acme = org("tnt_acme", { name: "Acme Labs", unread: 3 });
+const loc = community("cmty_local_operator", 4);
+const priv = (scope) => ({ kind: "private", scope });
+const cmty = (communityId) => ({ kind: "community", communityId });
+
+/* ---------------------------------------------------------------- grouping */
+
+test("communities are their own group; All organizations sums private orgs only", () => {
+	const groups = m.teamBridgeSwitcherGroups({
+		organizations: [minerva, acme],
+		communities: [loc],
+		communitiesEnabled: true,
+	});
+	assert.deepEqual(
+		groups.organizations.map((row) => row.tenantId),
+		["tnt_minerva", "tnt_acme"],
+	);
+	assert.equal(groups.organizationsUnread, 12, "D21: 9 + 3, never + 4");
+	assert.deepEqual(
+		groups.communities.map((row) => row.communityId),
+		["cmty_local_operator"],
+	);
+	assert.equal(groups.showCommunities, true);
+	assert.equal(groups.searchCommunities, false);
+});
+
+test("a community cast into the organization array never joins the merged group", () => {
+	const smuggled = { ...org("cmty_x", { unread: 50 }), kind: "community" };
+	const groups = m.teamBridgeSwitcherGroups({
+		organizations: [minerva, smuggled],
+		communities: [],
+		communitiesEnabled: false,
+	});
+	assert.deepEqual(
+		groups.organizations.map((row) => row.tenantId),
+		["tnt_minerva"],
+	);
+	assert.equal(groups.organizationsUnread, 9);
+});
+
+test("the Communities group is hidden only with none joined AND the flag off", () => {
+	const view = (communities, communitiesEnabled) =>
+		m.teamBridgeSwitcherGroups({
+			organizations: [minerva],
+			communities,
+			communitiesEnabled,
+		}).showCommunities;
+	assert.equal(view([], false), false, "dark: menu is the pre-Amendment one");
+	assert.equal(view([], true), true, "flag on: Browse with nothing joined");
+	assert.equal(
+		view([loc], false),
+		true,
+		"joined stays visible if flag flips off",
+	);
+	assert.equal(view([loc], true), true);
+});
+
+test("more than six joined communities brings search; the query filters by name", () => {
+	const names = [
+		"Local Operator Community",
+		"Rust Agents Guild",
+		"Prompt Engineers",
+		"Open Data Commons",
+		"Homelab Builders",
+		"Indie SaaS Founders",
+		"LLM Evals Working Group",
+		"Agents in Production",
+	];
+	const joined = names.map((name, index) => ({
+		...community(`cmty_${index}`),
+		name,
+	}));
+	assert.equal(m.TEAM_BRIDGE_COMMUNITY_SEARCH_THRESHOLD, 6);
+	const six = m.teamBridgeSwitcherGroups({
+		organizations: [],
+		communities: joined.slice(0, 6),
+		communitiesEnabled: true,
+	});
+	assert.equal(six.searchCommunities, false, "exactly six: no search");
+	const eight = m.teamBridgeSwitcherGroups({
+		organizations: [],
+		communities: joined,
+		communitiesEnabled: true,
+		query: "  AGENT ",
+	});
+	assert.equal(eight.searchCommunities, true);
+	assert.deepEqual(
+		eight.communities.map((row) => row.name),
+		["Rust Agents Guild", "Agents in Production"],
+	);
+	const none = m.teamBridgeSwitcherGroups({
+		organizations: [],
+		communities: joined,
+		communitiesEnabled: true,
+		query: "zzz",
+	});
+	assert.equal(none.communities.length, 0);
+	assert.equal(
+		none.searchCommunities,
+		true,
+		"the field never vanishes mid-typing",
+	);
+});
+
+/* ------------------------------------------------------- default selection */
+
+const resolve = (input) => m.resolveDefaultSelection(input);
+
+test("no organizations and no communities: nothing to decide yet", () => {
+	assert.equal(resolve({ organizations: [] }), null);
+	assert.equal(
+		resolve({ organizations: [], defaultTenantId: "tnt_minerva" }),
+		null,
+		"a home tenant that is not a Team org is not a scope",
+	);
+});
+
+test("one private org opens on it, with or without a community joined", () => {
+	assert.deepEqual(resolve({ organizations: [acme] }), priv("tnt_acme"));
+	assert.deepEqual(
+		resolve({ organizations: [acme], communities: [loc] }),
+		priv("tnt_acme"),
+	);
+});
+
+test("the default private org wins over the union, a stored pick and a community", () => {
+	assert.deepEqual(
+		resolve({
+			organizations: [acme, minerva],
+			communities: [loc],
+			defaultTenantId: "tnt_minerva",
+			stored: "tnt_acme",
+		}),
+		priv("tnt_minerva"),
+	);
+	assert.deepEqual(
+		resolve({
+			organizations: [acme, minerva],
+			defaultTenantId: "tnt_minerva",
+			stored: ALL,
+		}),
+		priv("tnt_minerva"),
+	);
+});
+
+test("a default org that is not one of the Team orgs is ignored", () => {
+	assert.deepEqual(
+		resolve({
+			organizations: [acme, minerva],
+			defaultTenantId: "tnt_personal",
+		}),
+		priv(ALL),
+	);
+	assert.deepEqual(
+		resolve({
+			organizations: [acme, minerva],
+			defaultTenantId: "tnt_personal",
+			stored: "tnt_acme",
+		}),
+		priv("tnt_acme"),
+		"without a usable default the durable last-used pick still applies",
+	);
+});
+
+test("a pending private invitation outranks the default org and a joined community", () => {
+	const invited = { ...acme, invited: true };
+	assert.deepEqual(
+		resolve({
+			organizations: [minerva, invited],
+			communities: [loc],
+			defaultTenantId: "tnt_minerva",
+		}),
+		priv("tnt_acme"),
+	);
+	assert.deepEqual(
+		resolve({ organizations: [invited], communities: [loc] }),
+		priv("tnt_acme"),
+		"D22: invited-only account with a community still opens on the invitation",
+	);
+});
+
+test("a community is the default only with no private org and no invitation", () => {
+	assert.deepEqual(
+		resolve({ organizations: [], communities: [loc, community("cmty_b")] }),
+		cmty("cmty_local_operator"),
+	);
+	assert.deepEqual(
+		resolve({ organizations: [minerva, acme], communities: [loc] }),
+		priv(ALL),
+		"several private orgs land on the union, never the community",
+	);
+});
+
+test("this app session's scope outranks invitation and default org while still valid", () => {
+	const invited = { ...acme, invited: true };
+	assert.deepEqual(
+		resolve({
+			organizations: [minerva, invited],
+			defaultTenantId: "tnt_minerva",
+			session: priv(ALL),
+		}),
+		priv(ALL),
+	);
+	assert.deepEqual(
+		resolve({
+			organizations: [minerva, acme],
+			communities: [loc],
+			defaultTenantId: "tnt_minerva",
+			session: cmty("cmty_local_operator"),
+		}),
+		cmty("cmty_local_operator"),
+		"a community switch lasts until the reader switches back or restarts",
+	);
+});
+
+test("a session scope that is no longer valid falls through to the launch rule", () => {
+	assert.deepEqual(
+		resolve({
+			organizations: [minerva, acme],
+			defaultTenantId: "tnt_minerva",
+			session: priv("tnt_gone"),
+		}),
+		priv("tnt_minerva"),
+	);
+	assert.deepEqual(
+		resolve({
+			organizations: [minerva, acme],
+			defaultTenantId: "tnt_minerva",
+			session: cmty("cmty_left"),
+		}),
+		priv("tnt_minerva"),
+	);
+	assert.deepEqual(
+		resolve({ organizations: [minerva], session: priv(ALL) }),
+		priv("tnt_minerva"),
+		"a session union is meaningless once only one org remains",
+	);
+});
+
+test("a restart (empty session store) reapplies the rule over yesterday's pick", () => {
+	const session = fakeStorage();
+	const durable = { "acct-1": "tnt_acme" };
+	assert.equal(m.readSessionScope(session, "acct-1"), undefined);
+	assert.equal(
+		m.resolveOpeningScope({
+			organizations: [minerva, acme],
+			stored: durable["acct-1"],
+			session: m.readSessionScope(session, "acct-1"),
+			defaultTenantId: "tnt_minerva",
+			chosen: false,
+			current: "tnt_acme",
+		}),
+		"tnt_minerva",
+	);
+});
+
+/* ------------------------------------------------------ opening scope page */
+
+test("resolveOpeningScope: deep link and an on-page pick still outrank everything", () => {
+	const base = {
+		organizations: [minerva, acme],
+		defaultTenantId: "tnt_minerva",
+		session: ALL,
+		current: "tnt_acme",
+	};
+	assert.equal(
+		m.resolveOpeningScope({ ...base, requestedTenant: "tnt_x", chosen: false }),
+		"tnt_x",
+	);
+	assert.equal(m.resolveOpeningScope({ ...base, chosen: true }), "tnt_acme");
+	assert.equal(m.resolveOpeningScope({ ...base, chosen: false }), ALL);
+});
+
+test("resolveOpeningScope: a remembered union survives a pending organization list", () => {
+	assert.equal(
+		m.resolveOpeningScope({
+			organizations: [],
+			session: ALL,
+			chosen: false,
+			current: ALL,
+			snapshotRows: [{ tenant_id: "tnt_minerva" }],
+		}),
+		ALL,
+	);
+});
+
+/* --------------------------------------------------------- session storage */
+
+function fakeStorage(initial) {
+	const map = new Map(
+		initial === undefined
+			? []
+			: [[m.SESSION_SCOPE_KEY, JSON.stringify(initial)]],
+	);
+	return {
+		map,
+		getItem: (key) => (map.has(key) ? map.get(key) : null),
+		setItem: (key, value) => void map.set(key, String(value)),
+	};
+}
+
+test("the session scope is per account, on its own key, and tolerant of junk", () => {
+	assert.notEqual(m.SESSION_SCOPE_KEY, m.SCOPE_PREFERENCE_KEY);
+	const storage = fakeStorage({ "acct-2": "tnt_2" });
+	m.writeSessionScope(storage, "acct-1", "tnt_1");
+	m.writeSessionScope(storage, "acct-3", ALL);
+	assert.equal(m.readSessionScope(storage, "acct-1"), "tnt_1");
+	assert.equal(m.readSessionScope(storage, "acct-2"), "tnt_2");
+	assert.equal(m.readSessionScope(storage, "acct-3"), ALL);
+	assert.equal(storage.map.has(m.SCOPE_PREFERENCE_KEY), false);
+	const junk = {
+		getItem: () => "{not json",
+		setItem: () => {
+			throw new Error("quota");
+		},
+	};
+	assert.equal(m.readSessionScope(junk, "acct-1"), undefined);
+	assert.doesNotThrow(() => m.writeSessionScope(junk, "acct-1", "tnt_1"));
+});
+
+test("the page feeds the session scope and default org to both opening reads", async () => {
+	const page = await readFile(
+		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
+		"utf8",
+	);
+	const calls = page.split("resolveOpeningScope({").slice(1);
+	assert.equal(calls.length, 2, "the settle check and the adoption effect");
+	for (const call of calls) {
+		const args = call.slice(0, call.indexOf("})"));
+		assert.ok(args.includes("session: sessionScope"));
+		assert.ok(args.includes("defaultTenantId"));
+	}
+	assert.ok(
+		page.includes('membership.is_home && membership.status === "active"'),
+	);
+	assert.ok(page.includes("writeSessionScope(storage, accountId, scope)"));
+});
