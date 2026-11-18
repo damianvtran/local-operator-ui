@@ -87,6 +87,7 @@ test("every pinned consumer job restores before install and asserts before build
 		"ci.yml:bytecode-build-macos",
 		"ci.yml:npx-sanity-check",
 		"full-suite.yml:test",
+		"full-suite.yml:native-proofs",
 	]);
 });
 
