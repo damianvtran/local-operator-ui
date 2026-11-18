@@ -106,6 +106,7 @@ import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_REFUSAL_CODE } from "../../../../../shared/desktop-contract";
+import { RemoteRunCards } from "../../remote-compute/remote-run-card";
 import { TURN_AVATAR_BOX, parseAgentAvatarSize } from "../agent-avatar-size";
 import {
 	asideAskBlockedReason,
@@ -5090,6 +5091,17 @@ function SessionPanel({
 						) : null
 					}
 					deviceNotice={<ChatDeviceNotice sessionId={sessionId ?? undefined} />}
+					/*
+					 * THE RUNS THIS PANE BOUGHT, keyed by the same pane identity the device
+					 * control pins them under (`panelIdentityFor`), so the card appears in the
+					 * conversation that asked for the run rather than in whichever chat happens
+					 * to be open.
+					 */
+					remoteRuns={
+						(sessionId ?? draftKey) ? (
+							<RemoteRunCards paneKey={sessionId ?? (draftKey as string)} />
+						) : null
+					}
 					deviceHold={deviceHold}
 					agentName={title}
 					description={
