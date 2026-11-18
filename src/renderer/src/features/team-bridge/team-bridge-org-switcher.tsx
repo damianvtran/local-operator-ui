@@ -178,7 +178,10 @@ export const TeamBridgeOrgSwitcher: FC<{
 			</DropdownMenuTrigger>
 			<DropdownMenuContent
 				align="start"
-				className={groups.showCommunities ? "w-80" : "w-64"}
+				// D21 measures the two-group menu at ~350px: wide enough for "Local
+				// Operator Community" beside its Public badge and count without
+				// truncating. The dark menu keeps its original width.
+				className={groups.showCommunities ? "w-[22rem]" : "w-64"}
 			>
 				<DropdownMenuLabel>
 					{groups.showCommunities
@@ -307,10 +310,12 @@ export const TeamBridgeOrgSwitcher: FC<{
 								</label>
 							</div>
 						)}
-						{/* Six 32px rows, then scroll (frame D21's inset). */}
+						{/* Six ~31.5px rows (measured in the D21 story), then scroll,
+						    with the seventh peeking so the group reads as scrollable
+						    (frame D21's inset). */}
 						<div
 							className={cn(
-								groups.searchCommunities && "max-h-48 overflow-y-auto",
+								groups.searchCommunities && "max-h-[12.5rem] overflow-y-auto",
 							)}
 						>
 							<DropdownMenuRadioGroup
@@ -332,7 +337,10 @@ export const TeamBridgeOrgSwitcher: FC<{
 										<span className="min-w-0 flex-1 truncate">
 											{community.name}
 										</span>
-										<Badge variant="neutral" className="shrink-0 gap-1">
+										<Badge
+											variant="neutral"
+											className="shrink-0 gap-1 px-1.5 py-0 text-meta-sm"
+										>
 											<Globe size={10} aria-hidden="true" />
 											{t("ui.teamBridge.scope.community.public")}
 										</Badge>
@@ -358,7 +366,9 @@ export const TeamBridgeOrgSwitcher: FC<{
 						</div>
 						{onBrowseCommunities && (
 							<>
-								<DropdownMenuSeparator />
+								{/* With nothing joined the label already heads Browse;
+								    a rule between them would frame an empty group. */}
+								{communities.length > 0 && <DropdownMenuSeparator />}
 								<DropdownMenuItem onSelect={() => onBrowseCommunities()}>
 									<Compass
 										size={14}
