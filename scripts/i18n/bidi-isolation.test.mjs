@@ -103,6 +103,11 @@ const UR = {
 	"fx.size_decimal": "حد 1.5 GiB اور {height} px ہے۔",
 	"fx.not_a_unit": "1Password یا 4o، 12 ایجنٹ، v2 MB",
 	"fx.unit_after_latin": "JPEG 10 MB تک",
+	// Review round 1, R1-2: a range and a signed value are one measurement.
+	"fx.size_range": "حد 10–20 MB ہے",
+	"fx.size_range_hyphen": "حد 10 - 20 MB ہے",
+	"fx.size_signed": "فرق -5 px ہے",
+	"fx.not_signed": "حد - 5 کام، ختم-5 px",
 };
 messages.registerCatalogue("ur", UR);
 // The same keys in an LTR locale, so one fixture exercises both directions.
@@ -224,6 +229,13 @@ test("a number and its unit symbol are ONE isolate after Urdu, so RTL does not p
 	assert.equal(run("fx.not_a_unit", {}), "1Password یا 4o، 12 ایجنٹ، v2 MB");
 	// After Latin text the pair already resolves left-to-right: left alone.
 	assert.equal(run("fx.unit_after_latin", {}), "JPEG 10 MB تک");
+	// R1-2: the whole range and the sign sit inside the ONE isolate.
+	assert.equal(run("fx.size_range", {}), `حد ${LRI}10–20 MB${PDI} ہے`);
+	assert.equal(run("fx.size_range_hyphen", {}), `حد ${LRI}10 - 20 MB${PDI} ہے`);
+	assert.equal(run("fx.size_signed", {}), `فرق ${LRI}-5 px${PDI} ہے`);
+	// A dash before a space, or one joined to a word, is not a sign.
+	assert.equal(run("fx.not_signed", {}), `حد - 5 کام، ختم-${LRI}5 px${PDI}`);
+	assert.equal(run("fx.size_range", {}, "en"), "Hello حد 10–20 MB ہے");
 	// Negative control: the raw path is the pre-fix output, with no controls.
 	assert.equal(raw("fx.size_literal", {}, "ur"), "زیادہ سے زیادہ 10 MB۔");
 	// LTR is untouched.

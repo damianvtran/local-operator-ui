@@ -59,7 +59,7 @@ import {
 } from "@shared/components/ui/select";
 import { Switch } from "@shared/components/ui/switch";
 import { Textarea } from "@shared/components/ui/textarea";
-import { t, translateRaw, userTextDir } from "@shared/i18n";
+import { USER_TEXT_ALIGN, t, translateRaw, userTextDir } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -1018,10 +1018,12 @@ export function AgentDetail({
 								// A long name truncates instead of wrapping under the actions.
 								// `dir="auto"`: the name is the operator's text, so an English
 								// one keeps its first letters under ur instead of losing them
-								// to the ellipsis; `rtl:text-right` keeps the locale's start.
+								// to the ellipsis; the alignment is keyed to the DOCUMENT's direction,
+								// not the name's (see `agents-sidebar.tsx`), so a short name keeps
+								// the locale's start edge in both directions.
 								dir="auto"
 								title={displayedName}
-								className="truncate text-title focus:outline-none rtl:text-right"
+								className={`truncate text-title focus:outline-none ${USER_TEXT_ALIGN}`}
 							>
 								{displayedName}
 							</h2>
@@ -1424,6 +1426,8 @@ export function AgentDetail({
 												// back so the list's pitch stays the one it had.
 												className={cn("-my-0.5", LINK_HIT_AREA)}
 												onClick={() => onOpenTeam(team.name)}
+												// The operator's team name: its own direction (round 1, D1).
+												dir="auto"
 											>
 												{team.name}
 											</Button>

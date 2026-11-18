@@ -17,3 +17,18 @@
 export const userTextDir = (
 	value: string | null | undefined,
 ): "auto" | undefined => (value ? "auto" : undefined);
+
+/**
+ * The alignment for a single-line DISPLAY of the operator's text that carries
+ * `dir="auto"` (a roster name, a pane heading, a member's agent name).
+ *
+ * WHY NOT `rtl:text-right`. Tailwind's `rtl:` matches an element's OWN resolved
+ * `:dir(rtl)` too, and `dir="auto"` makes an Urdu-script value resolve RTL under
+ * en, so the name right-aligned away from the icon or subtitle it labels
+ * (review on UI #1974, R1-1 / D2). `[[dir=rtl]_&]` matches only an RTL
+ * ANCESTOR - the `<html dir>` the locale writes - so the edge follows the
+ * interface language while `dir="auto"` still decides glyph order and which end
+ * the ellipsis falls on. A literal here (not built from parts) so Tailwind's
+ * source scan generates both classes.
+ */
+export const USER_TEXT_ALIGN = "text-left [[dir=rtl]_&]:text-right";

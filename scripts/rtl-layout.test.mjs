@@ -415,27 +415,37 @@ test("operator-authored fields and displays on the agents surfaces take their ow
 	 * `dir="auto"` once there is a value (an EMPTY dir=auto control is LTR in
 	 * Chromium, which would move an Urdu placeholder to the left edge).
 	 */
+	/*
+	 * COUNTED BY ATTRIBUTE, NOT BY A TAG REGEX (review round 1, R1-3): the old
+	 * `<(Textarea|Input)\b[^>]*>` stopped at the first `=>` of an inline handler
+	 * and passed only because `dir=` happened to come first. Each occurrence is
+	 * then checked to sit on a real field tag with `openingTagAt`.
+	 */
 	const fields = [
 		// EditSection's textarea and input, the tool name, the create name.
-		[`${AGENTS}/components/agent-detail.tsx`, /<(Textarea|Input)\b[^>]*>/g, 4],
+		[`${AGENTS}/components/agent-detail.tsx`, 4],
 		// Team name, description, collaboration and project brief.
-		[`${AGENTS}/components/team-detail.tsx`, /<(Textarea|Input)\b[^>]*>/g, 4],
-		[`${AGENTS}/components/upload-agent-dialog.tsx`, /<Input\b[^>]*>/g, 1],
-		[
-			`${AGENTS}/components/profile-proposal-panel.tsx`,
-			/<textarea\b[^>]*>/g,
-			1,
-		],
-		[`${HUB}/components/comments-section.tsx`, /<Textarea\b[^>]*>/g, 2],
+		[`${AGENTS}/components/team-detail.tsx`, 4],
+		[`${AGENTS}/components/upload-agent-dialog.tsx`, 1],
+		[`${AGENTS}/components/profile-proposal-panel.tsx`, 1],
+		[`${HUB}/components/comments-section.tsx`, 2],
+		// The skill alias input (the 13th field the old list missed).
+		[`${HUB}/components/hub-skill-publication.tsx`, 1],
 	];
-	for (const [path, pattern, count] of fields) {
-		const tags = source(path).match(pattern) ?? [];
-		const auto = tags.filter((tag) => /\bdir=\{userTextDir\(/.test(tag));
+	for (const [path, count] of fields) {
+		const code = source(path);
+		const at = [...code.matchAll(/\bdir=\{userTextDir\(/g)].map((m) => m.index);
 		assert.equal(
-			auto.length,
+			at.length,
 			count,
-			`${path}: ${count} user-text field(s) take userTextDir`,
+			`${path}: ${count} field(s) take userTextDir`,
 		);
+		for (const index of at)
+			assert.match(
+				openingTagAt(code, index),
+				/^<(?:Textarea|Input|textarea|input)\b/,
+				`${path}: userTextDir sits on a field tag`,
+			);
 	}
 	const parts = source(`${AGENTS}/components/detail-parts.tsx`);
 	assert.match(
@@ -443,16 +453,132 @@ test("operator-authored fields and displays on the agents surfaces take their ow
 		/<div\s+ref=\{ref\}\s+dir="auto"/,
 		"ReadBlock (instructions, briefs, skill bodies) sets its own direction",
 	);
-	const roster = source(`${AGENTS}/components/agents-sidebar.tsx`);
-	assert.equal(
-		(
-			roster.match(
-				/<span\s+dir="auto"\s+className="block truncate[^"]*rtl:text-right"/g,
-			) ?? []
-		).length,
-		2,
-		"the roster's name and description truncate from their own end, aligned to the locale's start",
+});
+
+/*
+ * The JSX opening tag around `index`: from the nearest `<Tag` before it to the
+ * `>` that closes it, skipping `>` inside quotes or `{...}` (so an inline
+ * `(e) => ...` handler does not end the tag early).
+ */
+function openingTagAt(code, index) {
+	let start = index;
+	while (start > 0 && !/^<[A-Za-z]/.test(code.slice(start, start + 2))) start--;
+	let depth = 0;
+	let quote = null;
+	for (let i = start + 1; i < code.length; i++) {
+		const ch = code[i];
+		if (quote) {
+			if (ch === quote) quote = null;
+		} else if (ch === '"' || ch === "'" || ch === "`") quote = ch;
+		else if (ch === "{") depth++;
+		else if (ch === "}") depth--;
+		else if (ch === ">" && depth === 0) return code.slice(start, i + 1);
+	}
+	return code.slice(start);
+}
+
+test("the LIVE agents roster and panes give operator text its own direction (D1)", () => {
+	/*
+	 * Design review round 1, D1: the first fix landed on `AgentsSidebarItem`,
+	 * mounted only by `legacy-agents-page.tsx`, so the roster users see still
+	 * clipped an English description from its start under ur. These are the
+	 * single-line displays of the operator's own names and text on the page
+	 * `agents-page.tsx` actually renders.
+	 */
+	const displays = [
+		// The roster row's name (`rowLabel`) and its description (`blurb`).
+		[`${AGENTS}/components/agents-page.tsx`, ["{rowLabel(row)}", "{blurb}"]],
+		// The pane heading and the "used by" team links.
+		[
+			`${AGENTS}/components/agent-detail.tsx`,
+			["{displayedName}", "{team.name}"],
+		],
+		// Heading, the manager link, member roles and the readings' values.
+		[
+			`${AGENTS}/components/team-detail.tsx`,
+			[
+				"{draft.manager}",
+				"{member.role}",
+				"{memberReading.role}",
+				"{facts.value}",
+			],
+		],
+		// The legacy sidebar keeps its fix (still mounted by a story).
+		[
+			`${AGENTS}/components/agents-sidebar.tsx`,
+			["{agent.name}", "{description}"],
+		],
+	];
+	for (const [path, children] of displays) {
+		const code = source(path);
+		for (const child of children) {
+			// As a JSX CHILD (`>{child}<`), not a `key={`...${member.role}`}` splice.
+			const escaped = child.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+			const index = code.search(new RegExp(`>\\s*${escaped}\\s*<`)) + 1;
+			assert.ok(index > 0, `${path}: ${child} is still rendered`);
+			assert.match(
+				openingTagAt(code, index),
+				/\bdir="auto"/,
+				`${path}: the element holding ${child} sets dir="auto"`,
+			);
+		}
+	}
+	const team = source(`${AGENTS}/components/team-detail.tsx`);
+	assert.match(
+		openingTagAt(
+			team,
+			team.indexOf("<h2", team.indexOf("ref={headingRef}") - 200),
+		),
+		/\bdir="auto"/,
+		"the team pane heading sets dir=auto",
 	);
+});
+
+test("a dir=auto display aligns to the DOCUMENT's direction, never its own (R1-1 / D2)", () => {
+	/*
+	 * Tailwind's `rtl:` matches an element's own resolved `:dir(rtl)`, so on a
+	 * `dir="auto"` element an Urdu-script value right-aligned under en. The
+	 * shared constant keys the edge to an RTL ancestor instead.
+	 */
+	assert.equal(
+		source("src/renderer/src/shared/i18n/user-text-dir.ts").match(
+			/export const USER_TEXT_ALIGN = "([^"]*)"/,
+		)?.[1],
+		"text-left [[dir=rtl]_&]:text-right",
+	);
+	const files = execFileSync("git", ["ls-files", "--", AGENTS, HUB], {
+		encoding: "utf8",
+	})
+		.split("\n")
+		.filter((path) => path.endsWith(".tsx") && !path.endsWith(".stories.tsx"));
+	const offenders = [];
+	let checked = 0;
+	for (const path of files) {
+		const code = source(path);
+		for (const m of code.matchAll(/\bdir=(?:"auto"|\{userTextDir\()/g)) {
+			checked++;
+			const tag = openingTagAt(code, m.index);
+			if (/\b(?:rtl|ltr):text-/.test(tag)) offenders.push(`${path}: ${tag}`);
+			if (
+				/\btext-(?:left|right|start|end)\b/.test(tag) &&
+				!/USER_TEXT_ALIGN/.test(tag)
+			)
+				offenders.push(`${path}: hand-rolled alignment ${tag}`);
+		}
+	}
+	assert.ok(checked >= 25, `found the dir=auto elements (${checked})`);
+	assert.deepEqual(offenders, []);
+	for (const path of [
+		`${AGENTS}/components/agents-page.tsx`,
+		`${AGENTS}/components/agents-sidebar.tsx`,
+		`${AGENTS}/components/agent-detail.tsx`,
+		`${AGENTS}/components/team-detail.tsx`,
+	])
+		assert.match(
+			source(path),
+			/\$\{USER_TEXT_ALIGN\}/,
+			`${path} uses the shared alignment`,
+		);
 });
 
 test("a user-text field is dir=auto once it has a value, and inherits the locale while empty", () => {
@@ -495,15 +621,20 @@ test("the agents and agent hub components use logical, not physical, inline clas
 	 */
 	const PHYSICAL =
 		/(?<![\w-])-?(?:ml|mr|pl|pr)-(?:\d|\[|px\b|auto\b)|(?<![\w-])(?:text-left|text-right|border-l|border-r)(?![\w-])/;
-	const files = execFileSync(
-		"git",
-		["ls-files", `${AGENTS}/**/*.tsx`, `${HUB}/**/*.tsx`],
-		{
-			encoding: "utf8",
-		},
-	)
+	/*
+	 * The WHOLE trees (QA round 1, Q1): the old `**` glob needed a directory
+	 * below `<dir>`, so the feature-root pages (`agent-hub-page.tsx`) were never
+	 * scanned and two `ml-auto` survived there.
+	 */
+	const files = execFileSync("git", ["ls-files", "--", AGENTS, HUB], {
+		encoding: "utf8",
+	})
 		.split("\n")
-		.filter((path) => path && !path.endsWith(".stories.tsx"));
+		.filter((path) => path.endsWith(".tsx") && !path.endsWith(".stories.tsx"));
+	assert.ok(
+		files.includes(`${HUB}/agent-hub-page.tsx`),
+		"the feature-root page is scanned",
+	);
 	assert.ok(files.length > 20, "the glob found the feature trees");
 	const offenders = [];
 	for (const path of files) {
@@ -511,8 +642,7 @@ test("the agents and agent hub components use logical, not physical, inline clas
 			.replace(/\/\*[\s\S]*?\*\//g, "")
 			.replace(/\/\/.*$/gm, "");
 		for (const [index, line] of code.split("\n").entries()) {
-			// `rtl:text-right` is the deliberate D6 alignment, not a physical leak.
-			if (PHYSICAL.test(line.replace(/rtl:text-right/g, "")))
+			if (PHYSICAL.test(line))
 				offenders.push(`${path}:${index + 1}: ${line.trim()}`);
 		}
 	}

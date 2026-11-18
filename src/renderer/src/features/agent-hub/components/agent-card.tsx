@@ -402,8 +402,8 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 						</span>
 					</Tooltip>
 				</div>
-				{/* `ml-auto` rather than `justify-between`: it holds the action at the
-				    right edge on the wrapped line too, where a lone flex item would
+				{/* `ms-auto` rather than `justify-between`: it holds the action at the
+				    end edge on the wrapped line too, where a lone flex item would
 				    otherwise sit at the start. */}
 				{showActions && onDownload && (
 					<div className="ms-auto flex shrink-0 items-center">

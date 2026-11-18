@@ -25,8 +25,8 @@ import {
 } from "@shared/api/local-operator/profile-proposals";
 import { UnifiedDiff } from "@shared/components/common/unified-diff";
 import { Button } from "@shared/components/ui/button";
+import { userTextDir } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { userTextDir } from "@shared/i18n/user-text-dir";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { t } from "../../../../../i18n/messages";

@@ -259,8 +259,21 @@ export function isolateSigils(text: string): string {
  * number is RTL or absent - after Latin text the pair already paints in order,
  * and leaving it alone keeps the output identical wherever it was not wrong.
  */
-const NUMBER_UNIT =
-	/^\p{Nd}+(?:[.,\u066B\u066C]\p{Nd}+)*[ \u00A0\u202F]?(?:[KMGTP]i?B|kB|B|px)(?![\p{L}\p{Nd}])/u;
+/*
+ * A RANGE AND A SIGN ARE PART OF THE TOKEN (review round 1, R1-2): matching from
+ * the last number alone isolated only `20 MB` in `10–20 MB` and left the `-` of
+ * `-5 px` outside the isolate, so the range's first end and the sign still
+ * resolved against the Urdu around them. The optional
+ * sign and the optional `<number><dash>` prefix keep the whole measurement in
+ * one LRI...PDI. Only an RTL-answered catalogue reaches this pass (see
+ * `messages.ts`), so LTR output stays byte-identical.
+ */
+const SIGN = /[-+\u2212]/u;
+const NUMBER_PART = String.raw`[-+\u2212]?\p{Nd}+(?:[.,\u066B\u066C]\p{Nd}+)*`;
+const NUMBER_UNIT = new RegExp(
+	String.raw`^${NUMBER_PART}(?:[ \u00A0\u202F]?[\u2013\u2212-][ \u00A0\u202F]?${NUMBER_PART})?[ \u00A0\u202F]?(?:[KMGTP]i?B|kB|B|px)(?![\p{L}\p{Nd}])`,
+	"u",
+);
 
 /** Wrap each number + Latin unit pair that would paint reversed in LRI...PDI. */
 export function isolateNumberUnits(text: string): string {
@@ -278,8 +291,13 @@ export function isolateNumberUnits(text: string): string {
 		// A digit that continues a word or a number (`v2`, `1.5`) is not the
 		// start of a measurement; only one that starts a token is tried.
 		const previous = index > 0 ? (text[index - 1] as string) : "";
+		// A sign opens a measurement only when a digit follows it (`-5 px`);
+		// a dash before a space or a word is punctuation.
+		const opensNumber =
+			DIGIT.test(char) ||
+			(SIGN.test(char) && DIGIT.test(text[index + 1] ?? ""));
 		if (
-			DIGIT.test(char) &&
+			opensNumber &&
 			lastStrong !== "L" &&
 			!LETTER.test(previous) &&
 			!DIGIT.test(previous)

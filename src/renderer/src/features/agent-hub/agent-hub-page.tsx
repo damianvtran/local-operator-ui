@@ -235,7 +235,7 @@ const AgentCardSkeleton: React.FC = () => (
 			<Skeleton className="h-4 w-6" />
 			<Skeleton className="size-4" />
 			<Skeleton className="h-4 w-6" />
-			<Skeleton className="ml-auto h-7 w-16" />
+			<Skeleton className="ms-auto h-7 w-16" />
 		</div>
 	</div>
 );
@@ -845,7 +845,7 @@ export const AgentHubPage: React.FC = () => {
 				 * that shifts under the pointer as you press it is the failure the D1
 				 * reflow rounds were about.
 				 *
-				 * THE SCOPE GROUP IS PINNED TO THE FAR EDGE (`ml-auto`), not set after the
+				 * THE SCOPE GROUP IS PINNED TO THE FAR EDGE (`ms-auto`, the inline end), not set after the
 				 * tabs. Sitting beside them, it moved 6px whenever a tab count changed width
 				 * ("Agents 30" to "Agents 6", "Teams" gaining a count) - under the pointer
 				 * that had just pressed the chip (design round 1, D2; agent review m1). At
@@ -915,7 +915,7 @@ export const AgentHubPage: React.FC = () => {
 					 * title.
 					 */}
 					{selectableOrgs.length > 0 && (
-						<div className="ml-auto flex min-w-0 items-center gap-2">
+						<div className="ms-auto flex min-w-0 items-center gap-2">
 							{/*
 							 * A VISIBLE LABEL for the second axis (design round 1, D5; UX round 1,
 							 * U6). The tab strip and the chips share the segmented control's
@@ -1434,8 +1434,8 @@ export const AgentHubPage: React.FC = () => {
 										 * 257px to 290px tall and the row pitch from 283px to 315px.
 										 *
 										 * That wrap is the intended degradation rather than a defect
-										 * to rule out: `flex-wrap` with `ml-auto` keeps the counters
-										 * whole and lands the action on the right edge beneath them.
+										 * to rule out: `flex-wrap` with `ms-auto` keeps the counters
+										 * whole and lands the action on the end edge beneath them.
 										 * The one-line alternatives all lose information this surface
 										 * exists to compare — truncating a count states a wrong
 										 * number, and hiding the numbers or the action's label drops

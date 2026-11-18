@@ -11,8 +11,8 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { userTextDir } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { userTextDir } from "@shared/i18n/user-text-dir";
 import { MessageCircle, Save, SquarePen, Trash2, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
