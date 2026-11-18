@@ -346,14 +346,18 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 				</fieldset>
 			)}
 
-			{mode === "type_code" && row.side === "inviter" && !terminal && (
-				<p
-					className="text-meta text-ink-dim"
-					data-testid="mesh-pairing-attempts"
-				>
-					{t("ui.mesh.pairing.attempts_left", { count: row.attemptsLeft })}
-				</p>
-			)}
+			{/* The mismatch sentence already names the attempts left; never twice. */}
+			{mode === "type_code" &&
+				row.side === "inviter" &&
+				!terminal &&
+				refusal?.kind !== "mismatch" && (
+					<p
+						className="text-meta text-ink-dim"
+						data-testid="mesh-pairing-attempts"
+					>
+						{t("ui.mesh.pairing.attempts_left", { count: row.attemptsLeft })}
+					</p>
+				)}
 
 			{refusal && (
 				<p

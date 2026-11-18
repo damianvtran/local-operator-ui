@@ -586,6 +586,8 @@ test("a wrong code keeps the card open, says attempts left, and clears the field
 	assert.equal(input().value, "", "field cleared for the next attempt");
 	assert.equal(input().getAttribute("aria-invalid"), "true");
 	assert.equal(admit().disabled, true);
+	// The attempts are named once - in the sentence, not again in the meta line.
+	assert.equal($("mesh-pairing-attempts"), null);
 });
 
 test("inviter awaiting: reduce-only shares; the admit carries the kept set, sorted", async () => {
