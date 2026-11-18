@@ -3399,7 +3399,7 @@ test("owner_finish stays pending during a passkey prompt and retries the exact a
 	const wrongNonce = `${tab.slice(0, -1)}${tab.endsWith("a") ? "b" : "a"}`;
 	await assert.rejects(
 		() => host.dispatch("close", { ...resumed, tab: wrongNonce }, "nonce"),
-		{ code: "owner_refused" },
+		{ code: "tab_closed", data: { reason: "unknown_handle" } },
 	);
 	assert.equal(
 		registry.closeOwnedSurface(wrongNonce, () => assert.fail("wrong nonce")),
