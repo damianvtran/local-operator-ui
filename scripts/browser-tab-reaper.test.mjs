@@ -1,19 +1,4 @@
-/**
- * Rules of the agent-tab reaper (`src/main/browser/tab-reaper.ts`) and the
- * registry hooks it drives (cap eviction, tombstoned stale handles).
- *
- * WHY THESE RULES ARE PINNED: the operator found the desktop browser host at its
- * eight-agent-tab cap with tabs stranded for hours by ended sessions, refusing a
- * live session's `open` (2026-11-17). The reaper closes such tabs; a wrong close
- * loses an agent's or a person's work, so every "never reap" case is asserted
- * here alongside every "reap" case.
- *
- * WHAT THESE TESTS ARE NOT: proof against a real Electron window. The registry's
- * views are fakes; the wiring's guards (active tab, held popups, custody,
- * recordings, pending approvals) are injected here exactly as `index.ts` injects
- * them, so the RULES are what is under test.
- */
-
+/** Compiles the current host/registry/policy with synthetic views, not Electron. */
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -21,279 +6,390 @@ import { build } from "esbuild";
 
 const bundle = await build({
 	stdin: {
-		contents: [
-			'export * from "./src/main/browser/registry";',
-			'export * from "./src/main/browser/tab-reaper";',
-		].join("\n"),
+		contents: ["registry", "tab-reaper", "host", "ownership"]
+			.map((name) => `export * from "./src/main/browser/${name}";`)
+			.join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
 	format: "esm",
 	platform: "node",
 	write: false,
-	alias: {
-		electron: join(process.cwd(), "scripts/browser-electron-stub.ts"),
-	},
+	alias: { electron: join(process.cwd(), "scripts/browser-electron-stub.ts") },
 });
 const {
 	TabRegistry,
 	TabReaper,
+	BrowserHost,
+	OwnershipLedger,
 	MAX_AGENT_TABS,
-	AGENT_TAB_IDLE_REAP_MS,
-	EVICTION_IDLE_FLOOR_MS,
-	ENDED_SESSION_CONFIRMATIONS,
+	RECLAIM_QUIET_MS,
 	surfaceToken,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
-const MIN = 60_000;
-const BUSY_A = /busy-a \(5 tabs/;
-const BUSY_B = /busy-b \(3 tabs/;
-const IDLE_COPY = /45 minutes with no agent action/;
-const EVICTED_COPY = /make room/;
-
-class FakeWebContents {
-	constructor(id) {
-		this.id = id;
-	}
-	isDestroyed() {
-		return false;
-	}
-	getURL() {
-		return "https://example.com/login";
-	}
-	on() {}
-	once() {}
-	removeListener() {}
-}
+const generation = "a".repeat(64);
+const ended = (id) => ({
+	session_id: id,
+	verdict: "ended",
+	turn: "idle",
+	retained: false,
+	provenance: "browser_terminal",
+	generation,
+});
+const response = (...ids) => ({ owners: ids.map(ended) });
 
 class FakeView {
 	constructor(id) {
-		this.webContents = new FakeWebContents(id);
+		this.webContents = {
+			id,
+			isDestroyed: () => false,
+			getURL: () => "https://example.com/",
+			getTitle: () => "example",
+			on() {},
+			once() {},
+			removeListener() {},
+		};
 	}
 	setBounds() {}
 	setVisible() {}
 }
 
-/** A registry plus a reaper wired the way `index.ts` wires them, with every
- * guard backed by a mutable set the test controls. */
-function makeRig({ roster = null } = {}) {
-	let nextId = 100;
+function rig() {
 	const removed = [];
-	const registry = new TabRegistry(
-		() => new FakeView(nextId++),
-		(tabId) => removed.push(tabId),
-		() => {},
-	);
+	const ledgerReceipts = [];
 	const state = {
 		now: Date.now(),
-		engaged: new Set(),
-		custody: new Set(),
-		recording: new Set(),
-		awaiting: new Set(),
-		roster,
+		read: async (ids) => response(...ids),
+		current: generation,
+		auth: new Map(),
+		holds: new Set(),
 	};
-	const reaped = [];
-	const reaper = new TabReaper({
-		registry,
-		guards: {
-			userEngaged: (record) =>
-				registry.activeTab === record || state.engaged.has(record.tabId),
-			inCustody: (record) => state.custody.has(record.tabId),
-			busy: (record) => registry.isBusy(record.tabId),
-			recording: (record) => state.recording.has(record.tabId),
-			sessionAwaitingUser: (sessionId) => state.awaiting.has(sessionId),
+	const registry = new TabRegistry(
+		(_opts, tabId) => new FakeView(tabId),
+		(tabId, _wcId, cascade) => {
+			removed.push({ tabId, cascade });
+			// Mirror releaseTab's ordinary cascade; reclaim must disable it and
+			// atomically remove only the graph the policy evaluated.
+			if (cascade !== false)
+				for (const child of registry.unadoptedLinkTabs(tabId))
+					registry.destroy(child.tabId);
 		},
-		reap: (record, reason) => {
-			reaped.push({ tabId: record.tabId, reason });
-			registry.reap(record.tabId, reason);
+		() => {},
+	);
+	const ownership = new OwnershipLedger({
+		closeTab: async () => false,
+		isLive: (token) => {
+			try {
+				return !!registry.requireSurface(token);
+			} catch {
+				return false;
+			}
 		},
-		readRoster: async () => state.roster,
-		now: () => state.now,
 	});
-	registry.setCapacityEvictor(() => reaper.evictForCapacity());
-	/** Open an agent tab last used `idleMs` before the rig's clock. */
-	const agentTab = (sessionId, idleMs = 0) => {
-		const record = registry.create({ owner: "agent", sessionId });
-		record.lastUsedAt = state.now - idleMs;
+	const opts = {
+		registry,
+		resolver: {
+			read: (ids) => state.read(ids),
+			currentGeneration: () => state.current,
+		},
+		protected: (tab) =>
+			state.holds.has(tab.tabId) || ownership.isRetained(surfaceToken(tab)),
+		authProtection: ({ tabId }) => state.auth.get(tabId) ?? "non_auth",
+		onReclaimed: (tabs) => {
+			for (const tab of tabs) {
+				assert.equal(
+					registry.get(tab.tabId),
+					undefined,
+					"closed before observers run",
+				);
+				ownership.noteReclaimed(surfaceToken(tab));
+				ledgerReceipts.push(tab.tabId);
+			}
+		},
+		now: () => state.now,
+	};
+	const tab = (id = "target", extra = {}) => {
+		const record = registry.create({ owner: "agent", sessionId: id, ...extra });
+		record.lastUsedAt = state.now - RECLAIM_QUIET_MS;
 		return record;
 	};
-	return { registry, reaper, state, reaped, removed, agentTab };
+	return {
+		state,
+		registry,
+		ownership,
+		removed,
+		ledgerReceipts,
+		opts,
+		reaper: new TabReaper(opts),
+		tab,
+	};
 }
 
-test("an idle agent tab is reaped by the sweep at the threshold, not before", async () => {
-	const { reaper, reaped, agentTab } = makeRig();
-	const stale = agentTab("a", AGENT_TAB_IDLE_REAP_MS);
-	agentTab("b", AGENT_TAB_IDLE_REAP_MS - MIN);
-	assert.equal(await reaper.sweep(), 1);
-	assert.deepEqual(reaped, [{ tabId: stale.tabId, reason: "idle" }]);
-});
-
-test("a tab whose session is cold on consecutive roster reads is reaped; absent or unknown is not", async () => {
-	const { reaper, reaped, state, agentTab } = makeRig();
-	const ended = agentTab("ended");
-	agentTab("absent"); // not on the roster: a subagent, say — unknown, not ended
-	agentTab("old-daemon"); // live_state not published
-	agentTab("live");
-	state.roster = [
-		{ sessionId: "ended", liveState: "" },
-		{ sessionId: "old-daemon", liveState: null },
-		{ sessionId: "live", liveState: "idle" },
-	];
-	for (let read = 1; read < ENDED_SESSION_CONFIRMATIONS; read += 1) {
-		assert.equal(await reaper.sweep(), 0, "one cold read is not enough");
-	}
-	// An unreadable roster neither confirms nor resets the streak.
-	state.roster = null;
+test("R1: select a descendant and the opener and complete graph survive; only a fully qualified graph closes", async () => {
+	const { tab, registry, reaper, state, removed, ledgerReceipts } = rig();
+	const parent = tab();
+	const child = tab("target", { openedByTab: parent.tabId });
+	const grandchild = tab("target", { openedByTab: child.tabId });
+	const user = tab("viewer", { owner: "user" });
+	registry.activate(grandchild.tabId);
 	assert.equal(await reaper.sweep(), 0);
-	state.roster = [
-		{ sessionId: "ended", liveState: "" },
-		{ sessionId: "old-daemon", liveState: null },
-		{ sessionId: "live", liveState: "idle" },
-	];
-	assert.equal(await reaper.sweep(), 1);
-	assert.deepEqual(reaped, [{ tabId: ended.tabId, reason: "session_ended" }]);
-});
-
-test("a runtime coming back between reads resets the cold streak", async () => {
-	const { reaper, state, agentTab } = makeRig();
-	agentTab("flappy");
-	state.roster = [{ sessionId: "flappy", liveState: "" }];
-	await reaper.sweep();
-	state.roster = [{ sessionId: "flappy", liveState: "busy" }];
-	await reaper.sweep();
-	state.roster = [{ sessionId: "flappy", liveState: "" }];
+	registry.activate(user.tabId);
+	state.now = grandchild.lastHumanUseAt + RECLAIM_QUIET_MS;
+	state.holds.add(grandchild.tabId);
 	assert.equal(await reaper.sweep(), 0);
-});
-
-test("never reaped: user tabs, a user's handed-over tab, the active tab, custody, held popup, busy lane, recording, awaiting approval", async () => {
-	const { registry, reaper, state, reaped, agentTab } = makeRig({
-		roster: [],
+	state.holds.clear();
+	const handle = surfaceToken(parent);
+	assert.equal(await reaper.sweep(), 3);
+	assert.deepEqual(
+		removed,
+		[parent, child, grandchild].map(({ tabId }) => ({ tabId, cascade: false })),
+	);
+	assert.deepEqual(
+		ledgerReceipts,
+		removed.map(({ tabId }) => tabId),
+	);
+	assert.throws(() => registry.requireSurface(handle), {
+		code: "tab_closed",
+		data: { reason: "reaped_session_ended" },
 	});
-	const old = AGENT_TAB_IDLE_REAP_MS * 10;
-	const user = registry.create({ owner: "user" });
-	user.lastUsedAt = state.now - old;
-	const handed = registry.create({ owner: "user", activate: false });
-	registry.handOver(handed.tabId, "session:h");
-	handed.lastUsedAt = state.now - old;
-	const active = agentTab("s1", old);
-	registry.activate(active.tabId);
-	active.lastUsedAt = state.now - old; // activation stamps; undo to test the guard itself
-	const custody = agentTab("s2", old);
-	state.custody.add(custody.tabId);
-	const popup = agentTab("s3", old);
-	state.engaged.add(popup.tabId);
-	const recording = agentTab("s4", old);
-	state.recording.add(recording.tabId);
-	agentTab("s5", old);
-	state.awaiting.add("s5");
-	const busy = agentTab("s6", old);
-	let release;
-	const inFlight = registry.lane(
-		busy.tabId,
+	assert.throws(
 		() =>
-			new Promise((resolve) => {
-				release = resolve;
-			}),
+			registry.requireSurface(
+				`${handle.slice(0, -1)}${handle.endsWith("z") ? "y" : "z"}`,
+			),
+		{ code: "tab_closed", data: { reason: "unknown_handle" } },
 	);
-	busy.lastUsedAt = state.now - old;
-	assert.equal(await reaper.sweep(), 0);
-	assert.deepEqual(reaped, []);
-	// The busy tab's own command finishing restarts its clock: still not reaped.
-	release();
-	await inFlight;
-	assert.equal(await reaper.sweep(), 0);
-	// Session-ended does not override a protection either.
-	state.roster = [{ sessionId: "s2", liveState: "" }];
-	await reaper.sweep();
-	assert.equal(await reaper.sweep(), 0);
-	assert.equal(registry.count(), 8);
 });
 
-test("at the cap the least-recently-used evictable tab is evicted and the open succeeds", () => {
-	const { registry, reaped, state, agentTab } = makeRig();
-	const tabs = [];
-	for (let index = 0; index < MAX_AGENT_TABS; index += 1)
-		tabs.push(agentTab(`s${index}`, EVICTION_IDLE_FLOOR_MS + index * MIN));
-	// The stalest is protected (the user is looking at it): the next one goes.
-	const stalest = tabs.at(-1);
-	state.engaged.add(stalest.tabId);
-	const fresh = registry.create({ owner: "agent", sessionId: "newcomer" });
-	assert.ok(fresh.nonce);
-	assert.deepEqual(reaped, [{ tabId: tabs.at(-2).tabId, reason: "evicted" }]);
-	assert.equal(registry.agentTabCount(), MAX_AGENT_TABS);
+test("R2: failed, delayed and changed observations never authorize close, even after a confirmed held read", async () => {
+	const { tab, registry, reaper, state } = rig();
+	const record = tab();
+	state.holds.add(record.tabId);
+	assert.equal(await reaper.sweep(), 0);
+	state.holds.clear();
+	state.read = async () => {
+		throw new Error("daemon unavailable");
+	};
+	assert.equal(await reaper.sweep(), 0);
+	const delayed = Promise.withResolvers();
+	const started = Promise.withResolvers();
+	let calls = 0;
+	state.read = async () => {
+		if (++calls === 1) return response("target");
+		started.resolve();
+		return delayed.promise;
+	};
+	const sweep = reaper.sweep();
+	await started.promise;
+	await registry.lane(record.tabId, async () => {});
+	state.now = record.lastUsedAt + RECLAIM_QUIET_MS;
+	delayed.resolve(response("target"));
+	assert.equal(await sweep, 0, "activity epoch, not just timestamp, changed");
+	state.read = async () => response("target");
+	state.current = "b".repeat(64);
+	assert.equal(await reaper.sweep(), 0);
+	state.current = null;
+	assert.equal(
+		await reaper.sweep(),
+		0,
+		"stable repeated HTTP answers aren't a mutation fence",
+	);
 });
 
-test("at the cap with nothing evictable the open is refused, naming the holders", () => {
-	const { registry, reaped, agentTab } = makeRig();
-	for (let index = 0; index < MAX_AGENT_TABS; index += 1)
-		agentTab(index < 5 ? "busy-a" : "busy-b", EVICTION_IDLE_FLOOR_MS - MIN);
-	assert.throws(
-		() => registry.create({ owner: "agent", sessionId: "newcomer" }),
-		(error) => {
-			assert.equal(error.code, "tab_limit");
-			assert.match(error.message, BUSY_A);
-			assert.match(error.message, BUSY_B);
-			assert.deepEqual(
-				error.data.holders.map((holder) => [holder.session, holder.tabs]),
-				[
-					["busy-a", 5],
-					["busy-b", 3],
-				],
-			);
-			return true;
+test("R2: reject changed nonce, navigation and ownership scope while reading", async () => {
+	for (const mutate of [
+		async (record) => {
+			record.nonce = "changed";
 		},
-	);
-	assert.deepEqual(reaped, []);
+		async (record) => {
+			record.documentEpoch++;
+		},
+		async (_record, registry) => registry.withReclaimBarrier(async () => {}),
+	]) {
+		const { tab, registry, reaper, state } = rig();
+		const record = tab();
+		let calls = 0;
+		state.read = async () => {
+			if (++calls === 2) await mutate(record, registry);
+			return response("target");
+		};
+		assert.equal(await reaper.sweep(), 0);
+	}
 });
 
-test("an ended session's tab is evicted ahead of an older live one", async () => {
-	const { registry, reaper, reaped, state, agentTab } = makeRig();
-	for (let index = 0; index < MAX_AGENT_TABS - 1; index += 1)
-		agentTab(`live${index}`, EVICTION_IDLE_FLOOR_MS + 20 * MIN);
-	const ended = agentTab("gone", 0);
-	state.roster = [{ sessionId: "gone", liveState: "" }];
-	// Confirm without letting the sweep itself reap it: protect, sweep, unprotect.
-	state.engaged.add(ended.tabId);
-	for (let read = 0; read < ENDED_SESSION_CONFIRMATIONS; read += 1)
-		await reaper.sweep();
-	state.engaged.delete(ended.tabId);
-	registry.create({ owner: "agent", sessionId: "newcomer" });
-	assert.deepEqual(reaped, [{ tabId: ended.tabId, reason: "evicted" }]);
+test("R3/Q2: real dispatch holds both fresh and resumed opens across paused CDP attach", async () => {
+	for (const resume of [false, true]) {
+		const { tab, registry, reaper, ownership, state } = rig();
+		const entered = Promise.withResolvers();
+		const release = Promise.withResolvers();
+		const host = new BrowserHost({
+			registry,
+			ownership,
+			cdp: {
+				attach: async () => {
+					entered.resolve();
+					await release.promise;
+				},
+			},
+			approvals: {
+				originAllowed: () => true,
+				documentAllowed: () => true,
+				approvedUrl: () => true,
+				accessFor: () => ({ allowed: true }),
+				rememberDocument() {},
+			},
+			onChanged() {},
+			log() {},
+		});
+		const existing = resume ? tab() : null;
+		const open = host.dispatch(
+			"open",
+			{
+				requester: "session:target",
+				...(existing ? { tab: surfaceToken(existing) } : {}),
+			},
+			"synthetic-open",
+		);
+		try {
+			await Promise.race([
+				entered.promise,
+				open.then(() => {
+					throw new Error("open skipped attach");
+				}),
+			]);
+			const record = registry.list()[0];
+			state.now = record.lastUsedAt + RECLAIM_QUIET_MS;
+			assert.equal(await reaper.sweep(), 0);
+			assert.equal(registry.get(record.tabId), record);
+		} finally {
+			release.resolve();
+			const result = await open;
+			assert.ok(registry.requireSurface(result.tab));
+		}
+	}
 });
 
-test("the reaped tab's owner gets a typed reason on its stale handle; a guessed handle does not", async () => {
-	const { registry, reaper, agentTab } = makeRig();
-	const stale = agentTab("a", AGENT_TAB_IDLE_REAP_MS);
-	const token = surfaceToken(stale);
-	await reaper.sweep();
-	assert.throws(
-		() => registry.requireSurface(token),
-		(error) =>
-			error.code === "tab_closed" &&
-			error.data.reason === "reaped_idle" &&
-			IDLE_COPY.test(error.message),
+test("R4/Q1: selected dwell, switch away, switch back and native input refresh protection", async (t) => {
+	t.mock.timers.enable({ apis: ["Date"] });
+	const { tab, registry, reaper, state } = rig();
+	const selected = tab();
+	registry.activate(selected.tabId);
+	state.now += RECLAIM_QUIET_MS + 1;
+	t.mock.timers.setTime(state.now);
+	assert.equal(await reaper.sweep(), 0);
+	const user = tab("user", { owner: "user" }); // user creation also changes selection
+	assert.equal(selected.lastHumanUseAt, Date.now());
+	state.now = Date.now() + RECLAIM_QUIET_MS - 1;
+	assert.equal(await reaper.sweep(), 0);
+	registry.activate(selected.tabId);
+	assert.equal(await reaper.sweep(), 0);
+	registry.activate(user.tabId);
+	registry.notePossibleHumanUse(selected.tabId);
+	assert.equal(selected.lastHumanUseAt, Date.now());
+	state.now = Date.now() + RECLAIM_QUIET_MS - 1;
+	assert.equal(await reaper.sweep(), 0);
+});
+
+test("R5: page-driven allocations and explicit opens both refuse at eight while reclaim is unconfigured", async () => {
+	const { registry, tab, ownership, opts } = rig();
+	const records = Array.from({ length: MAX_AGENT_TABS }, (_, i) =>
+		tab(`target-${i}`),
 	);
-	assert.throws(
-		() => registry.requireSurface(`ui:${stale.tabId}:${"f".repeat(32)}`),
-		(error) =>
-			error.code === "tab_closed" && error.data.reason === "unknown_handle",
+	const reaper = new TabReaper({ ...opts, resolver: undefined });
+	assert.equal(await reaper.sweep(), 0);
+	assert.throws(() => tab("target-0", { openedByTab: records[0].tabId }), {
+		code: "tab_limit",
+	});
+	const host = new BrowserHost({ registry, ownership, approvals: {} });
+	await assert.rejects(
+		host.dispatch("open", { requester: "session:newcomer" }, "synthetic-cap"),
+		{ code: "tab_limit" },
+	);
+	assert.deepEqual(registry.list(), records);
+});
+
+test("fail closed for unknown auth, prompt, approval, retain, unknown/live owner and human ancestry", async () => {
+	const { registry, tab, reaper, state, opts } = rig();
+	const record = tab();
+	for (const auth of ["unknown", "auth", "pending_prompt"]) {
+		state.auth.set(record.tabId, auth);
+		assert.equal(await reaper.sweep(), 0);
+	}
+	state.auth.clear();
+	state.holds.add(record.tabId); // approval/custody/recording are host-owned protection inputs
+	assert.equal(await reaper.sweep(), 0);
+	state.holds.clear();
+	for (const verdict of [
+		null,
+		{ owners: [] },
+		{ owners: [ended("target"), ended("target")] },
+		...[
+			["verdict", "live"],
+			["verdict", "unknown"],
+			["retained", true],
+			["retained", null],
+			["turn", "unknown"],
+			["turn", "awaiting_user"],
+			["provenance", "none"],
+			["generation", "invalid"],
+		].map(([key, value]) => ({
+			owners: [{ ...ended("target"), [key]: value }],
+		})),
+	]) {
+		state.read = async () => verdict;
+		assert.equal(await reaper.sweep(), 0);
+	}
+	state.read = async (ids) => response(...ids);
+	for (const guard of ["humanOrigin", "adopted", "restored"]) {
+		record[guard] = true;
+		assert.equal(await reaper.sweep(), 0);
+		record[guard] = false;
+	}
+	const user = registry.create({ owner: "user" });
+	record.openedByTab = user.tabId;
+	assert.equal(await reaper.sweep(), 0);
+	assert.equal(
+		await new TabReaper({ ...opts, authProtection: undefined }).sweep(),
+		0,
 	);
 });
 
-test("an evicted tab's owner is told it was evicted for room", () => {
-	const { registry, agentTab } = makeRig();
-	const tabs = [];
-	for (let index = 0; index < MAX_AGENT_TABS; index += 1)
-		tabs.push(agentTab(`s${index}`, EVICTION_IDLE_FLOOR_MS + index * MIN));
-	const token = surfaceToken(tabs.at(-1));
-	registry.create({ owner: "agent", sessionId: "newcomer" });
-	assert.throws(
-		() => registry.requireSurface(token),
-		(error) =>
-			error.code === "tab_closed" &&
-			error.data.reason === "reaped_evicted" &&
-			EVICTED_COPY.test(error.message),
+test("proof-gated retain beats an ended verdict and reclaim leaves an owner-only receipt", async () => {
+	const { tab, registry, reaper, ownership } = rig();
+	const identity = {
+		requester: "session:target",
+		owner_proof: "synthetic-proof-".repeat(3),
+		owner_generation: "synthetic-generation",
+		allocation_id: "synthetic-allocation",
+	};
+	const record = tab("target", { allocationId: identity.allocation_id });
+	const handle = surfaceToken(record);
+	await ownership.withOwnership("open", identity, async () => {
+		ownership.recordAllocation(identity, handle, "allocated");
+		return { tab: handle };
+	});
+	const host = new BrowserHost({ registry, ownership });
+	await host.dispatch(
+		"owner_retain",
+		{ ...identity, reason: "synthetic hold" },
+		"retain",
 	);
+	assert.equal(await reaper.sweep(), 0);
+	await host.dispatch("owner_release", identity, "release");
+	assert.equal(await reaper.sweep(), 1);
+	const receipt = await host.dispatch("owner_recover", identity, "recover");
+	assert.equal(receipt.state, "reaped_session_ended");
+	assert.equal(receipt.tab, "");
+	const other = await host.dispatch(
+		"owner_recover",
+		{
+			...identity,
+			requester: "session:other",
+			owner_proof: "different-synthetic-proof-".repeat(2),
+		},
+		"other-owner",
+	);
+	assert.deepEqual(other, { ownership_version: 1, state: "unresolved" });
 });

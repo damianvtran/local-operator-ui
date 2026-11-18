@@ -226,9 +226,15 @@ export class OwnershipLedger {
 					["allocating", "allocated", "cleanup_pending"].includes(
 						allocation.state,
 					);
+				const reclaimed = allocation?.state === "reaped_session_ended";
 				return {
 					ownership_version: 1,
-					state: live ? allocation.state : unresolved ? "allocating" : "closed",
+					state:
+						live || reclaimed
+							? allocation.state
+							: unresolved
+								? "allocating"
+								: "closed",
 					tab: live ? (allocation.tab ?? "") : "",
 					retention: scope.retention ?? "",
 					terminal: scope.terminal ?? "",
@@ -435,6 +441,20 @@ export class OwnershipLedger {
 			}
 		}
 		return undefined;
+	}
+
+	isRetained(token: string): boolean {
+		return Boolean(this.scopeOwning(token)?.retention);
+	}
+
+	/** Keep recovery attached to the target's ledger; never transfer authority
+	 * or expose the capability to whoever might next need a slot. */
+	noteReclaimed(token: string): void {
+		const scope = this.scopeOwning(token);
+		if (!scope) return;
+		for (const allocation of Object.values(scope.allocations)) {
+			if (allocation.tab === token) allocation.state = "reaped_session_ended";
+		}
 	}
 
 	private tokenHasAllocation(token: string): boolean {

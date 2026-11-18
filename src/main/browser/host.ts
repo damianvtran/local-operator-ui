@@ -637,6 +637,11 @@ export class BrowserHost implements BrowserActionContext {
 			this.ownership.withOwnership(method, params, () =>
 				this.authorizedPerform(method, params, requestId),
 			);
+		// Open can await before it has a tab lane (new or resumed); the owner
+		// methods can change holds and generations without touching any tab.
+		if (method === "open" || method.startsWith("owner_"))
+			return this.registry.withReclaimBarrier(run);
+
 		if (
 			TAB_SCOPED.has(method) &&
 			typeof params.tab === "string" &&

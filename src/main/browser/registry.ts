@@ -9,7 +9,6 @@ import {
 	trackInternalPages,
 } from "./internal-pages";
 import type { PersistedTab } from "./session-store";
-import { AGENT_TAB_IDLE_REAP_MS, EVICTION_IDLE_FLOOR_MS } from "./tab-reaper";
 import type { SnapshotRef } from "./vendor/driver/ax-compact";
 
 /**
@@ -141,6 +140,11 @@ export interface TabRecord {
 	restoreRow?: PersistedTab;
 	createdAt: number;
 	lastUsedAt: number;
+	/** Human exposure and native input are independent of agent command recency. */
+	lastHumanUseAt: number | null;
+	activityEpoch: number;
+	humanOrigin: boolean;
+	adopted: boolean;
 	/** The navigation epoch refs are stamped with, and the current ref table for
 	 * this tab. Per-TAB, not global: one tab's snapshot must never supply
 	 * another tab's click target (the extension's `state.ts` keeps refs per
@@ -187,19 +191,11 @@ export interface TabRef extends SnapshotRef {
  * spawn them from a link tab at all. Design 6.5's "a user opening a dozen tabs is
  * their business" is about acts the USER takes; a page's loop is not one.
  *
- * STILL 8, RE-CHECKED 2026-11-17 when the reaper (`tab-reaper.ts`) arrived. The
- * cap's old second job — bounding tabs leaked by ended sessions — is now the
- * reaper's, so what the number bounds is CONCURRENT use. Demand, from 60 days of
- * this machine's lop transcripts (11,697 `browser` calls, every host): at most 7
- * distinct sessions used a browser within any 10-minute window (the eviction
- * floor), and 12 within any 45-minute window. 8 covers the active peak; the
- * 45-minute figure is what eviction now absorbs instead of refusing. Memory is
- * not what binds: renderer RSS sampled on this 36 GB machine had a median of
- * 14 MB (n=22 app renderer processes, max 737 MB), so even eight heavy pages are
- * a few GB. Raise it if the 10-minute peak reaches the cap. */
+ * Keep the cap at eight until per-tab renderer RSS and real-path behavior
+ * have been measured at the proposed higher cap. */
 export const MAX_AGENT_TABS = 8;
 
-/** How many reaped-tab tombstones `requireSurface` remembers. Two fleets' worth
+/** How many reaped-tab tombstones `requireSurface` remembers. A bounded multiple
  * of the cap: enough that an agent coming back after a long wait still hears
  * why, small enough that the map is never a leak of its own. */
 const REAPED_TOMBSTONE_CAP = MAX_AGENT_TABS * 8;
@@ -207,13 +203,8 @@ const REAPED_TOMBSTONE_CAP = MAX_AGENT_TABS * 8;
 /** What the owner of a reaped tab is told on its next use of the handle. The
  * code stays `tab_closed` (the session's recovery is unchanged: drop the handle,
  * `open` again); the sentence and `data.reason` say why. */
-const REAPED_MESSAGES = {
-	idle: `that browser tab was closed by the host after ${AGENT_TAB_IDLE_REAP_MS / 60_000} minutes with no agent action, to free a tab slot for other sessions; dropped the handle. Use 'open' with a URL to get a new tab`,
-	session_ended:
-		"that browser tab was closed by the host because the session that opened it ended; dropped the handle. Use 'open' with a URL to get a new tab",
-	evicted:
-		"that browser tab was closed by the host to make room for another session's tab (the host was at its agent-tab limit and this one had been idle longest); dropped the handle. Use 'open' with a URL to get a new tab",
-};
+const REAPED_MESSAGE =
+	"that browser tab was closed by the host because the session that opened it ended; dropped the handle. Use 'open' with a URL to get a new tab";
 
 /** Background rendering must not depend on a foreground route's measurement.
  * The fleet cap and bounded viewport bound raster memory without activating views. */
@@ -381,7 +372,11 @@ export class TabRegistry {
 			options: CreateTabOptions,
 			tabId: number,
 		) => DriveableView,
-		private readonly onRemove: (tabId: number, webContentsId: number) => void,
+		private readonly onRemove: (
+			tabId: number,
+			webContentsId: number,
+			cascade?: false,
+		) => void,
 		private readonly onChanged: () => void,
 		private readonly onLayout: (snapshot: LayoutSnapshot) => void = () => {},
 		// Native attachment follows the same presentation decision as visibility.
@@ -461,6 +456,10 @@ export class TabRegistry {
 			restoreRow: options.restoreRow,
 			createdAt: Date.now(),
 			lastUsedAt: Date.now(),
+			lastHumanUseAt: null,
+			activityEpoch: 0,
+			humanOrigin: options.owner === "user" || restored,
+			adopted: false,
 			epoch: 0,
 			documentEpoch: 0,
 			presented: false,
@@ -476,7 +475,7 @@ export class TabRegistry {
 		// agent's background tab silently became the presented one and every other tab
 		// kept zero layout. The layout pass below reads this to decide presentation.
 		if (record.owner === "user" && options.activate !== false)
-			this.activeTabId = tabId;
+			this.selectForPresentation(tabId);
 		this.applyLayout();
 		this.onChanged();
 		return record;
@@ -490,15 +489,6 @@ export class TabRegistry {
 	 * reported by `status` and the cap enforced on `open` disagreeing (N3). */
 	private assertAgentCapacity(): void {
 		if (this.agentTabCount() < MAX_AGENT_TABS) return;
-		// At the cap, make room by evicting the stalest reapable agent tab rather
-		// than refusing (operator report 2026-11-17: eight stale login tabs from
-		// ended sessions blocked a live one). The policy — what is evictable and
-		// which goes first — is `tab-reaper.ts`'s; the registry only asks.
-		if (this.capacityEvictor?.() && this.agentTabCount() < MAX_AGENT_TABS)
-			return;
-		// Nothing evictable: every tab is in use or recently used. Say WHO holds
-		// them, so the refused session (or the operator reading its transcript) can
-		// tell a real fleet from a leak instead of a bare "close one first".
 		const holders = new Map<string, { tabs: number; idleMin: number }>();
 		const now = Date.now();
 		for (const record of this.tabs.values()) {
@@ -518,7 +508,7 @@ export class TabRegistry {
 			.join(", ");
 		throw new BrowserHostError(
 			"tab_limit",
-			`this host is already driving ${MAX_AGENT_TABS} agent tabs, all in use or used recently, so none could be closed to make room. Held by: ${named}. Close one of your own tabs, or retry once one has been idle ${EVICTION_IDLE_FLOOR_MS / 60_000} minutes`,
+			`this host is already driving ${MAX_AGENT_TABS} agent tabs. Held by: ${named}. Close one of your own tabs to free a slot`,
 			{
 				limit: MAX_AGENT_TABS,
 				holders: [...holders].map(([session, held]) => ({
@@ -528,15 +518,6 @@ export class TabRegistry {
 				})),
 			},
 		);
-	}
-
-	/** Installed by the host wiring (`tab-reaper.ts` `evictForCapacity`): close
-	 * one evictable agent tab and answer true, or answer false. Null evicts
-	 * nothing, which is the pre-reaper behaviour every bare registry keeps. */
-	private capacityEvictor: (() => boolean) | null = null;
-
-	setCapacityEvictor(evictor: (() => boolean) | null): void {
-		this.capacityEvictor = evictor;
 	}
 
 	/** Whether a command is in flight on this tab (`lane`). The reaper must never
@@ -552,24 +533,52 @@ export class TabRegistry {
 	 * a guessed handle still gets the indistinguishable `unknown_handle`. Bounded,
 	 * oldest dropped first — a tombstone is a courtesy, not state.
 	 */
-	private readonly reaped = new Map<
-		number,
-		{ nonce: string; reason: "idle" | "session_ended" | "evicted" }
-	>();
+	private readonly reaped = new Map<number, string>();
 
-	/** Close an agent tab on the reaper's behalf, leaving a tombstone. */
-	reap(tabId: number, reason: "idle" | "session_ended" | "evicted"): void {
-		const record = this.tabs.get(tabId);
-		if (!record) return;
-		if (record.nonce) {
-			this.reaped.set(tabId, { nonce: record.nonce, reason });
-			while (this.reaped.size > REAPED_TOMBSTONE_CAP) {
-				const oldest = this.reaped.keys().next().value;
-				if (oldest === undefined) break;
-				this.reaped.delete(oldest);
-			}
+	/** The caller supplies the single synchronous policy check. No view/observer
+	 * callbacks may run between that check and dropping the whole approved set. */
+	reclaimEnded(
+		check: () => readonly TabRecord[] | null,
+		onReclaimed?: (records: readonly TabRecord[]) => void,
+	): number {
+		const allowed = check();
+		if (!allowed?.length) return 0;
+		for (const record of allowed) {
+			if (record.nonce) this.reaped.set(record.tabId, record.nonce);
+			this.drop(record.tabId);
 		}
-		this.destroy(tabId);
+		while (this.reaped.size > REAPED_TOMBSTONE_CAP) {
+			const oldest = this.reaped.keys().next().value;
+			if (oldest === undefined) break;
+			this.reaped.delete(oldest);
+		}
+		onReclaimed?.(allowed);
+		this.applyLayout();
+		this.onChanged();
+		// releaseTab must not discover new children after observers have run.
+		for (const record of allowed)
+			this.onRemove(record.tabId, record.view.webContents.id, false);
+		return allowed.length;
+	}
+
+	private reclaimBarrierEpoch = 0;
+	private reclaimBarriers = 0;
+
+	/** Acquired before ownership/allocate work; includes the period before a new
+	 * tab exists. Completion also invalidates evidence read during the operation. */
+	async withReclaimBarrier<T>(run: () => Promise<T>): Promise<T> {
+		this.reclaimBarriers++;
+		this.reclaimBarrierEpoch++;
+		try {
+			return await run();
+		} finally {
+			this.reclaimBarrierEpoch++;
+			this.reclaimBarriers--;
+		}
+	}
+
+	reclaimEpoch(): number | null {
+		return this.reclaimBarriers > 0 ? null : this.reclaimBarrierEpoch;
 	}
 
 	/** How many open tabs were spawned by a link on `tabId` — the per-opener
@@ -707,12 +716,10 @@ export class TabRegistry {
 		}
 		const record = this.tabs.get(parsed.tabId);
 		const tombstone = record ? undefined : this.reaped.get(parsed.tabId);
-		if (tombstone && tombstone.nonce === parsed.nonce) {
-			throw new BrowserHostError(
-				"tab_closed",
-				REAPED_MESSAGES[tombstone.reason],
-				{ reason: `reaped_${tombstone.reason}` },
-			);
+		if (tombstone === parsed.nonce) {
+			throw new BrowserHostError("tab_closed", REAPED_MESSAGE, {
+				reason: "reaped_session_ended",
+			});
 		}
 		if (!record || !record.nonce || record.nonce !== parsed.nonce) {
 			throw new BrowserHostError(
@@ -770,12 +777,13 @@ export class TabRegistry {
 
 	private stamp(tabId: number): void {
 		const record = this.tabs.get(tabId);
-		if (record) record.lastUsedAt = Date.now();
+		if (record) this.touch(record);
 	}
 
 	/** Touch a tab driven by an agent, so `tabs` can order by recency. */
 	touch(record: TabRecord): void {
 		record.lastUsedAt = Date.now();
+		record.activityEpoch++;
 	}
 
 	// ---- hand-over (design 6.3) ---------------------------------------------
@@ -810,6 +818,7 @@ export class TabRegistry {
 		// handed on stays an agent's tab in the row it writes (round 1, m-2 — the
 		// capture keys on this, not on `handedTo`).
 		if (record.handedFrom === null) record.handedFrom = record.owner;
+		record.humanOrigin = true;
 		record.owner = "agent";
 		// `sessionId` moves to the session that now drives the tab; `homeSessionId` does
 		// NOT, and deliberately: a hand-over changes who may drive a tab, not the
@@ -993,12 +1002,25 @@ export class TabRegistry {
 
 	activate(tabId: number): void {
 		if (!this.tabs.has(tabId)) return;
-		// A person looking at a tab is using it: restart its idle clock so the
-		// reaper does not close it the moment they switch away.
-		this.stamp(tabId);
-		this.activeTabId = tabId;
+		this.selectForPresentation(tabId);
 		this.applyLayout();
 		this.onChanged();
+	}
+
+	/** Native input may be human. Treat ambiguous attribution as protected too,
+	 * rather than discarding activity based on a CDP/busy heuristic. */
+	notePossibleHumanUse(tabId: number): void {
+		const record = this.tabs.get(tabId);
+		if (!record) return;
+		record.lastHumanUseAt = Date.now();
+		record.activityEpoch++;
+	}
+
+	private selectForPresentation(tabId: number | null): void {
+		if (tabId === this.activeTabId) return;
+		if (this.activeTabId !== null) this.notePossibleHumanUse(this.activeTabId);
+		this.activeTabId = tabId;
+		if (tabId !== null) this.notePossibleHumanUse(tabId);
 	}
 
 	private applyLayout(): void {
@@ -1011,7 +1033,10 @@ export class TabRegistry {
 			this.activeTabId === null ? null : this.tabs.get(this.activeTabId);
 		for (const record of this.tabs.values()) {
 			const isActive = record === active;
-			record.presented = isActive && this.visible && this.contentRect !== null;
+			const presented = isActive && this.visible && this.contentRect !== null;
+			if (record.presented !== presented)
+				this.notePossibleHumanUse(record.tabId);
+			record.presented = presented;
 			record.view.setBounds(
 				isActive && this.contentRect ? this.contentRect : BACKGROUND_VIEWPORT,
 			);
@@ -1067,10 +1092,11 @@ export class TabRegistry {
 			// filter narrows it to the tabs that may hold presentation at all; with no
 			// user tab left nothing is presented and every agent tab stays a bounded
 			// background view.
-			this.activeTabId =
+			this.selectForPresentation(
 				this.list()
 					.filter((candidate) => candidate.owner === "user")
-					.at(-1)?.tabId ?? null;
+					.at(-1)?.tabId ?? null,
+			);
 		}
 		return record;
 	}

@@ -91,6 +91,7 @@ export async function open(
 
 	if (handle) {
 		const record = ctx.registry.requireSurface(handle);
+		if (record.openedByTab !== null) record.adopted = true;
 		record.allocationId =
 			stringParam(params, "allocation_id") || record.allocationId;
 		if (!url) {

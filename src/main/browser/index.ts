@@ -180,8 +180,9 @@ import {
 	stateFilePath,
 } from "./state-file";
 import {
+	type OwnerStatusResolver,
 	REAP_SWEEP_INTERVAL_MS,
-	type RosterRow,
+	type TabAuthProtection,
 	TabReaper,
 } from "./tab-reaper";
 import {
@@ -255,14 +256,14 @@ export interface StartBrowserHostOptions {
 	 * consent banner when nobody is at the screen (design 11.4).
 	 */
 	windowShow: "focus" | "inactive" | "never";
-	/**
-	 * The daemon's session roster (`backend-service.ts` `servingSessionFleet`),
-	 * or null when it cannot be read. The agent-tab reaper reads it to close tabs
-	 * whose owning session's runtime is gone (`tab-reaper.ts`): the loopback RPC is
-	 * stateless, so this is the only session-ended signal the host has. Optional —
-	 * absent, only the idle rule reaps.
-	 */
-	readSessionRoster?: () => Promise<readonly RosterRow[] | null>;
+	/** Trusted main-process inputs only. Neither has a production provider yet;
+	 * without both, this host does not reclaim tabs. */
+	ownerStatusResolver?: OwnerStatusResolver;
+	tabAuthProtection?: (
+		record: Readonly<
+			Pick<TabRecord, "tabId" | "epoch" | "documentEpoch" | "allocationId">
+		>,
+	) => TabAuthProtection;
 	/**
 	 * The app's vetted door to the OS URL handlers (`openVettedExternal` bound to
 	 * `shell.openExternal`, in `src/main/index.ts`). Injected rather than imported
@@ -1656,15 +1657,21 @@ async function initializeBrowserHost(
 		 * per-tab ring buffer until host stop while the ordinary close released all
 		 * three (R5).
 		 */
-		function releaseTab(tabId: number, webContentsId: number): void {
+		function releaseTab(
+			tabId: number,
+			webContentsId: number,
+			cascade = true,
+		): void {
 			// A closed tab's hold ends with it; nothing is left to protect.
 			passkeyCustody.forget(webContentsId);
 			// Link tabs this tab's page opened die with it unless a session adopted
 			// them (R1-1): an agent's unadopted link tab is counted against
 			// MAX_AGENT_TABS and no scope will ever close it. `destroy` re-enters this
 			// function for each, so a chain of link tabs unwinds too.
-			for (const spawned of registry.unadoptedLinkTabs(tabId))
-				registry.destroy(spawned.tabId);
+			if (cascade) {
+				for (const spawned of registry.unadoptedLinkTabs(tabId))
+					registry.destroy(spawned.tabId);
+			}
 			// Before the page's own release: the overlay's child is bound to this tab's
 			// geometry, and a later explicit show must lazily create a fresh one.
 			addressOverlay?.onTabReleased(tabId);
@@ -1689,7 +1696,10 @@ async function initializeBrowserHost(
 				// session exactly like one the user handed it: without this, `tabs`
 				// lists the new tab and `open tab=<handle>` is refused with "tab does
 				// not belong to allocation". Another session still cannot claim it.
-				return sessionMayAdopt(registry.requireSurface(token), requester);
+				const record = registry.requireSurface(token);
+				if (!sessionMayAdopt(record, requester)) return false;
+				record.adopted = true;
+				return true;
 			},
 			// A scope ending closes the tabs it allocated; closing an opener closes its
 			// unadopted link tabs through `releaseTab`. This covers the opener that is
@@ -1755,41 +1765,51 @@ async function initializeBrowserHost(
 			},
 			log,
 		});
-		// Agent-tab reaper (`tab-reaper.ts` has the why): closes agent tabs whose
-		// session ended or that sat idle, and makes room at the cap by evicting the
-		// stalest. Every "a person or command is still using this" fact is read from
-		// the state that already owns it, so there is no second notion of busy.
-		const tabReaper = new TabReaper({
-			registry,
-			guards: {
-				userEngaged: (record) =>
-					registry.activeTab === record ||
-					heldPopups.entries().some((entry) => entry.tabId === record.tabId),
-				inCustody: (record) =>
-					passkeyCustody.isHeld(record.view.webContents.id),
-				busy: (record) => registry.isBusy(record.tabId),
-				recording: (record) => isRecordingTab(record.view.webContents.id),
-				sessionAwaitingUser: (sessionId) =>
-					approvals
-						.pendingEntries()
-						.some((entry) => sessionRequesterOf(entry.requester) === sessionId),
-			},
-			reap: (record, reason) => {
-				const token = surfaceToken(record);
-				if (token) approvals.forgetDocument(token);
-				registry.reap(record.tabId, reason);
-			},
-			readRoster: options.readSessionRoster,
-			log,
-		});
-		registry.setCapacityEvictor(() => tabReaper.evictForCapacity());
-		const tabReapTimer = setInterval(
-			() => void tabReaper.sweep().catch(() => {}),
-			REAP_SWEEP_INTERVAL_MS,
-		);
-		tabReapTimer.unref?.();
-		rollback.add(() => clearInterval(tabReapTimer));
-		stopTabReaper = () => clearInterval(tabReapTimer);
+		const { ownerStatusResolver, tabAuthProtection } = options;
+		if (ownerStatusResolver && tabAuthProtection) {
+			const tabReaper = new TabReaper({
+				registry,
+				resolver: ownerStatusResolver,
+				authProtection: tabAuthProtection,
+				protected: (record) => {
+					const token = surfaceToken(record);
+					return (
+						!token ||
+						ownership.isRetained(token) ||
+						heldPopups
+							.entries()
+							.some((entry) => entry.tabId === record.tabId) ||
+						passkeyCustody.isHeld(record.view.webContents.id) ||
+						isRecordingTab(record.view.webContents.id) ||
+						mediaPermissions.viewFor(record.tabId) !== null ||
+						approvals
+							.pendingEntries()
+							.some(
+								(entry) =>
+									sessionRequesterOf(entry.requester) === record.sessionId,
+							)
+					);
+				},
+				onReclaimed: (records) => {
+					for (const record of records) {
+						const token = surfaceToken(record);
+						if (!token) continue;
+						ownership.noteReclaimed(token);
+						approvals.forgetDocument(token);
+					}
+				},
+			});
+			const timer = setInterval(
+				() => void tabReaper.sweep().catch(() => {}),
+				REAP_SWEEP_INTERVAL_MS,
+			);
+			timer.unref?.();
+			stopTabReaper = () => {
+				tabReaper.stop();
+				clearInterval(timer);
+			};
+			rollback.add(stopTabReaper);
+		}
 		syncApprovalsOverlay = () => {
 			// The app icon uses this SAME expiry clock even without an overlay.
 			// No parallel timer/renderer lifetime or second approval model.
@@ -2613,6 +2633,7 @@ async function initializeBrowserHost(
 			 * and is not involved.
 			 */
 			contents.on("before-mouse-event", (_event, mouse) => {
+				registry.notePossibleHumanUse(tabId);
 				if (mouse.type === "mouseDown")
 					addressOverlay?.dismissForTab(tabId, "page_pointer");
 			});
@@ -2911,6 +2932,9 @@ async function initializeBrowserHost(
 			 * renderer.
 			 */
 			contents.on("before-input-event", (event, input) => {
+				// The native key hook sees human keys, unlike CDP injection (see
+				// address-overlay's input probe). Ambiguous events protect as well.
+				registry.notePossibleHumanUse(tabId);
 				const record = registry.get(tabId);
 				const owns =
 					record === registry.activeTab && record?.presented === true;
@@ -3048,7 +3072,7 @@ async function initializeBrowserHost(
 				// The same release the registry's own close performs. A view that is
 				// already destroyed makes the detach's own `try` a no-op and the child-view
 				// removal a no-op too, so this is safe to run on a death we did not ask for.
-				releaseTab(tabId, contents.id);
+				releaseTab(tabId, contents.id, !!record);
 			});
 		}
 
