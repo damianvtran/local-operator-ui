@@ -13666,8 +13666,11 @@ export type MessageParams = {
 	"ui.teamBridge.section.groups_add": undefined;
 	"ui.teamBridge.section.groups_empty": undefined;
 	"ui.teamBridge.section.groups_none": undefined;
+	"ui.teamBridge.sender.app_badge": undefined;
 	"ui.teamBridge.sender.unknown_agent": undefined;
+	"ui.teamBridge.sender.unknown_app": undefined;
 	"ui.teamBridge.sender.unknown_person": undefined;
+	"ui.teamBridge.sender.unknown_sender": undefined;
 	"ui.teamBridge.thread.empty": undefined;
 	"ui.teamBridge.thread.error": undefined;
 	"ui.teamBridge.thread.intro_chief": { name: string };

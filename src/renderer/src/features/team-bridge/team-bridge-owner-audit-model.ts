@@ -191,7 +191,8 @@ export function ownerAuditToBridgeMessage(
 		origin:
 			message.origin === "human" ||
 			message.origin === "agent" ||
-			message.origin === "system"
+			message.origin === "system" ||
+			message.origin === "integration"
 				? message.origin
 				: "system",
 		agent_label: message.agent_label ?? undefined,
@@ -203,9 +204,18 @@ export function ownerAuditToBridgeMessage(
 	};
 }
 
-/** `human` / `agent`, or null for a kind this build does not know. */
-export function ownerAuditSenderKind(kind: string): "human" | "agent" | null {
-	return kind === "human" || kind === "agent" ? kind : null;
+/**
+ * `human` / `agent` / `integration`, or null for a kind this build does not
+ * know. An integration app passes through as itself so the row draws it as an
+ * app (`teamBridgeSenderPresentation`); mapping it to `human` + the unknown
+ * marker would print an app's name in a person's slot.
+ */
+export function ownerAuditSenderKind(
+	kind: string,
+): "human" | "agent" | "integration" | null {
+	return kind === "human" || kind === "agent" || kind === "integration"
+		? kind
+		: null;
 }
 
 /**
@@ -247,5 +257,7 @@ export function ownerAuditSenderProfile(
 	people: readonly TeamBridgeDirectoryMember[],
 ): TeamBridgeDirectoryMember | undefined {
 	if (sender.audit_unknown_kind === true) return undefined;
+	// An app is never a directory member, whatever its id.
+	if (sender.kind !== "human" && sender.kind !== "agent") return undefined;
 	return people.find((row) => row.account_id === sender.account_id);
 }

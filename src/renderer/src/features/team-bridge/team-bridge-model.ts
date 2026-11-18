@@ -6,6 +6,7 @@ import type {
 	TeamBridgeMemberInput,
 	TeamBridgeMessage,
 	TeamBridgeNotify,
+	TeamBridgeSenderKind,
 	TeamBridgeTenantId,
 } from "../../../../shared/team-bridge-contract";
 import {
@@ -1669,6 +1670,35 @@ export function draftCreateInput(recipients: readonly TeamBridgeRecipient[]): {
  */
 export const LEGACY_PLACEHOLDER_LABEL = "Member";
 
+/**
+ * How a message row presents its author: a person, an agent, an integration
+ * APP, or an `unknown` sender this build cannot name.
+ *
+ * WHY BOTH FIELDS. The hub pins an app post as origin `integration` AND sender
+ * kind `integration` (agent-server #408), but the renderer must never draw a
+ * person for a row that EITHER field marks as an app - a contradictory row is
+ * read as the less trusted identity, not the more familiar one. Likewise a
+ * value the schema degraded to `unknown` in either field wins over a known
+ * kind in the other: the row then claims no identity at all (stored label,
+ * neutral glyph, no profile card, no DM). `system` keeps today's reading by
+ * sender kind, so nothing that rendered before changes.
+ */
+export type TeamBridgeSenderPresentation =
+	| "human"
+	| "agent"
+	| "app"
+	| "unknown";
+export function teamBridgeSenderPresentation(message: {
+	origin: TeamBridgeMessage["origin"];
+	sender: { kind: TeamBridgeSenderKind };
+}): TeamBridgeSenderPresentation {
+	if (message.origin === "integration" || message.sender.kind === "integration")
+		return "app";
+	if (message.origin === "unknown" || message.sender.kind === "unknown")
+		return "unknown";
+	return message.sender.kind;
+}
+
 /** A stored label, or null when it is blank or the legacy placeholder. */
 export function storedLabel(label: string): string | null {
 	const trimmed = label.trim();
@@ -1963,17 +1993,25 @@ export type TeamBridgeSelf = { accountId: string; name: string };
  * "Unknown agent" placeholder that is visibly not a name: inventing one here
  * is how "Member" reached the screen. `chiefLabel` is injected because the
  * composition is a catalogue string.
+ *
+ * APPS AND UNKNOWN KINDS NEVER TOUCH THE DIRECTORY. An integration app's
+ * account id is an app id, not a person's: it is named only by the label the
+ * hub stored from the app's admin-set name, so an app called "Damian" can
+ * never borrow Damian's directory name (or, downstream, his photo). A kind
+ * this build does not know claims nothing beyond its stored label either.
  */
 export function participantLabel(
 	participant: {
 		account_id: string;
-		kind: "human" | "agent";
+		kind: TeamBridgeSenderKind;
 		display_label: string;
 	},
 	people: readonly TeamBridgeDirectoryMember[],
 	chiefLabels: ChiefLabels,
 	self?: TeamBridgeSelf | null,
 ): string | null {
+	if (participant.kind !== "human" && participant.kind !== "agent")
+		return storedLabel(participant.display_label);
 	const person = people.find(
 		(row) => row.account_id === participant.account_id,
 	);

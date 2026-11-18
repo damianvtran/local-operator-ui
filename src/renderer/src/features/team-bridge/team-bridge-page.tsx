@@ -74,6 +74,7 @@ import type {
 	TeamBridgeMemberInput,
 	TeamBridgeMessage,
 	TeamBridgeNotify,
+	TeamBridgeSenderKind,
 } from "../../../../shared/team-bridge-contract";
 import { browserDraftStorage } from "../../shared/store/team-bridge-draft-account";
 import { rowCurrent } from "../chat/components/chat-sidebar";
@@ -1553,19 +1554,27 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const labelFor = (
 		participant: {
 			account_id: string;
-			kind: "human" | "agent";
+			kind: TeamBridgeSenderKind;
 			display_label: string;
 		},
 		tenantId: string,
 	) => participantLabel(participant, rosterFor(tenantId), chiefLabels, self);
+	/* A profile (photo, card, DM) belongs to a person or an agent only: an app
+	   or unknown sender kind resolves to none, whatever its id. */
 	const profileFor = (sender: TeamBridgeMessage["sender"], tenantId: string) =>
-		rosterFor(tenantId).find(
-			(member) => member.account_id === sender.account_id,
-		);
+		sender.kind === "human" || sender.kind === "agent"
+			? rosterFor(tenantId).find(
+					(member) => member.account_id === sender.account_id,
+				)
+			: undefined;
 	const messageTarget = (
 		sender: TeamBridgeMessage["sender"],
 		tenantId: string,
 	) => {
+		// Only a person or an agent has a DM to open: an integration app (or a
+		// sender kind this build does not know) is never a directory member, and
+		// must not resolve to one even if an id happened to match.
+		if (sender.kind !== "human" && sender.kind !== "agent") return null;
 		const member = profileFor(sender, tenantId);
 		if (
 			!identityKnown ||
@@ -7467,6 +7476,9 @@ export function profileMessageTarget(
 	readOnly: boolean,
 	mergedView = true,
 ): TeamBridgeTarget | null {
+	// An app or unknown kind has no person/chief target; "person" would be the
+	// wrong fallback (it would open a DM with whoever owns that id).
+	if (sender.kind !== "human" && sender.kind !== "agent") return null;
 	const next: TeamBridgeTarget = {
 		type: sender.kind === "agent" ? "chief" : "person",
 		accountId: sender.account_id,

@@ -1,7 +1,7 @@
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
-import { ChevronRight } from "lucide-react";
+import { Blocks, ChevronRight } from "lucide-react";
 import { formatDate, formatTime } from "../../../../i18n/format";
 import type {
 	TeamBridgeDirectoryMember,
@@ -210,6 +210,24 @@ function Facepile({
 		<span aria-hidden="true" className="flex shrink-0 -space-x-1.5">
 			{participants.map((participant, index) => {
 				const kind = participant.kind ?? "human";
+				const key = `${index}:${participant.accountId ?? participant.label}`;
+				/* An APP replier (an integration answering in its own thread) is
+				   never a directory member: no lookup, no photo, and no initial -
+				   an initial on this plate would read as a person. */
+				if (kind === "integration")
+					return (
+						<span
+							key={key}
+							data-thread-face="app"
+							className={cn(
+								"inline-flex size-5 shrink-0 items-center justify-center bg-media-surface text-ink-muted",
+								"relative rounded-full ring-2 ring-[var(--thread-row-ring)]",
+								PLATE_LAYER[index],
+							)}
+						>
+							<Blocks size={11} />
+						</span>
+					);
 				const resolved =
 					(participant.accountId &&
 						profileFor?.({
@@ -242,7 +260,6 @@ function Facepile({
 					"relative rounded-full text-[10px] ring-2 ring-[var(--thread-row-ring)]",
 					PLATE_LAYER[index],
 				);
-				const key = `${index}:${participant.accountId ?? participant.label}`;
 				return member ? (
 					<TeamBridgeAvatar
 						key={key}

@@ -1590,6 +1590,27 @@
 		"placeholders": {},
 		"note": "Shown as the author of an agent's message when the agent's name cannot be resolved. Must read as a placeholder, not as a name; rendered in muted italics. 'Agent' is an AI agent; use the glossary term."
 	},
+	"ui.teamBridge.sender.app_badge": {
+		"role": "badge beside a sender name",
+		"tone": "plain, neutral",
+		"length": "One short word; a small badge beside a name.",
+		"placeholders": {},
+		"note": "Small badge shown next to the name of an integration app (for example Datadog, Grafana or incident.io) that posted a message in a Team Bridge channel, so readers can tell software from a teammate. Means a software application, not a person; use the platform's usual short word for 'app'."
+	},
+	"ui.teamBridge.sender.unknown_app": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of a message posted by an integration app when the app's name is missing. Must read as a placeholder, not as a name; rendered in muted italics."
+	},
+	"ui.teamBridge.sender.unknown_sender": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of a message whose sender type this version of the app does not recognise (it may be a person, an agent or software). Must read as a placeholder, not as a name, and must not imply a person; rendered in muted italics."
+	},
 	"ui.teamBridge.reactions.add": {
 		"role": "reaction picker control or status",
 		"tone": "neutral, sentence case",

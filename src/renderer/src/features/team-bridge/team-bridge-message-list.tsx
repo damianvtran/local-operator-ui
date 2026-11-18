@@ -1,9 +1,10 @@
 import { Spinner } from "@shared/components/common/spinner";
+import { Badge } from "@shared/components/ui/badge";
 import { Skeleton } from "@shared/components/ui/skeleton";
 import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Bot, UserRound } from "lucide-react";
+import { Blocks, Bot, CircleHelp, UserRound } from "lucide-react";
 import {
 	Fragment,
 	useCallback,
@@ -47,6 +48,8 @@ import { TeamBridgeMessageToolbar } from "./team-bridge-message-toolbar";
 import {
 	type ThreadItem,
 	chronological,
+	storedLabel,
+	teamBridgeSenderPresentation,
 	threadItems,
 } from "./team-bridge-model";
 import {
@@ -1075,8 +1078,8 @@ type MessageRowProps = {
 const MessageRowView: FC<MessageRowProps> = ({
 	message,
 	continuation,
-	label: known,
-	member,
+	label: callerLabel,
+	member: callerMember,
 	profileFor,
 	onMessagePerson,
 	canMessagePerson,
@@ -1107,12 +1110,33 @@ const MessageRowView: FC<MessageRowProps> = ({
 		TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD &&
 		onReply !== undefined &&
 		!message.thread_root_id;
-	const agent = message.sender.kind === "agent";
+	/*
+	 * AN APP IS NOT A PERSON (Team Integrations RFC). A Datadog/Grafana/
+	 * incident.io post is named by its stored app name with an "App" badge,
+	 * drawn on a neutral plate, and has no profile card, photo or DM - so the
+	 * caller's directory answers (`label`, `member`) are ignored for it rather
+	 * than trusted to be absent. A sender kind or origin this build does not
+	 * know gets the same treatment with a neutral "unknown" glyph: claiming no
+	 * identity is the safe reading of one we cannot name. Reply-in-thread and
+	 * reactions stay: members (and their agents) triage an alert in its thread.
+	 */
+	const presentation = teamBridgeSenderPresentation(message);
+	const agent = presentation === "agent";
+	const app = presentation === "app";
+	const generic = app || presentation === "unknown";
+	const known = generic
+		? storedLabel(message.sender.display_label)
+		: callerLabel;
+	const member = generic ? undefined : callerMember;
 	const label =
 		known ??
-		(agent
-			? t("ui.teamBridge.sender.unknown_agent")
-			: t("ui.teamBridge.sender.unknown_person"));
+		(app
+			? t("ui.teamBridge.sender.unknown_app")
+			: presentation === "unknown"
+				? t("ui.teamBridge.sender.unknown_sender")
+				: agent
+					? t("ui.teamBridge.sender.unknown_agent")
+					: t("ui.teamBridge.sender.unknown_person"));
 	const at = new Date(message.created_at);
 	const valid = !Number.isNaN(at.getTime());
 	const clock = valid
@@ -1167,6 +1191,9 @@ const MessageRowView: FC<MessageRowProps> = ({
 	return (
 		<li
 			data-message-id={message.id}
+			/* Marked only on a non-person row, so a channel of people and agents
+			   keeps its markup byte-for-byte (owner-audit parity golden). */
+			data-sender-kind={generic ? presentation : undefined}
 			data-window-item={windowItem}
 			data-message-target={highlighted || undefined}
 			data-row-key={rowKey ?? message.id}
@@ -1232,7 +1259,13 @@ const MessageRowView: FC<MessageRowProps> = ({
 							<span
 								aria-hidden="true"
 								data-sender-avatar={
-									agent ? "agent" : known === null ? "unknown" : "initial"
+									agent
+										? "agent"
+										: app
+											? "app"
+											: known === null || generic
+												? "unknown"
+												: "initial"
 								}
 								className={cn(
 									/* ROUND, ON THE IDENTITY WASHES - the same plate
@@ -1248,13 +1281,17 @@ const MessageRowView: FC<MessageRowProps> = ({
 									"bg-accent-alt-wash",
 									agent
 										? "text-accent"
-										: known === null
+										: known === null || generic
 											? "text-ink-muted"
 											: "text-accent-alt",
 								)}
 							>
 								{agent ? (
 									<Bot size={18} />
+								) : app ? (
+									<Blocks size={18} />
+								) : presentation === "unknown" ? (
+									<CircleHelp size={18} />
 								) : known === null ? (
 									<UserRound size={18} />
 								) : (
@@ -1301,6 +1338,17 @@ const MessageRowView: FC<MessageRowProps> = ({
 							>
 								{label}
 							</span>
+						)}
+						{/* The badge is what says "this is software, not a teammate"
+						    when an app's name could pass for a person's. */}
+						{app && (
+							<Badge
+								variant="neutral"
+								data-sender-badge="app"
+								className="shrink-0 self-center"
+							>
+								{t("ui.teamBridge.sender.app_badge")}
+							</Badge>
 						)}
 						{valid && (
 							<time
