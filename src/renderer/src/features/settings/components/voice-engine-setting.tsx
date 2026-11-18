@@ -7,18 +7,27 @@
  * listed so the shape is visible, disabled, and never reaches main.
  *
  * The value is main's (`voice.qwen.engine.*`); this row reads it and asks main
- * to change it, and shows what main answers. There is deliberately no key
- * field: the key lives in the daemon's own credential store (`/login
- * elevenlabs`), so there is one place a secret can be and one thing that can
- * disagree with the speech service that actually runs.
+ * to change it, and shows what main answers.
+ *
+ * THE KEY. With Bring your own key chosen the row offers one field. The key goes
+ * to the daemon's own credential store through `auth.key` - the same route the
+ * Providers page uses (and `/login elevenlabs` in the terminal) - so there is
+ * still ONE place a secret lives and one thing the speech service reads. It is
+ * a password field, is cleared the moment Save is pressed (saved or refused),
+ * and is never rendered back, logged or kept.
  */
 
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { useQueryClient } from "@tanstack/react-query";
 import type { FC } from "react";
-import { useId } from "react";
-import type { QwenVoiceEngine } from "../../../../../shared/desktop-contract";
-import { useVoiceStatus } from "../../voice/use-voice-status";
+import { useId, useState } from "react";
+import type {
+	QwenVoiceEngine,
+	SaveKeyResult,
+} from "../../../../../shared/desktop-contract";
+import { useVoiceStatus, voiceKeys } from "../../voice/use-voice-status";
 import {
 	bridge,
 	setVoiceEngine,
@@ -52,6 +61,90 @@ const OPTIONS: EngineOption[] = [
 		soon: true,
 	},
 ];
+
+type KeyOutcome = "checked" | "unverified" | { error: string } | null;
+
+/** The one field for the ElevenLabs key; see the file header for the rules. */
+const ElevenLabsKeyField: FC = () => {
+	const client = useQueryClient();
+	const [value, setValue] = useState("");
+	const [saving, setSaving] = useState(false);
+	const [outcome, setOutcome] = useState<KeyOutcome>(null);
+	const id = useId();
+	const save = async () => {
+		const key = value.trim();
+		if (!key || saving) return;
+		// Cleared BEFORE the request: the secret leaves the screen and this
+		// component's state at once, whatever the answer is.
+		setValue("");
+		setSaving(true);
+		setOutcome(null);
+		try {
+			const result = await desktopResult<SaveKeyResult | null>({
+				op: "auth.key",
+				provider: "elevenlabs",
+				value: key,
+			});
+			setOutcome(result?.valid === true ? "checked" : "unverified");
+			await client.invalidateQueries({ queryKey: voiceKeys.status });
+		} catch (error) {
+			setOutcome({
+				error:
+					error instanceof Error && error.message
+						? error.message
+						: t("ui.settings.voice.engine.key.failed"),
+			});
+		} finally {
+			setSaving(false);
+		}
+	};
+	return (
+		<span className="mt-1 flex flex-col gap-1">
+			<label htmlFor={id} className="text-meta text-ink-muted">
+				{t("ui.settings.voice.engine.key.label")}
+			</label>
+			<span className="flex items-center gap-2">
+				<input
+					id={id}
+					type="password"
+					autoComplete="off"
+					spellCheck={false}
+					data-voice-engine-key-input=""
+					value={value}
+					onChange={(event) => setValue(event.target.value)}
+					className="min-w-0 flex-1 rounded-sm border border-hairline bg-sunken px-2 py-1 text-body"
+				/>
+				<button
+					type="button"
+					data-voice-engine-key-save=""
+					disabled={saving || value.trim() === ""}
+					onClick={() => void save()}
+					className="rounded-sm border border-hairline px-2 py-1 text-body disabled:opacity-50"
+				>
+					{t("ui.settings.voice.engine.key.save")}
+				</button>
+			</span>
+			<span className="text-meta text-ink-dim">
+				{t("ui.settings.voice.engine.key.hint")}
+			</span>
+			{outcome === "checked" && (
+				<output className="text-meta text-ink-muted">
+					{t("ui.settings.voice.engine.key.saved_checked")}
+				</output>
+			)}
+			{outcome === "unverified" && (
+				<output className="text-meta text-ink-muted">
+					{t("ui.settings.voice.engine.key.saved_unverified")}
+				</output>
+			)}
+			{outcome !== null && typeof outcome === "object" && (
+				<span role="alert" className="text-meta text-danger">
+					{outcome.error}
+				</span>
+			)}
+		</span>
+	);
+};
 
 export const VoiceEngineSetting: FC = () => {
 	useI18nLocale();
@@ -111,6 +204,9 @@ export const VoiceEngineSetting: FC = () => {
 									? t("ui.settings.voice.engine.byok.ready")
 									: t("ui.settings.voice.engine.byok.missing")}
 							</span>
+						)}
+						{option.value === "byok" && engine === "byok" && (
+							<ElevenLabsKeyField />
 						)}
 					</span>
 				</label>

@@ -76,5 +76,41 @@
 		"tone": "Two-word badge, sentence case.",
 		"length": "Two words; English is 11 characters.",
 		"note": "Marks an option that is shown but not available yet."
+	},
+	"ui.settings.voice.engine.key.label": {
+		"role": "Label above a password field",
+		"tone": "Short noun phrase; ElevenLabs is a product name and stays as is.",
+		"length": "One line; English is 18 characters.",
+		"note": "The field where the person pastes their ElevenLabs API key."
+	},
+	"ui.settings.voice.engine.key.save": {
+		"role": "Button label next to a password field",
+		"tone": "Imperative, two words, sentence case.",
+		"length": "Two words; English is 8 characters.",
+		"note": "Saves the pasted key."
+	},
+	"ui.settings.voice.engine.key.hint": {
+		"role": "Help line under the key field",
+		"tone": "Plain, reassuring.",
+		"length": "One wrapping sentence.",
+		"note": "Says the key is kept in Local Operator's own credential store rather than in this app and is never shown again. Keep both facts."
+	},
+	"ui.settings.voice.engine.key.saved_checked": {
+		"role": "Status line after saving",
+		"tone": "Short confirmation.",
+		"length": "One short sentence.",
+		"note": "The key was saved and ElevenLabs accepted it."
+	},
+	"ui.settings.voice.engine.key.saved_unverified": {
+		"role": "Status line after saving",
+		"tone": "Plain, calm, not alarming.",
+		"length": "One wrapping sentence pair.",
+		"note": "The key was saved but ElevenLabs could not verify it. Keys limited to speech cannot read the route used for checking. Keep that it is unverified."
+	},
+	"ui.settings.voice.engine.key.failed": {
+		"role": "Error line under the key field",
+		"tone": "Plain, neutral.",
+		"length": "One short sentence.",
+		"note": "Fallback shown when saving fails and no reason is available."
 	}
 }

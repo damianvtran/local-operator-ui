@@ -3999,6 +3999,12 @@ export type MessageParams = {
 	"ui.settings.voice.engine.byok.missing": undefined;
 	"ui.settings.voice.engine.byok.ready": undefined;
 	"ui.settings.voice.engine.description": undefined;
+	"ui.settings.voice.engine.key.failed": undefined;
+	"ui.settings.voice.engine.key.hint": undefined;
+	"ui.settings.voice.engine.key.label": undefined;
+	"ui.settings.voice.engine.key.save": undefined;
+	"ui.settings.voice.engine.key.saved_checked": undefined;
+	"ui.settings.voice.engine.key.saved_unverified": undefined;
 	"ui.settings.voice.engine.label": undefined;
 	"ui.settings.voice.engine.local.description": undefined;
 	"ui.settings.voice.engine.local.label": undefined;

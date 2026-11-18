@@ -160,6 +160,7 @@ const installControls = (start = {}) => {
 	};
 };
 
+window.__keyCalls = [];
 window.api = {
 	desktop: {
 		request: async (request) => {
@@ -182,6 +183,17 @@ window.api = {
 						},
 					},
 				};
+			}
+			if (request?.op === "auth.key") {
+				window.__keyCalls.push(request);
+				const reply = window.__keyReply ?? {
+					status: 200,
+					body: { result: { valid: true } },
+				};
+				// A saved key changes what the status says: the backend now has one.
+				if (reply.status === 200 && window.__byokAfterSave)
+					window.__byok = window.__byokAfterSave;
+				return reply;
 			}
 			if (request?.op === "voice.status") {
 				return {
@@ -281,6 +293,9 @@ afterEach(async () => {
 	root = null;
 	window.__voiceSlot = null;
 	window.__byok = null;
+	window.__byokAfterSave = null;
+	window.__keyReply = null;
+	window.__keyCalls = [];
 	window.api.desktop.qwenVoice = undefined;
 	useVoiceEngineStore.setState({ engine: "local" });
 	useVoiceStore.setState({
@@ -1090,6 +1105,119 @@ test("Engine: with Bring your own key chosen, the row says whether a key is read
 	window.__byok = { provider: "elevenlabs", ready: true, reason: "ok" };
 	await mountEngineRow();
 	assert.match(engineText(), /ElevenLabs key found/);
+});
+
+/*
+ * PASTING THE KEY. With Bring your own key chosen the row offers one field. The key
+ * goes to the daemon's own credential store through the same `auth.key` route the
+ * Providers page uses (so there is still ONE place a secret lives), the field
+ * clears at once, and the key is never rendered or kept.
+ */
+const KEY = "sk_test_0123456789abcdef";
+const keyInput = () =>
+	window.document.querySelector("[data-voice-engine-key-input]");
+const keySave = () =>
+	window.document.querySelector("[data-voice-engine-key-save]");
+
+async function typeKey(value) {
+	const input = keyInput();
+	const setter = Object.getOwnPropertyDescriptor(
+		window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		setter.call(input, value);
+		input.dispatchEvent(new window.Event("input", { bubbles: true }));
+	});
+}
+
+test("Key: the field appears only with Bring your own key chosen, and is a password field", async () => {
+	engineBridge({ engine: "local" });
+	await mountEngineRow();
+	assert.equal(keyInput(), null, "no key field for Local");
+	engineBridge({ engine: "byok" });
+	await mountEngineRow();
+	assert.ok(keyInput(), "the field is offered for Bring your own key");
+	assert.equal(keyInput().getAttribute("type"), "password");
+	assert.equal(keyInput().getAttribute("autocomplete"), "off");
+	assert.equal(keySave().disabled, true, "nothing to save yet");
+});
+
+test("Key: Save sends the trimmed key to auth.key for elevenlabs, then clears the field and never shows it", async () => {
+	engineBridge({ engine: "byok" });
+	window.__byok = { provider: "elevenlabs", ready: false, reason: "none" };
+	window.__byokAfterSave = {
+		provider: "elevenlabs",
+		ready: true,
+		reason: "ok",
+	};
+	await mountEngineRow();
+	await typeKey(`  ${KEY}  `);
+	assert.equal(keySave().disabled, false);
+	await act(async () => {
+		keySave().click();
+	});
+	for (let i = 0; i < 5; i += 1) await flush();
+	assert.deepEqual(window.__keyCalls, [
+		{ op: "auth.key", provider: "elevenlabs", value: KEY },
+	]);
+	assert.equal(keyInput().value, "", "the field clears at once");
+	assert.equal(
+		window.document.body.textContent.includes(KEY),
+		false,
+		"the key is never rendered",
+	);
+	assert.match(engineText(), /Key saved and checked/);
+	assert.match(
+		engineText(),
+		/ElevenLabs key found/,
+		"the status re-reads after a save",
+	);
+});
+
+test("Key: a key ElevenLabs could not check is saved and said to be unverified", async () => {
+	engineBridge({ engine: "byok" });
+	window.__keyReply = {
+		status: 200,
+		body: {
+			result: { valid: null, reason: "missing the permission models_read" },
+		},
+	};
+	await mountEngineRow();
+	await typeKey(KEY);
+	await act(async () => {
+		keySave().click();
+	});
+	for (let i = 0; i < 5; i += 1) await flush();
+	assert.match(engineText(), /Key saved/);
+	assert.match(engineText(), /unverified/i);
+	assert.doesNotMatch(engineText(), /Key saved and checked/);
+});
+
+test("Key: a refused key shows the backend's sentence and stores nothing locally", async () => {
+	engineBridge({ engine: "byok" });
+	window.__keyReply = {
+		status: 422,
+		body: {
+			detail: {
+				code: "key_rejected",
+				text: "ElevenLabs does not accept that key.",
+			},
+		},
+	};
+	await mountEngineRow();
+	await typeKey(KEY);
+	await act(async () => {
+		keySave().click();
+	});
+	for (let i = 0; i < 5; i += 1) await flush();
+	assert.match(engineText(), /ElevenLabs does not accept that key\./);
+	assert.equal(window.document.body.textContent.includes(KEY), false);
+	assert.equal(
+		keyInput().value,
+		"",
+		"even a refused key is cleared, never left on screen",
+	);
 });
 
 test("Engine: no key sentence is shown while Local is chosen", async () => {

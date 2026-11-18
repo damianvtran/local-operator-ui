@@ -11,5 +11,11 @@
 	"ui.settings.voice.engine.byok.missing": "No ElevenLabs key yet. In Local Operator, run /login elevenlabs and paste your key.",
 	"ui.settings.voice.engine.radient.label": "Radient cloud",
 	"ui.settings.voice.engine.radient.description": "Speech billed with your Radient credit.",
-	"ui.settings.voice.engine.soon": "Coming soon"
+	"ui.settings.voice.engine.soon": "Coming soon",
+	"ui.settings.voice.engine.key.label": "ElevenLabs API key",
+	"ui.settings.voice.engine.key.save": "Save key",
+	"ui.settings.voice.engine.key.hint": "Kept in Local Operator's own credential store, not in this app, and never shown again.",
+	"ui.settings.voice.engine.key.saved_checked": "Key saved and checked.",
+	"ui.settings.voice.engine.key.saved_unverified": "Key saved, but ElevenLabs could not check it, so it is unverified. Keys limited to speech often cannot be checked.",
+	"ui.settings.voice.engine.key.failed": "The key could not be saved."
 }
