@@ -8616,6 +8616,22 @@
 					"receipt": "i18n/receipts/d11d211390f8-pr1978-r4-es.json",
 					"receipt_sha256": "3a5f6b47c33f590e516a91bbb09427b2c2a98df054937854103c109236c3eb84",
 					"scope": "PR #1978 i18n r4: 25 changed values 741b25f568..e61aba9d89"
+				},
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "f4f5a50c8316-pr1978-second-r2-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/f4f5a50c8316-pr1978-second-r2-es.json",
+					"receipt_sha256": "05b2e82bea8934a937d97ee89cd3165bf890b51ba16d862cb8e1a5275371fb92",
+					"scope": "PR #1978 second independent audit r2: 25 remediated values + all prior findings fixed; other values byte-identical to r1"
 				}
 			],
 			"status": "audited",
@@ -22279,6 +22295,22 @@
 					"receipt": "i18n/receipts/d11d211390f8-pr1978-r4-fr.json",
 					"receipt_sha256": "0584ecaac0dfafb5421abbbd219556fbeebf4a4162ba6ea74972d05a54c11cd9",
 					"scope": "PR #1978 i18n r4: 25 changed values 741b25f568..e61aba9d89"
+				},
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "f4f5a50c8316-pr1978-second-r2-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/f4f5a50c8316-pr1978-second-r2-fr.json",
+					"receipt_sha256": "607bd0050f8fde5bb32d37f3ce4c3a2b91b3526934b209c8df57146830327d3b",
+					"scope": "PR #1978 second independent audit r2: 25 remediated values + all prior findings fixed; other values byte-identical to r1"
 				}
 			],
 			"status": "audited",
@@ -36094,6 +36126,22 @@
 					"receipt": "i18n/receipts/d11d211390f8-pr1978-r4-hi.json",
 					"receipt_sha256": "1d7cac36af997c3b740346db549a036d615387f9fcf73bd1e44edd5fbf4fbccb",
 					"scope": "PR #1978 i18n r4: 25 changed values 741b25f568..e61aba9d89"
+				},
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "f4f5a50c8316-pr1978-second-r2-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/f4f5a50c8316-pr1978-second-r2-hi.json",
+					"receipt_sha256": "c379d9440b53dc635aecab0e8cd11d436baf9fabf437a8aec58aa562c87b1541",
+					"scope": "PR #1978 second independent audit r2: 25 remediated values + all prior findings fixed; other values byte-identical to r1"
 				}
 			],
 			"status": "audited",
@@ -49496,6 +49544,22 @@
 					"receipt": "i18n/receipts/d11d211390f8-pr1978-r4-ru.json",
 					"receipt_sha256": "54edb9070d68dd55ac686fea0f58d1456fb6d5c8168940cb540aafc33abc53ac",
 					"scope": "PR #1978 i18n r4: 25 changed values 741b25f568..e61aba9d89"
+				},
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "f4f5a50c8316-pr1978-second-r2-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/f4f5a50c8316-pr1978-second-r2-ru.json",
+					"receipt_sha256": "1fe3acdae4222ceebfa5de7af331ba10cdc43b8fb7aad27c8b30f10bb1b617e8",
+					"scope": "PR #1978 second independent audit r2: 25 remediated values + all prior findings fixed; other values byte-identical to r1"
 				}
 			],
 			"status": "audited",
@@ -63146,6 +63210,22 @@
 					"receipt": "i18n/receipts/d11d211390f8-pr1978-r4-ur.json",
 					"receipt_sha256": "6e0d6408b943b0fc9d9f1e27ca5d81e84f0874f9cbcaf801b2f7d08fb846694b",
 					"scope": "PR #1978 i18n r4: 25 changed values 741b25f568..e61aba9d89"
+				},
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "f4f5a50c8316-pr1978-second-r2-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/f4f5a50c8316-pr1978-second-r2-ur.json",
+					"receipt_sha256": "af0b737b048be2f7cf14e03de29f3646135133b5331eeb57126af6b2493c9928",
+					"scope": "PR #1978 second independent audit r2: 25 remediated values + all prior findings fixed; other values byte-identical to r1"
 				}
 			],
 			"status": "audited",
@@ -76679,6 +76759,22 @@
 					"receipt": "i18n/receipts/d11d211390f8-pr1978-r4-vi.json",
 					"receipt_sha256": "229fae0b9ce2cb00ba646641b61d9056c2de9772f05ea0500009f2536a98ffca",
 					"scope": "PR #1978 i18n r4: 25 changed values 741b25f568..e61aba9d89"
+				},
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "f4f5a50c8316-pr1978-second-r2-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/f4f5a50c8316-pr1978-second-r2-vi.json",
+					"receipt_sha256": "de7fa4cf75dc954e6dca6bd2cefb8ef8c89539de7859565aa9510c45ffa786d8",
+					"scope": "PR #1978 second independent audit r2: 25 remediated values + all prior findings fixed; other values byte-identical to r1"
 				}
 			],
 			"status": "audited",
@@ -91000,6 +91096,22 @@
 					"receipt": "i18n/receipts/d11d211390f8-pr1978-r4-zh-CN.json",
 					"receipt_sha256": "a082e1afe71f576fb6a5c03b9a678d74b7c78acc5e2b518b63173a38c7b50e18",
 					"scope": "PR #1978 i18n r4: 25 changed values 741b25f568..e61aba9d89"
+				},
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "f4f5a50c8316-pr1978-second-r2-zh-CN",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/f4f5a50c8316-pr1978-second-r2-zh-CN.json",
+					"receipt_sha256": "f9e70f66e2befb37f1e0363cb51f4139711eaaa24a28e24e46f4de4a26ef161c",
+					"scope": "PR #1978 second independent audit r2: 25 remediated values + all prior findings fixed; other values byte-identical to r1"
 				}
 			],
 			"status": "audited",
