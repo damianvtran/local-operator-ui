@@ -49,13 +49,141 @@ export function teamBridgeScopeFromValue(value: string): TeamBridgeScope {
 		: asTeamBridgeTenantId(value);
 }
 
+/**
+ * What a switcher row is (RFC v2.4 Amendment A): one of the reader's PRIVATE
+ * Team organizations, or a public COMMUNITY they joined.
+ *
+ * WHY A TYPED KIND AND NOT A FLAG ON ONE SHAPE. "All organizations" merges
+ * private organizations only - a community never enters the merged view, its
+ * unread total or its channel list (the operator: merged would be "too
+ * crowded", and a public room must never read as part of a private org). The
+ * guarantee is a type error, not a filter someone can forget: every merged-scope
+ * input (`organizationOptions`, `visibleConversationRows`, the scope union) is
+ * typed `TeamBridgeOrganization`, whose `kind` can only be `"private"`, so a
+ * `TeamBridgeCommunity` (`kind: "community"`, its own branded id) does not
+ * type-check there.
+ */
+export type TeamBridgeOrganizationKind = "private" | "community";
+
 /** One row of the organization switcher, after memberships and counts are joined. */
 export type TeamBridgeOrganization = {
+	/**
+	 * Always private. Optional only because every row built before Amendment A
+	 * (and every fixture) omits it, and an absent kind has always meant a private
+	 * Team org; `"community"` is unassignable by construction.
+	 */
+	kind?: "private";
 	tenantId: TeamBridgeTenantId;
 	name: string;
 	role: string;
 	unread: number;
+	/**
+	 * A pending invitation to this private org rather than a membership (D22).
+	 * No client read supplies one yet - the invitation surface ships with the
+	 * community client - so today this is only ever set by stories and tests;
+	 * the switcher marks the row "Invited" and the opening rule prefers it.
+	 */
+	invited?: boolean;
 };
+
+/**
+ * A community id: a different namespace from tenant ids (the community
+ * registry's `community_id`, Amendment A §1), branded so neither can be passed
+ * where the other is expected.
+ */
+export type TeamBridgeCommunityId = string & {
+	readonly __teamBridgeCommunityId: unique symbol;
+};
+
+/** Brand a community id read from the community client's list. */
+export function asTeamBridgeCommunityId(value: string): TeamBridgeCommunityId {
+	return value as TeamBridgeCommunityId;
+}
+
+/**
+ * One joined community in the switcher's Communities group. Each is its own
+ * scope with its own unread count; there is no merged community view.
+ */
+export type TeamBridgeCommunity = {
+	kind: "community";
+	communityId: TeamBridgeCommunityId;
+	name: string;
+	unread: number;
+};
+
+/**
+ * Past this many joined communities the Communities group gains a search field
+ * and scrolls (frame D21's inset: 8 joined, 6 rows visible). The number is the
+ * RFC's ("scrolling past 6, with search"), not a measured fit.
+ */
+export const TEAM_BRIDGE_COMMUNITY_SEARCH_THRESHOLD = 6;
+
+/** What the switcher renders, already split into its two groups. */
+export type TeamBridgeSwitcherGroups = {
+	/** Private orgs only; the "All organizations" row merges exactly these. */
+	organizations: TeamBridgeOrganization[];
+	/** Sum of `organizations`' counts; a community's count never adds in. */
+	organizationsUnread: number;
+	/** Joined communities matching `query`, in the provider's order. */
+	communities: TeamBridgeCommunity[];
+	/** Whether the Communities group (with Browse) is drawn at all. */
+	showCommunities: boolean;
+	/** More than six joined: draw the search field and cap the group's height. */
+	searchCommunities: boolean;
+};
+
+/**
+ * Split the switcher's rows into Organizations and Communities (Amendment A §2).
+ *
+ * The Communities group is hidden only when the account has joined none AND the
+ * community feature is off: a member of a community whose flag was later turned
+ * off still sees (and can leave) what they joined, and with the flag on an
+ * account with none still gets "Browse communities…". Search is decided on the
+ * JOINED count, not the filtered one, so typing never removes the field the
+ * reader is typing into.
+ *
+ * `organizationsUnread` exists for callers without the account aggregate; the
+ * page keeps passing the aggregate's own total, which is read from the private
+ * bridge and so cannot contain a community either.
+ */
+export function teamBridgeSwitcherGroups({
+	organizations,
+	communities,
+	communitiesEnabled,
+	query = "",
+}: {
+	organizations: readonly TeamBridgeOrganization[];
+	communities: readonly TeamBridgeCommunity[];
+	communitiesEnabled: boolean;
+	query?: string;
+}): TeamBridgeSwitcherGroups {
+	/*
+	 * Defence in depth for untyped boundaries (a cast IPC payload, a `.mjs`
+	 * fixture): a row claiming to be a community is dropped from the private
+	 * group even if it reached a `TeamBridgeOrganization[]` by a cast.
+	 */
+	const privateOrganizations = organizations.filter(
+		(organization) =>
+			(organization.kind as TeamBridgeOrganizationKind | undefined) !==
+			"community",
+	);
+	const needle = query.trim().toLocaleLowerCase();
+	return {
+		organizations: privateOrganizations,
+		organizationsUnread: privateOrganizations.reduce(
+			(sum, organization) => sum + organization.unread,
+			0,
+		),
+		communities: needle
+			? communities.filter((community) =>
+					community.name.toLocaleLowerCase().includes(needle),
+				)
+			: [...communities],
+		showCommunities: communitiesEnabled || communities.length > 0,
+		searchCommunities:
+			communities.length > TEAM_BRIDGE_COMMUNITY_SEARCH_THRESHOLD,
+	};
+}
 
 /**
  * Pure render decisions for the Team Bridge page.

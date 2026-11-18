@@ -116,6 +116,7 @@ import {
 	TEAM_BRIDGE_MAX_RETAINED_MESSAGES,
 	TEAM_BRIDGE_PAGE_SIZE,
 } from "./team-bridge-channel-cache";
+import { useTeamBridgeCommunities } from "./team-bridge-communities";
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
 import {
 	TeamBridgeComposer,
@@ -163,6 +164,7 @@ import {
 import {
 	type ChiefLabels,
 	TEAM_BRIDGE_ALL_SCOPE,
+	type TeamBridgeCommunity,
 	type TeamBridgeEligibility,
 	type TeamBridgeOrganization,
 	type TeamBridgeRecipient,
@@ -270,10 +272,16 @@ import {
 	scheduledTargetAfterSuccess,
 } from "./team-bridge-scheduling";
 import {
+	browserSessionStorage,
+	openingDefaultHeld,
+	openingOrganizationCount,
 	readScopePreference,
+	readSessionScope,
 	resolveOpeningScope,
+	shouldRecordSessionScope,
 	snapshotForScope,
 	writeScopePreference,
+	writeSessionScope,
 } from "./team-bridge-scope-preference";
 import { uploadStagedImages } from "./team-bridge-staged-upload";
 import type { StagedUploadFailure } from "./team-bridge-staged-upload";
@@ -1102,6 +1110,12 @@ export type TeamBridgePageViewProps = {
 	 */
 	onChooseOrganization?: (scope: TeamBridgeScope) => void;
 	onRetryMemberships?: () => void;
+	/**
+	 * Joined communities and the community flag, for the switcher's separate
+	 * Communities group (Amendment A). Never merged into `organizations`.
+	 */
+	communities?: readonly TeamBridgeCommunity[];
+	communitiesEnabled?: boolean;
 };
 
 export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
@@ -1205,6 +1219,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onScopeChange,
 	onChooseOrganization,
 	onRetryMemberships,
+	communities,
+	communitiesEnabled,
 }) => {
 	useI18nLocale();
 	/* Whether the rail is drawn in the shell's column; see the thread takeover. */
@@ -3057,6 +3073,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					organizationsFailed={organizationsFailed}
 					unreadRefreshing={refreshingUnread}
 					onRetry={onRetryMemberships}
+					communities={communities}
+					communitiesEnabled={communitiesEnabled}
 				/>
 				{/*
 				 * STALE-WHILE-REVALIDATE, VISIBLY (tb-instant-open). Cached rows stay
@@ -5400,12 +5418,29 @@ const TeamBridgeOwnedPage: FC<{
 					readScopePreference(storage, accountId))
 			: undefined;
 	}, [accountId]);
+	/*
+	 * WHERE THE READER IS IN THIS APP SESSION (RFC v2.4 Amendment A). The stored
+	 * values above outlive a restart, and Amendment A wants a restart to reopen on
+	 * the pending invitation or default private org instead; this one lives in
+	 * `sessionStorage`, so it keeps the reader's scope across leaving and
+	 * re-entering Team Bridge and is gone after a restart. It seeds the first
+	 * paint ahead of the durable value for the same no-correction reason.
+	 */
+	const sessionScope = useMemo(() => {
+		const storage = browserSessionStorage();
+		return storage && accountId
+			? readSessionScope(storage, accountId)
+			: undefined;
+	}, [accountId]);
 	/* A click a previous owner consumed (see `clickCarry`) opens like the click. */
 	const carriedClick = useRef(requestedAny ? null : clickCarry.current).current;
 	const [scope, setScope] = useState<TeamBridgeScope>(() =>
 		requestedTenant
 			? asTeamBridgeTenantId(requestedTenant)
-			: (carriedClick?.scope ?? storedScope ?? TEAM_BRIDGE_ALL_SCOPE),
+			: (carriedClick?.scope ??
+				sessionScope ??
+				storedScope ??
+				TEAM_BRIDGE_ALL_SCOPE),
 	);
 	/*
 	 * WHERE THE READER WAS IN THIS SCOPE (the operator's "it always defaults back
@@ -5563,6 +5598,8 @@ const TeamBridgeOwnedPage: FC<{
 	 */
 	const unreadView = useTeamBridgeUnreadView(selfAccountId);
 	const memberships = useMembershipsQuery({ enabled: readsEnabled });
+	// Empty until the community client lands; the flag alone draws the group.
+	const communityList = useTeamBridgeCommunities();
 	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE, {
 		accountId,
 	});
@@ -5583,6 +5620,50 @@ const TeamBridgeOwnedPage: FC<{
 	const { pending: organizationsPending, failed: organizationsFailed } =
 		organizationsReadState(hubTenants, memberships);
 	/*
+	 * The account's DEFAULT private org (Amendment A rule 2): the Radient home
+	 * tenant, which `GET /v1/me/memberships` marks `is_home`. Only an active row
+	 * counts, and `resolveOpeningScope` further requires it to be one of this
+	 * page's organizations, so a plan-less personal home tenant changes nothing.
+	 */
+	const defaultTenantId = useMemo(
+		() =>
+			memberships.memberships.find(
+				(membership) => membership.is_home && membership.status === "active",
+			)?.tenant_id ?? null,
+		[memberships.memberships],
+	);
+	/*
+	 * THE OPENING WAITS FOR THE DEFAULT ORG (review round 1, M1/m2; the rule and
+	 * its exemptions are on `openingDefaultHeld`). Held, the page shows its gate
+	 * loading state rather than the seed scope's title, snapshot rows or restored
+	 * conversation: the seed is yesterday's durable pick, which the default org
+	 * outranks on a restart, so painting it would be a wrong-org flash.
+	 * `memberships.isPending` is also true while the query is disabled behind the
+	 * status gate, so the snapshot cannot paint a multi-org seed before then.
+	 */
+	const openingOrganizations = openingOrganizationCount(
+		organizations,
+		openingRows,
+	);
+	/*
+	 * HOLD ONLY WHAT MEMBERSHIPS CAN STILL ANSWER (review round 2, M3). The hold
+	 * ends when memberships settle, and that query is enabled by `readsEnabled`
+	 * alone. Once the verdict is in and refuses reads (plan_required, rate_limited,
+	 * unavailable, ...), memberships never load, so a hold there would replace the
+	 * eligibility panel with an endless gate spinner. While the verdict is still
+	 * pending (`gatePending`) the hold stays, because that is exactly when a
+	 * multi-org seed could otherwise paint; it lifts with the verdict either way.
+	 */
+	const openingHeld =
+		(gatePending || readsEnabled) &&
+		openingDefaultHeld({
+			organizationCount: openingOrganizations,
+			membershipsSettled: !memberships.isPending || memberships.isError,
+			requestedTenant,
+			chosen: scopeChosen.current,
+			session: sessionScope,
+		});
+	/*
 	 * THE SCOPE IS DECIDED BEFORE THE LIST IS READ (tb-instant-open).
 	 *
 	 * The organization set comes from the status payload this container already
@@ -5597,19 +5678,47 @@ const TeamBridgeOwnedPage: FC<{
 	 * rows cannot be known before the organizations are) and it removes the request
 	 * that would have been discarded.
 	 */
-	const scopeSettled =
-		resolveOpeningScope({
-			organizations,
-			stored: storedScope,
-			requestedTenant,
-			chosen: scopeChosen.current,
-			current: scope,
-			snapshotRows: openingRows,
-		}) === scope;
-	// `organizationsPending` is the same rule one step earlier: the answer that
-	// decides the scope is still in flight, so a read now would be a read this
-	// page is about to replace.
-	const scopeDecided = scopeSettled && !organizationsPending;
+	const openingScope = resolveOpeningScope({
+		organizations,
+		stored: storedScope,
+		session: sessionScope,
+		defaultTenantId,
+		requestedTenant,
+		chosen: scopeChosen.current,
+		current: scope,
+		snapshotRows: openingRows,
+		defaultPending: openingHeld,
+	});
+	const scopeSettled = openingScope === scope;
+	// `organizationsPending` and `openingHeld` are the same rule one step
+	// earlier: the answer that decides the scope is still in flight, so a read
+	// now would be a read this page is about to replace.
+	const scopeDecided = scopeSettled && !organizationsPending && !openingHeld;
+	/*
+	 * THE OPENING ENDS THE FIRST TIME THE SCOPE IS DECIDED (QA round 1, Q1/Q2 on
+	 * ui#1970). Until then the scope state is only a seed, and the render-time
+	 * correction further down may still replace it before anything paints; after
+	 * it, scope moves belong to the reader (switcher) and the adoption effect.
+	 * A deep link or carried click decided at mount, so it starts settled. Only
+	 * a decision made with reads enabled counts: before the account and its
+	 * verdict are known, "decided" is the trivial answer of a page that knows no
+	 * organizations, and latching on it would retire the correction for good.
+	 *
+	 * STATE, NOT A REF (review round 4, R4-1). The renderer runs under
+	 * StrictMode, which renders an update twice and starts the second pass from
+	 * COMMITTED state: it drops the first pass's render-phase `setScope`/
+	 * `setTarget` but would keep a ref written during render, so the second pass
+	 * saw "settled" with the seed scope still in state, skipped the correction and
+	 * painted the seed (Q1 again). A render-phase `setState` (React's "storing
+	 * information from previous renders" pattern) is discarded with its pass, so
+	 * every pass recomputes the latch from the same committed inputs. The latch
+	 * still reads as settled in the very pass that decides it, as the ref did.
+	 */
+	const [openingSettled, setOpeningSettled] = useState(scopeChosen.current);
+	const openingDecidedNow = scopeDecided && readsEnabled;
+	if (openingDecidedNow && !openingSettled) setOpeningSettled(true);
+	const openingUnsettled =
+		!(openingSettled || openingDecidedNow) && !scopeChosen.current;
 	const list = useTeamBridgeConversations(
 		scope,
 		readsEnabled && scopeDecided,
@@ -5764,6 +5873,8 @@ const TeamBridgeOwnedPage: FC<{
 	 * carries its tenant only when the record was written by a build that stores
 	 * it; an older record yields `null` here and the open behaves as before.
 	 */
+	/* A ref, not a mount constant: when the opening scope corrects away from
+	   the seed, the landing it knows is the DECIDED scope's (QA Q2, below). */
 	const knownLanding = useRef<{ id: string; tenantId: string } | null>(
 		requestedConversation && requestedTenant
 			? { id: requestedConversation, tenantId: requestedTenant }
@@ -5772,7 +5883,12 @@ const TeamBridgeOwnedPage: FC<{
 					restoreOnOpen.tenantId
 				? { id: restoreOnOpen.target.id, tenantId: restoreOnOpen.tenantId }
 				: null,
-	).current;
+	);
+	/* Set while the opening dropped the seed's restore and owes the decided
+	   scope's own one (see the render-time opening correction). State, not a
+	   ref, for the same StrictMode reason as `openingSettled` (R4-1): a ref
+	   cleared by a discarded render pass lost the decided scope's restore. */
+	const [openingRestoreDeferred, setOpeningRestoreDeferred] = useState(false);
 	/*
 	 * The scopes whose remembered view has already been offered this mount. The
 	 * landing effect restores a scope's record ONCE - on the first landing after
@@ -6014,18 +6130,60 @@ const TeamBridgeOwnedPage: FC<{
 	// options array, so the equality check keeps this to the one transition.
 	// Before that list exists, the watcher's snapshot stands in - and the list
 	// supersedes it the moment it answers (tb-instant-open).
+	//
+	// THE OPENING ITSELF IS NOT DECIDED HERE: a passive effect runs after paint,
+	// so correcting the seed from here painted it first (QA round 1, Q1 on
+	// ui#1970). The render-time correction below the archived state owns every
+	// move until `openingSettled`; this effect then finds `next === scope` and
+	// keeps only the later adoptions (an organization list that changes after the
+	// opening, the snapshot superseded by the list).
 	useEffect(() => {
-		setScope((current) =>
-			resolveOpeningScope({
-				organizations,
-				stored: storedScope,
-				requestedTenant,
-				chosen: scopeChosen.current,
-				current,
-				snapshotRows: openingRows,
-			}),
-		);
-	}, [organizations, openingRows, storedScope, requestedTenant]);
+		if (openingHeld) return;
+		const next = resolveOpeningScope({
+			organizations,
+			stored: storedScope,
+			session: sessionScope,
+			defaultTenantId,
+			requestedTenant,
+			chosen: scopeChosen.current,
+			current: scope,
+			snapshotRows: openingRows,
+			defaultPending: openingHeld,
+		});
+		if (next === scope) return;
+		setScope(next);
+	}, [
+		organizations,
+		openingRows,
+		storedScope,
+		sessionScope,
+		defaultTenantId,
+		requestedTenant,
+		openingHeld,
+		scope,
+	]);
+
+	/*
+	 * Record the scope the reader is IN, once it is decided, for this app session
+	 * (`writeSessionScope`). Every route - a switcher pick, a union row's org
+	 * switch, a deep link, the opening rule's own answer - lands here, so leaving
+	 * Team Bridge and coming back reopens exactly where the reader was. Writing
+	 * before `scopeDecided` would record an interim seed the list never read,
+	 * and a fallback taken because memberships failed is not recorded either
+	 * (`shouldRecordSessionScope`): the default org must still be able to win
+	 * later in this app session.
+	 */
+	const recordSessionScope = shouldRecordSessionScope({
+		organizationCount: openingOrganizations,
+		membershipsFailed: memberships.isError,
+		requestedTenant,
+		chosen: scopeChosen.current,
+	});
+	useEffect(() => {
+		if (!scopeDecided || !recordSessionScope || !accountId) return;
+		const storage = browserSessionStorage();
+		if (storage) writeSessionScope(storage, accountId, scope);
+	}, [scope, scopeDecided, recordSessionScope, accountId]);
 
 	const visibleConversations = useMemo(
 		() => visibleConversationRows(conversations, scope, organizations),
@@ -6040,6 +6198,10 @@ const TeamBridgeOwnedPage: FC<{
 	// on its own last conversation. The default is only for a scope with no
 	// record; a record that no longer resolves is caught by the validation below.
 	useEffect(() => {
+		// Held, the rows on hand are the SEED's (the watcher snapshot narrowed to
+		// it): landing now would select - and so read and mark read - a
+		// conversation of a scope the default org may yet replace (QA Q2).
+		if (openingHeld) return;
 		if (
 			!ownerAudit?.active &&
 			target === null &&
@@ -6072,7 +6234,14 @@ const TeamBridgeOwnedPage: FC<{
 			);
 			if (first) setTarget({ type: "conversation", id: first.id });
 		}
-	}, [visibleConversations, organizations, target, ownerAudit?.active, scope]);
+	}, [
+		visibleConversations,
+		organizations,
+		target,
+		ownerAudit?.active,
+		scope,
+		openingHeld,
+	]);
 	useEffect(() => {
 		if (target !== null) pendingLanding.current = null;
 	}, [target]);
@@ -6088,6 +6257,71 @@ const TeamBridgeOwnedPage: FC<{
 	const [archivedOpened, setArchivedOpened] = useState(
 		() => restoreOnOpen?.quickView === "archived",
 	);
+	/*
+	 * THE OPENING SCOPE IS DECIDED BEFORE ANYTHING PAINTS (QA round 1, Q1/Q2 on
+	 * ui#1970).
+	 *
+	 * `scope` starts as a SEED - this app session's scope, else yesterday's pick,
+	 * else the union - because the inputs that decide it (status tenants,
+	 * memberships and their `is_home`) come from hooks this state precedes. The
+	 * correction used to be a passive effect, which runs after paint, so the seed
+	 * painted for a frame or more: when the shell had already cached memberships
+	 * (no hold at all), and in the commit where a hold lifted. React's
+	 * render-phase update is the synchronous form: a `setState` on this component
+	 * during its own render discards that render and re-runs it before commit, so
+	 * the seed never reaches the DOM - whether the inputs were cached at mount or
+	 * arrive later and lift the hold.
+	 *
+	 * The seed's restored view goes with it. The mount restored the seed scope's
+	 * remembered conversation into `target` (so a one-org open paints it in its
+	 * first frame), and a selection is not inert: its history read answers and the
+	 * mark-read effect advances its cursor, clearing unread the reader never saw
+	 * (Q2). So with several organizations - where the seed can be another org's -
+	 * nothing is restored while held, and a move drops the seed's restore. The
+	 * DECIDED scope's own record - the only one that belongs to it - is restored
+	 * in the same render pass that decides it, not left to the landing effect:
+	 * that effect needs rows, and a held list has none, which would lose the
+	 * remembered conversation's parallel history read (first-open latency) and
+	 * its first-frame paint. With one organization every record belongs to it,
+	 * so a move (e.g. union to that org) keeps the mount's restore.
+	 *
+	 * Every update is conditional on the value differing, so the re-run converges
+	 * (React refuses an unconditional render-phase update as a loop).
+	 */
+	const openingMoving =
+		openingUnsettled && !openingHeld && openingScope !== scope;
+	if (openingUnsettled && (openingHeld || openingMoving)) {
+		if (openingOrganizations > 1) {
+			restoredScopes.current.clear();
+			pendingLanding.current = null;
+			restoredTarget.current = null;
+			knownLanding.current = null;
+			if (!openingRestoreDeferred) setOpeningRestoreDeferred(true);
+			if (target !== null) setTarget(null);
+			if (threadLink !== null) setThreadLink(null);
+			if (archivedOpened) setArchivedOpened(false);
+		}
+		if (openingMoving) setScope(openingScope);
+	} else if (!openingHeld && openingRestoreDeferred) {
+		// `scope` is the opening's answer now (this may be the very render that
+		// settles it, hence outside the unsettled branch), and `viewMemory` was
+		// re-read for it at the top of this render: restore exactly what the
+		// mount would have, had it known the answer.
+		setOpeningRestoreDeferred(false);
+		restoredScopes.current.add(scope);
+		const view = viewMemory.current.view;
+		if (view) {
+			restoredTarget.current = view.target;
+			knownLanding.current =
+				view.target.type === "conversation" && view.tenantId
+					? { id: view.target.id, tenantId: view.tenantId }
+					: null;
+			setTarget(view.target);
+			if (TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD)
+				setThreadLink(rememberedThread(view));
+			if (view.quickView === "archived") setArchivedOpened(true);
+		}
+	}
 	const selectionOutsideLive =
 		list.isSuccess &&
 		target?.type === "conversation" &&
@@ -6292,10 +6526,9 @@ const TeamBridgeOwnedPage: FC<{
 			const cached = openingSnapshot.find((entry) => entry.id === target.id);
 			// A cached row that is only a preview has no history to read.
 			if (cached && isPreviewConversation(cached)) return;
+			const landing = knownLanding.current;
 			const tenantId =
-				knownLanding?.id === target.id
-					? knownLanding.tenantId
-					: cached?.tenant_id;
+				landing?.id === target.id ? landing.tenantId : cached?.tenant_id;
 			if (tenantId) row = { id: target.id, tenant_id: tenantId };
 		}
 		if (row && prefetchTeamBridgeLanding(client, accountId, row))
@@ -6307,7 +6540,6 @@ const TeamBridgeOwnedPage: FC<{
 		list.data,
 		target,
 		openingSnapshot,
-		knownLanding,
 		client,
 	]);
 	const previewSelected = selected !== null && isPreviewConversation(selected);
@@ -6755,12 +6987,16 @@ const TeamBridgeOwnedPage: FC<{
 	// biome-ignore lint/correctness/useExhaustiveDependencies: advance the cursor only when the conversation or its newest seq changes.
 	useEffect(() => {
 		if (!isCurrentOwner() || selected === null || newest === undefined) return;
+		// A cursor write is a claim the reader SAW this conversation. Before the
+		// scope is decided the selection may be a seed's, which the default org is
+		// about to replace (QA Q2); the re-run on `scopeDecided` catches up.
+		if (!scopeDecided) return;
 		// An archived channel carries no unread and is read-only: advancing its cursor
 		// is a write the server has no reason to accept.
 		if (selected.status === "archived") return;
 		if (newest <= selected.last_read_seq) return;
 		markRead.mutate({ seq: newest });
-	}, [selected?.id, newest]);
+	}, [selected?.id, newest, scopeDecided]);
 
 	/*
 	 * LAND ON THE CLICKED MESSAGE, NEVER ON A STALE PAGE. The watcher wrote the
@@ -7409,7 +7645,14 @@ const TeamBridgeOwnedPage: FC<{
 					void directory.refetch();
 				}}
 				eligibility={eligibility}
-				gatePending={gatePending && !cachedPaint}
+				gatePending={
+					(gatePending && !cachedPaint) ||
+					openingHeld ||
+					/* Belt and braces for Q1: an unsettled opening whose scope is not
+					   yet the answer must not paint. The render-time correction makes
+					   this unreachable today; it keeps a future path honest. */
+					(openingUnsettled && !scopeSettled)
+				}
 				readOnly={readOnly}
 				readOnlyExplained={trialNote.paused}
 				notice={
@@ -7443,6 +7686,8 @@ const TeamBridgeOwnedPage: FC<{
 				onRetryMemberships={() => {
 					void memberships.refetch();
 				}}
+				communities={communityList.communities}
+				communitiesEnabled={communityList.enabled}
 			/>
 			<TeamBridgeCreateDialog
 				open={channelFormOpen}
