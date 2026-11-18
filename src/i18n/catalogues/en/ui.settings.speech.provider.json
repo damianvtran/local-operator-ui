@@ -9,5 +9,6 @@
 	"ui.settings.speech.provider.not_ready": "Not ready yet.",
 	"ui.settings.speech.provider.setup": "Set up in Providers",
 	"ui.settings.speech.provider.none_chosen": "No provider chosen yet. Hands-free voice stays off until you pick one.",
+	"ui.settings.speech.provider.none_ready": "Neither provider is ready yet. Set one up in Providers, then choose it here.",
 	"ui.settings.speech.provider.save_failed": "The choice could not be saved."
 }

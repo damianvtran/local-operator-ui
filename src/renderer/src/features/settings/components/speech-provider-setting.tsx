@@ -15,6 +15,9 @@
  * words of its own. It offers no credential field: a key lives in one place, the
  * Providers page.
  *
+ * A provider that is not ready cannot be selected (its radio is really
+ * disabled); it still shows the backend's reason and the way to set it up.
+ *
  * "None chosen" is not an option here on purpose. It is where everyone starts,
  * and it is shown as a plain line while neither radio is on; once a provider is
  * picked the person moves between the two.
@@ -61,7 +64,7 @@ type Props = {
 export const SpeechProviderSetting: FC<Props> = ({ onOpenProviders }) => {
 	useI18nLocale();
 	const client = useQueryClient();
-	const { available, provider, providers } = useVoiceProviders();
+	const { available, loading, provider, providers } = useVoiceProviders();
 	/** The choice just made, shown at once and dropped when the status agrees. */
 	const [pending, setPending] = useState<SpeechProvider | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -69,6 +72,10 @@ export const SpeechProviderSetting: FC<Props> = ({ onOpenProviders }) => {
 	// A backend that does not serve voice has no provider to choose.
 	if (!available) return null;
 	const chosen = pending ?? provider;
+	// Both verdicts are in and both are no: the line below says where to go.
+	const noneReady =
+		providers != null &&
+		OPTIONS.every((option) => providers[option.value]?.ready === false);
 
 	const choose = async (next: SpeechProvider) => {
 		if (pending !== null || next === provider) return;
@@ -108,13 +115,28 @@ export const SpeechProviderSetting: FC<Props> = ({ onOpenProviders }) => {
 			<p id={`${name}-help`} className="text-meta text-ink-dim">
 				{t("ui.settings.speech.provider.description")}
 			</p>
-			{chosen === null && (
+			{/* Said once the status is in: while it loads, "none chosen" may be false. */}
+			{chosen === null && !loading && (
 				<p data-speech-provider-none="" className="text-meta text-ink-muted">
-					{t("ui.settings.speech.provider.none_chosen")}
+					{noneReady
+						? t("ui.settings.speech.provider.none_ready")
+						: t("ui.settings.speech.provider.none_chosen")}
 				</p>
 			)}
 			{OPTIONS.map((option) => {
 				const readiness = providers?.[option.value] ?? null;
+				/*
+				 * Not selectable until the daemon says it is ready: a choice that
+				 * cannot speak is a trap. UNKNOWN readiness (an older backend, or a
+				 * failed read) disables nothing, as before; a read still in flight
+				 * disables everything so no option is offered on a guess. The one
+				 * chosen stays checked, so a removed key does not silently rewrite the
+				 * stored value - it is shown with its reason and the other is open.
+				 */
+				const unready =
+					loading || (readiness !== null && readiness.ready === false);
+				const descriptionId = `${name}-${option.value}-description`;
+				const statusId = `${name}-${option.value}-status`;
 				return (
 					<div
 						key={option.value}
@@ -127,19 +149,25 @@ export const SpeechProviderSetting: FC<Props> = ({ onOpenProviders }) => {
 								name={name}
 								value={option.value}
 								checked={chosen === option.value}
-								disabled={pending !== null}
+								disabled={pending !== null || unready}
+								aria-describedby={
+									readiness === null
+										? descriptionId
+										: `${descriptionId} ${statusId}`
+								}
 								onChange={() => void choose(option.value)}
 								className="mt-1"
 							/>
 							<span className="flex flex-col">
 								<span>{option.label()}</span>
-								<span className="text-meta text-ink-dim">
+								<span id={descriptionId} className="text-meta text-ink-dim">
 									{option.description()}
 								</span>
 							</span>
 						</label>
 						{readiness?.ready === true && (
 							<output
+								id={statusId}
 								data-speech-provider-status="ready"
 								className="pl-6 text-meta text-ink-muted"
 							>
@@ -148,6 +176,7 @@ export const SpeechProviderSetting: FC<Props> = ({ onOpenProviders }) => {
 						)}
 						{readiness !== null && !readiness.ready && (
 							<span
+								id={statusId}
 								data-speech-provider-status="not_ready"
 								className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-6 text-meta text-ink-muted"
 							>

@@ -59,6 +59,12 @@
 		"length": "One or two short sentences.",
 		"note": "Neither provider is chosen yet, and hands-free voice cannot start until one is."
 	},
+	"ui.settings.speech.provider.none_ready": {
+		"role": "Notice above two radio options",
+		"tone": "Plain, neutral.",
+		"length": "One or two short sentences.",
+		"note": "Shown instead of the 'none chosen' notice when neither provider can listen and speak yet, so both options are disabled. 'Providers' is the name of the Settings section where the key or sign-in is set up."
+	},
 	"ui.settings.speech.provider.save_failed": {
 		"role": "Inline error under the radio options",
 		"tone": "Plain, neutral.",

@@ -101,6 +101,11 @@ export function useVoiceProviders(): VoiceProviderStatus & {
 	/** The daemon serves voice at all; false hides the choice. */
 	available: boolean;
 	loaded: boolean;
+	/**
+	 * The first read has not answered yet. Not the same as `!loaded`: a read that
+	 * FAILED is not loading, and its readiness is unknown rather than pending.
+	 */
+	loading: boolean;
 } {
 	const capabilities = useDesktopCapabilities();
 	const available = desktopFeatureEnabled(capabilities.data, "voice", 1);
@@ -114,6 +119,7 @@ export function useVoiceProviders(): VoiceProviderStatus & {
 		...readVoiceProviderStatus(query.data),
 		available,
 		loaded: query.data !== undefined,
+		loading: available && query.isPending,
 	};
 }
 

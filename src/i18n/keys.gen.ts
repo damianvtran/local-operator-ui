@@ -3983,6 +3983,7 @@ export type MessageParams = {
 	"ui.settings.speech.provider.elevenlabs.label": undefined;
 	"ui.settings.speech.provider.label": undefined;
 	"ui.settings.speech.provider.none_chosen": undefined;
+	"ui.settings.speech.provider.none_ready": undefined;
 	"ui.settings.speech.provider.not_ready": undefined;
 	"ui.settings.speech.provider.radient.description": undefined;
 	"ui.settings.speech.provider.radient.label": undefined;
