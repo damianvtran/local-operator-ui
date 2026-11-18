@@ -933,6 +933,13 @@ async function mount({
 												'[data-conversation-id][aria-current="page"]',
 											)
 											?.getAttribute("data-conversation-id") ?? null,
+									/* The switcher's title in this commit (ui#1970 QA Q1): a
+									   commit is what paints, so a scope that reaches one here is
+									   a scope the reader saw, however briefly. */
+									scopeTitle:
+										host
+											.querySelector('button[aria-label^="Organization: "]')
+											?.getAttribute("aria-label") ?? null,
 									nav: host.querySelector("[data-nav-attention]")?.textContent,
 									text: host.textContent,
 									draft: host.querySelector("textarea")?.value ?? "",

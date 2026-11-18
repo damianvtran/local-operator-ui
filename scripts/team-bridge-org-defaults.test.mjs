@@ -613,6 +613,9 @@ test("the session scope is per account, on its own key, and tolerant of junk", (
 	assert.doesNotThrow(() => m.writeSessionScope(junk, "acct-1", "tnt_1"));
 });
 
+// The held page paints its gate state, never the seed (review M1, QA Q1).
+const HELD_GATE =
+	/gatePending=\{\s*\(gatePending && !cachedPaint\) \|\|\s*openingHeld \|\|/;
 test("the page feeds the session scope and default org to both opening reads", async () => {
 	const page = await readFile(
 		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
@@ -641,9 +644,11 @@ test("the page feeds the session scope and default org to both opening reads", a
 			"const scopeDecided = scopeSettled && !organizationsPending && !openingHeld;",
 		),
 	);
-	assert.ok(
-		page.includes("gatePending={(gatePending && !cachedPaint) || openingHeld}"),
-	);
+	assert.match(page, HELD_GATE);
+	// QA round 1, Q1/Q2: the opening is corrected during render (never by a
+	// post-paint effect), and no cursor is advanced before the scope is decided.
+	assert.ok(page.includes("if (openingMoving) setScope(openingScope);"));
+	assert.ok(page.includes("if (!scopeDecided) return;"));
 	assert.ok(
 		page.includes(
 			"if (!scopeDecided || !recordSessionScope || !accountId) return;",

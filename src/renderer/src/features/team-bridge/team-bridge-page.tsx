@@ -5678,22 +5678,35 @@ const TeamBridgeOwnedPage: FC<{
 	 * rows cannot be known before the organizations are) and it removes the request
 	 * that would have been discarded.
 	 */
-	const scopeSettled =
-		resolveOpeningScope({
-			organizations,
-			stored: storedScope,
-			session: sessionScope,
-			defaultTenantId,
-			requestedTenant,
-			chosen: scopeChosen.current,
-			current: scope,
-			snapshotRows: openingRows,
-			defaultPending: openingHeld,
-		}) === scope;
+	const openingScope = resolveOpeningScope({
+		organizations,
+		stored: storedScope,
+		session: sessionScope,
+		defaultTenantId,
+		requestedTenant,
+		chosen: scopeChosen.current,
+		current: scope,
+		snapshotRows: openingRows,
+		defaultPending: openingHeld,
+	});
+	const scopeSettled = openingScope === scope;
 	// `organizationsPending` and `openingHeld` are the same rule one step
 	// earlier: the answer that decides the scope is still in flight, so a read
 	// now would be a read this page is about to replace.
 	const scopeDecided = scopeSettled && !organizationsPending && !openingHeld;
+	/*
+	 * THE OPENING ENDS THE FIRST TIME THE SCOPE IS DECIDED (QA round 1, Q1/Q2 on
+	 * ui#1970). Until then the scope state is only a seed, and the render-time
+	 * correction further down may still replace it before anything paints; after
+	 * it, scope moves belong to the reader (switcher) and the adoption effect.
+	 * A deep link or carried click decided at mount, so it starts settled. Only
+	 * a decision made with reads enabled counts: before the account and its
+	 * verdict are known, "decided" is the trivial answer of a page that knows no
+	 * organizations, and latching on it would retire the correction for good.
+	 */
+	const openingSettled = useRef(scopeChosen.current);
+	if (scopeDecided && readsEnabled) openingSettled.current = true;
+	const openingUnsettled = !openingSettled.current && !scopeChosen.current;
 	const list = useTeamBridgeConversations(
 		scope,
 		readsEnabled && scopeDecided,
@@ -5848,6 +5861,8 @@ const TeamBridgeOwnedPage: FC<{
 	 * carries its tenant only when the record was written by a build that stores
 	 * it; an older record yields `null` here and the open behaves as before.
 	 */
+	/* A ref, not a mount constant: when the opening scope corrects away from
+	   the seed, the landing it knows is the DECIDED scope's (QA Q2, below). */
 	const knownLanding = useRef<{ id: string; tenantId: string } | null>(
 		requestedConversation && requestedTenant
 			? { id: requestedConversation, tenantId: requestedTenant }
@@ -5856,7 +5871,10 @@ const TeamBridgeOwnedPage: FC<{
 					restoreOnOpen.tenantId
 				? { id: restoreOnOpen.target.id, tenantId: restoreOnOpen.tenantId }
 				: null,
-	).current;
+	);
+	/* Set while the opening dropped the seed's restore and owes the decided
+	   scope's own one (see the render-time opening correction). */
+	const openingRestoreDeferred = useRef(false);
 	/*
 	 * The scopes whose remembered view has already been offered this mount. The
 	 * landing effect restores a scope's record ONCE - on the first landing after
@@ -6099,15 +6117,12 @@ const TeamBridgeOwnedPage: FC<{
 	// Before that list exists, the watcher's snapshot stands in - and the list
 	// supersedes it the moment it answers (tb-instant-open).
 	//
-	// AFTER A HOLD the move is a correction away from a seed the reader never
-	// saw (`openingHeld`), but the mount already restored that seed's remembered
-	// conversation into `target`. Left there it would show under the default
-	// org's title until the validation read dropped it - the stale-thread-under-
-	// a-new-title case `changeScope` exists to prevent - so the same reset runs
-	// here, minus the writes (this is not a pick). Only after a hold: every other
-	// adoption move keeps its shipped behaviour.
-	const openingWasHeld = useRef(false);
-	if (openingHeld) openingWasHeld.current = true;
+	// THE OPENING ITSELF IS NOT DECIDED HERE: a passive effect runs after paint,
+	// so correcting the seed from here painted it first (QA round 1, Q1 on
+	// ui#1970). The render-time correction below the archived state owns every
+	// move until `openingSettled`; this effect then finds `next === scope` and
+	// keeps only the later adoptions (an organization list that changes after the
+	// opening, the snapshot superseded by the list).
 	useEffect(() => {
 		if (openingHeld) return;
 		const next = resolveOpeningScope({
@@ -6121,16 +6136,7 @@ const TeamBridgeOwnedPage: FC<{
 			snapshotRows: openingRows,
 			defaultPending: openingHeld,
 		});
-		const corrected = openingWasHeld.current;
-		openingWasHeld.current = false;
 		if (next === scope) return;
-		if (corrected && !scopeChosen.current) {
-			restoredScopes.current.delete(next);
-			pendingLanding.current = null;
-			restoredTarget.current = null;
-			setThreadLink(null);
-			setTarget(null);
-		}
 		setScope(next);
 	}, [
 		organizations,
@@ -6178,6 +6184,10 @@ const TeamBridgeOwnedPage: FC<{
 	// on its own last conversation. The default is only for a scope with no
 	// record; a record that no longer resolves is caught by the validation below.
 	useEffect(() => {
+		// Held, the rows on hand are the SEED's (the watcher snapshot narrowed to
+		// it): landing now would select - and so read and mark read - a
+		// conversation of a scope the default org may yet replace (QA Q2).
+		if (openingHeld) return;
 		if (
 			!ownerAudit?.active &&
 			target === null &&
@@ -6210,7 +6220,14 @@ const TeamBridgeOwnedPage: FC<{
 			);
 			if (first) setTarget({ type: "conversation", id: first.id });
 		}
-	}, [visibleConversations, organizations, target, ownerAudit?.active, scope]);
+	}, [
+		visibleConversations,
+		organizations,
+		target,
+		ownerAudit?.active,
+		scope,
+		openingHeld,
+	]);
 	useEffect(() => {
 		if (target !== null) pendingLanding.current = null;
 	}, [target]);
@@ -6226,6 +6243,71 @@ const TeamBridgeOwnedPage: FC<{
 	const [archivedOpened, setArchivedOpened] = useState(
 		() => restoreOnOpen?.quickView === "archived",
 	);
+	/*
+	 * THE OPENING SCOPE IS DECIDED BEFORE ANYTHING PAINTS (QA round 1, Q1/Q2 on
+	 * ui#1970).
+	 *
+	 * `scope` starts as a SEED - this app session's scope, else yesterday's pick,
+	 * else the union - because the inputs that decide it (status tenants,
+	 * memberships and their `is_home`) come from hooks this state precedes. The
+	 * correction used to be a passive effect, which runs after paint, so the seed
+	 * painted for a frame or more: when the shell had already cached memberships
+	 * (no hold at all), and in the commit where a hold lifted. React's
+	 * render-phase update is the synchronous form: a `setState` on this component
+	 * during its own render discards that render and re-runs it before commit, so
+	 * the seed never reaches the DOM - whether the inputs were cached at mount or
+	 * arrive later and lift the hold.
+	 *
+	 * The seed's restored view goes with it. The mount restored the seed scope's
+	 * remembered conversation into `target` (so a one-org open paints it in its
+	 * first frame), and a selection is not inert: its history read answers and the
+	 * mark-read effect advances its cursor, clearing unread the reader never saw
+	 * (Q2). So with several organizations - where the seed can be another org's -
+	 * nothing is restored while held, and a move drops the seed's restore. The
+	 * DECIDED scope's own record - the only one that belongs to it - is restored
+	 * in the same render pass that decides it, not left to the landing effect:
+	 * that effect needs rows, and a held list has none, which would lose the
+	 * remembered conversation's parallel history read (first-open latency) and
+	 * its first-frame paint. With one organization every record belongs to it,
+	 * so a move (e.g. union to that org) keeps the mount's restore.
+	 *
+	 * Every update is conditional on the value differing, so the re-run converges
+	 * (React refuses an unconditional render-phase update as a loop).
+	 */
+	const openingMoving =
+		openingUnsettled && !openingHeld && openingScope !== scope;
+	if (openingUnsettled && (openingHeld || openingMoving)) {
+		if (openingOrganizations > 1) {
+			restoredScopes.current.clear();
+			pendingLanding.current = null;
+			restoredTarget.current = null;
+			knownLanding.current = null;
+			openingRestoreDeferred.current = true;
+			if (target !== null) setTarget(null);
+			if (threadLink !== null) setThreadLink(null);
+			if (archivedOpened) setArchivedOpened(false);
+		}
+		if (openingMoving) setScope(openingScope);
+	} else if (!openingHeld && openingRestoreDeferred.current) {
+		// `scope` is the opening's answer now (this may be the very render that
+		// settles it, hence outside the unsettled branch), and `viewMemory` was
+		// re-read for it at the top of this render: restore exactly what the
+		// mount would have, had it known the answer.
+		openingRestoreDeferred.current = false;
+		restoredScopes.current.add(scope);
+		const view = viewMemory.current.view;
+		if (view) {
+			restoredTarget.current = view.target;
+			knownLanding.current =
+				view.target.type === "conversation" && view.tenantId
+					? { id: view.target.id, tenantId: view.tenantId }
+					: null;
+			setTarget(view.target);
+			if (TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD)
+				setThreadLink(rememberedThread(view));
+			if (view.quickView === "archived") setArchivedOpened(true);
+		}
+	}
 	const selectionOutsideLive =
 		list.isSuccess &&
 		target?.type === "conversation" &&
@@ -6430,10 +6512,9 @@ const TeamBridgeOwnedPage: FC<{
 			const cached = openingSnapshot.find((entry) => entry.id === target.id);
 			// A cached row that is only a preview has no history to read.
 			if (cached && isPreviewConversation(cached)) return;
+			const landing = knownLanding.current;
 			const tenantId =
-				knownLanding?.id === target.id
-					? knownLanding.tenantId
-					: cached?.tenant_id;
+				landing?.id === target.id ? landing.tenantId : cached?.tenant_id;
 			if (tenantId) row = { id: target.id, tenant_id: tenantId };
 		}
 		if (row && prefetchTeamBridgeLanding(client, accountId, row))
@@ -6445,7 +6526,6 @@ const TeamBridgeOwnedPage: FC<{
 		list.data,
 		target,
 		openingSnapshot,
-		knownLanding,
 		client,
 	]);
 	const previewSelected = selected !== null && isPreviewConversation(selected);
@@ -6893,12 +6973,16 @@ const TeamBridgeOwnedPage: FC<{
 	// biome-ignore lint/correctness/useExhaustiveDependencies: advance the cursor only when the conversation or its newest seq changes.
 	useEffect(() => {
 		if (!isCurrentOwner() || selected === null || newest === undefined) return;
+		// A cursor write is a claim the reader SAW this conversation. Before the
+		// scope is decided the selection may be a seed's, which the default org is
+		// about to replace (QA Q2); the re-run on `scopeDecided` catches up.
+		if (!scopeDecided) return;
 		// An archived channel carries no unread and is read-only: advancing its cursor
 		// is a write the server has no reason to accept.
 		if (selected.status === "archived") return;
 		if (newest <= selected.last_read_seq) return;
 		markRead.mutate({ seq: newest });
-	}, [selected?.id, newest]);
+	}, [selected?.id, newest, scopeDecided]);
 
 	/*
 	 * LAND ON THE CLICKED MESSAGE, NEVER ON A STALE PAGE. The watcher wrote the
@@ -7547,7 +7631,14 @@ const TeamBridgeOwnedPage: FC<{
 					void directory.refetch();
 				}}
 				eligibility={eligibility}
-				gatePending={(gatePending && !cachedPaint) || openingHeld}
+				gatePending={
+					(gatePending && !cachedPaint) ||
+					openingHeld ||
+					/* Belt and braces for Q1: an unsettled opening whose scope is not
+					   yet the answer must not paint. The render-time correction makes
+					   this unreachable today; it keeps a future path honest. */
+					(openingUnsettled && !scopeSettled)
+				}
 				readOnly={readOnly}
 				readOnlyExplained={trialNote.paused}
 				notice={

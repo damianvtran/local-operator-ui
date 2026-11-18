@@ -413,3 +413,162 @@ test("multi-org restart: nothing of yesterday's pick paints or is read before th
 		await app.close();
 	}
 });
+
+/*
+ * NO SEED SCOPE EVER PAINTS, AND NOTHING OF IT IS MARKED READ (QA round 1, Q1
+ * and Q2 on ui#1970). The opening scope used to start as the seed (this app
+ * session's scope, else yesterday's pick, else the union) and be corrected to
+ * the default org by a passive effect - after paint. Two paths reached that
+ * paint: memberships ALREADY CACHED by the shell (no hold at all), and the hold
+ * lifting in the same commit that still carried the seed. Meanwhile the seed's
+ * remembered conversation was restored into the selection, so its history read
+ * answered and the mark-read effect advanced its cursor - clearing unread the
+ * reader never saw.
+ *
+ * Asserted over EVERY committed frame (the fixture's Profiler runs before
+ * passive effects, i.e. exactly what the browser would paint), not the final
+ * DOM: a one-frame flash is the defect.
+ */
+const SHARED_HOME = {
+	tenant_id: "org_shared",
+	tenant_name: "Shared",
+	role: "member",
+	status: "active",
+	is_home: true,
+	plan: { status: "active", seats: 5 },
+};
+const OTHER_MEMBER = {
+	...SHARED_HOME,
+	tenant_id: "org_other",
+	tenant_name: "Other",
+	is_home: false,
+};
+const OTHER_THREAD = "Other thread";
+const history = (conversation) =>
+	[1, 2].map((seq) => ({
+		id: `msg_${conversation}_${seq}`,
+		conversation_id: conversation,
+		seq,
+		sender: {
+			account_id: "acct_b",
+			kind: "human",
+			display_label: "acct_b",
+		},
+		body: `line ${seq} of ${conversation}`,
+		origin: "human",
+		created_at: "2026-10-23T12:00:00Z",
+	}));
+for (const membershipsPath of ["cached", "delayed"])
+	for (const profile of ["restart", "fresh"])
+		test(`multi-org ${profile} open, memberships ${membershipsPath}: only the default org ever paints, and the seed's conversation is never marked read`, async () => {
+			const gate = membershipsPath === "delayed" ? deferred() : null;
+			const app = await mount({
+				path: "/team-bridge",
+				waitReady: false,
+				membershipsGate: gate,
+				memberships: [OTHER_MEMBER, SHARED_HOME],
+				seed: ({ client, ui: bundle, fixture }) => {
+					if (profile === "restart")
+						// Yesterday the reader was in Other, on its unread thread.
+						localStorage.setItem(
+							"lo.teamBridge.view.v1",
+							JSON.stringify({
+								acct_a: {
+									scope: "org_other",
+									scopes: {
+										org_other: {
+											target: { type: "conversation", id: "bcv_other" },
+											tenantId: "org_other",
+										},
+									},
+								},
+							}),
+						);
+					// The shell's watcher left both orgs' rows, with unread in Other.
+					client.setQueryData(
+						bundle.teamBridgeKeys.conversations("all", "acct_a"),
+						{
+							conversations: [
+								row({ latest_seq: 2 }),
+								row({
+									id: "bcv_other",
+									tenant_id: "org_other",
+									name: OTHER_THREAD,
+									latest_seq: 2,
+									unread_count: 2,
+								}),
+							],
+							has_more: false,
+						},
+					);
+					// ...and, on the cached path, already read the memberships at boot.
+					if (membershipsPath === "cached")
+						client.setQueryData(["memberships", "account", "acct_a"], {
+							memberships: [OTHER_MEMBER, SHARED_HOME],
+						});
+					fixture.historyByConversation.set("bcv_other", history("bcv_other"));
+					fixture.historyByConversation.set(
+						"bcv_shared",
+						history("bcv_shared"),
+					);
+				},
+			});
+			try {
+				if (gate) {
+					await until(
+						() =>
+							app.fixture.calls.some(
+								(call) => call.control?.operation === "memberships.list",
+							),
+						"the memberships read is in flight",
+					);
+					// Long enough for a held seed's history read and mark-read to land.
+					await delay(150);
+					await act(async () => gate.resolve());
+				}
+				await until(
+					() =>
+						app.frames.some(
+							(frame) =>
+								frame.scopeTitle === "Organization: Shared" &&
+								frame.selectedId === "bcv_shared",
+						),
+					"the default org, on its own conversation",
+				);
+				await delay(150);
+				const titles = [
+					...new Set(app.frames.map((frame) => frame.scopeTitle)),
+				].filter(Boolean);
+				assert.deepEqual(
+					titles,
+					["Organization: Shared"],
+					"no commit ever titled another scope",
+				);
+				assert.equal(
+					app.frames.some(
+						(frame) =>
+							frame.selectedId === "bcv_other" ||
+							frame.text.includes(OTHER_THREAD),
+					),
+					false,
+					"no commit ever showed the seed's conversation or rows",
+				);
+				assert.deepEqual(
+					app.fixture.calls
+						.filter((call) => call.op === "team_bridge.read")
+						.map((call) => call.conversation_id)
+						.filter((id) => id !== "bcv_shared"),
+					[],
+					"no read POST for anything but the default org's conversation",
+				);
+				// A mark-read refreshes the list, so the default org may be read twice;
+				// what matters is that no other scope's list was ever asked for.
+				assert.deepEqual(
+					[...new Set(listScopes(app))],
+					["org_shared"],
+					"only the default org's list is read",
+				);
+			} finally {
+				await app.close();
+			}
+		});
