@@ -204,6 +204,7 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 
 	const arrival = arrivalCopy({
 		engaged: move.engaged,
+		resumeRequested: Boolean(move.receipt.resume_requested),
 		name: move.name,
 		from: move.from,
 		newSessionId: move.receipt.new_session_id,

@@ -155,16 +155,20 @@ export const MoveConfirmDialog: FC<{
 		plan.to,
 		open && workingSetGate && workingSetSeed === null,
 	);
-	const workingSet = workingSetGate
-		? (workingSetSeed?.workingSet ?? preflight.data ?? null)
+	// A refusal's seed, else the preflight's answer in the same shape: an
+	// unreadable working set opens in the move-without state on FIRST open, not
+	// only after the route refuses `working_set_unknown` (QA round 1, Q-2).
+	const answer = workingSetGate
+		? (workingSetSeed ?? preflight.data ?? null)
 		: null;
+	const workingSet = answer?.workingSet ?? null;
 	/*
 	 * WHAT THE REVIEW ASKS. A manifest with something in it asks for the digest;
 	 * a refusal that says the files cannot travel (`working_set_unknown`, an
 	 * `unsupported` manifest) asks for the explicit "without the working files"
 	 * consent even when there is no list to show. Anything else is today's dialog.
 	 */
-	const withoutOnly = workingSetGate && (workingSetSeed?.withoutOnly ?? false);
+	const withoutOnly = answer?.withoutOnly ?? false;
 	const review = workingSetHasFiles(workingSet) ? workingSet : null;
 	const reviewing = review !== null || withoutOnly;
 	const reviewMode = workingSetMode(review, withoutOnly);

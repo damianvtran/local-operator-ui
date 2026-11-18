@@ -651,6 +651,16 @@ export type TransferReceipt = {
 	 */
 	// Optional only so hand-built fixtures predating the field still type-check.
 	engagement?: { engaged: boolean; reason: string } | null;
+	/**
+	 * The source ASKED the destination to resume the conversation (core #4241
+	 * receipt `resume_requested: {reason: "active"|"asked", session_id}`, on an
+	 * offload). Whether it actually started is the destination's later work, so
+	 * `engagement` stays `null` (outcome unknown) - but "nothing is running there"
+	 * is then a claim the receipt contradicts (QA round 1, Q-1). Any record counts
+	 * as present, including a `reason` this build does not know: a newer reason is
+	 * still a request. `null` when absent.
+	 */
+	resume_requested?: { reason: string; session_id: string } | null;
 };
 
 /**
@@ -701,6 +711,12 @@ export function transferReceipt(value: unknown): TransferReceipt | null {
 						reason: text(value.engagement.reason),
 					}
 				: null,
+		resume_requested: isRecord(value.resume_requested)
+			? {
+					reason: text(value.resume_requested.reason),
+					session_id: text(value.resume_requested.session_id),
+				}
+			: null,
 	};
 }
 
@@ -1188,6 +1204,58 @@ export function workingSetReopen(
 		default:
 			return null;
 	}
+}
+
+/**
+ * Whether a preflight answer says the working set CANNOT be read or sent: a
+ * block in `state: "unknown"` (the owner could not compute a manifest; the core
+ * sends a `failure`, never a `scope_digest`) or `"unsupported"`.
+ *
+ * WHY A SEPARATE READING (QA round 1, Q-2). `workingSet()` is null for such a
+ * block on purpose - there is no digest to consent to - and the dialog used to
+ * read that null as "nothing to carry", so the FIRST dialog was the plain one
+ * and the warning only came after the route refused `working_set_unknown`. The
+ * operator's rule is that the move always warns and asks when working files are
+ * involved, so this tells the dialog to open straight in the move-without state.
+ * An explicit `confirmation_required: false` from the route still wins.
+ */
+function workingSetUnreadable(value: unknown): boolean {
+	if (!isRecord(value)) return false;
+	if (isRecord(value.result)) return workingSetUnreadable(value.result);
+	if (isRecord(value.working_set))
+		return (
+			value.confirmation_required !== false &&
+			workingSetUnreadable(value.working_set)
+		);
+	const state = text(value.state);
+	return state === "unknown" || state === "unsupported";
+}
+
+/**
+ * The preflight's answer, as the move dialog reads it: the same shape as a
+ * refusal's reopen seed, so a first open on an unreadable working set renders
+ * EXACTLY the state a `working_set_unknown` refusal reopens with (no list, the
+ * "couldn't be checked" warning, the move-without consent). `null`: nothing to
+ * confirm, today's dialog.
+ */
+export function workingSetPreflight(value: unknown): MoveWorkingSetSeed | null {
+	const set = workingSet(value);
+	// A readable manifest: `workingSetMode` already reads `unsupported` off it.
+	if (set)
+		return {
+			workingSet: set,
+			changed: false,
+			unconfirmed: false,
+			withoutOnly: false,
+		};
+	return workingSetUnreadable(value)
+		? {
+				workingSet: null,
+				changed: false,
+				unconfirmed: false,
+				withoutOnly: true,
+			}
+		: null;
 }
 
 /** A refusal as the surface must render it: the code, and the author's sentence. */

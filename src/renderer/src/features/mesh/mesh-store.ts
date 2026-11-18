@@ -77,16 +77,16 @@ import { type MeshedSessions, sessionsByDevice } from "./mesh-sessions";
 import {
 	type MeshRefusal,
 	type MeshSessionRow,
+	type MoveWorkingSetSeed,
 	type NetworkTopology,
 	type PeerList,
 	type TransferReceipt,
-	type WorkingSet,
 	meshRefusal,
 	networkTopology,
 	peerList,
 	sessionRows,
 	transferReceipt,
-	workingSet,
+	workingSetPreflight,
 } from "./mesh-types";
 
 export const meshKeys = {
@@ -480,7 +480,8 @@ export type MoveAsk = {
  * nothing, and a backend without `session_transfer_working_set` has no route to
  * ask. The answer is `null` for a backend that answered with no working-set
  * block (nothing to carry) - the dialog then renders exactly as it did before
- * this feature. NOT CACHED BETWEEN OPENINGS (`gcTime: 0`, `staleTime: 0`): the
+ * this feature - and a reopen-shaped seed otherwise, `withoutOnly` when the set
+ * could not be read (`workingSetPreflight`, QA round 1 Q-2). NOT CACHED BETWEEN OPENINGS (`gcTime: 0`, `staleTime: 0`): the
  * manifest is a snapshot of trees the session may still be editing, and a
  * consent given to last minute's list is the stale confirmation the scope
  * digest exists to refuse.
@@ -493,8 +494,8 @@ export function useTransferPreflight(
 	return useQuery({
 		queryKey: meshKeys.preflight(sessionId, to),
 		enabled: enabled && sessionId.length > 0 && to.length > 0,
-		queryFn: async (): Promise<WorkingSet | null> =>
-			workingSet(
+		queryFn: async (): Promise<MoveWorkingSetSeed | null> =>
+			workingSetPreflight(
 				await desktopResult<unknown>({
 					op: "sessions.transfer.preflight",
 					sessionId,

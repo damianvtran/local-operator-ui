@@ -85,6 +85,7 @@ const bundled = await build({
 			export { reopenAsk } from "./src/renderer/src/features/mesh/mesh-drop";
 			export { partitionWorktrees, exclusionReason, probeDetailSentence, remedyDevice } from "./src/renderer/src/features/mesh/mesh-working-set";
 			export { ChatHeaderDevice } from "./src/renderer/src/features/chat/device/chat-header-device";
+			export { ChatDeviceNotice } from "./src/renderer/src/features/chat/device/chat-device-notice";
 			export { devicePickerModel } from "./src/renderer/src/features/chat/device/chat-device-model";
 			export { useChatDeviceStore } from "./src/renderer/src/features/chat/device/chat-device-store";
 			export { desktopEndpoint, desktopRequestSchema, desktopRequestDeadlineMs } from "./src/shared/desktop-contract";
@@ -737,6 +738,72 @@ test("an unknown working set offers only the explicit move-without consent", asy
 		false,
 		"the stale digest is dropped; only the without-consent travels",
 	);
+});
+
+/*
+ * QA round 1, Q-2: the core's `state: "unknown"` preflight carries a `failure`
+ * and NO `scope_digest`. The first dialog used to be the plain one with Confirm
+ * enabled, and the warning only appeared after the route refused
+ * `working_set_unknown`. It must warn and ask on FIRST open, from the preflight.
+ */
+for (const state of ["unknown", "unsupported"]) {
+	test(`a digest-less ${state} preflight warns and asks for move-without on first open`, async () => {
+		const calls = installBridge({
+			features: {
+				peers: 1,
+				session_transfer: 1,
+				session_transfer_working_set: 1,
+			},
+			preflight: {
+				confirmation_required: true,
+				working_set: {
+					state,
+					failure: { code: "git_status_failed" },
+					destination: { device_id: PEER, name: "build-box" },
+				},
+			},
+		});
+		const view = await mount({});
+		assert.ok(calls.includes("sessions.transfer.preflight"));
+		const review = reviewRoot();
+		assert.equal(
+			review.querySelector("[data-mode]").getAttribute("data-mode"),
+			"without",
+		);
+		assert.match(review.textContent, /couldn't be checked/);
+		const confirmWithout = () =>
+			[...document.querySelectorAll('[role="dialog"] button')].find(
+				(button) => button.textContent === "Move without working files",
+			);
+		assert.ok(confirmWithout(), "Confirm says it moves WITHOUT the files");
+		assert.equal(view.confirm(), undefined, "not the plain verb");
+		assert.equal(confirmWithout().disabled, true, "needs the tick first");
+		await act(async () =>
+			document
+				.querySelector('[data-testid="working-set-consent"] [role="checkbox"]')
+				.click(),
+		);
+		await act(async () => confirmWithout().click());
+		assert.equal(view.chosen[0].withoutWorkingSet, true);
+		assert.equal("confirmWorkingSet" in view.chosen[0], false);
+	});
+}
+
+test("a digest-less block the route says needs no confirmation keeps today's dialog", async () => {
+	installBridge({
+		features: {
+			peers: 1,
+			session_transfer: 1,
+			session_transfer_working_set: 1,
+		},
+		preflight: {
+			confirmation_required: false,
+			working_set: { state: "unknown" },
+		},
+	});
+	const view = await mount({});
+	assert.equal(document.querySelector('[data-testid="working-set"]'), null);
+	assert.equal(view.confirm().disabled, false);
 });
 
 /* ---------------------------------------------------- the destination probe */
@@ -1442,6 +1509,104 @@ test("the transfer receipt reads the core's engagement block, and only a real on
 		null,
 	);
 });
+
+test("the transfer receipt reads resume_requested, any reason counting as present", () => {
+	const base = { session_id: plan.sessionId, mode: "move", locality: "remote" };
+	assert.deepEqual(
+		api.transferReceipt({
+			...base,
+			resume_requested: { reason: "active", session_id: plan.sessionId },
+		}).resume_requested,
+		{ reason: "active", session_id: plan.sessionId },
+	);
+	assert.deepEqual(
+		api.transferReceipt({ ...base, resume_requested: { reason: "later" } })
+			.resume_requested,
+		{ reason: "later", session_id: "" },
+		"a reason this build does not know is still a request",
+	);
+	assert.equal(api.transferReceipt(base).resume_requested, null);
+	assert.equal(
+		api.transferReceipt({ ...base, resume_requested: "yes" }).resume_requested,
+		null,
+	);
+});
+
+/*
+ * QA round 1, Q-1 (UI half): an offload's receipt carries `engagement: null`
+ * (outcome unknown) plus `resume_requested` when the source asked the
+ * destination to resume. "Nothing is running on <device> yet" is then a claim
+ * the receipt contradicts, so the cold line goes; without the field it stays.
+ */
+for (const [label, extra, coldShown] of [
+	[
+		"resume_requested present",
+		{ resume_requested: { reason: "asked", session_id: "s" } },
+		false,
+	],
+	["resume_requested absent (control)", {}, true],
+]) {
+	test(`the pane's arrival notice with ${label}`, async () => {
+		window.api = {
+			desktop: {
+				request: async () => ({ status: 404, body: { detail: "no" } }),
+			},
+		};
+		const host = document.createElement("div");
+		document.body.append(host);
+		const root = createRoot(host);
+		const client = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+		mounted = async () => {
+			await act(async () => root.unmount());
+			host.remove();
+			client.clear();
+			api.useChatDeviceStore.getState().dismissMove(plan.sessionId);
+			document.body.innerHTML = "";
+		};
+		const receipt = api.transferReceipt({
+			session_id: plan.sessionId,
+			mode: "move",
+			locality: "remote",
+			owner_device: PEER,
+			source_retired: true,
+			engagement: null,
+			...extra,
+		});
+		await act(async () =>
+			api.useChatDeviceStore.getState().settleMove(plan.sessionId, {
+				kind: "moved",
+				deviceId: PEER,
+				name: "build-box",
+				from: null,
+				receipt,
+				engaged: receipt.engagement?.engaged ?? null,
+			}),
+		);
+		await act(async () =>
+			root.render(
+				h(
+					QueryClientProvider,
+					{ client },
+					h(api.ChatDeviceNotice, { sessionId: plan.sessionId }),
+				),
+			),
+		);
+		await settle();
+		const notice = document.querySelector('[data-device-notice="moved"]');
+		assert.ok(notice, "the arrival notice rendered");
+		assert.match(notice.textContent, /the conversation is there/);
+		assert.equal(
+			/Nothing is running on build-box yet/.test(notice.textContent),
+			coldShown,
+		);
+		assert.equal(
+			Boolean(notice.querySelector('[data-arrival-state="cold"]')),
+			coldShown,
+		);
+	});
+}
 
 test("the core's whole DETAIL_CODES list has its own sentence, and run_on names the lender when it can", () => {
 	// core #4241 @ ca98f378922f `network/workset_probe.py` DETAIL_CODES, in order.
