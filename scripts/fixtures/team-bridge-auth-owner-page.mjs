@@ -434,6 +434,12 @@ async function mount({
 	attachments = false,
 	hostedRail = false,
 	watcher = false,
+	// Render the tree inside <React.StrictMode>, as the app's own renderer root
+	// does (src/renderer/src/main.tsx). StrictMode renders every update twice
+	// from committed state, which exposes state kept in refs written during
+	// render (ui#1970 review round 4, R4-1). Off by default so no other suite's
+	// frame counts move.
+	strict = false,
 } = {}) {
 	// A revoked attempt can outlive its cleared lane and store entry. A later
 	// fixture must not reset shared state while that earlier job can still run.
@@ -883,7 +889,16 @@ async function mount({
 	};
 	const host = document.createElement("div");
 	document.body.append(host);
-	const root = createRoot(host);
+	const reactRoot = createRoot(host);
+	const root = strict
+		? {
+				render: (element) =>
+					reactRoot.render(
+						React.createElement(React.StrictMode, null, element),
+					),
+				unmount: () => reactRoot.unmount(),
+			}
+		: reactRoot;
 	const client = ui.queryClient;
 	client.clear();
 	seed?.({ client, ui, fixture });

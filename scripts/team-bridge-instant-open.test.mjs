@@ -458,13 +458,25 @@ const history = (conversation) =>
 		origin: "human",
 		created_at: "2026-10-23T12:00:00Z",
 	}));
-for (const membershipsPath of ["cached", "delayed"])
+/*
+ * Each case also runs under <React.StrictMode>, which the app's renderer root
+ * opts into (review round 4, R4-1 on ui#1970): StrictMode renders an update
+ * twice from committed state, so opening state kept in a ref written during
+ * render survived a discarded pass and brought the seed's flash back.
+ */
+const STRICT_MODES = [false, true];
+const strictLabel = (strict) => (strict ? " (StrictMode)" : "");
+const OPENINGS = STRICT_MODES.flatMap((strict) =>
+	["cached", "delayed"].map((membershipsPath) => ({ strict, membershipsPath })),
+);
+for (const { strict, membershipsPath } of OPENINGS)
 	for (const profile of ["restart", "fresh"])
-		test(`multi-org ${profile} open, memberships ${membershipsPath}: only the default org ever paints, and the seed's conversation is never marked read`, async () => {
+		test(`multi-org ${profile} open, memberships ${membershipsPath}${strictLabel(strict)}: only the default org ever paints, and the seed's conversation is never marked read`, async () => {
 			const gate = membershipsPath === "delayed" ? deferred() : null;
 			const app = await mount({
 				path: "/team-bridge",
 				waitReady: false,
+				strict,
 				membershipsGate: gate,
 				memberships: [OTHER_MEMBER, SHARED_HOME],
 				seed: ({ client, ui: bundle, fixture }) => {
@@ -567,6 +579,116 @@ for (const membershipsPath of ["cached", "delayed"])
 					[...new Set(listScopes(app))],
 					["org_shared"],
 					"only the default org's list is read",
+				);
+			} finally {
+				await app.close();
+			}
+		});
+
+/*
+ * THE DECIDED SCOPE'S OWN REMEMBERED CONVERSATION IS RESTORED (review round 4,
+ * R4-2 on ui#1970). The opening drops the seed scope's restore and owes the
+ * default org its own one. `bcv_shared` is the default org's landing whether or
+ * not that restore runs, so this gives Shared a remembered SECOND conversation:
+ * only the deferred restore selects it.
+ */
+for (const strict of STRICT_MODES)
+	for (const membershipsPath of ["cached", "delayed"])
+		test(`multi-org restart, memberships ${membershipsPath}${strictLabel(strict)}: the default org's own remembered conversation is restored`, async () => {
+			const gate = membershipsPath === "delayed" ? deferred() : null;
+			const rows = [
+				row(),
+				row({ id: "bcv_shared2", name: "Shared second" }),
+				row({ id: "bcv_other", tenant_id: "org_other", name: OTHER_THREAD }),
+			];
+			const app = await mount({
+				path: "/team-bridge",
+				waitReady: false,
+				strict,
+				membershipsGate: gate,
+				memberships: [OTHER_MEMBER, SHARED_HOME],
+				seed: ({ client, ui: bundle, fixture }) => {
+					fixture.listFor = (request) => ({
+						conversations:
+							request.scope === "account"
+								? rows
+								: rows.filter((r) => r.tenant_id === request.tenant_id),
+						has_more: false,
+					});
+					// Yesterday's pick was Other, and each org remembers its own view.
+					localStorage.setItem(
+						"lo.teamBridge.scope.v1",
+						JSON.stringify({ acct_a: "org_other" }),
+					);
+					localStorage.setItem(
+						"lo.teamBridge.view.v1",
+						JSON.stringify({
+							acct_a: {
+								scope: "org_other",
+								scopes: {
+									org_other: {
+										target: { type: "conversation", id: "bcv_other" },
+										tenantId: "org_other",
+									},
+									org_shared: {
+										target: { type: "conversation", id: "bcv_shared2" },
+										tenantId: "org_shared",
+									},
+								},
+							},
+						}),
+					);
+					client.setQueryData(
+						bundle.teamBridgeKeys.conversations("all", "acct_a"),
+						{ conversations: rows, has_more: false },
+					);
+					if (membershipsPath === "cached")
+						client.setQueryData(["memberships", "account", "acct_a"], {
+							memberships: [OTHER_MEMBER, SHARED_HOME],
+						});
+				},
+			});
+			try {
+				if (gate) {
+					await until(
+						() =>
+							app.fixture.calls.some(
+								(call) => call.control?.operation === "memberships.list",
+							),
+						"the memberships read is in flight",
+					);
+					await delay(150);
+					await act(async () => gate.resolve());
+				}
+				await until(
+					() =>
+						app.frames.some(
+							(frame) =>
+								frame.scopeTitle === "Organization: Shared" && frame.selectedId,
+						),
+					"the default org, with a selection",
+				);
+				await delay(300);
+				const sequence = [
+					...new Set(
+						app.frames.map(
+							(frame) => `${frame.scopeTitle}|${frame.selectedId}`,
+						),
+					),
+				];
+				assert.equal(
+					app.frames.at(-1).selectedId,
+					"bcv_shared2",
+					`the default org's remembered conversation; frames ${JSON.stringify(sequence)}`,
+				);
+				assert.equal(
+					app.frames.some(
+						(frame) =>
+							frame.scopeTitle === "Organization: Shared" &&
+							frame.selectedId === "bcv_shared",
+					),
+					false,
+					`never the default landing first; frames ${JSON.stringify(sequence)}`,
 				);
 			} finally {
 				await app.close();

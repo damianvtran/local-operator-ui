@@ -5703,10 +5703,22 @@ const TeamBridgeOwnedPage: FC<{
 	 * a decision made with reads enabled counts: before the account and its
 	 * verdict are known, "decided" is the trivial answer of a page that knows no
 	 * organizations, and latching on it would retire the correction for good.
+	 *
+	 * STATE, NOT A REF (review round 4, R4-1). The renderer runs under
+	 * StrictMode, which renders an update twice and starts the second pass from
+	 * COMMITTED state: it drops the first pass's render-phase `setScope`/
+	 * `setTarget` but would keep a ref written during render, so the second pass
+	 * saw "settled" with the seed scope still in state, skipped the correction and
+	 * painted the seed (Q1 again). A render-phase `setState` (React's "storing
+	 * information from previous renders" pattern) is discarded with its pass, so
+	 * every pass recomputes the latch from the same committed inputs. The latch
+	 * still reads as settled in the very pass that decides it, as the ref did.
 	 */
-	const openingSettled = useRef(scopeChosen.current);
-	if (scopeDecided && readsEnabled) openingSettled.current = true;
-	const openingUnsettled = !openingSettled.current && !scopeChosen.current;
+	const [openingSettled, setOpeningSettled] = useState(scopeChosen.current);
+	const openingDecidedNow = scopeDecided && readsEnabled;
+	if (openingDecidedNow && !openingSettled) setOpeningSettled(true);
+	const openingUnsettled =
+		!(openingSettled || openingDecidedNow) && !scopeChosen.current;
 	const list = useTeamBridgeConversations(
 		scope,
 		readsEnabled && scopeDecided,
@@ -5873,8 +5885,10 @@ const TeamBridgeOwnedPage: FC<{
 				: null,
 	);
 	/* Set while the opening dropped the seed's restore and owes the decided
-	   scope's own one (see the render-time opening correction). */
-	const openingRestoreDeferred = useRef(false);
+	   scope's own one (see the render-time opening correction). State, not a
+	   ref, for the same StrictMode reason as `openingSettled` (R4-1): a ref
+	   cleared by a discarded render pass lost the decided scope's restore. */
+	const [openingRestoreDeferred, setOpeningRestoreDeferred] = useState(false);
 	/*
 	 * The scopes whose remembered view has already been offered this mount. The
 	 * landing effect restores a scope's record ONCE - on the first landing after
@@ -6282,18 +6296,18 @@ const TeamBridgeOwnedPage: FC<{
 			pendingLanding.current = null;
 			restoredTarget.current = null;
 			knownLanding.current = null;
-			openingRestoreDeferred.current = true;
+			if (!openingRestoreDeferred) setOpeningRestoreDeferred(true);
 			if (target !== null) setTarget(null);
 			if (threadLink !== null) setThreadLink(null);
 			if (archivedOpened) setArchivedOpened(false);
 		}
 		if (openingMoving) setScope(openingScope);
-	} else if (!openingHeld && openingRestoreDeferred.current) {
+	} else if (!openingHeld && openingRestoreDeferred) {
 		// `scope` is the opening's answer now (this may be the very render that
 		// settles it, hence outside the unsettled branch), and `viewMemory` was
 		// re-read for it at the top of this render: restore exactly what the
 		// mount would have, had it known the answer.
-		openingRestoreDeferred.current = false;
+		setOpeningRestoreDeferred(false);
 		restoredScopes.current.add(scope);
 		const view = viewMemory.current.view;
 		if (view) {
