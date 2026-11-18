@@ -1,0 +1,607 @@
+{
+ "flash1": {
+  "cold0": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 23,
+     "scope": "All organizations"
+    },
+    {
+     "ms": 55,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    28,
+    68,
+    111,
+    210,
+    218
+   ],
+   "read_posts_ms": null
+  },
+  "cold1": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 24,
+     "scope": "All organizations"
+    },
+    {
+     "ms": 52,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    29,
+    72,
+    105,
+    188,
+    195
+   ],
+   "read_posts_ms": null
+  },
+  "cold2": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 23,
+     "scope": "All organizations"
+    },
+    {
+     "ms": 51,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    35,
+    67,
+    102,
+    176,
+    193
+   ],
+   "read_posts_ms": null
+  },
+  "restart1": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 42,
+     "scope": "Pergamon Labs"
+    },
+    {
+     "ms": 62,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    60,
+    76,
+    85,
+    93,
+    126,
+    152,
+    202,
+    225,
+    233
+   ],
+   "read_posts_ms": null
+  },
+  "restart2": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 45,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    59,
+    110,
+    133,
+    159,
+    185,
+    202
+   ],
+   "read_posts_ms": null
+  },
+  "restart3": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 43,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    58,
+    93,
+    116,
+    141,
+    167,
+    174
+   ],
+   "read_posts_ms": null
+  },
+  "restart4": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 40,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    52,
+    92,
+    108,
+    142,
+    159,
+    175
+   ],
+   "read_posts_ms": null
+  }
+ },
+ "flash2": {
+  "cold0": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 25,
+     "scope": "All organizations"
+    },
+    {
+     "ms": 56,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    31,
+    71,
+    106,
+    187,
+    196
+   ],
+   "read_posts_ms": [
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 103
+    },
+    {
+     "conversation": "c_qaperg0000000000001",
+     "ms": 1837
+    },
+    {
+     "conversation": "c_qaperg0000000000001",
+     "ms": 7048
+    },
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 7122
+    }
+   ]
+  },
+  "cold1": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 22,
+     "scope": "All organizations"
+    },
+    {
+     "ms": 53,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    29,
+    70,
+    104,
+    180,
+    197
+   ],
+   "read_posts_ms": [
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 99
+    }
+   ]
+  },
+  "restart1": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 43,
+     "scope": "Pergamon Labs"
+    },
+    {
+     "ms": 62,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    57,
+    83,
+    90,
+    124,
+    150,
+    215,
+    240,
+    248
+   ],
+   "read_posts_ms": [
+    {
+     "conversation": "c_qaperg0000000000001",
+     "ms": 71
+    },
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 145
+    },
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 6125
+    }
+   ]
+  },
+  "restart2": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 42,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    52,
+    94,
+    111,
+    144,
+    169,
+    176
+   ],
+   "read_posts_ms": [
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 86
+    },
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 6582
+    }
+   ]
+  },
+  "restart3": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 41,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    54,
+    87,
+    113,
+    138,
+    163,
+    179
+   ],
+   "read_posts_ms": [
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 84
+    },
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 6952
+    }
+   ]
+  },
+  "restart4": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 44,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    63,
+    96,
+    121,
+    146,
+    170,
+    187
+   ],
+   "read_posts_ms": [
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 90
+    },
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 6084
+    }
+   ]
+  },
+  "restart5": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 39,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    55,
+    88,
+    115,
+    139,
+    164,
+    181
+   ],
+   "read_posts_ms": [
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 81
+    },
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 6679
+    }
+   ]
+  },
+  "restart6": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 42,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    56,
+    96,
+    114,
+    146,
+    163,
+    180
+   ],
+   "read_posts_ms": [
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 87
+    },
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 6137
+    }
+   ]
+  }
+ },
+ "hold1": {
+  "cold0": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 18,
+     "scope": "gate:checking"
+    }
+   ],
+   "paint_frames_ms": [
+    28,
+    36,
+    45,
+    60,
+    73,
+    87,
+    97,
+    107,
+    114,
+    123,
+    141,
+    148
+   ],
+   "read_posts_ms": [
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 36
+    },
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 6314
+    },
+    {
+     "conversation": "c_qaperg0000000000001",
+     "ms": 6584
+    }
+   ]
+  },
+  "cold1": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 367,
+     "scope": "gate:checking"
+    }
+   ],
+   "paint_frames_ms": [
+    382,
+    391,
+    407,
+    423,
+    448,
+    473,
+    481,
+    490,
+    498,
+    516,
+    524,
+    532
+   ],
+   "read_posts_ms": [
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 392
+    },
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 6968
+    }
+   ]
+  },
+  "restart1": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 14,
+     "scope": "gate:checking"
+    }
+   ],
+   "paint_frames_ms": [
+    20,
+    29,
+    35,
+    53,
+    62,
+    70,
+    86,
+    95,
+    103,
+    112,
+    127,
+    137
+   ],
+   "read_posts_ms": [
+    {
+     "conversation": "c_qaperg0000000000001",
+     "ms": 27
+    },
+    {
+     "conversation": "c_qaperg0000000000001",
+     "ms": 5908
+    }
+   ]
+  },
+  "restart2": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 15,
+     "scope": "gate:checking"
+    }
+   ],
+   "paint_frames_ms": [
+    19,
+    28,
+    35,
+    45,
+    60,
+    70,
+    78,
+    86,
+    102,
+    110,
+    119,
+    128
+   ],
+   "read_posts_ms": [
+    {
+     "conversation": "c_qaperg0000000000001",
+     "ms": 28
+    },
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 6825
+    }
+   ]
+  },
+  "ineligible": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 20,
+     "scope": "gate:plan"
+    }
+   ],
+   "paint_frames_ms": [
+    32,
+    39
+   ],
+   "read_posts_ms": [
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 39
+    }
+   ]
+  }
+ },
+ "hold2": {
+  "cold0": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 16,
+     "scope": "gate:checking"
+    },
+    {
+     "ms": 3279,
+     "scope": "All organizations"
+    },
+    {
+     "ms": 3293,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    24,
+    32,
+    41,
+    49,
+    65,
+    74,
+    81,
+    99,
+    107,
+    115,
+    132,
+    141
+   ],
+   "read_posts_ms": [
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 33
+    },
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 3388
+    },
+    {
+     "conversation": "c_qaperg0000000000001",
+     "ms": 9595
+    }
+   ]
+  },
+  "restart1": {
+   "scope_sequence_ms_from_open": [
+    {
+     "ms": 15,
+     "scope": "gate:checking"
+    },
+    {
+     "ms": 3240,
+     "scope": "Pergamon Labs"
+    },
+    {
+     "ms": 3253,
+     "scope": "Minerva"
+    }
+   ],
+   "paint_frames_ms": [
+    27,
+    34,
+    42,
+    60,
+    69,
+    76,
+    94,
+    102,
+    110,
+    119,
+    135,
+    142
+   ],
+   "read_posts_ms": [
+    {
+     "conversation": "c_qaperg0000000000001",
+     "ms": 26
+    },
+    {
+     "conversation": "c_qamine0000000000001",
+     "ms": 3338
+    }
+   ]
+  }
+ }
+}
