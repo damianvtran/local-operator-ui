@@ -1,0 +1,988 @@
+{
+ "run1500": {
+  "membership_delay_ms": 1500,
+  "allClean": true,
+  "error": null,
+  "seed_storage": {
+   "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+   "session": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+   "hash": "#/team-bridge"
+  },
+  "opens": [
+   {
+    "open": "cold0",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 27,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 117
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 5
+   },
+   {
+    "open": "restart1",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 32,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 96
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 8
+   },
+   {
+    "open": "restart2",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 49,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 100
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 6
+   },
+   {
+    "open": "restart3",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 43,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 90
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 6
+   },
+   {
+    "open": "restart4",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 60,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 110
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 6
+   },
+   {
+    "open": "restart5",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 46,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 95
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 6
+   },
+   {
+    "open": "restart6",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 41,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 89
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 6
+   },
+   {
+    "open": "restart7",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 42,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 88
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 6
+   },
+   {
+    "open": "restart8",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 56,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 103
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 6
+   },
+   {
+    "open": "restart9",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 41,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 86
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 6
+   },
+   {
+    "open": "restart10",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 40,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 82
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 6
+   },
+   {
+    "open": "cold1",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 23,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 110
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 5
+   },
+   {
+    "open": "cold2",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 24,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 101
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 5
+   },
+   {
+    "open": "cold3",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 26,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 118
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 5
+   },
+   {
+    "open": "cold4",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 26,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 96
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 5
+   },
+   {
+    "open": "cold5",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 23,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 91
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 5
+   },
+   {
+    "open": "cold6",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 27,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 94
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 5
+   },
+   {
+    "open": "cold7",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 25,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 101
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 5
+   },
+   {
+    "open": "cold8",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 26,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 99
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 5
+   },
+   {
+    "open": "cold9",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 24,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 97
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 5
+   },
+   {
+    "open": "cold10",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 22,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 86
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 5
+   }
+  ]
+ },
+ "run6000": {
+  "membership_delay_ms": 6000,
+  "allClean": true,
+  "error": null,
+  "seed_storage": {
+   "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+   "session": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+   "hash": "#/team-bridge"
+  },
+  "opens": [
+   {
+    "open": "cold0",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 3235,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3306
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 53
+   },
+   {
+    "open": "restart1",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 3196,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3258
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 53
+   },
+   {
+    "open": "restart2",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 3271,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3319
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 51
+   },
+   {
+    "open": "restart3",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 3288,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3331
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 50
+   },
+   {
+    "open": "restart4",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 3215,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3256
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 51
+   },
+   {
+    "open": "restart5",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 3211,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3253
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 50
+   },
+   {
+    "open": "restart6",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 3227,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3281
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 51
+   },
+   {
+    "open": "restart7",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 3259,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3309
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 47
+   },
+   {
+    "open": "restart8",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 3227,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3276
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 52
+   },
+   {
+    "open": "restart9",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 3288,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3339
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 49
+   },
+   {
+    "open": "restart10",
+    "boot_storage": {
+     "durable": "{\"a_qaself000000000001\":\"t_qapergamon00000001\"}",
+     "session": null,
+     "hash": "#/chat"
+    },
+    "scope_sequence": [
+     {
+      "rel_ms": 3276,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3330
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 52
+   },
+   {
+    "open": "cold1",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 3260,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3330
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 52
+   },
+   {
+    "open": "cold2",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 3088,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3168
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 52
+   },
+   {
+    "open": "cold3",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 3245,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3314
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 52
+   },
+   {
+    "open": "cold4",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 3270,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3348
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 48
+   },
+   {
+    "open": "cold5",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 3263,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3342
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 51
+   },
+   {
+    "open": "cold6",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 3272,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3350
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 49
+   },
+   {
+    "open": "cold7",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 3260,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3343
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 50
+   },
+   {
+    "open": "cold8",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 3237,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3341
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 49
+   },
+   {
+    "open": "cold9",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 3252,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3330
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 49
+   },
+   {
+    "open": "cold10",
+    "boot_storage": null,
+    "scope_sequence": [
+     {
+      "rel_ms": 3241,
+      "title": "Organization: Minerva",
+      "gate": null,
+      "rows": "minerva-general3|minerva-eng"
+     }
+    ],
+    "read_posts": [
+     {
+      "path": "/v1/desktop/team-bridge/conversations/c_qamine0000000000001/read",
+      "rel_ms": 3315
+     }
+    ],
+    "pergamon_rows_painted": 0,
+    "ok": true,
+    "frames_saved": 48
+   }
+  ]
+ }
+}
