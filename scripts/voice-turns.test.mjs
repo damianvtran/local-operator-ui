@@ -2341,7 +2341,10 @@ test("U9: a rig error wins over a stale exchange error, so its reason and Try ag
 	 */
 	const errorAt = indicator.search(ERROR_CASE);
 	assert.ok(errorAt > 0, "the strip's error case is gone");
-	assert.match(indicator.slice(errorAt, errorAt + 1400), RETRY_ONLY_FOR_THE_RIG);
+	assert.match(
+		indicator.slice(errorAt, errorAt + 1400),
+		RETRY_ONLY_FOR_THE_RIG,
+	);
 	// D10: the start failure's own sentence is the visible reason.
 	assert.match(reason, RIG_REASON_SHOWN);
 	store.setExchange(null, null);
