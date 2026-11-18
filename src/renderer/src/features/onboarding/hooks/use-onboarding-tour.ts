@@ -8,6 +8,7 @@ import { ShepherdJourneyContext } from "react-shepherd";
 import type { Step, StepOptions, Tour } from "shepherd.js";
 import {
 	applyTourLocale,
+	consumeTourEndedBySkipping,
 	createTourSteps,
 	releaseTourCommandPalette,
 	rememberTourLocale,
@@ -69,6 +70,24 @@ const tourTelemetryFor = (tour: Tour) => {
 	};
 	tourTelemetryByTour.set(tour, handlers);
 	return handlers;
+};
+
+/**
+ * Marks the tour done when it ends - unless it ended because every remaining
+ * step's target was missing (`consumeTourEndedBySkipping`, review round 1, R3):
+ * the user saw none of those steps, and a tour marked done is never offered
+ * again. Memoised per tour so `off()` can find the same listener.
+ */
+const doneHandlerByTour = new WeakMap<Tour, () => void>();
+const doneHandlerFor = (tour: Tour, markDone: () => void) => {
+	const existing = doneHandlerByTour.get(tour);
+	if (existing) return existing;
+	const handler = () => {
+		if (consumeTourEndedBySkipping(tour)) return;
+		markDone();
+	};
+	doneHandlerByTour.set(tour, handler);
+	return handler;
 };
 
 export const useOnboardingTour = () => {
@@ -178,10 +197,11 @@ export const useOnboardingTour = () => {
 		}
 
 		// Attach event listeners
-		tourInstance.off("complete", completeTourOnboarding); // Remove first to prevent duplicates
-		tourInstance.on("complete", completeTourOnboarding);
-		tourInstance.off("cancel", completeTourOnboarding); // Remove first
-		tourInstance.on("cancel", completeTourOnboarding);
+		const markDone = doneHandlerFor(tourInstance, completeTourOnboarding);
+		tourInstance.off("complete", markDone); // Remove first to prevent duplicates
+		tourInstance.on("complete", markDone);
+		tourInstance.off("cancel", markDone); // Remove first
+		tourInstance.on("cancel", markDone);
 		/*
 		 * The palette step 7 opened belongs to the tour: ending the tour closes it,
 		 * and a palette the USER opened is left alone (review round 3, R3-2 -

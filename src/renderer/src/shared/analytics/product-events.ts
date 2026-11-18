@@ -59,7 +59,13 @@ export interface ProductEvents {
 	backend_status: {
 		state: BackendStartupPhase;
 		reason: BackendStartupCategory | "none";
-		/** Whole seconds since the start began, so a distribution can be read. */
+		/**
+		 * The server had been ready and then died: not a failed START. Filter
+		 * these out of any start-up analysis (review round 1, R2).
+		 */
+		after_ready: boolean;
+		/** Whole seconds since the start began, so a distribution can be read.
+		 * Null when `after_ready`: that span is uptime, not start-up time. */
 		elapsed_s: number | null;
 	};
 	onboarding_tour_step: { step: string; outcome: TourStepOutcome };

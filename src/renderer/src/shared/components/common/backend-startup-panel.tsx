@@ -25,62 +25,27 @@ import { useEffect, useRef, useState } from "react";
 import { t } from "../../../../../i18n/messages";
 import {
 	type BackendStartup,
-	type BackendStartupCategory,
+	redactSecrets,
 	startupDiagnosticsText,
 } from "../../../../../shared/backend-startup";
 import type { DaemonStatusSnapshot } from "../../../../../shared/backend-status";
 import { trackProductEvent } from "../../analytics/product-events";
+import {
+	backendStatusEvent,
+	claimBackendStatusReport,
+	failedBandCopy,
+	startupPanelPhase,
+} from "./backend-startup-rules";
 
-/*
- * One arm per category, so the type checker proves every category has a
- * sentence and the one with a placeholder gets its value.
- */
-export function startupReasonSentence(
-	category: BackendStartupCategory,
-	budgetMs: number,
-): string {
-	switch (category) {
-		case "port_in_use":
-			return t("ui.common.backend_startup.reason.port_in_use");
-		case "port_forbidden":
-			return t("ui.common.backend_startup.reason.port_forbidden");
-		case "executable_blocked":
-			return t("ui.common.backend_startup.reason.executable_blocked");
-		case "executable_missing":
-			return t("ui.common.backend_startup.reason.executable_missing");
-		case "crashed":
-			return t("ui.common.backend_startup.reason.crashed");
-		case "exited":
-			return t("ui.common.backend_startup.reason.exited");
-		case "timed_out":
-			return t("ui.common.backend_startup.reason.timed_out", {
-				seconds: String(Math.round(budgetMs / 1000)),
-			});
-		default:
-			return t("ui.common.backend_startup.reason.unknown");
-	}
-}
-
-/**
- * Whether the band shows for this snapshot.
- *
- * `failed` only while the app is not attached: a recovery (or another daemon
- * appearing) that attached the app ends the failure whatever the record says.
- */
-export function startupPanelPhase(
-	snapshot: Pick<DaemonStatusSnapshot, "state" | "startup"> | null,
-): "starting" | "failed" | null {
-	const startup = snapshot?.startup ?? null;
-	if (!startup) return null;
-	if (startup.phase === "starting") return "starting";
-	if (
-		startup.phase === "failed" &&
-		snapshot?.state !== "attached" &&
-		snapshot?.state !== "degraded"
-	)
-		return "failed";
-	return null;
-}
+// Re-exported: the chat status strip and the onboarding modal import the show
+// rule from the band they draw.
+export {
+	backendStatusEvent,
+	claimBackendStatusReport,
+	failedBandCopy,
+	startupPanelPhase,
+	startupReasonSentence,
+} from "./backend-startup-rules";
 
 /** The share of the budget elapsed, capped below 100 (see the header). */
 export function startupProgressPercent(
@@ -106,25 +71,64 @@ export function useBackendStartupTelemetry(
 ): void {
 	const reported = useRef<string | null>(null);
 	useEffect(() => {
-		if (!startup || startup.phase === "starting") return;
-		const key = `${startup.attempt}:${startup.phase}:${startup.startedAt}`;
+		if (!startup) return;
+		const event = backendStatusEvent(startup);
+		if (!event) return;
+		const key = `${startup.attempt}:${startup.phase}:${startup.startedAt}:${event.after_ready}`;
 		if (reported.current === key) return;
 		reported.current = key;
-		trackProductEvent("backend_status", {
-			state: startup.phase,
-			reason: startup.failure?.category ?? "none",
-			elapsed_s:
-				startup.settledAt == null
-					? null
-					: Math.max(
-							0,
-							Math.round((startup.settledAt - startup.startedAt) / 1000),
-						),
-		});
+		if (!claimBackendStatusReport(key)) return;
+		trackProductEvent("backend_status", event);
 	}, [startup]);
 }
 
 type CopyState = "idle" | "copied" | "failed";
+
+/**
+ * How long the copy result stays beside the Copy diagnostics button (UX round
+ * 1, U6). Long enough to read a two-word confirmation at a
+ * glance, short enough that a second press later is not answered by a stale
+ * "copied"; the polite live region announces the result once regardless.
+ */
+export const COPY_RESULT_MS = 3_000;
+
+/**
+ * A button label that keeps the width of its WIDEST state (design round 1, D3).
+ *
+ * The group is right-aligned, so a label that shrinks ("Restart server" ->
+ * "Restarting…", 138 -> 82 px in ru) moved its siblings under the pointer. All
+ * states are stacked in one grid cell: the cell takes the widest, the hidden
+ * ones keep their space, and only the current one is visible and announced.
+ */
+const StableLabel = ({
+	current,
+	states,
+}: {
+	current: string;
+	states: readonly string[];
+}) => (
+	<span className="inline-grid">
+		{states.map((label) => (
+			<span
+				key={label}
+				aria-hidden={label === current ? undefined : true}
+				className={cn(
+					"col-start-1 row-start-1 text-center",
+					label === current ? "visible" : "invisible",
+				)}
+			>
+				{label}
+			</span>
+		))}
+	</span>
+);
+
+/**
+ * Failures in a row at which pressing Restart again is no longer the lead act
+ * (UX round 1, U4): the second identical failure is the first evidence that it
+ * does not help, and the D1/D2 replays show people pressing Retry 6-8 times.
+ */
+export const REPEATED_FAILURE_THRESHOLD = 2;
 
 export const BackendStartupPanel = ({
 	snapshot,
@@ -144,6 +148,13 @@ export const BackendStartupPanel = ({
 		const id = window.setInterval(() => setNow(Date.now()), 1000);
 		return () => window.clearInterval(id);
 	}, [phase]);
+
+	// The copy result returns to the label after a moment (U6).
+	useEffect(() => {
+		if (copy === "idle") return;
+		const id = window.setTimeout(() => setCopy("idle"), COPY_RESULT_MS);
+		return () => window.clearTimeout(id);
+	}, [copy]);
 
 	if (!phase || !startup) return null;
 
@@ -196,7 +207,7 @@ export const BackendStartupPanel = ({
 	const liveRole: "status" | "alert" =
 		phase === "starting" ? "status" : "alert";
 	if (phase === "starting") {
-		const seconds = String(Math.round(startup.budgetMs / 1000));
+		const seconds = Math.round(startup.budgetMs / 1000);
 		return (
 			<div
 				className="shrink-0 px-6 py-1"
@@ -215,7 +226,10 @@ export const BackendStartupPanel = ({
 							value={startupProgressPercent(startup, now)}
 							max={100}
 							aria-label={t("ui.common.backend_startup.progress_label")}
-							className="h-1.5 max-w-md border border-control"
+							// `ink-muted`, not `control`: the outline is what shows the
+							// track's whole length, and `control` on `info-wash` fell to
+							// 2.99:1 on one palette (design round 1, D4).
+							className="h-1.5 max-w-md border border-ink-muted"
 						/>
 					</div>
 				</Alert>
@@ -225,11 +239,19 @@ export const BackendStartupPanel = ({
 
 	const failure = startup.failure;
 	const stderr = failure?.stderrTail.trim() ?? "";
+	const { title, reason } = failedBandCopy(startup);
+	const failuresInRow = startup.failuresInRow ?? 1;
+	const repeated = failuresInRow >= REPEATED_FAILURE_THRESHOLD;
+	const restartLabels = [
+		t("ui.common.backend_startup.action.restart"),
+		t("ui.common.backend_startup.action.restarting"),
+	] as const;
 	return (
 		<div
 			className="shrink-0 px-6 py-1"
 			data-testid="backend-startup-panel"
 			data-phase="failed"
+			data-after-ready={failure?.afterReady ? "true" : undefined}
 		>
 			<Alert
 				variant="danger"
@@ -240,24 +262,43 @@ export const BackendStartupPanel = ({
 			>
 				<div className="flex w-full min-w-0 flex-col gap-2">
 					<div className="flex w-full min-w-0 flex-wrap items-center gap-2">
-						<span className="min-w-0 flex-1 text-body-sm text-ink">
-							{t("ui.common.backend_startup.title_failed")}
+						{/*
+						 * A real basis for the sentence (design round 1, D1): in a narrow
+						 * chat pane or a long locale the action group wraps BELOW the
+						 * reason instead of squeezing it into a ~118 px column.
+						 */}
+						<span className="min-w-[16rem] flex-1 basis-64 text-body-sm text-ink">
+							{title}
 							<span
 								className="block text-meta text-ink-muted"
 								data-testid="backend-startup-reason"
 							>
-								{startupReasonSentence(
-									failure?.category ?? "unknown",
-									startup.budgetMs,
-								)}
+								{reason}
 							</span>
-							{/* The result of the press the user just made, announced politely. */}
+							{repeated ? (
+								<span
+									className="block text-meta text-ink-muted"
+									data-testid="backend-startup-repeated"
+								>
+									{t("ui.common.backend_startup.repeated_failures", {
+										count: failuresInRow,
+									})}
+								</span>
+							) : null}
+						</span>
+						{/* No `shrink-0`: the group may wrap internally too (D1). */}
+						<div className="flex flex-wrap items-center gap-1">
+							{/*
+							 * The copy result sits BESIDE the button the user just pressed
+							 * (U6), not under the reason across the band, and clears after
+							 * COPY_RESULT_MS. It is the group's first child: the group is
+							 * right-aligned, so the text grows leftward and no button moves.
+							 * Always mounted, so the polite region announces the change.
+							 */}
 							<span
 								aria-live="polite"
-								className={cn(
-									"block text-meta text-ink-muted",
-									copy === "idle" && "sr-only",
-								)}
+								className="text-meta text-ink-muted"
+								data-testid="backend-startup-copy-result"
 							>
 								{copy === "copied"
 									? t("ui.common.backend_startup.action.copied")
@@ -265,8 +306,6 @@ export const BackendStartupPanel = ({
 										? t("ui.common.backend_startup.action.copy_failed")
 										: ""}
 							</span>
-						</span>
-						<div className="flex shrink-0 flex-wrap items-center gap-1">
 							{stderr ? (
 								<Button
 									variant="ghost"
@@ -279,32 +318,42 @@ export const BackendStartupPanel = ({
 										: t("ui.common.backend_startup.details.show")}
 								</Button>
 							) : null}
+							{/*
+							 * After a repeated failure, Copy diagnostics is the lead act and
+							 * Restart steps back (U4): pressing Restart again has already
+							 * been shown not to help.
+							 */}
 							<Button
-								variant="ghost"
+								variant={repeated ? "secondary" : "ghost"}
 								size="sm"
 								onClick={copyDiagnostics}
 								data-testid="backend-startup-copy"
+								data-copy-state={copy}
 							>
 								{t("ui.common.backend_startup.action.copy_diagnostics")}
 							</Button>
 							<Button
+								variant={repeated ? "ghost" : "secondary"}
 								size="sm"
 								onClick={restart}
 								disabled={restarting}
 								data-testid="backend-startup-restart"
 							>
-								{restarting
-									? t("ui.common.backend_startup.action.restarting")
-									: t("ui.common.backend_startup.action.restart")}
+								<StableLabel
+									current={restarting ? restartLabels[1] : restartLabels[0]}
+									states={restartLabels}
+								/>
 							</Button>
 						</div>
 					</div>
 					{showDetails && stderr ? (
 						<pre
 							data-testid="backend-startup-stderr"
-							className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-sm bg-sunken p-2 font-mono text-meta text-ink"
+							// A hairline edge: `sunken` on `danger-wash` is ~1.04:1 in light
+							// themes, so the box had no visible boundary (design round 1, D5).
+							className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-sm border border-hairline bg-sunken p-2 font-mono text-meta text-ink"
 						>
-							{stderr}
+							{redactSecrets(stderr)}
 						</pre>
 					) : null}
 				</div>

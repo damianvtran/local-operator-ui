@@ -120,3 +120,25 @@ export const FailedTimedOut: Story = {
 	args: { snapshot: snapshot(startup("failed", "timed_out", 30_000)) },
 	play: shows(/did not answer within 30 seconds/),
 };
+
+/** UX round 1, U2: the server worked, then died - not a failed start. */
+export const StoppedAfterReady: Story = {
+	args: {
+		snapshot: (() => {
+			const value = startup("failed", "exited", 1_200_000);
+			return snapshot({
+				...value,
+				failure: value.failure ? { ...value.failure, afterReady: true } : null,
+			});
+		})(),
+	},
+	play: shows(/stopped unexpectedly/),
+};
+
+/** UX round 1, U4: Restart has failed again; Copy diagnostics leads. */
+export const FailedRepeatedly: Story = {
+	args: {
+		snapshot: snapshot({ ...startup("failed", "crashed"), failuresInRow: 3 }),
+	},
+	play: shows(/Still not starting after 3 tries/),
+};

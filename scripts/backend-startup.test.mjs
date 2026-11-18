@@ -137,3 +137,73 @@ test("diagnostics carry what the machine said, and say when nothing was recorded
 		/no start-up recorded by this app session/,
 	);
 });
+
+/*
+ * Review round 1, R1: the diagnostics are pasted into help requests, and the
+ * stderr tail is the server's own output - a logged key, bearer header or
+ * token must not reach the clipboard.
+ */
+test("diagnostics mask credential-shaped text and keep the evidence", () => {
+	const secretHex = "a".repeat(32) + "0123456789abcdef".repeat(2);
+	const stderr = [
+		"Traceback (most recent call last):",
+		"  headers={'Authorization': 'Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig'}",
+		"  OPENAI_API_KEY=sk-proj-abcdefghijklmnop1234",
+		'  {"token": "tok_live_12345678"}',
+		`  desktop token ${secretHex}`,
+		"  password: hunter22",
+		"ValueError: bad config",
+	].join("\n");
+	const text = mod.startupDiagnosticsText(
+		{
+			phase: "failed",
+			startedAt: 0,
+			budgetMs: 30_000,
+			attempt: 1,
+			settledAt: 1000,
+			failure: {
+				category: "crashed",
+				exitCode: 1,
+				signal: null,
+				spawnErrorCode: null,
+				stderrTail: stderr,
+				message: "The server process ended before it answered.",
+			},
+		},
+		{ appVersion: "1.2.3", platform: "win32 x64" },
+	);
+	for (const leaked of [
+		"eyJhbGciOiJIUzI1NiJ9",
+		"sk-proj-abcdefghijklmnop1234",
+		"tok_live_12345678",
+		secretHex,
+		"hunter22",
+	])
+		assert.ok(!text.includes(leaked), `masked: ${leaked}`);
+	assert.match(text, /ValueError: bad config/, "the error itself survives");
+	assert.match(text, /category: crashed/);
+	assert.match(text, /app: 1\.2\.3/);
+});
+
+test("a failure after ready is labelled as such in the diagnostics (U2)", () => {
+	const text = mod.startupDiagnosticsText(
+		{
+			phase: "failed",
+			startedAt: 0,
+			budgetMs: 30_000,
+			attempt: 1,
+			settledAt: 1_200_000,
+			failure: {
+				category: "exited",
+				exitCode: 3,
+				signal: null,
+				spawnErrorCode: null,
+				stderrTail: "",
+				message: "The server stopped unexpectedly with exit code 3.",
+				afterReady: true,
+			},
+		},
+		{},
+	);
+	assert.match(text, /stopped after a successful start: yes/);
+});

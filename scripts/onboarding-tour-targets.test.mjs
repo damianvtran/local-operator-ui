@@ -61,8 +61,11 @@ test("every data-tour-tag the tour targets is rendered somewhere outside the tou
 test("every attached step is guarded against a missing target at show time", () => {
 	const tour = readFileSync(TOUR, "utf8");
 	assert.match(tour, /guardTourTargets\(buildTourSteps\(\)/);
+	// The wait-then-skip (UX round 1, U7): a target is polled for before the
+	// step is drawn, and skipped (and reported) only when the wait runs out.
 	assert.match(
 		tour,
-		/showOn: \(\) => \{[\s\S]*?if \(present\(element\)\) return true;[\s\S]*?onSkipped\?\.\(/,
+		/beforeShowPromise: \(\) => \{[\s\S]*?if \(present\(element as string\)\) \{[\s\S]*?skip\(tour,/,
 	);
+	assert.match(tour, /const skip = [\s\S]*?onSkipped\?\.\(id\)/);
 });

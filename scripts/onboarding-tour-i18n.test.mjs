@@ -186,7 +186,7 @@ Object.defineProperty(globalThis, "localStorage", {
 const built = await build({
 	stdin: {
 		contents: [
-			'export { createTourSteps, applyTourLocale, tourCancelIcon, STEP_BESIDE_PALETTE_CLASS, STEP_BESIDE_PALETTE_MIN_WIDTH } from "./src/renderer/src/features/onboarding/tour/tour-steps";',
+			'export { createTourSteps, guardTourTargets, consumeTourEndedBySkipping, applyTourLocale, tourCancelIcon, STEP_BESIDE_PALETTE_CLASS, STEP_BESIDE_PALETTE_MIN_WIDTH } from "./src/renderer/src/features/onboarding/tour/tour-steps";',
 			'export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { renderTourBody, TOUR_BODIES, tourLabel } from "./src/renderer/src/features/onboarding/tour/tour-copy";',
 			'export { applyCapabilities, clearRegisteredCatalogues, registerCatalogue, setLocale, t } from "./src/i18n";',
@@ -1634,12 +1634,14 @@ test("a step whose target is missing is skipped and reported, without a console 
 	const skipped = [];
 	try {
 		const tour = new mod.Shepherd.Tour({ useModalOverlay: true });
-		tour.addSteps(mod.createTourSteps((step) => skipped.push(step)));
+		tour.addSteps(
+			mod.createTourSteps((step) => skipped.push(step), { targetWaitMs: 40 }),
+		);
 		tour.start();
 		await tick();
 		assert.equal(tour.getCurrentStep()?.id, "welcome");
 		tour.next();
-		await tick();
+		await sleep(120);
 		assert.equal(
 			tour.getCurrentStep()?.id,
 			"attachments",
@@ -1647,7 +1649,7 @@ test("a step whose target is missing is skipped and reported, without a console 
 		);
 		assert.deepEqual(skipped, ["chat-input"]);
 		tour.back();
-		await tick();
+		await sleep(120);
 		assert.equal(
 			tour.getCurrentStep()?.id,
 			"welcome",
@@ -1662,5 +1664,132 @@ test("a step whose target is missing is skipped and reported, without a console 
 		errors.filter((line) => line.includes("was not found")),
 		[],
 		"no Shepherd missing-element error",
+	);
+});
+
+/*
+ * UX round 1, U7: a target that paints AFTER the hop's fixed 500 ms wait is
+ * waited for (up to TOUR_TARGET_WAIT_MS), not skipped for good.
+ */
+test("a target that appears during the wait is shown, not skipped", async () => {
+	const target = document.querySelector(
+		'[data-tour-tag="chat-input-textarea"]',
+	);
+	target.remove();
+	const skipped = [];
+	const tour = new mod.Shepherd.Tour({ useModalOverlay: true });
+	tour.addSteps(
+		mod.createTourSteps((step) => skipped.push(step), { targetWaitMs: 1000 }),
+	);
+	try {
+		tour.start();
+		await tick();
+		tour.next();
+		await sleep(250);
+		assert.equal(
+			document.querySelectorAll(".shepherd-element").length > 0 &&
+				document
+					.querySelector(".shepherd-element")
+					?.getAttribute("data-shepherd-step-id"),
+			"welcome",
+			"while waiting, nothing new is drawn",
+		);
+		document.body.appendChild(target);
+		await sleep(250);
+		assert.equal(tour.getCurrentStep()?.id, "chat-input");
+		assert.equal(
+			document
+				.querySelector(".shepherd-element:not([hidden])")
+				?.getAttribute("data-shepherd-step-id"),
+			"chat-input",
+			"the late target's step is drawn",
+		);
+		assert.deepEqual(skipped, [], "nothing was skipped");
+	} finally {
+		tour.cancel();
+		if (!target.isConnected) document.body.appendChild(target);
+	}
+});
+
+/*
+ * QA round 1, Q5: a missing navigation target skips its whole group, so the
+ * group's narration (`schedules-overview` has no target of its own) is never
+ * read over the wrong page.
+ */
+test("a missing navigation target skips the rest of its group", async () => {
+	// The schedules page is not rendered: its nav item and dialog are absent.
+	const targets = ["nav-item-schedules", "create-schedule-dialog"].map((tag) =>
+		document.querySelector(`[data-tour-tag="${tag}"]`),
+	);
+	for (const target of targets) target.remove();
+	const skipped = [];
+	const tour = new mod.Shepherd.Tour({ useModalOverlay: true });
+	tour.addSteps(
+		mod.createTourSteps((step) => skipped.push(step), { targetWaitMs: 40 }),
+	);
+	try {
+		tour.start();
+		await tick();
+		tour.show("upload-agent-hub-dialog");
+		await sleep(60);
+		tour.next();
+		await sleep(150);
+		assert.equal(
+			tour.getCurrentStep()?.id,
+			"navigate-settings",
+			"schedules-overview and the schedule steps went with their navigation",
+		);
+		assert.deepEqual(skipped, ["navigate-schedules"]);
+		tour.back();
+		await sleep(150);
+		assert.equal(
+			tour.getCurrentStep()?.id,
+			"upload-agent-hub-dialog",
+			"Back skips the same group as a whole, from its other end",
+		);
+		assert.deepEqual(skipped, ["navigate-schedules", "create-schedule-dialog"]);
+	} finally {
+		tour.cancel();
+		for (const target of targets) document.body.appendChild(target);
+	}
+});
+
+/*
+ * Review round 1, R3: skips that run past the last step CANCEL the tour and
+ * flag it, so the hook does not mark a tour the user never saw as done.
+ */
+test("skipping past the last step cancels, flagged as ended by skipping", async () => {
+	const events = [];
+	const tour = new mod.Shepherd.Tour({ useModalOverlay: true });
+	tour.on("complete", () => events.push("complete"));
+	tour.on("cancel", () => events.push("cancel"));
+	tour.addSteps(
+		mod.guardTourTargets(
+			[
+				{ id: "first", text: "first" },
+				{
+					id: "gone",
+					text: "gone",
+					attachTo: {
+						element: '[data-tour-tag="never-rendered"]',
+						on: "bottom",
+					},
+				},
+			],
+			undefined,
+			undefined,
+			{ waitMs: 40 },
+		),
+	);
+	tour.start();
+	await tick();
+	tour.next();
+	await sleep(150);
+	assert.deepEqual(events, ["cancel"], "cancelled, never completed");
+	assert.equal(mod.consumeTourEndedBySkipping(tour), true);
+	assert.equal(
+		mod.consumeTourEndedBySkipping(tour),
+		false,
+		"the flag is consumed, so a later run is judged on its own end",
 	);
 });

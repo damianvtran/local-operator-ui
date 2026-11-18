@@ -119,6 +119,7 @@ def main():
             self.send_response(200); self.end_headers()
             self.wfile.write(json.dumps({'pid': os.getpid(), 'name': 'local-operator serve python', 'mode': mode}).encode())
             if self.path == '/quit': threading.Thread(target=self.server.shutdown).start()
+            if self.path == '/die': os._exit(3)
         def log_message(self, *args): pass
     http.server.HTTPServer(('127.0.0.1', port), Handler).serve_forever()
 `,
@@ -471,6 +472,97 @@ test("a failed start publishes its cause, exit code and stderr for the start-up 
 	assert.equal(ok.getStatusSnapshot().startup.phase, "ready");
 	assert.equal(ok.startupFailureReported(), false);
 	await ok.stop(false);
+});
+
+test("a server that dies AFTER ready is recorded as stopped, not as a failed start (UX round 1, U2)", async () => {
+	const m = await manager();
+	assert.equal(await m.start(), true);
+	const ready = m.getStatusSnapshot().startup;
+	assert.equal(ready.phase, "ready");
+	assert.equal(ready.failuresInRow, 0);
+	const recorded = new Promise((resolve) => {
+		m.onStatusChange((snapshot) => {
+			if (snapshot.startup?.phase === "failed") resolve(snapshot.startup);
+		});
+	});
+	// The fixture answers `/die` with `os._exit(3)`: a non-zero exit after ready.
+	await fetch(`http://127.0.0.1:${m.port}/die`, {
+		signal: AbortSignal.timeout(1000),
+	}).catch(() => null);
+	const startup = await recorded;
+	assert.equal(startup.failure.afterReady, true, "flagged as after ready");
+	assert.equal(startup.failure.exitCode, 3);
+	assert.equal(
+		startup.attempt,
+		ready.attempt,
+		"the ready attempt's record, not a new start",
+	);
+	assert.equal(startup.startedAt, ready.startedAt);
+	assert.equal(
+		startup.failure.stderrTail,
+		"",
+		"the tail was reset at ready: start-up noise is not post-ready evidence (R1)",
+	);
+	await m.stop(false);
+});
+
+test("a port held by a program that is not a Local Operator server is a failed start the band can name, and Restart re-probes (QA round 1, Q2)", async () => {
+	/*
+	 * `python3 -m http.server` on the port, as QA held it: it answers, but 404 on
+	 * `/health`, which is the `silent` occupancy. Before the fix the refusal left
+	 * no start-up record, so no band, cause or Restart was shown.
+	 */
+	const port = await freePort();
+	const holder = createHttpServer((_request, reply) => {
+		reply.writeHead(404).end();
+	});
+	await new Promise((resolve) => holder.listen(port, "127.0.0.1", resolve));
+	squatters.add(holder);
+	const m = await manager();
+	m.configuredUrl = `http://127.0.0.1:${port}`;
+	m.fallbackSpawnUrls = [];
+	assert.equal(await m.start(), false, "nothing spawned over the holder");
+	assert.equal(m.process, null);
+	const failed = m.getStatusSnapshot();
+	assert.equal(failed.startup?.phase, "failed");
+	assert.equal(failed.startup.failure.category, "port_in_use");
+	assert.ok(
+		failed.startup.failure.message.includes(String(port)),
+		`the holder sentence names the port: ${failed.startup.failure.message}`,
+	);
+	assert.equal(failed.startup.attempt, 1, "counted as an attempt (N1)");
+	assert.equal(failed.startup.failuresInRow, 1);
+	assert.notEqual(
+		failed.state,
+		"detached",
+		"the refusal's own, more precise state is kept",
+	);
+	assert.equal(m.startupFailureReported(), true, "the window is kept");
+
+	// Still held: Restart re-probes, fails again, and the streak is counted (U4).
+	assert.equal(await m.restart(), false);
+	assert.equal(m.getStatusSnapshot().startup.failuresInRow, 2);
+	assert.equal(m.getStatusSnapshot().startup.attempt, 2);
+
+	// Freed: Restart re-probes and starts on the configured port.
+	/*
+	 * Close the holder as its process exiting would, then let this process's
+	 * fetch pool see it. The holder and the manager share one process here, so
+	 * the probe's pooled keep-alive socket is torn down in the same tick and the
+	 * first request reads ECONNRESET (an occupant, by design) - measured: an
+	 * immediate fetch got ECONNRESET, one 200 ms later ECONNREFUSED. A user's
+	 * Restart press comes seconds after the other program quits.
+	 */
+	holder.closeAllConnections();
+	await new Promise((resolve) => holder.close(resolve));
+	squatters.delete(holder);
+	await new Promise((resolve) => setTimeout(resolve, 200));
+	assert.equal(await m.restart(), true, "Restart re-probed the freed port");
+	const ready = m.getStatusSnapshot().startup;
+	assert.equal(ready.phase, "ready");
+	assert.equal(ready.failuresInRow, 0, "ready ends the failure streak");
+	assert.equal(m.port, port);
+	await m.stop(false);
 });
 
 test("readiness polls fast while a start is young, then backs off to the flat second", () => {

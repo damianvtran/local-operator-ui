@@ -29,6 +29,7 @@ import { app, dialog as electronDialog } from "electron";
 import { formatDate, formatTime } from "../../i18n";
 import {
 	type BackendStartup,
+	type BackendStartupCategory,
 	type BackendStartupFailure,
 	appendStderrTail,
 	classifyStartupFailure,
@@ -1020,6 +1021,15 @@ export class BackendServiceManager {
 	 */
 	private startup: BackendStartup | null = null;
 	private startupAttempts = 0;
+	/**
+	 * When the current attempt began, set BEFORE anything that can throw (review
+	 * round 1, N1/R2): a start that fails before its child is captured is still
+	 * an attempt, and must report its own number and span - not the previous
+	 * record's, which made `elapsed_s` a stale span.
+	 */
+	private attemptStartedAt: number | null = null;
+	/** Failures since the server was last ready (`BackendStartup.failuresInRow`). */
+	private failuresInRow = 0;
 	/** Bumped by every stop. A start that began under an older epoch cannot
 	 * report success or adopt its child: the cancellation happened after it
 	 * checked, and this is what it re-checks across each await. */
@@ -1276,39 +1286,90 @@ export class BackendServiceManager {
 		message: string,
 		timedOut: boolean,
 		error?: unknown,
+		options: {
+			/** The server had been ready (`BackendStartupFailure.afterReady`). */
+			afterReady?: boolean;
+			/** Known without reading the child: the refusal path's held port. */
+			category?: BackendStartupCategory;
+			/**
+			 * Whether to move the connection to `detached`. The refusal path has
+			 * already observed the more precise state for its holder, and this
+			 * record must not overwrite it.
+			 */
+			observe?: boolean;
+		} = {},
 	): BackendStartupFailure {
+		const afterReady = options.afterReady === true;
 		const thrownCode = (error as { code?: unknown } | undefined)?.code;
 		const spawnErrorCode =
 			generation?.spawnErrorCode ??
 			(typeof thrownCode === "string" ? thrownCode : null);
 		const failure: BackendStartupFailure = {
-			category: classifyStartupFailure({
-				spawnErrorCode,
-				exitCode: generation?.exitCode ?? null,
-				signal: generation?.signal ?? null,
-				stderrTail: generation?.stderrTail ?? "",
-				timedOut,
-			}),
+			category:
+				options.category ??
+				classifyStartupFailure({
+					spawnErrorCode,
+					exitCode: generation?.exitCode ?? null,
+					signal: generation?.signal ?? null,
+					stderrTail: generation?.stderrTail ?? "",
+					timedOut,
+				}),
 			exitCode: generation?.exitCode ?? null,
 			signal: generation?.signal ?? null,
 			spawnErrorCode,
 			stderrTail: generation?.stderrTail ?? "",
 			message,
+			afterReady,
 		};
+		this.failuresInRow += 1;
 		logger.error(
-			`Backend start failed (${failure.category}; exit=${failure.exitCode ?? "none"} signal=${failure.signal ?? "none"} spawn=${failure.spawnErrorCode ?? "none"})`,
+			`Backend ${afterReady ? "stopped after ready" : "start failed"} (${failure.category}; exit=${failure.exitCode ?? "none"} signal=${failure.signal ?? "none"} spawn=${failure.spawnErrorCode ?? "none"})`,
 			LogFileType.BACKEND,
 		);
-		this.daemonState.observe({ kind: "no-candidate", detail: message });
+		if (options.observe !== false)
+			this.daemonState.observe({ kind: "no-candidate", detail: message });
+		/*
+		 * After ready, the span is the ready attempt's own (the telemetry drops
+		 * it anyway); otherwise it is THIS attempt's, from `beginStartupAttempt`,
+		 * never an older record's.
+		 */
+		const current =
+			this.startup && this.startup.attempt === this.startupAttempts
+				? this.startup
+				: null;
 		this.setStartup({
 			phase: "failed",
-			startedAt: this.startup?.startedAt ?? Date.now(),
+			startedAt: afterReady
+				? (this.startup?.startedAt ?? Date.now())
+				: (current?.startedAt ?? this.attemptStartedAt ?? Date.now()),
 			budgetMs: READINESS_BUDGET_MS,
-			attempt: this.startup?.attempt ?? this.startupAttempts,
+			attempt: afterReady
+				? (this.startup?.attempt ?? this.startupAttempts)
+				: this.startupAttempts,
 			settledAt: Date.now(),
 			failure,
+			failuresInRow: this.failuresInRow,
 		});
 		return failure;
+	}
+
+	/** Count a new start attempt, before anything in it can throw (N1). */
+	private beginStartupAttempt(): void {
+		this.startupAttempts += 1;
+		this.attemptStartedAt = Date.now();
+	}
+
+	/** The server answered: the failure streak ends with it. */
+	private markStartupReady(): void {
+		this.failuresInRow = 0;
+		if (this.startup && this.startup.phase !== "ready")
+			this.setStartup({
+				...this.startup,
+				phase: "ready",
+				settledAt: Date.now(),
+				failure: null,
+				failuresInRow: 0,
+			});
 	}
 
 	/**
@@ -3299,13 +3360,8 @@ export class BackendServiceManager {
 				 * "Starting..." over a start nobody is running is the stuck state
 				 * this record exists to remove.
 				 */
-				if (started && this.startup && this.startup.phase !== "ready") {
-					this.setStartup({
-						...this.startup,
-						phase: "ready",
-						settledAt: Date.now(),
-						failure: null,
-					});
+				if (started) {
+					this.markStartupReady();
 				} else if (!started && this.startup?.phase === "starting") {
 					this.setStartup(null);
 				}
@@ -3441,6 +3497,38 @@ export class BackendServiceManager {
 		this.spawnRefusals = target ? null : refusals;
 		if (!target) {
 			this.observeSpawnRefusal(refusals);
+			/*
+			 * A port held by something that is NOT a Local Operator server (QA
+			 * round 1, Q2: `python3 -m http.server` on the port) used to end here
+			 * with no start-up record, so the band never showed and the cause sat
+			 * only in `snapshot.detail` while every view said "could not be
+			 * reached". It is recorded as a failed start with the holder sentence,
+			 * so the band names it and Restart re-runs this resolution, which
+			 * re-probes every address. A Local Operator holder (`daemon`/`record`)
+			 * is excluded: that is "a server is running and this app is not
+			 * attached" (`wedged`), which has its own surface and remedy. A
+			 * `silent` holder can in principle be a Local Operator server too busy
+			 * to answer; "another program is using the port" plus Restart is still
+			 * the right act for the user then. The connection state observed above
+			 * is kept (`observe: false`): it is the more precise fact.
+			 */
+			const localOperatorHolder = refusals.some(
+				(occupancy) =>
+					occupancy.kind === "daemon" || occupancy.kind === "record",
+			);
+			if (
+				!localOperatorHolder &&
+				refusals.some((occupancy) => occupancy.kind === "silent")
+			) {
+				this.beginStartupAttempt();
+				this.recordStartupFailure(
+					null,
+					describeSpawnRefusal(refusals),
+					false,
+					undefined,
+					{ category: "port_in_use", observe: false },
+				);
+			}
 			this.startHealthCheck();
 			return false;
 		}
@@ -3525,6 +3613,7 @@ export class BackendServiceManager {
 				env.PATH = `${bin}${process.platform === "win32" ? ";" : ":"}${env.PATH ?? ""}`;
 				env.PYTHONHOME = undefined;
 			}
+			this.beginStartupAttempt();
 			const launch = await ownedServeLaunch(
 				interpreters,
 				this.port,
@@ -3548,14 +3637,16 @@ export class BackendServiceManager {
 			});
 			const generation = this.captureServe(child);
 			captured = generation;
-			this.startupAttempts += 1;
 			this.setStartup({
 				phase: "starting",
+				// From the spawn, not `attemptStartedAt`: the bar is drawn against
+				// the readiness budget, which the loop below measures from here.
 				startedAt: Date.now(),
 				budgetMs: READINESS_BUDGET_MS,
 				attempt: this.startupAttempts,
 				settledAt: null,
 				failure: null,
+				failuresInRow: this.failuresInRow,
 			});
 
 			// Log output
@@ -3600,12 +3691,15 @@ export class BackendServiceManager {
 					// version comes from this registration, and a consumer that
 					// re-reads capabilities on `backendReady` must already see it.
 					await this.registerOwnedDaemon(child, reason);
-					if (this.startup)
-						this.setStartup({
-							...this.startup,
-							phase: "ready",
-							settledAt: Date.now(),
-						});
+					/*
+					 * The tail is START-UP evidence (review round 1, R1): from here on
+					 * it holds only what the server writes after ready, so a later
+					 * crash is classified and copied from its own output, not from 4 KiB
+					 * of runtime logs (agent activity, paths) or a handled traceback
+					 * logged long before.
+					 */
+					generation.stderrTail = "";
+					this.markStartupReady();
 					this.startHealthCheck();
 					this.notifyBackendReady();
 					return true;
@@ -3992,6 +4086,8 @@ export class BackendServiceManager {
 					generation,
 					`The server stopped unexpectedly with exit code ${code}.`,
 					false,
+					undefined,
+					{ afterReady: true },
 				);
 			}
 		};

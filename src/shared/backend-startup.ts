@@ -59,6 +59,15 @@ export interface BackendStartupFailure {
 	stderrTail: string;
 	/** Main's own one-line account, for the diagnostics block. English, technical. */
 	message: string;
+	/**
+	 * The server had reached `ready` and then died (UX round 1, U2). Such a
+	 * failure is not a failed START: the band says "stopped unexpectedly", not
+	 * "could not start", and `backend_status` reports it with `after_ready` and
+	 * no start-up duration, so session uptime never enters the start-up
+	 * distribution (review round 1, R2). Optional so a record from a build that
+	 * predates the flag reads as a start-up failure, which is what it was then.
+	 */
+	afterReady?: boolean;
 }
 
 export interface BackendStartup {
@@ -78,6 +87,13 @@ export interface BackendStartup {
 	 * reports - the distribution any change to the budget must be measured on. */
 	settledAt: number | null;
 	failure: BackendStartupFailure | null;
+	/**
+	 * Failures recorded since the server was last ready, this one included (UX
+	 * round 1, U4): a Restart that fails again must not look identical to the
+	 * first failure, which is what drove the repeated Retry presses in the D1/D2
+	 * replays. Reset to 0 by `ready`. Optional for records from older builds.
+	 */
+	failuresInRow?: number;
 }
 
 /**
@@ -156,6 +172,40 @@ export function classifyStartupFailure(input: {
 	return spawnCode ? "executable_blocked" : "unknown";
 }
 
+/*
+ * Credential shapes masked out of the diagnostics (review round 1, R1). The
+ * stderr tail is the server's own output, and a server that logs a provider
+ * key, a bearer header or a `token=` query string would otherwise put it on
+ * the clipboard of a user who was asked to paste it into a support request.
+ * Shapes, not a list of known keys: each is a recognisable credential syntax,
+ * matched broadly - over-masking a diagnostic costs nothing, a leak does.
+ */
+const SECRET_PATTERNS: readonly [RegExp, string][] = [
+	// `Authorization: Bearer <x>` / `Bearer <x>` anywhere.
+	[/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/g, "$1 [redacted]"],
+	// key=value / key: value / "key": "value" for credential-named keys.
+	[
+		/\b([A-Za-z0-9_-]*(?:api[_-]?key|apikey|token|secret|password|passwd|credential|auth)[A-Za-z0-9_-]*)(["']?\s*[:=]\s*["']?)([^\s"',;&]{4,})/gi,
+		"$1$2[redacted]",
+	],
+	// Provider key prefixes that appear bare (OpenAI/Anthropic `sk-`, GitHub,
+	// Slack, Google API keys, AWS access key ids).
+	[
+		/\b(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{30,}|AKIA[0-9A-Z]{16})/g,
+		"[redacted]",
+	],
+	// Long opaque hex runs (the desktop token is 64 hex characters).
+	[/\b[a-f0-9]{32,}\b/gi, "[redacted]"],
+];
+
+/** Mask credential-shaped substrings (see `SECRET_PATTERNS`). */
+export function redactSecrets(text: string): string {
+	let out = text;
+	for (const [pattern, replacement] of SECRET_PATTERNS)
+		out = out.replace(pattern, replacement);
+	return out;
+}
+
 /**
  * The plain-text block "Copy diagnostics" puts on the clipboard.
  *
@@ -188,6 +238,7 @@ export function startupDiagnosticsText(
 		const f = startup.failure;
 		if (f) {
 			lines.push(`category: ${f.category}`);
+			if (f.afterReady) lines.push("stopped after a successful start: yes");
 			if (f.exitCode !== null) lines.push(`exit code: ${f.exitCode}`);
 			if (f.signal) lines.push(`signal: ${f.signal}`);
 			if (f.spawnErrorCode) lines.push(`spawn error: ${f.spawnErrorCode}`);
@@ -199,7 +250,8 @@ export function startupDiagnosticsText(
 	} else {
 		lines.push("start: no start-up recorded by this app session");
 	}
-	return lines.join("\n");
+	// Masked as a whole: the message and detail can quote server output too.
+	return redactSecrets(lines.join("\n"));
 }
 
 /** IPC channel: restart the owned server (stop, then start). */

@@ -33,12 +33,28 @@ two ways).
 | `local_model_check` | `provider`, `result` (`reachable` \| `unreachable` \| `error`), `reason` | every local-provider reachability probe (`provider-detail.tsx`, including Check again) |
 | `first_message_sent` | none | first successful send of this install profile (`chat-page.tsx`); flag `lo.analytics.first-message-sent` in localStorage |
 | `message_send_failed` | `reason_category` (`SEND_FAILURE_REASONS`) | the composer's send catch (`chat-page.tsx`) |
-| `backend_status` | `state` (`ready` \| `failed`), `reason` (`BACKEND_STARTUP_CATEGORIES` or `none`), `elapsed_s` | each settled start-up attempt of the app's own server (`backend-startup-panel.tsx`, `useBackendStartupTelemetry`) |
+| `backend_status` | `state` (`ready` \| `failed`), `reason` (`BACKEND_STARTUP_CATEGORIES` or `none`), `after_ready` (boolean), `elapsed_s` | each settled start-up attempt of the app's own server, and a server that died after it was ready (`backend-startup-panel.tsx`, `useBackendStartupTelemetry`); once per attempt per renderer session (deduped in sessionStorage, so a reload does not report it again) |
 | `onboarding_tour_step` | `step`, `outcome` (`shown` \| `skipped_missing_target` \| `completed` \| `cancelled`) | `use-onboarding-tour.ts`; skips from `guardTourTargets` in `tour-steps.ts` |
 
 `backend_status.elapsed_s` is the start-up duration distribution: measure it
 before changing the readiness budget (`READINESS_BUDGET_MS`, 30 s), which this
 change does not touch.
+Rows with `after_ready: true` are a server that started, worked and then exited
+non-zero; their `elapsed_s` is null. Exclude them from start-up analysis and
+read them as mid-session crashes.
+
+`first_message_sent` is "first send since this release", not "first send ever":
+the once-per-install flag did not exist before, so every existing install
+reports it once on its first send after upgrading. The flag is also written
+when telemetry is off, so turning telemetry on later does not report an old
+first send as new. Read the activation funnel from the release date onward.
+
+`onboarding_tour_step{outcome: "shown"}` counts a step the tour REACHED; a step
+whose target never appeared within the wait (`TOUR_TARGET_WAIT_MS`) is then
+also reported `skipped_missing_target`. The rest of its group
+(`TOUR_STEP_GROUPS`) is skipped with it and not reported separately: one skip
+row per group. A tour whose skips ran past its last step reports `cancelled`
+and is not marked done.
 
 ## Helpers for other surfaces
 

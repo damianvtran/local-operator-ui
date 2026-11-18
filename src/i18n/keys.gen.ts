@@ -8196,7 +8196,7 @@ export type MessageParams = {
 	"ui.common.backend_startup.action.copy_failed": undefined;
 	"ui.common.backend_startup.action.restart": undefined;
 	"ui.common.backend_startup.action.restarting": undefined;
-	"ui.common.backend_startup.detail_starting": { seconds: string };
+	"ui.common.backend_startup.detail_starting": { seconds: number };
 	"ui.common.backend_startup.details.hide": undefined;
 	"ui.common.backend_startup.details.show": undefined;
 	"ui.common.backend_startup.progress_label": undefined;
@@ -8206,10 +8206,13 @@ export type MessageParams = {
 	"ui.common.backend_startup.reason.exited": undefined;
 	"ui.common.backend_startup.reason.port_forbidden": undefined;
 	"ui.common.backend_startup.reason.port_in_use": undefined;
-	"ui.common.backend_startup.reason.timed_out": { seconds: string };
+	"ui.common.backend_startup.reason.stopped": undefined;
+	"ui.common.backend_startup.reason.timed_out": { seconds: number };
 	"ui.common.backend_startup.reason.unknown": undefined;
+	"ui.common.backend_startup.repeated_failures": { count: number };
 	"ui.common.backend_startup.title_failed": undefined;
 	"ui.common.backend_startup.title_starting": undefined;
+	"ui.common.backend_startup.title_stopped": undefined;
 	"ui.common.connection.backend.card_credential_refused": undefined;
 	"ui.common.connection.backend.card_governed": undefined;
 	"ui.common.connection.backend.card_pre_handshake": undefined;
