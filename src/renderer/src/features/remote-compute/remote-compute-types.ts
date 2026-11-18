@@ -95,8 +95,13 @@ export type RemoteComputeRead = {
 	active: RemoteRun[];
 	/**
 	 * Whether this DEPLOYMENT offers the family, distinct from the user's own flag
-	 * (`enabled`) and from the account. `null` means the answer did not say, which
-	 * the picker renders as the loading/unknown state rather than as `false`.
+	 * (`enabled`) and from the account. `null` means the answer did not say, and the
+	 * picker treats that as STILL OFFERED: only an explicit `false` hides the row.
+	 *
+	 * A value nobody stated is not a refusal to serve - a deployment that answers
+	 * `null` here is one whose read predates the field, and the model's own test pins
+	 * the same reading (`remote-compute-model.test.mjs`). An earlier version of this
+	 * comment described a loading state the model does not have (agent review n3).
 	 */
 	offered: boolean | null;
 	/** The read's own outcome, from the runs route; `null` on the capability read. */
@@ -111,7 +116,14 @@ export type RemoteComputeRead = {
  */
 export type RemoteRunsServer = "ok" | "signed-out" | "disabled" | "unavailable";
 
-/** `GET …/runs`: the rows, tagged by source, and the server's own verdict. */
+/**
+ * `GET …/runs`: the rows, and the server's own verdict about them.
+ *
+ * The rows are NOT tagged individually here: the route's own row tags exist, but
+ * `RemoteRun` carries no such field and the only source claim any surface makes is
+ * the list-level `server` verdict - `signed-out` means these are this device's record
+ * rather than the provider's (agent review n4).
+ */
 export type RemoteRunList = {
 	runs: RemoteRun[];
 	server: RemoteRunsServer;

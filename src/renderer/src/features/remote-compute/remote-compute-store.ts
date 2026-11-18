@@ -33,7 +33,17 @@
  *   in the past: a run whose record stops moving is not worth an unbounded poll, and
  *   the card says it is no longer updating rather than spinning forever.
  * - NOTHING POLLS WHILE THE FAMILY IS OFF: every hook takes an `enabled` flag derived
- *   from the read's own answer.
+ *   from the read's own answer, and the picker passes the answer rather than the
+ *   literal `true` - an answered `{enabled: false}` is a group that does not exist,
+ *   so it costs no further read while the popover stays open (agent review m2).
+ * - A READ THAT KEEPS FAILING BACKS OFF, AND A 429'S OWN PACE WINS (agent review m1).
+ *   `retry: false` stops react-query's immediate retries but says nothing about the
+ *   INTERVAL, and a constant interval against a route answering 500 is an unbounded
+ *   poll of a broken surface. So each polling read delays by its last `retry_after`
+ *   when the refusal carried one, and otherwise doubles up to
+ *   `REMOTE_POLL_MAX_DELAY_MS`, stopping after `REMOTE_POLL_MAX_FAILURES` consecutive
+ *   failures - the run's own deadline cannot bound it, because that deadline arrives
+ *   in the body that failed.
  */
 
 import {
@@ -63,8 +73,26 @@ export const remoteComputeKeys = {
 /** The catalogue cadence this family's two listing reads ride. */
 export const REMOTE_COMPUTE_POLL_MS = 30_000;
 
+/**
+ * The cadence an OPEN picker re-reads at.
+ *
+ * TEN SECONDS, THE READ'S OWN `staleTime`, not the catalogue's thirty. The picker is
+ * the surface whose row decides whether a money action is offered at all, and UX round
+ * 1 measured it offering `sign in to use` for 29.7 s while the daemon had already
+ * answered `signed-in` (U2). A closed picker still costs the catalogue cadence, and
+ * the read is shared by query key, so a card beside it rides whichever cadence is
+ * already running.
+ */
+export const REMOTE_COMPUTE_OPEN_POLL_MS = 10_000;
+
 /** One live run's cadence. See this file's header for why it is the only fast one. */
 export const REMOTE_RUN_POLL_MS = 5_000;
+
+/** Consecutive failed reads after which a polling read stops rather than spins. */
+export const REMOTE_POLL_MAX_FAILURES = 5;
+
+/** The ceiling a backing-off poll reaches before it stops. */
+export const REMOTE_POLL_MAX_DELAY_MS = 5 * 60_000;
 
 /**
  * How long after its own deadline a run is still polled.
@@ -96,21 +124,20 @@ export class RemoteRefusal extends Error {
 }
 
 /**
- * `Retry-After` is standardised in SECONDS; this family's body may also carry it.
+ * `Retry-After`, in the body this family's route restates it in.
  *
- * The header is preferred when main forwarded one - it is the HTTP answer - and the
- * body field is the fallback. Both spellings are read because the route publishes
- * both, and a remedy that showed a countdown from the wrong one would be a second
- * number the user did not ask for.
+ * THE BODY, NOT A HEADER, and that is the transport's shape rather than a choice:
+ * `DesktopResponse` is `{status, body}` with no headers, and main's relay does not
+ * forward them - it has to restate `Retry-After` in the body for any renderer to see
+ * it (`src/main/desktop-transport.ts`). An earlier version took a header argument
+ * that no caller could ever supply and documented a precedence the transport cannot
+ * deliver; a branch that is unreachable is a claim, and this one was false (agent
+ * review n1).
+ *
+ * The spelling is standardised in SECONDS; the body field is read in seconds and
+ * returned in milliseconds, because every countdown here is milliseconds.
  */
-function retryAfterMs(body: unknown, headerMs: unknown): number | null {
-	if (
-		typeof headerMs === "number" &&
-		Number.isFinite(headerMs) &&
-		headerMs > 0
-	) {
-		return Math.round(headerMs);
-	}
+function retryAfterMs(body: unknown): number | null {
 	const raw =
 		typeof body === "object" && body !== null && "retry_after" in body
 			? (body as { retry_after?: unknown }).retry_after
@@ -137,10 +164,7 @@ export async function remoteCall<T>(request: DesktopRequest): Promise<T> {
 		if (error instanceof DesktopControlError) {
 			throw new RemoteRefusal(
 				"transport",
-				userFacingMessage(
-					error,
-					"The request did not reach the server. Try again.",
-				),
+				userFacingMessage(error, t("ui.chat.remote_compute.store.transport")),
 				error.retryAfterMs ?? null,
 			);
 		}
@@ -168,8 +192,8 @@ export async function remoteCall<T>(request: DesktopRequest): Promise<T> {
 		const message =
 			typeof shape.message === "string" && shape.message.trim()
 				? shape.message
-				: "The server refused this request and did not say why.";
-		throw new RemoteRefusal(code, message, retryAfterMs(shape, undefined));
+				: t("ui.chat.remote_compute.store.refused");
+		throw new RemoteRefusal(code, message, retryAfterMs(shape));
 	}
 	/*
 	 * A 404 WITH NO BODY IS THE RUN, NOT THE ROUTE. The route set is fixed and the app
@@ -181,9 +205,48 @@ export async function remoteCall<T>(request: DesktopRequest): Promise<T> {
 		response.status === 404 ? "not_found" : "unrecognised",
 		response.status === 404
 			? t("ui.chat.remote_compute.card.not_found")
-			: "The server refused this request and did not say why.",
+			: t("ui.chat.remote_compute.store.refused"),
 		null,
 	);
+}
+
+/**
+ * How long a polling read waits before its next attempt.
+ *
+ * PURE AND EXPORTED so the numbers are testable without a timer. The order is the
+ * one the route asked for: a refusal that stated `retry_after` wins over anything
+ * this file would invent, because the server is the only party that knows when it
+ * will be ready (a 429 measured at 7 s must not be re-asked at 5 s). Otherwise the
+ * delay doubles from the caller's own cadence, and after
+ * `REMOTE_POLL_MAX_FAILURES` consecutive failures the answer is `false` - a surface
+ * that has failed five times is a surface whose next read will fail too, and the
+ * user's own re-read (the retry affordance, a reopened picker) is what restarts it.
+ */
+export function remotePollDelayMs(input: {
+	baseMs: number;
+	failures: number;
+	retryAfterMs: number | null;
+}): number | false {
+	const { baseMs, failures, retryAfterMs } = input;
+	if (failures <= 0) return baseMs;
+	if (failures >= REMOTE_POLL_MAX_FAILURES) return false;
+	if (retryAfterMs !== null && retryAfterMs > 0) {
+		return Math.min(retryAfterMs, REMOTE_POLL_MAX_DELAY_MS);
+	}
+	return Math.min(baseMs * 2 ** failures, REMOTE_POLL_MAX_DELAY_MS);
+}
+
+/** The delay for one query state, from the refusal it is carrying (if any). */
+function pollDelay(
+	state: { error: unknown; fetchFailureCount: number },
+	baseMs: number,
+): number | false {
+	const error = state.error;
+	return remotePollDelayMs({
+		baseMs,
+		failures: state.fetchFailureCount,
+		retryAfterMs: error instanceof RemoteRefusal ? error.retryAfterMs : null,
+	});
 }
 
 /**
@@ -192,8 +255,15 @@ export async function remoteCall<T>(request: DesktopRequest): Promise<T> {
  * `enabled` is the family's switch and the caller's own gate: a read that answers
  * `{enabled: false}` is a family this backend does not serve, and the picker's group
  * does not exist for it.
+ *
+ * `pollMs` is the caller's own cadence, because two callers want two: a control that
+ * is OPEN is answered at `REMOTE_COMPUTE_OPEN_POLL_MS`, one that is only present at
+ * the catalogue's thirty seconds.
  */
-export function useRemoteComputeRead(enabled: boolean) {
+export function useRemoteComputeRead(
+	enabled: boolean,
+	{ pollMs = REMOTE_COMPUTE_POLL_MS } = {},
+) {
 	return useQuery({
 		queryKey: remoteComputeKeys.read,
 		enabled,
@@ -203,7 +273,8 @@ export function useRemoteComputeRead(enabled: boolean) {
 			),
 		retry: false,
 		staleTime: 10_000,
-		refetchInterval: enabled ? REMOTE_COMPUTE_POLL_MS : false,
+		refetchInterval: (query) =>
+			enabled ? pollDelay(query.state, pollMs) : false,
 		refetchIntervalInBackground: false,
 		refetchOnWindowFocus: true,
 	});
@@ -224,7 +295,8 @@ export function useRemoteRuns(enabled: boolean, { poll = true } = {}) {
 			remoteRunList(await remoteCall<unknown>({ op: "remote_compute.runs" })),
 		retry: false,
 		staleTime: 10_000,
-		refetchInterval: enabled && poll ? REMOTE_COMPUTE_POLL_MS : false,
+		refetchInterval: (query) =>
+			enabled && poll ? pollDelay(query.state, REMOTE_COMPUTE_POLL_MS) : false,
 		refetchIntervalInBackground: false,
 	});
 }
@@ -298,7 +370,13 @@ export function useRemoteRun(runId: string | null, now: number) {
 		retry: false,
 		refetchInterval: (query) => {
 			const data = query.state.data;
-			return data ? remoteRunPollMs(data, now) : REMOTE_RUN_POLL_MS;
+			const cadence = data ? remoteRunPollMs(data, now) : REMOTE_RUN_POLL_MS;
+			/*
+			 * A FAILED READ IS PACED BY ITS FAILURES, not by a cadence it cannot reach: a
+			 * 404 on a run record used to be re-asked every five seconds for as long as
+			 * the card was on screen (agent review m1). `false` here stops the loop.
+			 */
+			return cadence === false ? false : pollDelay(query.state, cadence);
 		},
 		refetchIntervalInBackground: false,
 	});
@@ -339,7 +417,7 @@ export function useRemoteRunStart() {
 			if (!run) {
 				throw new RemoteRefusal(
 					"unrecognised",
-					"The server accepted the run but did not return it.",
+					t("ui.chat.remote_compute.store.accepted_without_run"),
 					null,
 				);
 			}
