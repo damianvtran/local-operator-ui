@@ -6,9 +6,11 @@
  * dedupe (review round 1, R2/R4) and its show rule (QA round 1, Q2/Q3), which
  * are the pure parts of `backend-startup-panel.tsx`.
  *
- * `posthog-js` is replaced by a stub: these tests pin what the app HANDS the
- * sink, and the default sink's own consent gate is covered by QA's live
- * consent-off run.
+ * `posthog-js` is REFUSED by the bundle, not stubbed (merge gate, 2026-11-17):
+ * `product-events.ts` is reached by many node-side test bundles, and importing
+ * `posthog-js` there broke them (`location is not defined`, or unresolvable
+ * under the "neutral" platform). The client is handed in by `main.tsx`, so the
+ * default sink's gate is tested here with a fake client.
  */
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -19,6 +21,7 @@ import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
 const repo = process.cwd();
+const POSTHOG_IMPORT = /^posthog-js(\/.*)?$/;
 const built = await build({
 	stdin: {
 		contents: [
@@ -41,14 +44,16 @@ const built = await build({
 	},
 	plugins: [
 		{
-			name: "posthog-stub",
+			name: "refuse-posthog",
 			setup(b) {
-				b.onResolve({ filter: /^posthog-js$/ }, () => ({
-					path: "posthog-js",
-					namespace: "stub",
-				}));
-				b.onLoad({ filter: /.*/, namespace: "stub" }, () => ({
-					contents: "export default { capture() {} };",
+				// Any `posthog-js` import reachable from these modules fails the
+				// build, which is the regression this file guards.
+				b.onResolve({ filter: POSTHOG_IMPORT }, (args) => ({
+					errors: [
+						{
+							text: `posthog-js imported by ${args.importer}: hand the client in through registerProductEventClient instead`,
+						},
+					],
 				}));
 			},
 		},
@@ -135,6 +140,37 @@ test("events go to the sink as plain copies; a throwing sink never fails the cal
 		);
 	} finally {
 		mod.setProductEventSink("default");
+	}
+});
+
+test("the default sink captures only with a registered, initialised client on a reporting launch", () => {
+	const seen = [];
+	const fake = {
+		__loaded: false,
+		capture: (name, properties) => seen.push([name, properties]),
+	};
+	const props = { reason_category: "transport" };
+	const hadWindow = "window" in globalThis;
+	const priorWindow = globalThis.window;
+	try {
+		mod.setProductEventSink("default");
+		globalThis.window = { api: { telemetryEnabled: true } };
+		mod.trackProductEvent("message_send_failed", props);
+		assert.equal(seen.length, 0, "no client registered: dropped");
+		mod.registerProductEventClient(fake);
+		mod.trackProductEvent("message_send_failed", props);
+		assert.equal(seen.length, 0, "client not initialised: dropped");
+		fake.__loaded = true;
+		globalThis.window = { api: { telemetryEnabled: false } };
+		mod.trackProductEvent("message_send_failed", props);
+		assert.equal(seen.length, 0, "launch may not report: dropped");
+		globalThis.window = { api: { telemetryEnabled: true } };
+		mod.trackProductEvent("message_send_failed", props);
+		assert.deepEqual(seen, [["message_send_failed", props]]);
+	} finally {
+		mod.registerProductEventClient(null);
+		if (hadWindow) globalThis.window = priorWindow;
+		else Reflect.deleteProperty(globalThis, "window");
 	}
 });
 

@@ -25,8 +25,16 @@
  *
  * NEVER THROWS. Analytics is never a reason for a send, a setup or the tour to
  * fail: every capture is wrapped and a failure is dropped silently.
+ *
+ * NO `posthog-js` IMPORT HERE (merge gate, 2026-11-17). This module is imported
+ * by the provider sign-in flow, the provider detail, the chat page, the start-up
+ * panel and the tour, so the dozens of node-side test bundles that reach those
+ * modules would reach `posthog-js` too: its CJS entry reads `location` at module
+ * load (a ReferenceError under node) and the "neutral"-platform bundles cannot
+ * resolve it at all. The renderer entry (`main.tsx`), which already owns the
+ * gated `PostHogProvider`, hands the client in through
+ * `registerProductEventClient`; until it does, the default sink drops.
  */
-import posthog from "posthog-js";
 import type {
 	BackendStartupCategory,
 	BackendStartupPhase,
@@ -76,12 +84,31 @@ export type ProductEventName = keyof ProductEvents;
 /** The capture function, swappable so a test can observe without a client. */
 type Sink = (name: string, properties: Record<string, unknown>) => void;
 
+/** The slice of the `posthog-js` client the default sink uses. */
+export interface ProductEventClient {
+	capture: (name: string, properties: Record<string, unknown>) => unknown;
+	/** posthog-js's own "init has run" flag. */
+	__loaded?: boolean;
+}
+
+let client: ProductEventClient | null = null;
+
+/**
+ * Hand the default sink its client. Called once by the renderer entry, which
+ * imports `posthog-js` anyway; never from a module tests bundle.
+ */
+export function registerProductEventClient(
+	next: ProductEventClient | null,
+): void {
+	client = next;
+}
+
 const defaultSink: Sink = (name, properties) => {
 	// `__loaded` is posthog-js's own "init has run" flag: before it, a capture
 	// would build state on a client the gate may never initialise.
 	if (!launchMayReport()) return;
-	if (!(posthog as { __loaded?: boolean }).__loaded) return;
-	posthog.capture(name, properties);
+	if (!client?.__loaded) return;
+	client.capture(name, properties);
 };
 
 /*
