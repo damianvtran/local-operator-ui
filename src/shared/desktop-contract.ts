@@ -252,6 +252,8 @@ const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
  * is refused HERE, by name, rather than by the daemon's generic 422.
  */
 const approvalId = z.string().regex(/^ap_[0-9a-hjkmnp-tv-z]{1,64}$/);
+/** Core's pairing id/nonce grammar (`network/pairing_attest.py` `_ID`). */
+export const MESH_PAIRING_ID = /^[A-Za-z0-9_.:-]{1,128}$/;
 /**
  * A profile proposal's id: `pp_` + 16 hex, derived by core from the proposal's
  * content (`local_operator/profile_proposals.py`), so filing is idempotent. The
@@ -5134,6 +5136,47 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * MESH PAIRING CARDS (`features.mesh_pairing`, core PR #4259,
+	 * `routes/desktop_mesh_pairings.py`): two devices pairing from the Mesh
+	 * approvals tray instead of a terminal (operator ask: "pairing does NOT require
+	 * running terminal commands").
+	 *
+	 * `pairings.list` is a plain read. `pairings.answer` is the ONE desktop op main
+	 * does not simply forward: core consumes a matching APP ATTESTATION before it
+	 * acts, and only main can make one (`src/main/mesh-pairing-attest.ts` - the
+	 * click-provenance gate, then the `mesh-pairing.sock` frame, then this POST).
+	 * A renderer cannot attest, so a renderer that sent this op straight to the
+	 * backend would only collect `403 pairing_needs_app`.
+	 *
+	 * `deadline` is NOT the renderer's to choose: main overwrites it with the value
+	 * it attested (now + a few seconds, never past the card's expiry). The renderer
+	 * passes the card's `expires_at` there as an upper bound only, which is why the
+	 * field is optional here. `shares` is the inviter's reduce-only keep list; main
+	 * always sends it explicitly (sorted) so the attested content and the POST can
+	 * never disagree about "omitted" vs "empty".
+	 *
+	 * The ids are core's own grammar (`pairing_attest._ID`: `[A-Za-z0-9_.:-]{1,128}`),
+	 * repeated here so a hand-built id cannot become a path fragment.
+	 */
+	z
+		.object({ op: z.literal("pairings.list") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("pairings.answer"),
+			side: z.enum(["inviter", "joiner"]),
+			inviteId: z.string().regex(MESH_PAIRING_ID),
+			nonce: z.string().regex(MESH_PAIRING_ID),
+			decision: z.enum(["admit", "decline"]),
+			// Exactly six digits to admit; nothing ("") to decline - core's frame rule.
+			code: z.string().regex(/^([0-9]{6})?$/),
+			shares: z.array(z.string().min(1).max(256)).max(256).optional(),
+			deadline: z.number().int().positive().optional(),
+		})
+		// `admit` carries six digits, `decline` none: the cross-field rule lives in
+		// `desktopRequestSchema`'s superRefine (the union is discriminated).
+		.strict(),
+	/*
 	 * Settings → Phone access → Paired phones. A device id is what core derives
 	 * (lowercase hex) and accepts (`[A-Za-z0-9]{1,64}`, else 422 `bad_device_id`);
 	 * the pattern here is this client's own check before the id becomes a path
@@ -5766,6 +5809,19 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				message:
 					"A usage reset must name an account: send `credentialRef` or `identity`.", // i18n: ignore wire validation diagnostic
 				path: ["credentialRef"],
+			});
+		}
+		/* A pairing admit carries the six typed digits and a decline none: core's
+		   attest frame refuses any other pairing (`pairing_attest.validate_frame`),
+		   so a request shaped otherwise could never be answered. */
+		if (
+			request.op === "pairings.answer" &&
+			(request.decision === "admit") !== (request.code !== "")
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "admit carries six digits; decline carries none", // i18n: ignore wire validation diagnostic
+				path: ["code"],
 			});
 		}
 		/* Consent: accept/decline carry the participation version, withdraw
@@ -8287,6 +8343,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"tunnel.setup.plan",
 	"tunnel.setup.read",
 	"devices.list",
+	// The open pairing cards: a folded read that never clears or creates anything.
+	"pairings.list",
 	"operator.setup.read",
 	// Reads the phone password and changes nothing; a timeout gets the read sentence.
 	"mobile.password",
@@ -9840,6 +9898,25 @@ export function desktopEndpoint(request: DesktopRequest): {
 					disclosure_digest: request.disclosureDigest,
 					// Omitted, never null: the confirm-mode press is the ABSENCE of a code.
 					...(request.code !== undefined ? { code: request.code } : {}),
+				},
+			};
+		case "pairings.list":
+			return { path: "/v1/desktop/mesh/pairings", method: "GET" };
+		/*
+		 * The body is core's strict `PairingAnswer` and nothing else. `shares` is
+		 * omitted rather than sent as null when absent (the joiner has no list);
+		 * `deadline` is whatever main attested - see the schema's note.
+		 */
+		case "pairings.answer":
+			return {
+				path: `/v1/desktop/mesh/pairings/${request.side}/${encodeURIComponent(request.inviteId)}/answer`,
+				method: "POST",
+				body: {
+					decision: request.decision,
+					code: request.code,
+					nonce: request.nonce,
+					deadline: request.deadline ?? 0,
+					...(request.shares !== undefined ? { shares: request.shares } : {}),
 				},
 			};
 		case "devices.list":

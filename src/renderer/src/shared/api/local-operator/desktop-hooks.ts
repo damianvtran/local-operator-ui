@@ -1077,6 +1077,17 @@ export type DesktopFeature =
 	 */
 	| "phone_pairing"
 	/**
+	 * MESH PAIRING CARDS (`features.mesh_pairing`, core PR #4259):
+	 * `GET /v1/desktop/mesh/pairings`, the attested
+	 * `POST .../mesh/pairings/{side}/{invite_id}/answer`, and the feed's
+	 * `approvals.pairing_id` / `open.approvals_pairing_id`.
+	 *
+	 * ITS OWN KEY for the usual reason: a renderer that read the cards from a
+	 * backend without the route would 404. Absent ⇒ the Mesh approvals tray draws
+	 * no pairing card and pairing stays the terminal ceremony it was.
+	 */
+	| "mesh_pairing"
+	/**
 	 * TURN ON PHONE APPROVALS (`features.operator_setup`, core design v2 §6):
 	 * `GET`/`POST /v1/desktop/operator/setup`. Absent ⇒ no setup row in Settings
 	 * → Phone access; the pairing popup still renders, it just cannot offer the

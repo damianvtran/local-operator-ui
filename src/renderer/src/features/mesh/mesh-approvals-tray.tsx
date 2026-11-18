@@ -112,6 +112,10 @@ import {
 	isWaitingApproval,
 	namedApprovalRefusalParts,
 } from "./mesh-approvals";
+import {
+	MeshPairingSection,
+	type MeshPairingSectionProps,
+} from "./mesh-pairing-card";
 import { profileCardView } from "./mesh-profile-approval";
 import { ProfileConsentCard } from "./profile-consent-card";
 
@@ -262,9 +266,18 @@ export interface MeshApprovalsTrayProps {
 	 * and the join clause never renders a blank.
 	 */
 	networkNames?: ReadonlyMap<string, string>;
+	/**
+	 * Mesh pairing cards (`features.mesh_pairing`): the six-digit ceremony between
+	 * two devices, answered here instead of in a terminal. Absent (the key is off)
+	 * draws exactly the tray that never heard of it. A pairing renders FIRST, above
+	 * the waiting approvals: it has a window of minutes and the other person is
+	 * usually standing at the other device.
+	 */
+	pairings?: MeshPairingSectionProps;
 }
 
 export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
+	pairings,
 	rows,
 	error,
 	pending,
@@ -458,8 +471,21 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 
 	const refusedRow = rows.find((row) => row.approvalId === refusal?.approvalId);
 
+	const pairingCount = pairings?.rows.length ?? 0;
+	const pairingShown =
+		pairings !== undefined &&
+		(pairingCount > 0 ||
+			pairings.outcomes.length > 0 ||
+			pairings.loading ||
+			pairings.error !== null);
 	// Nothing to say, say nothing: no prompt, no record, no failure, no refusal.
-	if (waiting.length === 0 && records.length === 0 && !error && !refusal)
+	if (
+		waiting.length === 0 &&
+		records.length === 0 &&
+		!error &&
+		!refusal &&
+		!pairingShown
+	)
 		return null;
 
 	return (
@@ -503,10 +529,10 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 				<h2 className="text-body-sm text-ink">
 					{t("ui.mesh.mesh_approvals_tray.approvals")}
 				</h2>
-				{waitingCount > 0 && (
+				{waitingCount + pairingCount > 0 && (
 					<span className="text-meta text-ink-dim">
 						{t("ui.mesh.mesh_approvals_tray.waiting_count", {
-							count: waitingCount,
+							count: waitingCount + pairingCount,
 						})}
 					</span>
 				)}
@@ -525,6 +551,8 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 					</Button>
 				</div>
 			)}
+
+			{pairings && <MeshPairingSection {...pairings} />}
 
 			{waiting.length > 0 && (
 				<ul

@@ -147,11 +147,16 @@ import { LinkPreviewArtifactCache } from "./link-preview/artifact-cache";
 import { createLinkPreviewService } from "./link-preview/service";
 import {
 	type QuickSendWatcher,
+	quickSendConfigDir,
 	readQuickSendValue,
 	watchLocalConfig,
 	watchQuickSend,
 } from "./local-config";
 import { createMainLocale } from "./main-locale";
+import {
+	MESH_PAIRING_DEBUG_SWITCHES,
+	answerMeshPairing,
+} from "./mesh-pairing-attest";
 import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
 import { installTypeOfServiceGuard } from "./net-tos-guard";
 import {
@@ -3856,6 +3861,61 @@ app
 			 * gate as every other channel above it.
 			 */
 			linkPreview,
+			/*
+			 * The mesh pairing answer (`mesh-pairing-attest.ts`): click-provenance
+			 * gate, attestation over `mesh-pairing.sock`, then this same forwarder.
+			 * ONLY the main window may answer (the tray lives there; the mini view
+			 * has no pairing card), so the sender is re-checked against it alone.
+			 */
+			async (event, pairingRequest) => {
+				const owner = mainWindow;
+				const admitted =
+					owner !== null &&
+					!owner.isDestroyed() &&
+					isAdmittedSender(event, [{ window: owner, url: rendererUrl }]);
+				return answerMeshPairing(pairingRequest, {
+					facts: () => ({
+						platform: process.platform,
+						packaged: app.isPackaged,
+						/*
+						 * argv PLUS any debug switch main appended to Chromium's own
+						 * command line at runtime (`app.commandLine.appendSwitch`), which
+						 * `process.argv` never shows.
+						 */
+						argv: [
+							...process.argv,
+							...MESH_PAIRING_DEBUG_SWITCHES.filter((name) =>
+								app.commandLine.hasSwitch(name.slice(2)),
+							),
+						],
+						env: process.env,
+						windowMode: windowLaunch.mode,
+						window:
+							admitted && owner
+								? {
+										visible: owner.isVisible(),
+										minimized: owner.isMinimized(),
+										focused: owner.isFocused(),
+										devToolsOpened: owner.webContents.isDevToolsOpened(),
+										debuggerAttached: owner.webContents.debugger.isAttached(),
+									}
+								: null,
+					}),
+					/*
+					 * `userGesture` is FALSE on purpose: `true` would GRANT the page an
+					 * activation, which is exactly the fact being asked about.
+					 */
+					userActivation: async () =>
+						owner !== null && !owner.isDestroyed()
+							? (await owner.webContents.executeJavaScript(
+									"navigator.userActivation.isActive === true",
+									false,
+								)) === true
+							: false,
+					configDir: () => quickSendConfigDir(),
+					forward: sendDesktop,
+				});
+			},
 		);
 
 		// Both app documents may read recording state; only the main window's

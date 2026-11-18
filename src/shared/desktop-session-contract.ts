@@ -2341,6 +2341,12 @@ export type DesktopFeedFrame =
 				 * none is live or the read failed; absent on older cores.
 				 */
 				approvals_pair_request?: string | null;
+				/**
+				 * The oldest open MESH pairing card's id (`inviter:<id>` / `joiner:<id>`,
+				 * `features.mesh_pairing`), so the rail badge lights for a pairing on the
+				 * first frame. Null when none is open; absent on older cores.
+				 */
+				approvals_pairing_id?: string | null;
 				/** Null means the inbox store was unreadable, not verified empty. */
 				notifications?: {
 					revision: number;
@@ -2473,7 +2479,16 @@ export type DesktopFeedFrame =
 			 * pairing withdrawn or decided elsewhere arrives as a frame. Absent on
 			 * older cores, which never file a pairing card.
 			 */
-			payload: { pending: boolean; pair_request?: string | null };
+			payload: {
+				pending: boolean;
+				pair_request?: string | null;
+				/**
+				 * The oldest open mesh pairing card's id, or null
+				 * (`features.mesh_pairing`); core ORs open cards into `pending` too.
+				 * Absent on older cores.
+				 */
+				pairing_id?: string | null;
+			};
 	  }
 	/**
 	 * THE NOTIFICATIONS REEL MOVED (notifications contract § 5.3): an item was
