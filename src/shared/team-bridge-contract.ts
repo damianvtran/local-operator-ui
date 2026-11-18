@@ -423,6 +423,44 @@ export type TeamBridgeDeliverySummary = z.infer<
 	typeof teamBridgeDeliverySummarySchema
 >;
 
+/**
+ * WHO WROTE A MESSAGE, AS THE HUB SAYS IT (agent-server #408, Team
+ * Integrations RFC). `integration` is an admin-installed app (Datadog, Grafana,
+ * Alertmanager, incident.io...) posting with an app token: its sender is
+ * `{kind: "integration", account_id: <app id>, display_label: <app name>}` and
+ * its origin is `integration`. An app is never a conversation participant and
+ * never a directory member, so nothing may resolve it to a person or an agent.
+ *
+ * FAIL SOFT, NOT CLOSED-BY-THROWING. Both vocabularies are additive on the hub:
+ * before this change one `integration` row failed the whole message schema, and
+ * with it the whole conversation page that carried it. A value this build does
+ * not know now parses as `unknown`, which the renderer draws as a generic sender
+ * (stored label, neutral glyph, no profile card, no DM) - claiming no identity
+ * is the safe reading of an identity we cannot name. The hub never sends the
+ * literal `unknown`, so the sentinel cannot collide with a real value.
+ */
+export const TEAM_BRIDGE_MESSAGE_ORIGINS = [
+	"human",
+	"agent",
+	"system",
+	"integration",
+] as const;
+export const TEAM_BRIDGE_SENDER_KINDS = [
+	"human",
+	"agent",
+	"integration",
+] as const;
+export const teamBridgeMessageOriginSchema = z
+	.enum([...TEAM_BRIDGE_MESSAGE_ORIGINS, "unknown"])
+	.catch("unknown");
+export const teamBridgeSenderKindSchema = z
+	.enum([...TEAM_BRIDGE_SENDER_KINDS, "unknown"])
+	.catch("unknown");
+export type TeamBridgeMessageOrigin = z.infer<
+	typeof teamBridgeMessageOriginSchema
+>;
+export type TeamBridgeSenderKind = z.infer<typeof teamBridgeSenderKindSchema>;
+
 export const teamBridgeMessageSchema = z
 	.object({
 		id,
@@ -431,13 +469,13 @@ export const teamBridgeMessageSchema = z
 		sender: z
 			.object({
 				account_id: id,
-				kind: z.enum(["human", "agent"]),
+				kind: teamBridgeSenderKindSchema,
 				display_label: z.string().min(1).max(64),
 			})
 			.passthrough(),
 		body: z.string().nullable(),
 		body_hash: z.string().optional(),
-		origin: z.enum(["human", "agent", "system"]),
+		origin: teamBridgeMessageOriginSchema,
 		agent_label: z.string().optional(),
 		created_at: z.string(),
 		reactions: historyReactionsSchema.optional(),
@@ -481,9 +519,14 @@ export const teamBridgeMessageSchema = z
 			.array(
 				/* Caught PER ENTRY: one replier of a kind this build does not know,
 				   or one malformed id, costs that plate its avatar (it falls back to
-				   the label's initial), never the other two plates. */
+				   the label's initial), never the other two plates. `integration`
+				   is an app replying in its own thread (agent-server #408): kept, so
+				   the plate can draw the app glyph instead of a person's initial. */
 				z
-					.object({ account_id: id, kind: z.enum(["human", "agent"]) })
+					.object({
+						account_id: id,
+						kind: z.enum(["human", "agent", "integration"]),
+					})
 					.passthrough()
 					.nullable()
 					.catch(null),

@@ -12,7 +12,7 @@ export const THREAD_FACEPILE_MAX = 3;
 export type ThreadParticipant = {
 	label: string;
 	accountId?: string;
-	kind?: "human" | "agent";
+	kind?: "human" | "agent" | "integration";
 };
 
 export function threadSummary(message: TeamBridgeMessage) {
