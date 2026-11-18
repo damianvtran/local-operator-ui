@@ -118415,8 +118415,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.community",
-			"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
-			"target_sha256": "2d88f958333367902fbbbe31a364097b7b49fdf74918268c580da3eede079cf5",
+			"source_sha256": "31ed7098167d062d6ec77c48abf0ced5ac957effebc407554c23593c6a2c404d",
+			"target_sha256": "5577645dd5ce565089c34b93c1749f9453ee4c4166ff78edc4beb2785af9d3b7",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -118428,17 +118428,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "pr1973-r2-fr-community-db929001",
+					"instance": "pr1973-r3-fr-community-9dbe07f0",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1973-r2-fr-community-db929001.json",
-					"receipt_sha256": "ffaa22e9ae33b2ecc7daebf8c5e730cb09267a517e667c69d0aeb0e872343da2",
-					"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 20 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
-					"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+					"receipt": "i18n/receipts/pr1973-r3-fr-community-9dbe07f0.json",
+					"receipt_sha256": "8486aa3effa6d30f7f2325555832e1bf46f12d3283dd8389e1d3e7c248e55317",
+					"scope": "PR #1973 round 3 delta (72da4b83..f334bb91): 4 new ui.community.join.reaccept.* values (D7); rest byte-identical to the round-2 audited bytes",
+					"note": "PR #1973 r3: delta audit of the 4 D7 re-accept keys by fresh reviewer session facc506ecc22; r2 audit ef5cbe7f8a91 of 72da4b83 kept in superseded"
 				}
 			],
 			"status": "audited",
@@ -118466,14 +118466,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "2d88f958333367902fbbbe31a364097b7b49fdf74918268c580da3eede079cf5",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1973-r2-fr-community-db929001",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r2-fr-community-db929001.json",
+							"receipt_sha256": "ffaa22e9ae33b2ecc7daebf8c5e730cb09267a517e667c69d0aeb0e872343da2",
+							"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 20 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
+							"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "es",
 			"namespace": "ui.community",
-			"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
-			"target_sha256": "2197fe8a192011d1d106671732a809b0ed2ad38bfaabd80308f3ba5dd8849d15",
+			"source_sha256": "31ed7098167d062d6ec77c48abf0ced5ac957effebc407554c23593c6a2c404d",
+			"target_sha256": "190d8c82ad9b91db387ac8000791ec64bf28e87ca8e02cd510dffae7f7cd00d3",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -118485,17 +118509,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "pr1973-r2-es-community-b6312ee8",
+					"instance": "pr1973-r3-es-community-fba941e3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1973-r2-es-community-b6312ee8.json",
-					"receipt_sha256": "0d458856788cef9cd6470207fae616a3abb5ed432ea41ae007c67e9e5b426d3e",
-					"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 12 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
-					"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+					"receipt": "i18n/receipts/pr1973-r3-es-community-fba941e3.json",
+					"receipt_sha256": "47b2be8ddc90e860f056127a6188c14bb0e8b025e3950b148485661d1dec7efc",
+					"scope": "PR #1973 round 3 delta (72da4b83..f334bb91): 4 new ui.community.join.reaccept.* values (D7); rest byte-identical to the round-2 audited bytes",
+					"note": "PR #1973 r3: delta audit of the 4 D7 re-accept keys by fresh reviewer session facc506ecc22; r2 audit ef5cbe7f8a91 of 72da4b83 kept in superseded"
 				}
 			],
 			"status": "audited",
@@ -118523,14 +118547,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "2197fe8a192011d1d106671732a809b0ed2ad38bfaabd80308f3ba5dd8849d15",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1973-r2-es-community-b6312ee8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r2-es-community-b6312ee8.json",
+							"receipt_sha256": "0d458856788cef9cd6470207fae616a3abb5ed432ea41ae007c67e9e5b426d3e",
+							"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 12 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
+							"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.community",
-			"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
-			"target_sha256": "5641bfca1b956f731203dd6ed13bfaeb76d6d4202b12782273a9fafaeb103c83",
+			"source_sha256": "31ed7098167d062d6ec77c48abf0ced5ac957effebc407554c23593c6a2c404d",
+			"target_sha256": "3674a5c6a01c89bd3e0506b49eb55b754ae659c013d168816c6425549140da48",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -118541,18 +118589,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-18",
-					"result": "clean",
-					"instance": "pr1973-r2-zh-CN-community-74675741",
+					"result": "clean-with-findings",
+					"instance": "pr1973-r3-zh-CN-community-cdf29ca6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/pr1973-r2-zh-CN-community-74675741.json",
-					"receipt_sha256": "3a0b2ce62a8285e738712f2937f86040b4abbb43b5e4d9cae3d2490a6c4340da",
-					"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 67 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
-					"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+					"receipt": "i18n/receipts/pr1973-r3-zh-CN-community-cdf29ca6.json",
+					"receipt_sha256": "50a7d8b5978db65f3c75168678770ab3f794d060746ff5bc9781874d06ddb2d3",
+					"scope": "PR #1973 round 3 delta (72da4b83..f334bb91): 4 new ui.community.join.reaccept.* values (D7); rest byte-identical to the round-2 audited bytes",
+					"note": "PR #1973 r3: delta audit of the 4 D7 re-accept keys by fresh reviewer session facc506ecc22; r2 audit ef5cbe7f8a91 of 72da4b83 kept in superseded"
 				}
 			],
 			"status": "audited",
@@ -118580,14 +118628,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "5641bfca1b956f731203dd6ed13bfaeb76d6d4202b12782273a9fafaeb103c83",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1973-r2-zh-CN-community-74675741",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r2-zh-CN-community-74675741.json",
+							"receipt_sha256": "3a0b2ce62a8285e738712f2937f86040b4abbb43b5e4d9cae3d2490a6c4340da",
+							"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 67 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
+							"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.community",
-			"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
-			"target_sha256": "b83e0aa5b4ce62394b259c8ae65b2d6406611fbb133cfb7c625828d37f271ede",
+			"source_sha256": "31ed7098167d062d6ec77c48abf0ced5ac957effebc407554c23593c6a2c404d",
+			"target_sha256": "edbb5bbcb08bb017a05c338359123c332f69c8e8e34ad94f4509356768822124",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -118599,17 +118671,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "pr1973-r2-ru-community-79c11365",
+					"instance": "pr1973-r3-ru-community-5ddc5c3b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1973-r2-ru-community-79c11365.json",
-					"receipt_sha256": "cc02660103586075ab58120d91d40a428f9bd159b4295c1e7654a472d7906674",
-					"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 12 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
-					"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+					"receipt": "i18n/receipts/pr1973-r3-ru-community-5ddc5c3b.json",
+					"receipt_sha256": "cea5b3162a7cb83c47343175c20e688890c92915b0de9b9574cbf2851b75509b",
+					"scope": "PR #1973 round 3 delta (72da4b83..f334bb91): 4 new ui.community.join.reaccept.* values (D7); rest byte-identical to the round-2 audited bytes",
+					"note": "PR #1973 r3: delta audit of the 4 D7 re-accept keys by fresh reviewer session facc506ecc22; r2 audit ef5cbe7f8a91 of 72da4b83 kept in superseded"
 				}
 			],
 			"status": "audited",
@@ -118637,14 +118709,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "b83e0aa5b4ce62394b259c8ae65b2d6406611fbb133cfb7c625828d37f271ede",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1973-r2-ru-community-79c11365",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r2-ru-community-79c11365.json",
+							"receipt_sha256": "cc02660103586075ab58120d91d40a428f9bd159b4295c1e7654a472d7906674",
+							"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 12 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
+							"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.community",
-			"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
-			"target_sha256": "b8fb7c1b6d735a9dadf828804de1c7ffe052be4f91bc9205344403023a95ad96",
+			"source_sha256": "31ed7098167d062d6ec77c48abf0ced5ac957effebc407554c23593c6a2c404d",
+			"target_sha256": "89a3bbe1705ea45eb2771881adffcc5269aa9490f0c60de600df2961e71ead41",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -118655,18 +118751,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-18",
-					"result": "clean",
-					"instance": "pr1973-r2-vi-community-b39877fd",
+					"result": "clean-with-findings",
+					"instance": "pr1973-r3-vi-community-5b683bbb",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1973-r2-vi-community-b39877fd.json",
-					"receipt_sha256": "c75571ecd7815f8e608d240e3e0540fff53691cddc1ee7dc2f1b6d03a37eb9fd",
-					"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 12 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
-					"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+					"receipt": "i18n/receipts/pr1973-r3-vi-community-5b683bbb.json",
+					"receipt_sha256": "5b8d5ddaff13377583aef51350ac05468daf8e3238f4cc315952811cbfe9cb03",
+					"scope": "PR #1973 round 3 delta (72da4b83..f334bb91): 4 new ui.community.join.reaccept.* values (D7); rest byte-identical to the round-2 audited bytes",
+					"note": "PR #1973 r3: delta audit of the 4 D7 re-accept keys by fresh reviewer session facc506ecc22; r2 audit ef5cbe7f8a91 of 72da4b83 kept in superseded"
 				}
 			],
 			"status": "audited",
@@ -118694,14 +118790,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "b8fb7c1b6d735a9dadf828804de1c7ffe052be4f91bc9205344403023a95ad96",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1973-r2-vi-community-b39877fd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r2-vi-community-b39877fd.json",
+							"receipt_sha256": "c75571ecd7815f8e608d240e3e0540fff53691cddc1ee7dc2f1b6d03a37eb9fd",
+							"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 12 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
+							"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.community",
-			"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
-			"target_sha256": "7c12500eafac9a2316e2c13a8678fae551b088b2f6420fd66f567b17f2c89684",
+			"source_sha256": "31ed7098167d062d6ec77c48abf0ced5ac957effebc407554c23593c6a2c404d",
+			"target_sha256": "454e1c20a3b6aeaf373cc36a40704d41f524f952d60bac7860f6d7c0622d837d",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -118713,17 +118833,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "pr1973-r2-ur-community-8dd3f205",
+					"instance": "pr1973-r3-ur-community-b9876adf",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1973-r2-ur-community-8dd3f205.json",
-					"receipt_sha256": "b4a3302a6e9508c1dd95405737c03976a02e519c581d905da09f641a7fa55064",
-					"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 6 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
-					"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+					"receipt": "i18n/receipts/pr1973-r3-ur-community-b9876adf.json",
+					"receipt_sha256": "da27deea55e3fdc42ea1fcb033ea327887a9b9d1023fd2383fd0d46eaf2e3c33",
+					"scope": "PR #1973 round 3 delta (72da4b83..f334bb91): 4 new ui.community.join.reaccept.* values (D7); rest byte-identical to the round-2 audited bytes",
+					"note": "PR #1973 r3: delta audit of the 4 D7 re-accept keys by fresh reviewer session facc506ecc22; r2 audit ef5cbe7f8a91 of 72da4b83 kept in superseded"
 				}
 			],
 			"status": "audited",
@@ -118751,14 +118871,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "7c12500eafac9a2316e2c13a8678fae551b088b2f6420fd66f567b17f2c89684",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1973-r2-ur-community-8dd3f205",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r2-ur-community-8dd3f205.json",
+							"receipt_sha256": "b4a3302a6e9508c1dd95405737c03976a02e519c581d905da09f641a7fa55064",
+							"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 6 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
+							"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.community",
-			"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
-			"target_sha256": "2f47503b1842d2fd7f74c88858b0ad2f03894db66c424cf24b417504c295f1de",
+			"source_sha256": "31ed7098167d062d6ec77c48abf0ced5ac957effebc407554c23593c6a2c404d",
+			"target_sha256": "3a8ca88560ace7e1911ebc8aa09c4602e816c620180f0cb497188100edaebc96",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -118770,17 +118914,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "pr1973-r2-hi-community-a8d649a9",
+					"instance": "pr1973-r3-hi-community-7caeaf32",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1973-r2-hi-community-a8d649a9.json",
-					"receipt_sha256": "d1c9e6d65c526130a6bfa40183a7bb5af889c854362688bcc0d4f7657cb35cb5",
-					"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 28 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
-					"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+					"receipt": "i18n/receipts/pr1973-r3-hi-community-7caeaf32.json",
+					"receipt_sha256": "131b8c7e316fafe3cb6f9cb596213847a2366f60aa84567fea35c4a064c66984",
+					"scope": "PR #1973 round 3 delta (72da4b83..f334bb91): 4 new ui.community.join.reaccept.* values (D7); rest byte-identical to the round-2 audited bytes",
+					"note": "PR #1973 r3: delta audit of the 4 D7 re-accept keys by fresh reviewer session facc506ecc22; r2 audit ef5cbe7f8a91 of 72da4b83 kept in superseded"
 				}
 			],
 			"status": "audited",
@@ -118805,6 +118949,30 @@
 							"receipt_sha256": "2c59f72040e9f016cc1ac35e38326991e4e68e7511bf5ca0a34aae8585e86f34",
 							"scope": "PR #1973 round 1: all 172 new ui.community.* keys at aeecfe4a (new namespace, first full pass)",
 							"note": "PR #1973 r1: full audit of the new namespace by reviewer job 42a1b3f32681 (session 9bf5768d1c00); translator coder job e584f309bede (session 1e4dc439a105); findings deferred in the PR thread"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "2f47503b1842d2fd7f74c88858b0ad2f03894db66c424cf24b417504c295f1de",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1973-r2-hi-community-a8d649a9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r2-hi-community-a8d649a9.json",
+							"receipt_sha256": "d1c9e6d65c526130a6bfa40183a7bb5af889c854362688bcc0d4f7657cb35cb5",
+							"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 28 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
+							"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
 						}
 					],
 					"status": "audited"
