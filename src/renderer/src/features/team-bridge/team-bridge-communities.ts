@@ -1,4 +1,5 @@
-import { useFeatureFlags } from "@shared/providers/feature-flags";
+import { FeatureFlagContext } from "@shared/providers/feature-flags/feature-flag-context";
+import { useContext } from "react";
 import type { TeamBridgeCommunity } from "./team-bridge-model";
 
 /**
@@ -29,18 +30,17 @@ const NO_COMMUNITIES: readonly TeamBridgeCommunity[] = Object.freeze([]);
  * The provider tolerates a tree without a `FeatureFlagProvider` (isolated
  * component tests and stories that never wrap one) by reading the flag as off:
  * a missing provider must never take the private Team Bridge page down for a
- * dark feature. The hook call order is unchanged either way, because
- * `useFeatureFlags` reads its context unconditionally before it throws.
+ * dark feature. It reads the context directly from `feature-flag-context`
+ * rather than through `useFeatureFlags` (which throws without a provider) and
+ * never imports the provider module: that module loads `posthog-js`, which
+ * reads `location` at import time and so crashed every node/jsdom test that
+ * bundles the Team Bridge page (19 files on this PR's first head).
  */
 export function useTeamBridgeCommunities(): {
 	communities: readonly TeamBridgeCommunity[];
 	enabled: boolean;
 } {
-	let enabled = false;
-	try {
-		enabled = useFeatureFlags().isEnabled(TEAM_BRIDGE_COMMUNITY_FLAG);
-	} catch {
-		enabled = false;
-	}
+	const flags = useContext(FeatureFlagContext);
+	const enabled = flags?.isEnabled(TEAM_BRIDGE_COMMUNITY_FLAG) ?? false;
 	return { communities: NO_COMMUNITIES, enabled };
 }

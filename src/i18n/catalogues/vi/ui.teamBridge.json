@@ -82,6 +82,7 @@
 	"ui.teamBridge.scope.community.search": "Tìm cộng đồng",
 	"ui.teamBridge.scope.community.no_match": "Không có cộng đồng nào khớp.",
 	"ui.teamBridge.scope.community.browse": "Duyệt cộng đồng…",
+	"ui.teamBridge.scope.community.trigger": "Cộng đồng: {name}",
 	"ui.teamBridge.preview.chip": "Xem trước",
 	"ui.teamBridge.preview.banner": "Bạn đang xem trước kênh này. Tham gia để xem lịch sử và nhận thông báo.",
 	"ui.teamBridge.preview.join": "Tham gia",

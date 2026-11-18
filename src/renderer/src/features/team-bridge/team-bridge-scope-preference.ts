@@ -174,14 +174,22 @@ export type TeamBridgeSelection =
  * Amendment A's opening rule, for everything that is not a deep link or a pick
  * made on this mounted page. First match wins:
  *
- * 1. **This app session's scope** - a private scope still valid (a current
- *    organization, or "all" with several), or a community still joined. The
- *    reader's own position outranks every default, so leaving Team Bridge and
- *    coming back never moves them (Amendment A: a community switch "lasts until
- *    you switch back or restart the app"). It ranks above the invitation too:
- *    a reader who saw the invitation and moved on has answered "not now".
- * 2. **A pending invitation to a private org** (frame D22), even with a
- *    community joined.
+ * 1. **A pending invitation to a private org** (frame D22), even with a
+ *    community joined or a scope already used this session. Amendment A §3
+ *    lists it first ("shown first"), and nothing records that the reader ever
+ *    SAW a given invitation, so an earlier session scope cannot stand for
+ *    "not now" (review round 1, m1): an invitation arriving mid-session would
+ *    otherwise never be shown until a restart.
+ * 2. **This app session's scope** - a private scope still valid (a current
+ *    organization, or "all" with several), or a community still joined.
+ *    Amendment A §3 rule 2 is "your default private organization, or the one
+ *    you last selected in this app session", and its closing line keeps a
+ *    switch "until you switch back or restart the app". The session store only
+ *    ever holds the rule's own decided answer (the default org, when one
+ *    exists) or a scope the reader moved to - the page never records an
+ *    interim scope (`openingDefaultHeld`, `shouldRecordSessionScope`) - so
+ *    ranking it here differs from ranking the default first ONLY when the
+ *    reader moved, which is exactly the case that sentence protects.
  * 3. **The default private org** - the Radient account's home tenant
  *    (`MembershipSummary.is_home`; Minerva for its owner), honoured only when it
  *    is one of the reader's Team Bridge organizations: a plan-less personal home
@@ -218,6 +226,8 @@ export function resolveDefaultSelection({
 		scope === TEAM_BRIDGE_ALL_SCOPE
 			? organizations.length > 1
 			: isOrganization(scope);
+	const invited = organizations.find((organization) => organization.invited);
+	if (invited) return { kind: "private", scope: invited.tenantId };
 	if (session?.kind === "private" && validPrivate(session.scope))
 		return session;
 	if (
@@ -227,8 +237,6 @@ export function resolveDefaultSelection({
 		)
 	)
 		return session;
-	const invited = organizations.find((organization) => organization.invited);
-	if (invited) return { kind: "private", scope: invited.tenantId };
 	if (defaultTenantId && isOrganization(defaultTenantId))
 		return { kind: "private", scope: asTeamBridgeTenantId(defaultTenantId) };
 	if (organizations.length === 1)
@@ -281,8 +289,11 @@ export function snapshotForScope(
  * 2. **A scope the reader has already used the switcher for on this page.**
  *    Their explicit choice outranks a stored default, so a later unread poll
  *    that re-renders the organization array cannot yank the rail back.
- * 3. **Amendment A's opening rule** (`resolveDefaultSelection`): this app
- *    session's scope, then a pending private invitation, then the default
+ * 3. **Held while the default org is unknown** (`defaultPending`, see
+ *    `openingDefaultHeld`): `current` stands and the caller treats the scope as
+ *    undecided, so nothing is read, painted or recorded for an interim answer.
+ * 4. **Amendment A's opening rule** (`resolveDefaultSelection`): a pending
+ *    private invitation, then this app session's scope, then the default
  *    private org, then exactly one org, then the durable last-used scope (still
  *    a membership, or `"all"` with several), then the union. Before Amendment A
  *    the durable value outranked everything but a single org, which reopened a
@@ -309,6 +320,7 @@ export function resolveOpeningScope({
 	chosen,
 	current,
 	snapshotRows,
+	defaultPending = false,
 }: {
 	organizations: readonly TeamBridgeOrganization[];
 	stored?: TeamBridgeScope;
@@ -321,9 +333,12 @@ export function resolveOpeningScope({
 	chosen: boolean;
 	current: TeamBridgeScope;
 	snapshotRows?: readonly TeamBridgeConversation[];
+	/** `openingDefaultHeld`'s answer: the rule cannot be applied yet. */
+	defaultPending?: boolean;
 }): TeamBridgeScope {
 	if (requestedTenant) return asTeamBridgeTenantId(requestedTenant);
 	if (chosen) return current;
+	if (defaultPending) return current;
 	const selection = resolveDefaultSelection({
 		organizations,
 		defaultTenantId,
@@ -340,4 +355,96 @@ export function resolveOpeningScope({
 	)
 		return TEAM_BRIDGE_ALL_SCOPE;
 	return preferredScope(organizations, current, chosen, snapshotRows);
+}
+
+/**
+ * How many private organizations this account evidently has, before and after
+ * the organization list answers.
+ *
+ * The list (hub tenants from the status payload, or memberships) is the
+ * authority once it exists. Before it does, the shell watcher's account-scoped
+ * snapshot is the only evidence, and rows from two tenants prove two orgs - the
+ * case where a durable pick can be outranked by the default org, so it must
+ * not paint. A single-tenant snapshot proves nothing more than one org, which
+ * keeps the one-org instant paint (tb-instant-open) untouched.
+ */
+export function openingOrganizationCount(
+	organizations: readonly TeamBridgeOrganization[],
+	snapshotRows?: readonly Pick<TeamBridgeConversation, "tenant_id">[],
+): number {
+	if (organizations.length > 0) return organizations.length;
+	return new Set((snapshotRows ?? []).map((row) => row.tenant_id)).size;
+}
+
+/**
+ * WAIT FOR THE DEFAULT ORG BEFORE DECIDING (review round 1, M1 and m2).
+ *
+ * The default private org comes only from `GET /v1/me/memberships` (`is_home`),
+ * but the hub tenant list in the status payload names the organizations a
+ * round trip earlier. Deciding then answered with the durable pick or the
+ * union, read that list, recorded it as this session's scope, and jumped to
+ * the default org when memberships landed - every restart of a multi-org
+ * account painted yesterday's pick first, and a failed or abandoned memberships
+ * read left the interim scope in `sessionStorage`, which outranks the default
+ * for the rest of the app session.
+ *
+ * So, while memberships are unsettled (loading, or not yet enabled because
+ * the status gate is still open) and the account has more than one private
+ * org, the opening is HELD: the caller keeps its scope undecided, reads no
+ * list, paints no seed and records nothing. Not held when:
+ * - a deep link or an on-page pick decided already (they outrank the rule);
+ * - there is at most one org (that org is the answer whatever the default);
+ * - this app session already has a scope: it was recorded only after an
+ *   opening that knew the default (or by the reader moving), and the default
+ *   cannot outrank it (`resolveDefaultSelection` rule 2), so waiting would
+ *   buy nothing but a loading screen on every return after the memberships
+ *   cache expires.
+ *
+ * A FAILED memberships read settles the hold (the rule falls back without a
+ * default) - see `shouldRecordSessionScope` for why that answer is not saved.
+ */
+export function openingDefaultHeld({
+	organizationCount,
+	membershipsSettled,
+	requestedTenant,
+	chosen,
+	session,
+}: {
+	organizationCount: number;
+	/** The memberships read answered, successfully or not. */
+	membershipsSettled: boolean;
+	requestedTenant?: string | null;
+	chosen: boolean;
+	session?: TeamBridgeScope;
+}): boolean {
+	if (requestedTenant || chosen || session !== undefined) return false;
+	return organizationCount > 1 && !membershipsSettled;
+}
+
+/**
+ * Whether the decided scope may become this app session's scope.
+ *
+ * A fallback taken because memberships FAILED is not the rule's answer: the
+ * default org was unknown, not absent. Recording it would make it outrank the
+ * default org for the rest of the app session (session scope is rule 2), so a
+ * retry that succeeds - or the next visit to Team Bridge - could never land on
+ * the default. Left unrecorded, the page still opens on the fallback now, and
+ * the default org wins as soon as a memberships read answers. A scope the
+ * reader chose (a pick, a deep link) is theirs and is always recorded, as is
+ * any answer for an account with at most one org, which the default cannot
+ * change.
+ */
+export function shouldRecordSessionScope({
+	organizationCount,
+	membershipsFailed,
+	requestedTenant,
+	chosen,
+}: {
+	organizationCount: number;
+	membershipsFailed: boolean;
+	requestedTenant?: string | null;
+	chosen: boolean;
+}): boolean {
+	if (requestedTenant || chosen) return true;
+	return organizationCount <= 1 || !membershipsFailed;
 }

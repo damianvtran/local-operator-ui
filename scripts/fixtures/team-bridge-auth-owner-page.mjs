@@ -381,6 +381,12 @@ function deferred() {
  *                 `?tenant=&conversation=` one, and a cold open omits both.
  *   tenants     - the hub's own tenant list. Two orgs by default; ONE is the
  *                 single-organization cold open the scope decision is about.
+ *   memberships - the `GET /v1/me/memberships` rows (empty by default), e.g.
+ *                 one marked `is_home` to model the default private org
+ *                 (RFC v2.4 Amendment A).
+ *   membershipsGate - holds that read open, so a test can observe the page
+ *                 while the hub tenants are known and the default org is not
+ *                 (agent review round 1, M1 on ui#1970).
  *   surfaceState- the hub's surface class, so an ineligible account can be
  *                 modelled (`A` is plan_required).
  *   seed        - runs after the shipped client is cleared and BEFORE the first
@@ -413,6 +419,8 @@ async function mount({
 	lifecycle = null,
 	path = null,
 	tenants = null,
+	memberships = [],
+	membershipsGate = null,
 	surfaceState = "D",
 	seed = null,
 	waitReady = true,
@@ -431,12 +439,20 @@ async function mount({
 		"a previous fixture still owns a pending lane",
 	);
 	localStorage.clear();
+	// Each mount is a fresh app launch. Team Bridge keeps the reader's scope for
+	// the app session in `sessionStorage` (RFC v2.4 Amendment A), so leaving it
+	// set would carry one test's scope into the next test's "launch". A
+	// leave-and-return inside one test does not come through here, so it still
+	// sees the session scope, as the app does.
+	dom.window.sessionStorage.clear();
 	const laneStart = laneAttempts.length;
 	const fixture = {
 		account: "acct_a",
 		tenant: "org_shared",
 		surfaceState,
 		tenants,
+		memberships,
+		membershipsGate,
 		refuse: true,
 		calls: [],
 		messages: new Map(),
@@ -567,6 +583,11 @@ async function mount({
 					case "radient.request":
 						if (request.control.operation === "account" && fixture.authGate)
 							await fixture.authGate.promise;
+						if (
+							request.control.operation === "memberships.list" &&
+							fixture.membershipsGate
+						)
+							await fixture.membershipsGate.promise;
 						return reply({
 							data: {
 								result:
@@ -579,7 +600,7 @@ async function mount({
 												},
 												identity: {},
 											}
-										: { memberships: [] },
+										: { memberships: fixture.memberships },
 							},
 						});
 					case "team_bridge.status":

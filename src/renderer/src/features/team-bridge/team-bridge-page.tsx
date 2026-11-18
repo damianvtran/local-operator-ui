@@ -273,9 +273,12 @@ import {
 } from "./team-bridge-scheduling";
 import {
 	browserSessionStorage,
+	openingDefaultHeld,
+	openingOrganizationCount,
 	readScopePreference,
 	readSessionScope,
 	resolveOpeningScope,
+	shouldRecordSessionScope,
 	snapshotForScope,
 	writeScopePreference,
 	writeSessionScope,
@@ -5630,6 +5633,26 @@ const TeamBridgeOwnedPage: FC<{
 		[memberships.memberships],
 	);
 	/*
+	 * THE OPENING WAITS FOR THE DEFAULT ORG (review round 1, M1/m2; the rule and
+	 * its exemptions are on `openingDefaultHeld`). Held, the page shows its gate
+	 * loading state rather than the seed scope's title, snapshot rows or restored
+	 * conversation: the seed is yesterday's durable pick, which the default org
+	 * outranks on a restart, so painting it would be a wrong-org flash.
+	 * `memberships.isPending` is also true while the query is disabled behind the
+	 * status gate, so the snapshot cannot paint a multi-org seed before then.
+	 */
+	const openingOrganizations = openingOrganizationCount(
+		organizations,
+		openingRows,
+	);
+	const openingHeld = openingDefaultHeld({
+		organizationCount: openingOrganizations,
+		membershipsSettled: !memberships.isPending || memberships.isError,
+		requestedTenant,
+		chosen: scopeChosen.current,
+		session: sessionScope,
+	});
+	/*
 	 * THE SCOPE IS DECIDED BEFORE THE LIST IS READ (tb-instant-open).
 	 *
 	 * The organization set comes from the status payload this container already
@@ -5654,11 +5677,12 @@ const TeamBridgeOwnedPage: FC<{
 			chosen: scopeChosen.current,
 			current: scope,
 			snapshotRows: openingRows,
+			defaultPending: openingHeld,
 		}) === scope;
-	// `organizationsPending` is the same rule one step earlier: the answer that
-	// decides the scope is still in flight, so a read now would be a read this
-	// page is about to replace.
-	const scopeDecided = scopeSettled && !organizationsPending;
+	// `organizationsPending` and `openingHeld` are the same rule one step
+	// earlier: the answer that decides the scope is still in flight, so a read
+	// now would be a read this page is about to replace.
+	const scopeDecided = scopeSettled && !organizationsPending && !openingHeld;
 	const list = useTeamBridgeConversations(
 		scope,
 		readsEnabled && scopeDecided,
@@ -6063,19 +6087,40 @@ const TeamBridgeOwnedPage: FC<{
 	// options array, so the equality check keeps this to the one transition.
 	// Before that list exists, the watcher's snapshot stands in - and the list
 	// supersedes it the moment it answers (tb-instant-open).
+	//
+	// AFTER A HOLD the move is a correction away from a seed the reader never
+	// saw (`openingHeld`), but the mount already restored that seed's remembered
+	// conversation into `target`. Left there it would show under the default
+	// org's title until the validation read dropped it - the stale-thread-under-
+	// a-new-title case `changeScope` exists to prevent - so the same reset runs
+	// here, minus the writes (this is not a pick). Only after a hold: every other
+	// adoption move keeps its shipped behaviour.
+	const openingWasHeld = useRef(false);
+	if (openingHeld) openingWasHeld.current = true;
 	useEffect(() => {
-		setScope((current) =>
-			resolveOpeningScope({
-				organizations,
-				stored: storedScope,
-				session: sessionScope,
-				defaultTenantId,
-				requestedTenant,
-				chosen: scopeChosen.current,
-				current,
-				snapshotRows: openingRows,
-			}),
-		);
+		if (openingHeld) return;
+		const next = resolveOpeningScope({
+			organizations,
+			stored: storedScope,
+			session: sessionScope,
+			defaultTenantId,
+			requestedTenant,
+			chosen: scopeChosen.current,
+			current: scope,
+			snapshotRows: openingRows,
+			defaultPending: openingHeld,
+		});
+		const corrected = openingWasHeld.current;
+		openingWasHeld.current = false;
+		if (next === scope) return;
+		if (corrected && !scopeChosen.current) {
+			restoredScopes.current.delete(next);
+			pendingLanding.current = null;
+			restoredTarget.current = null;
+			setThreadLink(null);
+			setTarget(null);
+		}
+		setScope(next);
 	}, [
 		organizations,
 		openingRows,
@@ -6083,6 +6128,8 @@ const TeamBridgeOwnedPage: FC<{
 		sessionScope,
 		defaultTenantId,
 		requestedTenant,
+		openingHeld,
+		scope,
 	]);
 
 	/*
@@ -6090,13 +6137,22 @@ const TeamBridgeOwnedPage: FC<{
 	 * (`writeSessionScope`). Every route - a switcher pick, a union row's org
 	 * switch, a deep link, the opening rule's own answer - lands here, so leaving
 	 * Team Bridge and coming back reopens exactly where the reader was. Writing
-	 * before `scopeDecided` would record an interim seed the list never read.
+	 * before `scopeDecided` would record an interim seed the list never read,
+	 * and a fallback taken because memberships failed is not recorded either
+	 * (`shouldRecordSessionScope`): the default org must still be able to win
+	 * later in this app session.
 	 */
+	const recordSessionScope = shouldRecordSessionScope({
+		organizationCount: openingOrganizations,
+		membershipsFailed: memberships.isError,
+		requestedTenant,
+		chosen: scopeChosen.current,
+	});
 	useEffect(() => {
-		if (!scopeDecided || !accountId) return;
+		if (!scopeDecided || !recordSessionScope || !accountId) return;
 		const storage = browserSessionStorage();
 		if (storage) writeSessionScope(storage, accountId, scope);
-	}, [scope, scopeDecided, accountId]);
+	}, [scope, scopeDecided, recordSessionScope, accountId]);
 
 	const visibleConversations = useMemo(
 		() => visibleConversationRows(conversations, scope, organizations),
@@ -7480,7 +7536,7 @@ const TeamBridgeOwnedPage: FC<{
 					void directory.refetch();
 				}}
 				eligibility={eligibility}
-				gatePending={gatePending && !cachedPaint}
+				gatePending={(gatePending && !cachedPaint) || openingHeld}
 				readOnly={readOnly}
 				readOnlyExplained={trialNote.paused}
 				notice={
