@@ -5840,17 +5840,33 @@ export type DesktopMediaRequest =
 			digest: string;
 	  }
 	/*
-	 * SESSION VOICE'S TEXT DOOR (the frozen contract): the rig's transcript, as
-	 * TEXT. There is no file part and no audio path of any kind - the Qwen rig
-	 * hears, and this app never uploads a recording for the server to transcribe.
-	 * A form rather than JSON only because the route is form-encoded.
+	 * SESSION VOICE'S UTTERANCE DOOR (the frozen contract): the person's words as
+	 * TEXT (the Qwen rig's transcript, form-encoded) or as a RECORDING's bytes
+	 * (bring-your-own-key voice; the server transcribes, multipart). Exactly one of
+	 * `text` | the bytes argument; the bytes are never a field of the request.
 	 */
 	| {
 			op: "voice.utterance";
 			sessionId: string;
 			requestId: string;
-			text: string;
+			text?: string;
 			textOrigin?: "qwen_s2s";
+			/** Pins the transcription to one provider; a recording only. */
+			provider?: "elevenlabs";
+	  }
+	/*
+	 * ONE SEGMENT of a spoken reply, by source reference and index (V8: never
+	 * text). Answers `kind: "bytes"` whose `mimeType` is the audio's real format.
+	 */
+	| {
+			op: "voice.speech";
+			sessionId: string;
+			source:
+				| { kind: "message"; messageId: string }
+				| { kind: "gate"; requestId: string }
+				| { kind: "phrase"; key: string };
+			segment: number;
+			provider?: "elevenlabs";
 	  };
 
 /**
@@ -5871,6 +5887,13 @@ export const VOICE_REFUSAL_CODES = [
 	// A card is pending on the session (backend V13): words are refused, not
 	// admitted as a steer, so they cannot cancel the card. Answered on screen.
 	"approval_pending",
+	// Bring-your-own-key voice: the provider's own limits and failures, which the
+	// strip names rather than showing as "failed".
+	"voice_rate_limited",
+	"stt_unavailable",
+	"voice_unavailable",
+	"voice_upload_too_large",
+	"unknown_segment",
 ] as const;
 export type VoiceRefusalCode = (typeof VOICE_REFUSAL_CODES)[number];
 

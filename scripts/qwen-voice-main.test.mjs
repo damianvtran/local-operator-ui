@@ -2195,6 +2195,53 @@ const server = createServer((req, res) => {
 			auth: req.headers.authorization,
 			body: Buffer.concat(chunks).toString("utf8"),
 		});
+		if (req.url === "/v1/desktop/voice/speech") {
+			const asked = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+			if (asked.segment === 9) {
+				res.writeHead(429, { "content-type": "application/json" });
+				res.end(
+					JSON.stringify({
+						detail: { code: "voice_rate_limited", text: "Slow down." },
+					}),
+				);
+				return;
+			}
+			// ElevenLabs answers MP3: the type is the server's word, not WAV.
+			res.writeHead(200, { "content-type": "audio/mpeg" });
+			res.end(Buffer.from([0x49, 0x44, 0x33, asked.segment]));
+			return;
+		}
+		const multipart = /^multipart\/form-data/.test(
+			req.headers["content-type"] ?? "",
+		);
+		if (multipart) {
+			const raw = Buffer.concat(chunks).toString("latin1");
+			if (raw.includes('name="request_id"\r\n\r\n00000000-')) {
+				res.writeHead(422, { "content-type": "application/json" });
+				res.end(
+					JSON.stringify({
+						detail: { code: "empty_transcript", text: "No words." },
+					}),
+				);
+				return;
+			}
+			if (raw.includes('name="request_id"\r\n\r\n11111111-')) {
+				res.writeHead(409, { "content-type": "application/json" });
+				res.end(
+					JSON.stringify({
+						detail: { code: "stt_unavailable", text: "No transcriber." },
+					}),
+				);
+				return;
+			}
+			res.writeHead(200, { "content-type": "application/json" });
+			res.end(
+				JSON.stringify({
+					result: { text: "from the recording", path: "stt", admission: {} },
+				}),
+			);
+			return;
+		}
 		const form = new URLSearchParams(Buffer.concat(chunks).toString("utf8"));
 		if (form.get("text") === "pending") {
 			res.writeHead(409, { "content-type": "application/json" });
@@ -2247,8 +2294,9 @@ test("voice.utterance posts the route's form fields, text only, with main's bear
 	});
 });
 
-test("voice.utterance CANNOT carry a file: bytes and file fields are refused before any request", async () => {
+test("voice.utterance: text and bytes together (or neither) and named file fields are refused before any request", async () => {
 	const before = received.length;
+	// Exactly one of text | bytes: both is refused, as is neither.
 	const bytes = await m.requestDesktopMedia(
 		UTTERANCE,
 		new Uint8Array([82, 73, 70, 70]),
@@ -2257,6 +2305,14 @@ test("voice.utterance CANNOT carry a file: bytes and file fields are refused bef
 	);
 	assert.equal(bytes.kind, "error");
 	assert.equal(bytes.status, 422);
+	const neither = await m.requestDesktopMedia(
+		{ ...UTTERANCE, text: undefined, textOrigin: undefined },
+		null,
+		url,
+		"synthetic-token",
+	);
+	assert.equal(neither.kind, "error");
+	assert.equal(neither.status, 422);
 	for (const extra of [
 		{ file: "x.wav" },
 		{ fileName: "x.wav", mimeType: "audio/wav" },
@@ -2297,6 +2353,217 @@ test("a voice refusal keeps its code as voiceCode", async () => {
 	assert.equal(response.kind, "error");
 	assert.equal(response.status, 409);
 	assert.equal(response.voiceCode, "approval_pending");
+});
+
+const RECORDING = {
+	op: "voice.utterance",
+	sessionId: "0123456789ab",
+	requestId: "6f1c2a4e-1b2c-4d3e-8f90-123456789abc",
+	provider: "elevenlabs",
+};
+const WAV = new Uint8Array([82, 73, 70, 70, 1, 2, 3, 4]);
+
+test("BYOK voice.utterance: WAV bytes go as multipart file + the route's fields + provider, with main's bearer", async () => {
+	const before = received.length;
+	const response = await m.requestDesktopMedia(
+		RECORDING,
+		WAV,
+		url,
+		"synthetic-token",
+	);
+	assert.equal(response.kind, "json");
+	assert.equal(response.status, 200);
+	assert.equal(received.length, before + 1);
+	const sent = received.at(-1);
+	assert.equal(sent.url, "/v1/desktop/voice/utterance");
+	assert.match(sent.type, /^multipart\/form-data; boundary=/);
+	assert.equal(sent.auth, "Bearer synthetic-token");
+	for (const [name, value] of [
+		["session_id", "0123456789ab"],
+		["request_id", "6f1c2a4e-1b2c-4d3e-8f90-123456789abc"],
+		["provider", "elevenlabs"],
+	]) {
+		assert.ok(
+			sent.body.includes(`name="${name}"\r\n\r\n${value}\r\n`),
+			`field ${name}`,
+		);
+	}
+	assert.match(sent.body, /name="file"; filename="[^"]+"/);
+	assert.match(sent.body, /Content-Type: audio\/wav/);
+	assert.ok(sent.body.includes("RIFF\u0001\u0002\u0003\u0004"), "the bytes");
+	assert.ok(!sent.body.includes('name="text"'), "no text part");
+});
+
+test("BYOK voice.utterance: provider is optional, closed to elevenlabs, and the text door is unchanged", async () => {
+	const { provider: _p, ...plain } = RECORDING;
+	const ok = await m.requestDesktopMedia(plain, WAV, url, "synthetic-token");
+	assert.equal(ok.kind, "json");
+	assert.ok(!received.at(-1).body.includes('name="provider"'));
+	const before = received.length;
+	const other = await m.requestDesktopMedia(
+		{ ...RECORDING, provider: "openai" },
+		WAV,
+		url,
+		"synthetic-token",
+	);
+	assert.equal(other.kind, "error");
+	assert.equal(other.status, 422);
+	// The text door sends no provider and no multipart.
+	const text = await m.requestDesktopMedia(
+		UTTERANCE,
+		null,
+		url,
+		"synthetic-token",
+	);
+	assert.equal(text.kind, "json");
+	assert.match(received.at(-1).type, FORM_URLENCODED);
+	assert.equal(
+		received.length,
+		before + 1,
+		"only the text door reached the server",
+	);
+});
+
+test("BYOK voice.utterance: over 16 MiB is refused here, before any request", async () => {
+	const before = received.length;
+	const big = new Uint8Array(16 * 1024 * 1024 + 1);
+	const refused = await m.requestDesktopMedia(
+		RECORDING,
+		big,
+		url,
+		"synthetic-token",
+	);
+	assert.equal(refused.kind, "error");
+	assert.equal(refused.status, 413);
+	assert.equal(received.length, before);
+});
+
+test("BYOK voice.utterance: declared refusals keep voiceCode (empty transcript, stt unavailable)", async () => {
+	const empty = await m.requestDesktopMedia(
+		{ ...RECORDING, requestId: "00000000-1b2c-4d3e-8f90-123456789abc" },
+		WAV,
+		url,
+		"synthetic-token",
+	);
+	assert.equal(empty.kind, "error");
+	assert.equal(empty.voiceCode, "empty_transcript");
+	const down = await m.requestDesktopMedia(
+		{ ...RECORDING, requestId: "11111111-1b2c-4d3e-8f90-123456789abc" },
+		WAV,
+		url,
+		"synthetic-token",
+	);
+	assert.equal(down.kind, "error");
+	assert.equal(down.status, 409);
+	assert.equal(down.voiceCode, "stt_unavailable");
+});
+
+const SPEECH = {
+	op: "voice.speech",
+	sessionId: "0123456789ab",
+	source: { kind: "message", messageId: "m-1" },
+	segment: 2,
+	provider: "elevenlabs",
+};
+
+test("voice.speech: JSON body to /voice/speech, bytes back with the response's own mimeType", async () => {
+	const response = await m.requestDesktopMedia(
+		SPEECH,
+		null,
+		url,
+		"synthetic-token",
+	);
+	assert.equal(response.kind, "bytes");
+	assert.equal(response.status, 200);
+	assert.equal(response.mimeType, "audio/mpeg", "not hard-coded to WAV");
+	assert.deepEqual([...response.data], [0x49, 0x44, 0x33, 2]);
+	const sent = received.at(-1);
+	assert.equal(sent.url, "/v1/desktop/voice/speech");
+	assert.equal(sent.auth, "Bearer synthetic-token");
+	assert.match(sent.type, /^application\/json/);
+	assert.deepEqual(JSON.parse(sent.body), {
+		session_id: "0123456789ab",
+		source: { kind: "message", message_id: "m-1" },
+		segment: 2,
+		provider: "elevenlabs",
+	});
+});
+
+test("voice.speech: gate and phrase sources, provider optional; a 429 keeps voiceCode", async () => {
+	const gate = await m.requestDesktopMedia(
+		{
+			op: "voice.speech",
+			sessionId: "0123456789ab",
+			source: { kind: "gate", requestId: "r-7" },
+			segment: 0,
+		},
+		null,
+		url,
+		"synthetic-token",
+	);
+	assert.equal(gate.kind, "bytes");
+	assert.deepEqual(JSON.parse(received.at(-1).body), {
+		session_id: "0123456789ab",
+		source: { kind: "gate", request_id: "r-7" },
+		segment: 0,
+	});
+	const phrase = await m.requestDesktopMedia(
+		{
+			op: "voice.speech",
+			sessionId: "0123456789ab",
+			source: { kind: "phrase", key: "failed" },
+			segment: 0,
+		},
+		null,
+		url,
+		"synthetic-token",
+	);
+	assert.equal(phrase.kind, "bytes");
+	assert.deepEqual(JSON.parse(received.at(-1).body).source, {
+		kind: "phrase",
+		key: "failed",
+	});
+	const limited = await m.requestDesktopMedia(
+		{ ...SPEECH, segment: 9 },
+		null,
+		url,
+		"synthetic-token",
+	);
+	assert.equal(limited.kind, "error");
+	assert.equal(limited.status, 429);
+	assert.equal(limited.voiceCode, "voice_rate_limited");
+});
+
+test("voice.speech: strict schema - no free text, no bytes, no unknown provider, no bad segment", async () => {
+	const before = received.length;
+	for (const bad of [
+		{ ...SPEECH, text: "say this" },
+		{ ...SPEECH, provider: "openai" },
+		{ ...SPEECH, segment: -1 },
+		{ ...SPEECH, segment: 1001 },
+		{ ...SPEECH, segment: 1.5 },
+		{ ...SPEECH, sessionId: "not-a-session" },
+		{ ...SPEECH, source: { kind: "message", messageId: "m", text: "x" } },
+		{ ...SPEECH, source: { kind: "phrase", key: "" } },
+		{ ...SPEECH, source: { kind: "free", text: "hi" } },
+	]) {
+		const refused = await m.requestDesktopMedia(
+			bad,
+			null,
+			url,
+			"synthetic-token",
+		);
+		assert.equal(refused.kind, "error", JSON.stringify(bad));
+		assert.equal(refused.status, 422);
+	}
+	const withBytes = await m.requestDesktopMedia(
+		SPEECH,
+		WAV,
+		url,
+		"synthetic-token",
+	);
+	assert.equal(withBytes.kind, "error", "speech takes no upload");
+	assert.equal(received.length, before, "nothing reached the server");
 });
 
 /* ------------------------------------------------------------------------ */
