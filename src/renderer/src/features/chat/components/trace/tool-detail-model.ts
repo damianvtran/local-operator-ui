@@ -81,7 +81,14 @@ const MAX_DEPTH = 8;
  * container" means a reader meets ONE spelling of nothing in this app instead of
  * a second dialect invented here.
  */
-const EMPTY_CONTAINER = "(empty)";
+/*
+ * Keyed and read per call: this marker is the UI's own (the producer's
+ * `(empty)` bodies pass through verbatim and never reach this function), so it
+ * must follow the reader's locale like every other line the pane writes.
+ */
+function emptyContainerLine(): string {
+	return t("ui.chat.canonical.tool_row.detail.empty");
+}
 
 /** One indent step in the TEXT projection (`detailText`), as the TUI counts it. */
 const INDENT = "  ";
@@ -393,5 +400,5 @@ export function resultLines(
 	const lines = argumentLines(parsed as Record<string, unknown>);
 	return lines.length > 0
 		? lines
-		: [{ key: "", value: EMPTY_CONTAINER, depth: 1 }];
+		: [{ key: "", value: emptyContainerLine(), depth: 1 }];
 }

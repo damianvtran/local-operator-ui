@@ -84,8 +84,11 @@ const bundle = await build({
 				artifactTabLabels,
 				artifactTooltip,
 				digestOfAttachmentBinPath,
+				fallbackArtifactName,
 				isArtifactPath,
 			} from "./src/renderer/src/features/chat/utils/artifact-identity";
+			// The same i18n instance artifact-identity's t() reads, for the locale case.
+			export { clearRegisteredCatalogues, registerCatalogue, setLocale } from "./src/i18n";
 			export { classifyImageSource, imageActions } from "./src/renderer/src/features/chat/utils/image-actions";
 		`,
 		resolveDir: process.cwd(),
@@ -134,7 +137,11 @@ const {
 	artifactTabLabels,
 	artifactTooltip,
 	digestOfAttachmentBinPath,
+	fallbackArtifactName,
 	isArtifactPath,
+	clearRegisteredCatalogues,
+	registerCatalogue,
+	setLocale,
 	classifyImageSource,
 	imageActions,
 } = await import(
@@ -2162,4 +2169,52 @@ test("A23. an artifact's tooltip carries the digest head and says where it lives
 		artifactTooltip({ digest: D(1), kind: "video", title: `Video ${head}` }),
 		`Video ${head} \u00b7 ${artifactCue("video")}`,
 	);
+});
+
+/*
+ * A nameless artifact's name and the "where it lives" cue are keyed and read per
+ * call. The digest head stays a placeholder, so the tooltip still finds it in a
+ * localized title and does not print it twice.
+ */
+test("A23b. nameless artifact names and cues follow the active locale", () => {
+	const head = D(1).slice(0, 8);
+	assert.equal(fallbackArtifactName("video", D(1)), `Video ${head}`);
+	assert.equal(fallbackArtifactName("image", D(1)), `Image ${head}`);
+	assert.equal(fallbackArtifactName("audio", D(1)), `Sound ${head}`);
+	assert.equal(fallbackArtifactName("file", D(1)), `File ${head}`);
+	assert.equal(artifactCue("file"), "File kept in this session");
+	assert.equal(artifactCue("image"), "Generated image, kept in this session");
+	assert.equal(artifactCue("video"), "Generated video, kept in this session");
+	assert.equal(artifactCue("audio"), "Generated sound, kept in this session");
+	registerCatalogue("fr", {
+		"ui.canvas.artifact.fallback_name.video": "⟦fr⟧ vidéo {digest}",
+		"ui.canvas.artifact.fallback_name.image": "⟦fr⟧ image {digest}",
+		"ui.canvas.artifact.fallback_name.audio": "⟦fr⟧ son {digest}",
+		"ui.canvas.artifact.fallback_name.file": "⟦fr⟧ fichier {digest}",
+		"ui.canvas.artifact.cue.file": "⟦fr⟧ cue file",
+		"ui.canvas.artifact.cue.image": "⟦fr⟧ cue image",
+		"ui.canvas.artifact.cue.video": "⟦fr⟧ cue video",
+		"ui.canvas.artifact.cue.audio": "⟦fr⟧ cue audio",
+	});
+	setLocale("fr");
+	try {
+		assert.equal(fallbackArtifactName("video", D(1)), `⟦fr⟧ vidéo ${head}`);
+		assert.equal(fallbackArtifactName("audio", D(1)), `⟦fr⟧ son ${head}`);
+		assert.equal(fallbackArtifactName("file", D(1)), `⟦fr⟧ fichier ${head}`);
+		for (const kind of ["file", "image", "video", "audio"])
+			assert.equal(artifactCue(kind), `⟦fr⟧ cue ${kind}`);
+		const title = fallbackArtifactName("video", D(1));
+		assert.equal(
+			artifactTooltip({ digest: D(1), kind: "video", title }),
+			`${title} \u00b7 ⟦fr⟧ cue video`,
+		);
+		assert.equal(
+			artifactFileName({ digest: D(1), kind: "video" }),
+			`${title}.mp4`,
+		);
+	} finally {
+		setLocale("en");
+		clearRegisteredCatalogues();
+	}
+	assert.equal(fallbackArtifactName("video", D(1)), `Video ${head}`);
 });

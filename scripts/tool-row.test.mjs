@@ -6993,3 +6993,23 @@ test("a pure locale switch repaints a collapsed fold's live clause: the row grou
 		"rowGroups is keyed on the locale",
 	);
 });
+
+/*
+ * The empty-container marker is the UI's own (the producer's `(empty)` stream
+ * bodies never reach `resultLines`), so it is keyed and read per call.
+ */
+test("the detail pane's empty-result marker follows the active locale", () => {
+	const i18n = detailI18n;
+	i18n.registerCatalogue("fr", {
+		"ui.chat.canonical.tool_row.detail.empty": "(⟦fr⟧ vide)",
+	});
+	i18n.setLocale("fr");
+	try {
+		assert.equal(detailText(resultLines("{}")), "(⟦fr⟧ vide)");
+		assert.equal(detailText(resultLines('{"a": {}}')), "(⟦fr⟧ vide)");
+	} finally {
+		i18n.setLocale("en");
+		i18n.clearRegisteredCatalogues();
+	}
+	assert.equal(detailText(resultLines("{}")), "(empty)");
+});

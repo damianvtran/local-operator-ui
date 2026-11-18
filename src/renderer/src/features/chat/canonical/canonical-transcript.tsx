@@ -516,7 +516,9 @@ function condenseSentence(segment: SegmentPlan): string {
 	 * ("At least N actions - earlier rows of this turn are not loaded").
 	 */
 	const minimum = (stated: string) =>
-		segment.facts.partial ? `at least ${stated}` : stated;
+		segment.facts.partial
+			? t("ui.chat.canonical.condense.at_least", { stated })
+			: stated;
 	if (segment.facts.group !== null) {
 		/*
 		 * A GROUP BAR'S SENTENCE IS THE GROUP'S OWN CLAUSES (design §5): the count
@@ -565,8 +567,15 @@ function condenseSentence(segment: SegmentPlan): string {
 	 * follow-up section appearing after the answer is not "the turn condensing",
 	 * and saying so would announce the answer's own turn twice.
 	 */
-	const lead = segment.label ?? "Turn condensed";
-	return parts.length === 0 ? `${lead}.` : `${lead}: ${parts.join(", ")}.`;
+	const lead = segment.label ?? t("ui.chat.canonical.condense.turn_condensed");
+	// The frame is keyed too: where the colon sits (French spaces it) and the
+	// closing stop are the language's, not this file's.
+	return parts.length === 0
+		? t("ui.chat.canonical.condense.sentence_bare", { lead })
+		: t("ui.chat.canonical.condense.sentence", {
+				lead,
+				parts: parts.join(", "),
+			});
 }
 
 /**
@@ -4255,8 +4264,11 @@ const OPEN_TRACE_MS = 60_000;
  * changes the answer, and a refusal without it is a dead end. The search
  * jump's copy carries the same tail.
  */
-const CHECKPOINT_JUMP_MISS_COPY =
-	"Could not reach that turn. It is further back than the loaded history — scroll up in the transcript to load more.";
+function checkpointJumpMissCopy(): string {
+	// A function, not a constant: read per refusal so it speaks the locale
+	// active now, not the one active when this module loaded.
+	return t("ui.chat.canonical.checkpoint_jump.miss");
+}
 
 /**
  * The reader's place in a reversed scroller, as the paint cache stores it.
@@ -5941,7 +5953,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * refusal speaks, so that is the argument rather than a second loop.
 	 */
 	const jumpToCheckpoint = useCallback(
-		(id: string) => void jumpTo(id, CHECKPOINT_JUMP_MISS_COPY),
+		(id: string) => void jumpTo(id, checkpointJumpMissCopy()),
 		[jumpTo],
 	);
 	const jumpToSearchHit = useCallback(

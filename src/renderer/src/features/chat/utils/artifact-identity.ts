@@ -31,9 +31,12 @@
  *   no `partialize`; a digest is stable across restarts where a `blob:` URL is
  *   not (see `image-actions.ts` on why a blob-keyed document is a dead tab).
  *
- * Pure and dependency-free so both the transcript scanner (a node-bundled
- * module) and the canvas components can import it.
+ * Pure so both the transcript scanner (a node-bundled module) and the canvas
+ * components can import it. Its one import is `t()`, by relative specifier so a
+ * node bundle needs no renderer alias, for the reader-facing names and cues.
  */
+
+import { t } from "../../../../../i18n/messages";
 
 /** The scheme-ish prefix of an artifact document's `id`/`path`. */
 export const ARTIFACT_PATH_PREFIX = "artifact:";
@@ -101,15 +104,18 @@ export function fallbackArtifactName(
 	kind: ArtifactIdentityKind,
 	digest: string,
 ): string {
+	// The digest head stays a placeholder: `artifactTooltip` finds it in the
+	// title to avoid printing it twice, whatever the language puts around it.
+	const head = digest.slice(0, 8);
 	switch (kind) {
 		case "video":
-			return `Video ${digest.slice(0, 8)}`;
+			return t("ui.canvas.artifact.fallback_name.video", { digest: head });
 		case "image":
-			return `Image ${digest.slice(0, 8)}`;
+			return t("ui.canvas.artifact.fallback_name.image", { digest: head });
 		case "audio":
-			return `Sound ${digest.slice(0, 8)}`;
+			return t("ui.canvas.artifact.fallback_name.audio", { digest: head });
 		default:
-			return `File ${digest.slice(0, 8)}`;
+			return t("ui.canvas.artifact.fallback_name.file", { digest: head });
 	}
 }
 
@@ -182,12 +188,15 @@ export const ARTIFACT_HEAD_LENGTH = 8;
  * shorter menu (no Open file / Open folder) is unexplained (UX U4, design D7).
  */
 export function artifactCue(kind: ArtifactIdentityKind): string {
-	if (kind === "file") return "File kept in this session";
+	if (kind === "file") return t("ui.canvas.artifact.cue.file");
 	// "Generated sound" rather than "Generated audio": the cue shares the word
 	// the row's own fallback name and the Sounds section use (`artifactCue` is
-	// read by the tooltip alone, but one kind should read one way).
-	if (kind === "audio") return "Generated sound, kept in this session";
-	return `Generated ${kind}, kept in this session`;
+	// read by the tooltip alone, but one kind should read one way). One whole
+	// sentence per kind, not `Generated ${kind}`: the kind's noun inflects the
+	// adjective in most target languages.
+	if (kind === "audio") return t("ui.canvas.artifact.cue.audio");
+	if (kind === "video") return t("ui.canvas.artifact.cue.video");
+	return t("ui.canvas.artifact.cue.image");
 }
 
 /**

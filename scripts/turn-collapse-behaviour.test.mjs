@@ -186,6 +186,8 @@ const bundle = await build({
 			 */
 			'export { backendSettingsKeys } from "./src/renderer/src/features/settings/components/backend-settings-section";',
 			'export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
+			/* The i18n instance the bar reads, for the locale-switch and plural cases. */
+			'export { clearRegisteredCatalogues, registerCatalogue, setLocale, t as translate } from "./src/renderer/src/shared/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -228,6 +230,10 @@ const bundlePath = new URL(
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
+	clearRegisteredCatalogues,
+	registerCatalogue,
+	setLocale,
+	translate,
 	applyEvent,
 	applyHistoryPage,
 	EMPTY_TRANSCRIPT,
@@ -4830,5 +4836,76 @@ test("Bridge admitted history media retains its own row while nearby incoming re
 	assert.ok(
 		rowBox(mounted, "bridge-media-final"),
 		"real final answer remains outside receipt condensation",
+	);
+});
+
+/*
+ * B3b: the head-cut bar's words were template English (the "At least ..." titles,
+ * the group label, the settle sentence's frame and its "at least" marker), so a
+ * French reader heard and hovered English. All of it now reads `t()` at render.
+ */
+test("the head-cut bar's titles plural by count in English", () => {
+	const actions = (count) =>
+		translate("ui.chat.canonical.turn_summary.actions_at_least", { count });
+	const messages = (count) =>
+		translate("ui.chat.canonical.turn_summary.messages_at_least", { count });
+	assert.equal(
+		actions(1),
+		"At least 1 action — earlier rows of this turn are not loaded",
+	);
+	assert.equal(
+		actions(2),
+		"At least 2 actions — earlier rows of this turn are not loaded",
+	);
+	assert.equal(
+		actions(1200),
+		"At least 1200 actions — earlier rows of this turn are not loaded",
+	);
+	assert.equal(messages(1), "At least 1 message — earlier rows are not loaded");
+	assert.equal(
+		messages(2),
+		"At least 2 messages — earlier rows are not loaded",
+	);
+});
+
+test("a head-cut group bar speaks and titles itself in the active locale", async (t) => {
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	registerCatalogue("fr", {
+		"ui.chat.canonical.segment.group.peer": "⟦fr⟧ pairs",
+		"ui.chat.canonical.turn_summary.messages_at_least":
+			"{count, plural, one {⟦fr⟧ au moins # message} other {⟦fr⟧ au moins # messages}}",
+		"ui.chat.canonical.condense.at_least": "⟦fr⟧ au moins {stated}",
+		"ui.chat.canonical.condense.sentence": "{lead} ⟦fr⟧: {parts} ⟦fr⟧.",
+	});
+	setLocale("fr");
+	t.after(() => {
+		setLocale("en");
+		clearRegisteredCatalogues();
+	});
+	const cut = [
+		peerRecord("fr-p1", { ts: TS + 1_000 }),
+		peerRecord("fr-p2", { ts: TS + 2_000 }),
+		toolRecord("fr-tool", { ts: TS + 3_000, durationS: 1, phase: "running" }),
+	];
+	const mounted = await mount(t, cut, { waiting: true, hasMore: true });
+	await mounted.render(
+		[...cut, answerRecord("fr-final", { ts: TS + 5_000, stopReason: "stop" })],
+		{ hasMore: true, waiting: false },
+	);
+	assert.match(
+		bar(mounted)?.textContent ?? "",
+		/⟦fr⟧ pairs/,
+		"the bar's label",
+	);
+	const titles = [...bar(mounted).querySelectorAll("[title]")].map((node) =>
+		node.getAttribute("title"),
+	);
+	assert.ok(titles.includes("⟦fr⟧ au moins 2 messages"), titles.join("|"));
+	assert.ok(!titles.some((title) => /At least/.test(title)), titles.join("|"));
+	assert.equal(
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent,
+		"⟦fr⟧ pairs ⟦fr⟧: ⟦fr⟧ au moins 2 ⟦fr⟧.",
 	);
 });

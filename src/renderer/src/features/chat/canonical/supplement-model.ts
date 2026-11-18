@@ -508,8 +508,10 @@ export const CAUSE_MAX_CHARS = 64;
 /*
  * The table maps the wire token to a catalogue KEY, not to words: the token
  * set is the contract shared with the TUI and the phone, the words are this
- * surface's copy and follow the reader's locale. `Object.hasOwn` keeps a
- * hostile token such as `constructor` from reading a prototype member.
+ * surface's copy and follow the reader's locale. An own-property check keeps a
+ * hostile token such as `constructor` from reading a prototype member;
+ * `hasOwnProperty.call` rather than `Object.hasOwn`, which the renderer's TS lib
+ * (pre-ES2022) does not declare.
  */
 export const CAUSE_PHRASE_KEYS = {
 	provider_quota: "ui.chat.canonical.supplement.cause.provider_quota",
@@ -523,7 +525,10 @@ export const CAUSE_PHRASE_KEYS = {
 
 /** The muted phrase for a failed row's typed `cause`; `""` when absent/unknown. */
 export function causePhrase(cause: unknown): string {
-	if (typeof cause !== "string" || !Object.hasOwn(CAUSE_PHRASE_KEYS, cause))
+	if (
+		typeof cause !== "string" ||
+		!Object.prototype.hasOwnProperty.call(CAUSE_PHRASE_KEYS, cause)
+	)
 		return "";
 	return t(CAUSE_PHRASE_KEYS[cause as keyof typeof CAUSE_PHRASE_KEYS]);
 }

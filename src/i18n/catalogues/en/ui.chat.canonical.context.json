@@ -4021,5 +4021,145 @@
 		"placeholders": {
 			"count": "number of rows hidden below the cap; CLDR plural selector"
 		}
+	},
+	"ui.chat.canonical.segment.label.wake": {
+		"role": "label of a condensed transcript section that a scheduled wake or a monitor prompt started",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "A condensed section bar's label, painted before its counts (e.g. 'Wake · 8 actions · 20m'). Other clients may spell it their own way; what must match is which label a section earns, not the word.",
+		"maxCells": 18,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.label.peer": {
+		"role": "label of a condensed transcript section that a message from another agent session started",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "A condensed section bar's label, painted before its counts (e.g. 'Wake · 8 actions · 20m'). Other clients may spell it their own way; what must match is which label a section earns, not the word.",
+		"maxCells": 18,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.label.job": {
+		"role": "label of a condensed transcript section that a background job's result started",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "A condensed section bar's label, painted before its counts (e.g. 'Wake · 8 actions · 20m'). Other clients may spell it their own way; what must match is which label a section earns, not the word.",
+		"maxCells": 18,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.label.ask": {
+		"role": "label of a condensed transcript section holding the agent's own questions to the user and their answers",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "Same bar slot as 'Wake' and 'Peer message'. 'Ask' names the product's question-to-the-user feature; a noun here, not an imperative.",
+		"maxCells": 18,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.group.peer": {
+		"role": "label of a bar grouping consecutive messages from other agent sessions",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "Label of a bar standing for a run of several consecutive incoming messages of one kind, followed by a bare count and a time span (e.g. 'Peer messages · 12 · 2h 14m'). Plural noun phrase; the count is not part of this string.",
+		"maxCells": 22,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.group.wake": {
+		"role": "label of a bar grouping consecutive scheduled-wake messages",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "Label of a bar standing for a run of several consecutive incoming messages of one kind, followed by a bare count and a time span (e.g. 'Peer messages · 12 · 2h 14m'). Plural noun phrase; the count is not part of this string.",
+		"maxCells": 22,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.group.monitor": {
+		"role": "label of a bar grouping consecutive monitor prompts (change reports from a watcher)",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "Label of a bar standing for a run of several consecutive incoming messages of one kind, followed by a bare count and a time span (e.g. 'Peer messages · 12 · 2h 14m'). Plural noun phrase; the count is not part of this string.",
+		"maxCells": 22,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.group.job": {
+		"role": "label of a bar grouping consecutive background-job results",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "Label of a bar standing for a run of several consecutive incoming messages of one kind, followed by a bare count and a time span (e.g. 'Peer messages · 12 · 2h 14m'). Plural noun phrase; the count is not part of this string.",
+		"maxCells": 22,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.group.mixed": {
+		"role": "label of a bar grouping consecutive incoming messages of mixed kinds",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "Label of a bar standing for a run of several consecutive incoming messages of one kind, followed by a bare count and a time span (e.g. 'Peer messages · 12 · 2h 14m'). Plural noun phrase; the count is not part of this string.",
+		"maxCells": 22,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.turn_summary.actions_at_least": {
+		"role": "tooltip and accessible name of a condensed bar's action count when earlier rows of the turn are not loaded yet (the bar shows e.g. '2+ actions')",
+		"tone": "plain factual statement, sentence case, no trailing period",
+		"length": "One sentence.",
+		"note": "'At least' is the point: the true total may be higher. Keep the em dash clause or rephrase it naturally; the count is the number of tool calls counted so far.",
+		"placeholders": {
+			"count": "number of actions counted in the loaded rows, a whole number"
+		}
+	},
+	"ui.chat.canonical.turn_summary.messages_at_least": {
+		"role": "tooltip and accessible name of a grouped-messages bar's count when earlier rows are not loaded yet",
+		"tone": "plain factual statement, sentence case, no trailing period",
+		"length": "One sentence.",
+		"note": "'At least' is the point: the true number of messages may be higher.",
+		"placeholders": {
+			"count": "number of incoming messages counted in the loaded rows, a whole number"
+		}
+	},
+	"ui.chat.canonical.condense.turn_condensed": {
+		"role": "screen-reader announcement lead when a finished turn's work collapses into a summary bar; also the bar's copied text",
+		"tone": "plain past-tense statement, sentence case",
+		"length": "Two or three words.",
+		"note": "Never painted. Fills {lead} in the condense sentence when the bar has no label of its own.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.condense.at_least": {
+		"role": "wrapper marking a spoken count as a minimum in the condense announcement",
+		"tone": "lower case, mid-sentence",
+		"length": "A few words.",
+		"note": "Never painted; screen-reader text. Used when earlier rows are not loaded, so the count is a lower bound.",
+		"placeholders": {
+			"stated": "an already-localized count phrase such as '2 actions' or a bare number such as '2'"
+		}
+	},
+	"ui.chat.canonical.condense.sentence": {
+		"role": "screen-reader announcement when a turn's work collapses into a summary bar, and that bar's copied text",
+		"tone": "terse, one sentence",
+		"length": "One sentence.",
+		"note": "Never painted. Adjust colon spacing and the final stop to the language's punctuation rules.",
+		"placeholders": {
+			"lead": "the bar's localized label (e.g. 'Wake') or 'Turn condensed'",
+			"parts": "comma-separated, already-localized clauses such as 'took 3s, 1 action'"
+		}
+	},
+	"ui.chat.canonical.condense.sentence_bare": {
+		"role": "screen-reader announcement when a turn collapses into a summary bar that has no counts to state",
+		"tone": "terse",
+		"length": "One short sentence.",
+		"note": "Never painted. Only adds the language's sentence-final punctuation.",
+		"placeholders": {
+			"lead": "the bar's localized label or 'Turn condensed'"
+		}
+	},
+	"ui.chat.canonical.checkpoint_jump.miss": {
+		"role": "info toast when the user clicks a turn marker or search result that is older than the loaded transcript",
+		"tone": "calm, explanatory, no apology, ends with what to do",
+		"length": "Two short sentences.",
+		"note": "The reader's own action (scrolling up loads older history) is the fix; keep that instruction. 'Turn' is the word the cards and tick labels use for one exchange.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.detail.empty": {
+		"role": "single line in a tool call's detail pane when the tool's structured result held no values",
+		"tone": "terse marker in parentheses",
+		"length": "One word.",
+		"note": "Shown in place of an empty object or list. Keep the parentheses or the language's equivalent marker for 'nothing here'.",
+		"maxCells": 12,
+		"placeholders": {}
 	}
 }

@@ -68,6 +68,8 @@ const bundle = await build({
 			 * transcript's markup.
 			 */
 			'export { useUiPreferencesStore, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			// The same i18n instance the model's `t()` reads, for the locale-switch case.
+			'export { clearRegisteredCatalogues, registerCatalogue, setLocale } from "./src/i18n";',
 		].join("\n"),
 		resolveDir: ROOT,
 	},
@@ -94,6 +96,11 @@ const {
 	isFinalResponse,
 	isStatementRow,
 	labelOfSegment,
+	labelWordOf,
+	quietGroupLabel,
+	registerCatalogue,
+	clearRegisteredCatalogues,
+	setLocale,
 	parseTranscriptDisplayMode,
 	partitionRun,
 	paintsSomething,
@@ -2290,4 +2297,73 @@ test("labelOfSegment states the group's family word; below the minimum the opene
 		const group = quietGroupOfSegment(records, span);
 		assert.equal(labelOfSegment(records, cycles, span, group), word, spec);
 	}
+});
+
+/*
+ * The bar words are read through `t()` per call (a module constant froze them in
+ * the import-time locale, so they stayed English under every locale). Every
+ * kind is switched: the single-cycle labels, the steer backstop (which reuses the
+ * receipt group's `Steered` flag key) and each quiet-group family plural.
+ */
+test("bar labels follow the active locale, every kind and family", () => {
+	const english = {
+		steered: "Steered",
+		wake: "Wake",
+		peer: "Peer message",
+		job: "Job result",
+		ask: "Ask",
+	};
+	const families = {
+		peer: "Peer messages",
+		wake: "Wake messages",
+		monitor: "Monitor messages",
+		job: "Job results",
+		mixed: "Messages",
+	};
+	for (const [kind, word] of Object.entries(english))
+		assert.equal(labelWordOf({ kind }), word, kind);
+	for (const [family, word] of Object.entries(families))
+		assert.equal(quietGroupLabel(family), word, family);
+	registerCatalogue("fr", {
+		"ui.chat.canonical.fold.receipt.steered": "⟦fr⟧ steered",
+		"ui.chat.canonical.segment.label.wake": "⟦fr⟧ wake",
+		"ui.chat.canonical.segment.label.peer": "⟦fr⟧ peer",
+		"ui.chat.canonical.segment.label.job": "⟦fr⟧ job",
+		"ui.chat.canonical.segment.label.ask": "⟦fr⟧ ask",
+		"ui.chat.canonical.segment.group.peer": "⟦fr⟧ peers",
+		"ui.chat.canonical.segment.group.wake": "⟦fr⟧ wakes",
+		"ui.chat.canonical.segment.group.monitor": "⟦fr⟧ monitors",
+		"ui.chat.canonical.segment.group.job": "⟦fr⟧ jobs",
+		"ui.chat.canonical.segment.group.mixed": "⟦fr⟧ mixed",
+	});
+	setLocale("fr");
+	try {
+		for (const kind of Object.keys(english))
+			assert.equal(labelWordOf({ kind }), `⟦fr⟧ ${kind}`, kind);
+		const fr = {
+			peer: "peers",
+			wake: "wakes",
+			monitor: "monitors",
+			job: "jobs",
+			mixed: "mixed",
+		};
+		for (const [family, word] of Object.entries(fr))
+			assert.equal(quietGroupLabel(family), `⟦fr⟧ ${word}`, family);
+		// And through the renderer-facing entry point, on a real partition.
+		const records = seq("U P P");
+		const span = { from: 1, to: 2 };
+		assert.equal(
+			labelOfSegment(
+				records,
+				cyclesOf(records, paintsSomething),
+				span,
+				quietGroupOfSegment(records, span),
+			),
+			"⟦fr⟧ peers",
+		);
+	} finally {
+		setLocale("en");
+		clearRegisteredCatalogues();
+	}
+	assert.equal(quietGroupLabel("peer"), "Peer messages");
 });
