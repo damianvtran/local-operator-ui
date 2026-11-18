@@ -1667,7 +1667,7 @@ function SkillActions({
 							variant="ghost"
 							size="icon"
 							aria-label={t("ui.agents.detail.action.more_actions")}
-							className="-mr-2"
+							className="-me-2"
 							data-testid="skill-more"
 						>
 							<MoreHorizontal aria-hidden="true" />

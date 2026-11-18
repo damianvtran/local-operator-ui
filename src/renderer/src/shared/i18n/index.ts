@@ -68,3 +68,7 @@ export {
  * the writes module above, because it is a presentation rule and not catalogue
  * machinery. */
 export { isolateLtr } from "./isolate-ltr";
+
+/* The `dir` of a field holding the operator's own text: `auto` once it has a
+ * value, the locale's direction while empty (see the module for why). */
+export { userTextDir } from "./user-text-dir";

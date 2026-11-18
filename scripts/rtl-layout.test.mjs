@@ -4,6 +4,7 @@
  * Behavioural helpers are executed; DOM geometry remains rendered-app evidence.
  */
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
@@ -15,7 +16,8 @@ const bundle = await build({
 			physicalMoveTarget,
 			physicalScrollEdges,
 			pointerIsAfterTab,
-		} from "./src/renderer/src/features/browser/components/browser-tab-direction";`,
+		} from "./src/renderer/src/features/browser/components/browser-tab-direction";
+		export { userTextDir } from "./src/renderer/src/shared/i18n/user-text-dir";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -28,8 +30,12 @@ runInNewContext(bundle.outputFiles[0].text, {
 	module: module_,
 	exports: module_.exports,
 });
-const { physicalMoveTarget, physicalScrollEdges, pointerIsAfterTab } =
-	module_.exports;
+const {
+	physicalMoveTarget,
+	physicalScrollEdges,
+	pointerIsAfterTab,
+	userTextDir,
+} = module_.exports;
 
 const source = (path) =>
 	readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
@@ -390,4 +396,135 @@ test("the freshness split's clock really is the tail in both gated locales", () 
 			`${locale}: the clock is the tail, which is what the split guard reads`,
 		);
 	}
+});
+
+/*
+ * THE AGENTS AND AGENT HUB SURFACES (design review on UI #1952, ur frames).
+ * Source contracts, like the rest of this file: the frames are QA's, these pin
+ * the classes and attributes that produce them so a later edit cannot quietly
+ * drop one.
+ */
+const AGENTS = "src/renderer/src/features/agents";
+const HUB = "src/renderer/src/features/agent-hub";
+
+test("operator-authored fields and displays on the agents surfaces take their own direction", () => {
+	/*
+	 * Each field below holds text the operator typed (instructions, a name, a
+	 * tool, a comment). Inheriting ur's RTL put an English value's punctuation at
+	 * the wrong end (".You implement...", "!bad name"); `userTextDir` gives
+	 * `dir="auto"` once there is a value (an EMPTY dir=auto control is LTR in
+	 * Chromium, which would move an Urdu placeholder to the left edge).
+	 */
+	const fields = [
+		// EditSection's textarea and input, the tool name, the create name.
+		[`${AGENTS}/components/agent-detail.tsx`, /<(Textarea|Input)\b[^>]*>/g, 4],
+		// Team name, description, collaboration and project brief.
+		[`${AGENTS}/components/team-detail.tsx`, /<(Textarea|Input)\b[^>]*>/g, 4],
+		[`${AGENTS}/components/upload-agent-dialog.tsx`, /<Input\b[^>]*>/g, 1],
+		[
+			`${AGENTS}/components/profile-proposal-panel.tsx`,
+			/<textarea\b[^>]*>/g,
+			1,
+		],
+		[`${HUB}/components/comments-section.tsx`, /<Textarea\b[^>]*>/g, 2],
+	];
+	for (const [path, pattern, count] of fields) {
+		const tags = source(path).match(pattern) ?? [];
+		const auto = tags.filter((tag) => /\bdir=\{userTextDir\(/.test(tag));
+		assert.equal(
+			auto.length,
+			count,
+			`${path}: ${count} user-text field(s) take userTextDir`,
+		);
+	}
+	const parts = source(`${AGENTS}/components/detail-parts.tsx`);
+	assert.match(
+		parts,
+		/<div\s+ref=\{ref\}\s+dir="auto"/,
+		"ReadBlock (instructions, briefs, skill bodies) sets its own direction",
+	);
+	const roster = source(`${AGENTS}/components/agents-sidebar.tsx`);
+	assert.equal(
+		(
+			roster.match(
+				/<span\s+dir="auto"\s+className="block truncate[^"]*rtl:text-right"/g,
+			) ?? []
+		).length,
+		2,
+		"the roster's name and description truncate from their own end, aligned to the locale's start",
+	);
+});
+
+test("a user-text field is dir=auto once it has a value, and inherits the locale while empty", () => {
+	assert.equal(userTextDir("bad name!"), "auto");
+	assert.equal(userTextDir("ہیلو"), "auto");
+	// Empty: no attribute, so an Urdu placeholder and caret stay on the RTL start.
+	assert.equal(userTextDir(""), undefined);
+	assert.equal(userTextDir(null), undefined);
+	assert.equal(userTextDir(undefined), undefined);
+});
+
+test("a field label keeps its line while a long translated error wraps (D1)", () => {
+	const parts = source(`${AGENTS}/components/detail-parts.tsx`);
+	assert.match(
+		parts,
+		/<label\s+htmlFor=\{htmlFor\}\s+className="shrink-0 whitespace-nowrap /,
+		"the label cannot be squeezed onto two lines",
+	);
+	assert.match(
+		parts,
+		/<span className="min-w-0 text-meta text-danger" role="alert">/,
+		"the error is the item that shrinks and wraps",
+	);
+});
+
+test("the built-in agents line wraps its action under the sentence in RTL only", () => {
+	const row = source(`${AGENTS}/components/install-builtin-agents.tsx`);
+	assert.match(
+		row,
+		/"flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-1\.5 rtl:flex-wrap rtl:gap-y-0\.5"/,
+	);
+	assert.match(row, /<span className="min-w-0 flex-1 rtl:basis-auto">/);
+});
+
+test("the agents and agent hub components use logical, not physical, inline classes", () => {
+	/*
+	 * A physical margin, padding, border or alignment does not flip under
+	 * `dir=rtl`; the logical one does and is identical in LTR. Comments are
+	 * blanked first so a note that names the old class does not trip this.
+	 */
+	const PHYSICAL =
+		/(?<![\w-])-?(?:ml|mr|pl|pr)-(?:\d|\[|px\b|auto\b)|(?<![\w-])(?:text-left|text-right|border-l|border-r)(?![\w-])/;
+	const files = execFileSync(
+		"git",
+		["ls-files", `${AGENTS}/**/*.tsx`, `${HUB}/**/*.tsx`],
+		{
+			encoding: "utf8",
+		},
+	)
+		.split("\n")
+		.filter((path) => path && !path.endsWith(".stories.tsx"));
+	assert.ok(files.length > 20, "the glob found the feature trees");
+	const offenders = [];
+	for (const path of files) {
+		const code = source(path)
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/\/\/.*$/gm, "");
+		for (const [index, line] of code.split("\n").entries()) {
+			// `rtl:text-right` is the deliberate D6 alignment, not a physical leak.
+			if (PHYSICAL.test(line.replace(/rtl:text-right/g, "")))
+				offenders.push(`${path}:${index + 1}: ${line.trim()}`);
+		}
+	}
+	assert.deepEqual(offenders, []);
+	assert.match(
+		source(`${HUB}/components/hub-pager.tsx`),
+		/<ChevronLeft aria-hidden="true" className="rtl:-scale-x-100" \/>/,
+		"the pager's chevrons mirror with the row",
+	);
+	assert.match(
+		source(`${AGENTS}/components/agents-page.tsx`),
+		/<ArrowLeft className="size-4 rtl:-scale-x-100" \/>/,
+		"the back-to-list arrow points the way back in RTL",
+	);
 });

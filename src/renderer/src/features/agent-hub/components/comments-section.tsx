@@ -12,6 +12,7 @@ import {
 } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { userTextDir } from "@shared/i18n/user-text-dir";
 import { MessageCircle, Save, SquarePen, Trash2, X } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
@@ -132,6 +133,8 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 					<form onSubmit={handleCommentSubmit} className="flex flex-col gap-3">
 						<Textarea
 							id="new-comment"
+							// A comment is the author's own text, in any script.
+							dir={userTextDir(newComment)}
 							placeholder={t("ui.hub.comments.form.placeholder")}
 							rows={3}
 							value={newComment}
@@ -207,6 +210,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 									<div className="flex w-full flex-col gap-2">
 										<Textarea
 											rows={3}
+											dir={userTextDir(editText)}
 											value={editText}
 											onChange={(event) => setEditText(event.target.value)}
 											autoFocus

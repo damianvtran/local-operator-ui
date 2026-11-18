@@ -52,7 +52,7 @@ import {
 	TableRow,
 } from "@shared/components/ui/table";
 import { Textarea } from "@shared/components/ui/textarea";
-import { t } from "@shared/i18n";
+import { t, userTextDir } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -746,9 +746,11 @@ export function TeamDetail({
 							ref={headingRef}
 							tabIndex={-1}
 							// A long name truncates rather than wrapping under the actions; the
-							// full name stays reachable as the tooltip.
+							// full name stays reachable as the tooltip. `dir="auto"` +
+							// `rtl:text-right`: see the agent pane's heading.
+							dir="auto"
 							title={displayName}
-							className="truncate text-title focus:outline-none"
+							className="truncate text-title focus:outline-none rtl:text-right"
 						>
 							{/*
 							 * The heading reads the team the way every other human-read
@@ -782,7 +784,7 @@ export function TeamDetail({
 					 *
 					 * THE TRAILING GHOST BUTTON IS PULLED OUT BY ITS OWN PADDING (design
 					 * review round 1 D1). A ghost button has no edge, so its box was flush
-					 * with the column but its LABEL ended 12 px inside it; `-mr-3` (the
+					 * with the column but its LABEL ended 12 px inside it; `-me-3` (the
 					 * `md` button's `px-3`) puts the label's last glyph on the column edge
 					 * that the box and the count are on. It moves into the 24 px scroller
 					 * gutter, where nothing is clipped (the hover ground is the only thing
@@ -794,7 +796,7 @@ export function TeamDetail({
 							className={cn(
 								"flex shrink-0 items-center gap-2",
 								TITLE_LINE_HEIGHT,
-								askEnabled && "-mr-3",
+								askEnabled && "-me-3",
 							)}
 						>
 							<Button
@@ -909,6 +911,9 @@ export function TeamDetail({
 								<Input
 									ref={teamNameRef}
 									id="team-name"
+									// The operator's own text: direction from its content, not
+									// the locale (same reason as `EditSection` in agent-detail).
+									dir={userTextDir(name)}
 									data-testid="team-name-input"
 									value={name}
 									required
@@ -1368,6 +1373,7 @@ export function TeamDetail({
 							/>
 							<Input
 								id="team-description"
+								dir={userTextDir(draft.description)}
 								value={draft.description}
 								onChange={(event) =>
 									setDraft((current) => ({
@@ -1396,6 +1402,7 @@ export function TeamDetail({
 							) : null}
 							<Textarea
 								ref={teamInstructionsRef}
+								dir={userTextDir(draft.instructions)}
 								aria-label={t("ui.agents.teams.action.collaboration_aria")}
 								aria-invalid={errorField === "instructions"}
 								className="min-h-36"
@@ -1412,6 +1419,7 @@ export function TeamDetail({
 						<Section title={t("ui.agents.teams.section.project_brief")}>
 							<Textarea
 								aria-label={t("ui.agents.teams.action.project_brief_aria")}
+								dir={userTextDir(draft.project)}
 								className="min-h-36"
 								maxLength={8000}
 								value={draft.project}
@@ -1560,10 +1568,14 @@ export function TeamDetail({
 												</div>
 											</TableCell>
 											<TableCell className="px-2 py-2 text-ink-dim text-meta">
-												{member.kind === "team" ? "Team" : "Agent"}
+												{/* Catalogue words, not literals: the scanner does not read a
+												 * string expression, so these two printed English in fr and ur. */}
+												{member.kind === "team"
+													? t("ui.agents.teams.kind.team")
+													: t("ui.agents.teams.kind.agent")}
 											</TableCell>
 											{/* Right-aligned so every count shares an x; the glyph is kept. */}
-											<TableCell className="px-0 py-2 text-right text-ink-muted tabular-nums">
+											<TableCell className="px-0 py-2 text-end text-ink-muted tabular-nums">
 												{`×${memberCountOf(member)}`}
 											</TableCell>
 										</TableRow>

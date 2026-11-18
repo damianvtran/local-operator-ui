@@ -439,7 +439,7 @@ export function HubSkillsLibrary({
 						>
 							<Search
 								aria-hidden="true"
-								className="ml-2 shrink-0 text-ink-dim"
+								className="ms-2 shrink-0 text-ink-dim"
 							/>
 							<Input
 								id={`${id}-search`}
@@ -560,7 +560,7 @@ export function HubSkillsLibrary({
 																policy.reset();
 															}}
 															className={cn(
-																"flex h-full w-full flex-col overflow-hidden rounded-md bg-surface text-left",
+																"flex h-full w-full flex-col overflow-hidden rounded-md bg-surface text-start",
 																"transition-colors duration-fast ease-out-quart hover:bg-elevated",
 																"focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1",
 															)}
@@ -739,6 +739,8 @@ export function HubSkillsLibrary({
 													rows={12}
 													aria-label={file.path}
 													value={file.content}
+													// A published file's own text, in any script.
+													dir="auto"
 													className="max-h-96 bg-sunken text-mono-sm"
 												/>
 											</details>

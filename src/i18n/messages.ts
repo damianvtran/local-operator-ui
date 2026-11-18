@@ -44,7 +44,12 @@
 
 import { IntlMessageFormat } from "intl-messageformat";
 
-import { isolateArguments, isolateSigils, plainArgumentNames } from "./bidi";
+import {
+	isolateArguments,
+	isolateNumberUnits,
+	isolateSigils,
+	plainArgumentNames,
+} from "./bidi";
 import { resolveCatalogueLocale } from "./catalogue-locale";
 import { textDirectionFor } from "./direction";
 import {
@@ -239,7 +244,9 @@ function render(
 			isolate ? isolateArguments(params, splicesOf(format)) : params,
 		);
 		const text = typeof rendered === "string" ? rendered : String(rendered);
-		return isolate ? isolateSigils(text) : text;
+		// Sigils first: a sigil token's isolate is then skipped by the number
+		// pass, which only ever wraps a pair outside any existing isolate.
+		return isolate ? isolateNumberUnits(isolateSigils(text)) : text;
 	} catch {
 		return key;
 	}

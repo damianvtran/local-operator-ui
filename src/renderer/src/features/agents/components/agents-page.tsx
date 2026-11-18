@@ -1173,7 +1173,7 @@ export function AgentsPage() {
 							size="sm"
 							onClick={() => requestGo({ name: null })}
 						>
-							<ArrowLeft className="size-4" />
+							<ArrowLeft className="size-4 rtl:-scale-x-100" />
 							{t("ui.agents.pages.back_to_list")}
 						</Button>
 					</div>
@@ -1809,8 +1809,8 @@ function EmptyPane({
 			/>
 			<div className={column}>
 				<div className={CHAT_MEASURE}>
-					{/* `-ml-3` cancels this `md` button's own `px-3` (the chips are `sm`, `px-2`, hence their `-ml-2`), so its TEXT is at the box's edge. */}
-					<Button variant="ghost" className="-ml-3" onClick={onAddManually}>
+					{/* `-ms-3` cancels this `md` button's own `px-3` (the chips are `sm`, `px-2`, hence their `-ms-2`), so its TEXT is at the box's edge. */}
+					<Button variant="ghost" className="-ms-3" onClick={onAddManually}>
 						{teamMode
 							? t("ui.agents.pages.ask.manual_team")
 							: t("ui.agents.pages.ask.manual_agent")}

@@ -14,7 +14,7 @@ import {
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Textarea } from "@shared/components/ui/textarea";
-import { t } from "@shared/i18n";
+import { t, userTextDir } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useId, useRef, useState } from "react";
@@ -186,6 +186,7 @@ export function HubSkillPublication({
 			<Input
 				id={`${id}-alias`}
 				data-testid="hub-skill-publish-alias"
+				dir={userTextDir(alias)}
 				value={alias}
 				disabled={action.isPending || !enabled}
 				onChange={(event) => {
@@ -247,6 +248,8 @@ export function HubSkillPublication({
 							rows={12}
 							aria-label={t("ui.hub.links.preview_payload", { source })}
 							value={JSON.stringify(preview.proposal.fields, null, 2)}
+							// JSON is machine text: always left-to-right, even under ur.
+							dir="ltr"
 							className="max-h-96 bg-sunken text-mono-sm"
 						/>
 						{preview.warnings.map((warning, index) => (

@@ -183,14 +183,29 @@ export const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 						<Bot size={16} aria-hidden={true} />
 					</AvatarFallback>
 				</AgentAvatar>
+				{/*
+				 * THE NAME AND DESCRIPTION SET THEIR OWN DIRECTION (`dir="auto"` on the
+				 * truncating box, as in `archive-conversation-dialog.tsx`):
+				 * `text-overflow` clips at the END of the box's own direction, so an
+				 * English name inheriting Urdu's RTL lost its first letters behind the
+				 * ellipsis ("...ase-captain"). `rtl:text-right` keeps a short Latin
+				 * name on the locale's start edge with the rest of the row, the
+				 * browser tab strip's D6 rule (`scripts/rtl-layout.test.mjs`).
+				 */}
 				<span className="min-w-0 flex-1">
 					<Tooltip content={agent.name} side="top" align="start">
-						<span className="block truncate font-medium text-body-sm text-ink">
+						<span
+							dir="auto"
+							className="block truncate font-medium text-body-sm text-ink rtl:text-right"
+						>
 							{agent.name}
 						</span>
 					</Tooltip>
 					<Tooltip content={description} side="bottom" align="start">
-						<span className="block truncate text-meta text-ink-dim">
+						<span
+							dir="auto"
+							className="block truncate text-meta text-ink-dim rtl:text-right"
+						>
 							{description}
 						</span>
 					</Tooltip>

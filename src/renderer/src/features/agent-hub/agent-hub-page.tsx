@@ -1001,7 +1001,7 @@ export const AgentHubPage: React.FC = () => {
 								 * same construction.
 								 */}
 								<div
-									className="mr-6 hidden w-60 shrink-0 rounded-md bg-surface p-2 md:block"
+									className="me-6 hidden w-60 shrink-0 rounded-md bg-surface p-2 md:block"
 									data-glass-region="panel"
 									data-tour-tag="agent-hub-sidebar-container"
 								>
@@ -1079,7 +1079,7 @@ export const AgentHubPage: React.FC = () => {
 												 * control's own boundary — the group's `border-control` edge is
 												 * that. `w-auto` because the trigger's own variant is full-width.
 												 */
-												className="w-auto shrink-0 border-y-0 border-l border-hairline border-r-0 bg-transparent pl-2 outline-none"
+												className="w-auto shrink-0 border-y-0 border-s border-hairline border-e-0 bg-transparent ps-2 outline-none"
 												aria-label={t("ui.hub.pages.search.scope_aria")}
 												data-testid="agent-hub-search-scope"
 											>

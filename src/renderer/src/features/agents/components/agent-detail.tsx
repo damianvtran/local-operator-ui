@@ -59,7 +59,7 @@ import {
 } from "@shared/components/ui/select";
 import { Switch } from "@shared/components/ui/switch";
 import { Textarea } from "@shared/components/ui/textarea";
-import { t, translateRaw } from "@shared/i18n";
+import { t, translateRaw, userTextDir } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -567,14 +567,21 @@ function ToolsEditor({
 						</p>
 					)}
 					<div className="flex items-end gap-2">
-						<div className="min-w-0 flex-1">
+						{/* `space-y-1`, the create form's field rhythm: flush against the
+						 * input, Urdu's descenders in the label and error ran under the
+						 * input's border and focus ring (ur frames, this fix's round). */}
+						<div className="min-w-0 flex-1 space-y-1">
 							<FieldLabel
 								label={t("ui.agents.detail.tools.add_label")}
 								htmlFor={inputId}
 								error={entryError ?? error}
 							/>
+							{/* A tool name is typed Latin text whatever the interface
+							 * language: `userTextDir` keeps "bad name!" from rendering as
+							 * "!bad name" under an RTL locale (see `EditSection`). */}
 							<Input
 								id={inputId}
+								dir={userTextDir(entry)}
 								value={entry}
 								inputSize="md"
 								placeholder={t("ui.agents.detail.tools.placeholder")}
@@ -1009,8 +1016,12 @@ export function AgentDetail({
 								ref={headingRef}
 								tabIndex={-1}
 								// A long name truncates instead of wrapping under the actions.
+								// `dir="auto"`: the name is the operator's text, so an English
+								// one keeps its first letters under ur instead of losing them
+								// to the ellipsis; `rtl:text-right` keeps the locale's start.
+								dir="auto"
 								title={displayedName}
-								className="truncate text-title focus:outline-none"
+								className="truncate text-title focus:outline-none rtl:text-right"
 							>
 								{displayedName}
 							</h2>
@@ -1035,7 +1046,7 @@ export function AgentDetail({
 					 *
 					 * THE TRAILING GLYPH SITS ON THE COLUMN EDGE (design review round 1 D1):
 					 * the last control is the ghost "More actions" icon button, 32 px wide
-					 * around a 16 px glyph, so `-mr-2` (the 8 px of box on each side of the
+					 * around a 16 px glyph, so `-me-2` (the 8 px of box on each side of the
 					 * glyph) moves the glyph's edge onto the column edge into the 24 px
 					 * gutter, where only its hover ground reaches.
 					 */}
@@ -1115,7 +1126,7 @@ export function AgentDetail({
 										variant="ghost"
 										size="icon"
 										aria-label={t("ui.agents.detail.action.more_actions")}
-										className="-mr-2"
+										className="-me-2"
 									>
 										<MoreHorizontal aria-hidden="true" />
 									</Button>
@@ -1513,12 +1524,22 @@ export function EditSection({
 	fieldRef?: Ref<HTMLTextAreaElement>;
 }) {
 	const id = useId();
+	/*
+	 * `userTextDir` (`dir="auto"` once non-empty) ON EVERY FIELD HERE: the value
+	 * is the operator's own text
+	 * (instructions, a description), and its script is independent of the
+	 * interface language. Inheriting an RTL locale's direction moved an English
+	 * prompt's sentence punctuation to the wrong end (".You implement..." in ur,
+	 * design review on UI #1952); the first strong character decides instead,
+	 * and an Urdu value still reads right-to-left in an English interface.
+	 */
 	return (
 		<Section title={title} description={description}>
 			<FieldLabel label={label} htmlFor={id} error={error} />
 			{rows ? (
 				<Textarea
 					id={id}
+					dir={userTextDir(value)}
 					ref={fieldRef}
 					value={value}
 					rows={rows}
@@ -1530,6 +1551,7 @@ export function EditSection({
 			) : (
 				<Input
 					id={id}
+					dir={userTextDir(value)}
 					value={value}
 					aria-invalid={Boolean(error)}
 					onChange={(event) => onChange(event.target.value)}
@@ -1760,6 +1782,7 @@ export function AgentCreate({
 							/>
 							<Input
 								id="agent-create-name"
+								dir={userTextDir(name)}
 								ref={nameRef}
 								value={name}
 								required

@@ -97,6 +97,12 @@ const UR = {
 	"fx.at_scope": "@scope/pkg نصب کریں۔",
 	"fx.count": "{count, plural, one {# کام} other {# کام}} /stop",
 	"fx.plain": "یہ ماڈل {levels} پیش کرتا ہے۔",
+	// The shipped ur avatar hint's tail and size refusal (design review, UI #1952).
+	"fx.size_literal": "زیادہ سے زیادہ 10 MB۔",
+	"fx.size_arg": "یہ تصویر {size} MB سے بڑی ہے۔",
+	"fx.size_decimal": "حد 1.5 GiB اور {height} px ہے۔",
+	"fx.not_a_unit": "1Password یا 4o، 12 ایجنٹ، v2 MB",
+	"fx.unit_after_latin": "JPEG 10 MB تک",
 };
 messages.registerCatalogue("ur", UR);
 // The same keys in an LTR locale, so one fixture exercises both directions.
@@ -200,6 +206,28 @@ test("values and text that must not be marked are left alone", () => {
 	// A sigil after Latin text, a URL and TCP/IP already resolve left-to-right.
 	assert.equal(run("fx.after_latin", {}), "Enter /goal چلاتا ہے۔");
 	assert.equal(run("fx.url", {}), "دیکھیں https://example.com/a اور TCP/IP۔");
+});
+
+test("a number and its unit symbol are ONE isolate after Urdu, so RTL does not paint `MB 10`", () => {
+	assert.equal(run("fx.size_literal", {}), `زیادہ سے زیادہ ${LRI}10 MB${PDI}۔`);
+	// A number ARGUMENT next to a literal unit: the value is never isolated by
+	// itself (a bare number is not Latin), so the pair is caught after formatting.
+	assert.equal(
+		run("fx.size_arg", { size: "5" }),
+		`یہ تصویر ${LRI}5 MB${PDI} سے بڑی ہے۔`,
+	);
+	assert.equal(
+		run("fx.size_decimal", { height: "96" }),
+		`حد ${LRI}1.5 GiB${PDI} اور ${LRI}96 px${PDI} ہے۔`,
+	);
+	// Not measurements: a brand, a model name, a bare count, a digit inside a word.
+	assert.equal(run("fx.not_a_unit", {}), "1Password یا 4o، 12 ایجنٹ، v2 MB");
+	// After Latin text the pair already resolves left-to-right: left alone.
+	assert.equal(run("fx.unit_after_latin", {}), "JPEG 10 MB تک");
+	// Negative control: the raw path is the pre-fix output, with no controls.
+	assert.equal(raw("fx.size_literal", {}, "ur"), "زیادہ سے زیادہ 10 MB۔");
+	// LTR is untouched.
+	assert.equal(run("fx.size_literal", {}, "en"), "Hello زیادہ سے زیادہ 10 MB۔");
 });
 
 test("a multi-segment path or an @scope is ONE isolate, so RTL paints it in order", () => {
@@ -456,6 +484,8 @@ test("fribidi paints every isolated token in logical Latin order (skipped withou
 		["fx.path_literal", {}, "/Users/eren/Documents/image.png"],
 		["fx.path_mid", {}, "/Users/eren/a.txt"],
 		["fx.at_scope", {}, "@scope/pkg"],
+		["fx.size_literal", {}, "10 MB"],
+		["fx.size_arg", { size: "5" }, "5 MB"],
 	];
 	for (const [key, params, token] of cases) {
 		assert.ok(

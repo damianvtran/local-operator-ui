@@ -233,19 +233,31 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 						{t("ui.agents.starters.action.all_builtins")}
 					</Button>
 				) : (
+					/*
+					 * RTL WRAPS THE ACTION UNDER THE SENTENCE instead of squeezing it.
+					 * The action is `shrink-0` and the Urdu one is ~50% wider than the
+					 * English (100 px against 66 px measured for "Install all 3" in the
+					 * story), so at the sidebar's 220-260 px the sentence was left a
+					 * 39-79 px sliver and broke into 3-5 lines (design review on UI
+					 * #1952). Under `rtl:` the sentence's basis becomes its own width,
+					 * so the action drops to a second line only when both cannot share
+					 * one. Scoped to RTL on purpose: in LTR the same rule would move
+					 * "Install all" under a two-line sentence at the default 260 px,
+					 * and that layout is the reviewed one.
+					 */
 					<button
 						ref={actionRef}
 						type="button"
 						onClick={() => void run()}
 						className={cn(
-							"flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-1.5",
+							"flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-1.5 rtl:flex-wrap rtl:gap-y-0.5",
 							"text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart",
 							"hover:bg-elevated",
 						)}
 						data-testid="install-all-builtins-row"
 					>
 						<Layers className="size-4 shrink-0" aria-hidden="true" />
-						<span className="min-w-0 flex-1">
+						<span className="min-w-0 flex-1 rtl:basis-auto">
 							{t("ui.agents.starters.available", { count: total })}
 						</span>
 						<span className="shrink-0 font-medium text-accent">

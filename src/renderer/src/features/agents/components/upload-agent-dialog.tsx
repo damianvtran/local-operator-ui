@@ -74,7 +74,7 @@ import {
 } from "@shared/components/ui";
 import { useAgentSystemPrompt } from "@shared/hooks/use-agent-system-prompt";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
-import { t } from "@shared/i18n";
+import { t, userTextDir } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -1147,6 +1147,8 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 							</Label>
 							<Input
 								id={nameInputId}
+								// A typed name: direction from its own text, not the locale.
+								dir={userTextDir(name)}
 								ref={nameInput}
 								value={name}
 								onChange={(event) => setName(event.target.value)}
