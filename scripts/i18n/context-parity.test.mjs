@@ -8,6 +8,7 @@ import {
 	applyUpdate,
 	catalogueNamespaces,
 	checkAllowance,
+	checkContextSchema,
 	main,
 	namespaceGap,
 } from "./context-parity.mjs";
@@ -263,4 +264,110 @@ test("namespace discovery lists source catalogues and never a sidecar", () => {
 		!namespaces.some((ns) => ns.endsWith(".context")),
 		"a sidecar must never be treated as its own namespace",
 	);
+});
+
+/*
+ * SIDECAR SCHEMA. Core's `read_public_copy` reader refuses a whole sidecar on
+ * one unknown field, wrong type or non-object entry (operator decision, ask
+ * a-82fb, 2026-11-17), so the writer-side guard must fail on exactly those and
+ * pass the exact set. Each counterfactual below is one drift kind the desktop
+ * sidecars really carried, and each failure line must name file, key and field
+ * while never echoing the value.
+ */
+function writeSidecar(entries) {
+	freshTree();
+	writeCatalogue("ui.alpha", Object.keys(entries), []);
+	writeFileSync(
+		join(cataloguesDir, "en", "ui.alpha.context.json"),
+		`${JSON.stringify(entries, null, "\t")}\n`,
+	);
+	writeAllowance({});
+	return checkContextSchema(cataloguesDir);
+}
+
+const SECRET = "VALUE-MUST-NOT-BE-ECHOED";
+
+test("schema: the exact valid field set passes, including empty placeholders", () => {
+	const violations = writeSidecar({
+		"ui.alpha.a": {
+			role: "button",
+			tone: "plain",
+			note: "n",
+			width: "narrow",
+			length: "short",
+			maxCells: 12,
+			placeholders: { name: "the agent name" },
+		},
+		"ui.alpha.b": { role: "label", placeholders: {} },
+		"ui.alpha.c": {},
+	});
+	assert.deepEqual(violations, []);
+	assert.equal(main([], { cataloguesDir, allowancePath }), 0);
+});
+
+test("schema: an unknown field fails with file, key and field, never the value", () => {
+	const violations = writeSidecar({
+		"ui.alpha.a": { role: "button", length_hint: SECRET },
+	});
+	assert.deepEqual(violations, [
+		'en/ui.alpha.context.json: ui.alpha.a: unknown field "length_hint"',
+	]);
+	assert.ok(!violations.join("\n").includes(SECRET));
+	assert.equal(main([], { cataloguesDir, allowancePath }), 1);
+});
+
+test("schema: a boolean maxCells fails (true is not a width)", () => {
+	const violations = writeSidecar({ "ui.alpha.a": { maxCells: true } });
+	assert.deepEqual(violations, [
+		'en/ui.alpha.context.json: ui.alpha.a: field "maxCells" must be an integer',
+	]);
+	// A fractional width is not an integer either.
+	assert.equal(writeSidecar({ "ui.alpha.a": { maxCells: 1.5 } }).length, 1);
+});
+
+test("schema: a nested placeholders value fails", () => {
+	const violations = writeSidecar({
+		"ui.alpha.a": { placeholders: { count: { note: SECRET } } },
+	});
+	assert.deepEqual(violations, [
+		'en/ui.alpha.context.json: ui.alpha.a: field "placeholders" must be a flat string map',
+	]);
+	assert.ok(!violations.join("\n").includes(SECRET));
+	// A list is not a map, even an empty one.
+	assert.equal(writeSidecar({ "ui.alpha.a": { placeholders: [] } }).length, 1);
+});
+
+test("schema: a wrong-typed string field fails", () => {
+	assert.deepEqual(
+		writeSidecar({ "ui.alpha.a": { note: { amount: SECRET } } }),
+		['en/ui.alpha.context.json: ui.alpha.a: field "note" must be a string'],
+	);
+});
+
+test("schema: a non-object entry fails, string or list, naming the kind", () => {
+	const violations = writeSidecar({
+		"ui.alpha.a": SECRET,
+		"ui.alpha.b": ["button", "plain", SECRET],
+	});
+	assert.deepEqual(violations, [
+		"en/ui.alpha.context.json: ui.alpha.a: entry is a string, not an object",
+		"en/ui.alpha.context.json: ui.alpha.b: entry is a list, not an object",
+	]);
+	assert.ok(!violations.join("\n").includes(SECRET));
+});
+
+test("schema: target-locale sidecars are checked too", () => {
+	writeSidecar({ "ui.alpha.a": { role: "button" } });
+	mkdirSync(join(cataloguesDir, "fr"), { recursive: true });
+	writeFileSync(
+		join(cataloguesDir, "fr", "ui.alpha.context.json"),
+		`${JSON.stringify({ "ui.alpha.a": { plural: "x" } })}\n`,
+	);
+	assert.deepEqual(checkContextSchema(cataloguesDir), [
+		'fr/ui.alpha.context.json: ui.alpha.a: unknown field "plural"',
+	]);
+});
+
+test("schema: the real tree conforms", () => {
+	assert.deepEqual(checkContextSchema(), []);
 });

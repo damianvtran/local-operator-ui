@@ -1689,7 +1689,7 @@
 	"ui.chat.pickers.analytics_session_state.clear_the_search_to_see": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"filteredtext": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"filtered": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
@@ -1698,8 +1698,7 @@
 			"scope": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"it": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"them": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.context_model.context_breakdown_unavailable": {
 		"role": "interface copy",
@@ -2946,13 +2945,12 @@
 	"ui.chat.pickers.usage_view_model.window": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"count": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"window": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"windows": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.usage_view_model.exhausted": {
 		"role": "interface copy",
@@ -2962,11 +2960,10 @@
 	"ui.chat.pickers.usage_view_model.model_cap_exhausted": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"count": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.usage_view_model.near_limit": {
 		"role": "interface copy",
@@ -2976,11 +2973,10 @@
 	"ui.chat.pickers.usage_view_model.reported_balance": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"count": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.usage_view_model.without_a_limit": {
 		"role": "interface copy",
@@ -3399,14 +3395,13 @@
 	"ui.chat.pickers.analytics_session_state.top_level_only_off": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"matchedtext": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"matched": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"session": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"sessions": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.context_panel.block": {
 		"role": "interface copy",
@@ -3738,22 +3733,20 @@
 	"ui.chat.pickers.destination_pickers.reopened_recent": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"subject": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"value": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"recentrows": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.analytics_model.last_days": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"days": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.analytics_model.to": {
 		"role": "interface copy",
@@ -3904,7 +3897,7 @@
 	"ui.chat.pickers.info_model.guides": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"guidetext": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"guides": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
@@ -3913,8 +3906,7 @@
 			"skilltext": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"skills": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"skill": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.session_report_model.own_subagents": {
 		"role": "interface copy",
@@ -3961,19 +3953,18 @@
 	"ui.chat.pickers.use_picker_backend.loop_turns": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"status": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"completed": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"of": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"iterations": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.table_pager.range": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"from": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"to": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
@@ -3981,8 +3972,7 @@
 			"total": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"label": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"plurallabel": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.analytics_panel.sessions": {
 		"role": "interface copy",
@@ -3992,20 +3982,19 @@
 	"ui.chat.pickers.analytics_session_state.match_count": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"matchedtext": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"totaltext": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"total": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"session": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"sessions": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.analytics_session_state.match_query": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"matchedtext": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"totaltext": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
@@ -4016,19 +4005,17 @@
 			"matches": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"match": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"query": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.analytics_session_state.search_match": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"matchedtext": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"matched": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"query": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.analytics_session_state.filter_top_zero": {
 		"role": "interface copy",
@@ -4038,25 +4025,23 @@
 	"ui.chat.pickers.analytics_session_state.filter_top": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"matchedtext": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"matched": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"session": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"sessions": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.session_report_model.totals_meta": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"calls": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"failed": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"scope": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.usage_view_model.observed_with_note": {
 		"role": "interface copy",
@@ -4095,13 +4080,12 @@
 	"ui.chat.pickers.info_model.count_noun": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"count": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"noun": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
 			"pluralnoun": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.info_model.runtime": {
 		"role": "interface copy",
@@ -4136,20 +4120,18 @@
 	"ui.chat.pickers.info_model.older_build_caveat": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"count": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.info_model.not_answering_caveat": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
-		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation.",
+		"note": "Complete ICU message for the pickers surface; dynamic values are composed without English fragment concatenation. Plural: Use native target-locale plural categories; English one/other is source grammar only.",
 		"placeholders": {
 			"count": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
-		},
-		"plural_guidance": "Use native target-locale plural categories; English one/other is source grammar only."
+		}
 	},
 	"ui.chat.pickers.info_model.browser_status": {
 		"role": "interface copy",
@@ -4407,13 +4389,13 @@
 	"ui.chat.pickers.destination_pickers.no_agents_are_registered": {
 		"role": "Empty state of the header's agent picker",
 		"tone": "Plain statement with a period",
-		"length_hint": "Four words",
+		"length": "Four words",
 		"note": "Sibling of the teams empty state."
 	},
 	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": {
 		"role": "Description under a picker on a draft conversation",
 		"tone": "Plain statement with a period",
-		"length_hint": "One sentence",
+		"length": "One sentence",
 		"note": "The draft has no session yet, so the choice applies to the one the first message creates."
 	},
 	"ui.chat.pickers.slash.source.model": {

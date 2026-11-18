@@ -110,12 +110,11 @@
 	"ui.chat.trace.object.file_count": {
 		"role": "object slot of a transcript trace row, set in monospace after the verb",
 		"tone": "Lowercase count-plus-noun, no punctuation.",
-		"note": "Counts the files a step touched when there is more than one (one file shows its path instead, so English only ever renders the plural arm). Follows a verb such as \"Read\" or \"Wrote\". Supply every plural category the language needs.",
+		"note": "Counts the files a step touched when there is more than one (one file shows its path instead, so English only ever renders the plural arm). Follows a verb such as \"Read\" or \"Wrote\". Supply every plural category the language needs. Plural: English one/other is source grammar; use the target locale's native CLDR categories.",
 		"length": "Two words including the count.",
 		"placeholders": {
 			"count": "How many files the step touched; printed without digit grouping, as before."
-		},
-		"plural_guidance": "English one/other is source grammar; use the target locale's native CLDR categories."
+		}
 	},
 	"ui.chat.trace.reasoning.label": {
 		"role": "label of an agent-reasoning row in the chat transcript, the quietest row of the trace hierarchy",
