@@ -20,7 +20,7 @@
  */
 
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
-import { useQueryClient } from "@tanstack/react-query";
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { useCallback, useState } from "react";
 import { writeModelDefaultSettings } from "../chat/pickers/model-default-settings";
 import { CONFIG_QUERY_KEY } from "./use-provider-status";
@@ -49,7 +49,13 @@ export function useMakeLocalDefault(): {
 	error: string | null;
 	run: (model: LocalModelChoice) => Promise<boolean>;
 } {
-	const queryClient = useQueryClient();
+	/*
+	 * Optional, not `useQueryClient()`: the composer's block line mounts this in
+	 * documents with no `QueryClientProvider` (the mini view), where the strict
+	 * hook throws on mount. There the invalidation lands on the inert fallback,
+	 * which nothing reads - the settings write itself still happens.
+	 */
+	const { client: queryClient } = useOptionalQueryClient();
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const run = useCallback(

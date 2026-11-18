@@ -25,10 +25,10 @@ import { brandOf } from "@features/providers/provider-catalog";
 import { useDesktopProviders } from "@shared/api/local-operator/desktop-hooks";
 import { Button } from "@shared/components/ui";
 import { readServerHealthNow } from "@shared/hooks/use-connectivity-status";
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useQueryClient } from "@tanstack/react-query";
 import { CircleAlert } from "lucide-react";
 import { type FC, useCallback, useRef, useState } from "react";
 import {
@@ -173,7 +173,14 @@ export function useSendRecoveryAction(
 	outcome: string | null;
 	run: (recovery: SendRecovery) => void;
 } {
-	const queryClient = useQueryClient();
+	/*
+	 * Optional, not `useQueryClient()`: this hook sits under the shared composer,
+	 * which must mount with no `QueryClientProvider` (the mini view). Without one,
+	 * the reconnect's health read is an explicit `fetchQuery` on the inert
+	 * fallback - a direct read whose answer this press consumes itself, never a
+	 * cached query anything else observes.
+	 */
+	const { client: queryClient } = useOptionalQueryClient();
 	const makeDefault = useMakeLocalDefault();
 	const [busy, setBusy] = useState(false);
 	const [outcome, setOutcome] = useState<string | null>(null);

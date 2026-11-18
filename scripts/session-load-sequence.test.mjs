@@ -439,6 +439,11 @@ const bundle = await build({
 								isLoading: false,
 								refetch: () => {},
 							});
+							// The PR's two new exports, in the same "everything is up"
+							// reading: the transcript's offline observer and the send
+							// recovery's one-shot health read (onboarding friction 2026-11).
+							export const useServerOffline = () => false;
+							export const readServerHealthNow = async () => ({ online: true, snapshot: null });
 							export const useInternetConnectivity = () => ({
 								data: true,
 								isLoading: false,

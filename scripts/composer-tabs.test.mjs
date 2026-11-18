@@ -2480,11 +2480,32 @@ test("with nothing connected neither the button nor Enter sends", () => {
 		/refused: isInputDisabled \|\| sendRefused,/,
 		"the Send control must report the same state the key does",
 	);
+	/*
+	 * THE STATE-NAMING REFUSAL MOVED, it was not dropped: the composer no longer
+	 * picks a hint sentence inline; it hands `noModel` (with `noProvider`) to
+	 * `sendBlockFor`, renders the resulting block in `SendBlockedLine`, and
+	 * `blockSentence` names each state with its own key. All three links are
+	 * pinned so the refusal still says which state it is refusing in.
+	 */
 	assert.match(
 		source,
-		/noModel\s*\?\s*t\("ui\.chat\.composer_notes\.hint\.choose_model"\)/,
+		/sendBlockFor\(\{\s*noProvider,\s*noModel,/,
 		"and the refusal must say which state it is refusing in",
 	);
+	assert.match(
+		source,
+		/<SendBlockedLine\s+block=\{sendBlock\}/,
+		"the block the state produced is the one the line renders",
+	);
+	const recoveryLine = code(
+		"src/renderer/src/features/chat/components/send-recovery-action.tsx",
+	);
+	for (const key of ["no_provider", "no_model"])
+		assert.match(
+			recoveryLine,
+			new RegExp(`t\\("ui\\.recovery\\.composer\\.${key}"\\)`),
+			`the ${key} block has its own sentence`,
+		);
 });
 
 test("the disabled Send press answers the way Enter does, and keeps the caret (U27)", () => {
