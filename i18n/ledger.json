@@ -8616,6 +8616,22 @@
 					"receipt": "i18n/receipts/d11d211390f8-pr1978-r3-es.json",
 					"receipt_sha256": "466b895f4911ac465dc037385b034350d27d133038d0e5511292ee39ff3ede68",
 					"scope": "PR #1978 i18n r3: delta 6fba440baa..741b25f568 (31 added, 2 changed, round-2 fixes)"
+				},
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "f4f5a50c8316-pr1978-second-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/f4f5a50c8316-pr1978-second-es.json",
+					"receipt_sha256": "b7f74a432631e7ad2e9aafae718403b6ede12af125d7a50ea65b475b8fb72c58",
+					"scope": "PR #1978 second independent audit (safety copy): all 84 move working-set keys + move_receipt_resumed"
 				}
 			],
 			"status": "audited",
@@ -36032,6 +36048,22 @@
 					"receipt": "i18n/receipts/d11d211390f8-pr1978-r3-hi.json",
 					"receipt_sha256": "5b7fd8752d7c938366b1e74533352490ebc024c1b4cf0a89d2490acc446950c8",
 					"scope": "PR #1978 i18n r3: delta 6fba440baa..741b25f568 (31 added, 2 changed, round-2 fixes)"
+				},
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "f4f5a50c8316-pr1978-second-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/f4f5a50c8316-pr1978-second-hi.json",
+					"receipt_sha256": "13b6826fa2c202469c6a7a8c445c8c9a12e12b1983ef8459c151e55580cce76b",
+					"scope": "PR #1978 second independent audit (safety copy): all 84 move working-set keys + move_receipt_resumed"
 				}
 			],
 			"status": "audited",
@@ -49395,6 +49427,22 @@
 					"receipt": "i18n/receipts/d11d211390f8-pr1978-r3-ru.json",
 					"receipt_sha256": "b51156c150f94f8ac794353e526948a7f732d37430cbcac464e0b94704acc714",
 					"scope": "PR #1978 i18n r3: delta 6fba440baa..741b25f568 (31 added, 2 changed, round-2 fixes)"
+				},
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "f4f5a50c8316-pr1978-second-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/f4f5a50c8316-pr1978-second-ru.json",
+					"receipt_sha256": "e3c31939451d67e4d33ed00060c895c5f82ef9a304af0b9c8fca1020765611d1",
+					"scope": "PR #1978 second independent audit (safety copy): all 84 move working-set keys + move_receipt_resumed"
 				}
 			],
 			"status": "audited",
@@ -63006,6 +63054,22 @@
 					"receipt": "i18n/receipts/d11d211390f8-pr1978-r3-ur.json",
 					"receipt_sha256": "29320cc15d05c4a0e250f81bd5f2dadbd4e75eda46bd1f89e09e92cd164f1df1",
 					"scope": "PR #1978 i18n r3: delta 6fba440baa..741b25f568 (31 added, 2 changed, round-2 fixes)"
+				},
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "f4f5a50c8316-pr1978-second-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/f4f5a50c8316-pr1978-second-ur.json",
+					"receipt_sha256": "f3353d52a195249ae11a972f9c5d2181e302d917dbd10a0daac52f6d44d42027",
+					"scope": "PR #1978 second independent audit (safety copy): all 84 move working-set keys + move_receipt_resumed"
 				}
 			],
 			"status": "audited",
@@ -76500,6 +76564,22 @@
 					"receipt": "i18n/receipts/d11d211390f8-pr1978-r3-vi.json",
 					"receipt_sha256": "2a19779142e3b5df3c0445530880ddbc68d93a051bc8d7284157d18cb3729a90",
 					"scope": "PR #1978 i18n r3: delta 6fba440baa..741b25f568 (31 added, 2 changed, round-2 fixes)"
+				},
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "f4f5a50c8316-pr1978-second-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/f4f5a50c8316-pr1978-second-vi.json",
+					"receipt_sha256": "c725cf06c472043d93b6b0edda8c17170dfa3285dc72e73bddf162674b1fc96b",
+					"scope": "PR #1978 second independent audit (safety copy): all 84 move working-set keys + move_receipt_resumed"
 				}
 			],
 			"status": "audited",
@@ -90782,6 +90862,22 @@
 					"receipt": "i18n/receipts/d11d211390f8-pr1978-r3-zh-CN.json",
 					"receipt_sha256": "457d0e6a730b1a42fa38c6cc820eacc1add41026261868928744cbbf09e776cb",
 					"scope": "PR #1978 i18n r3: delta 6fba440baa..741b25f568 (31 added, 2 changed, round-2 fixes)"
+				},
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "f4f5a50c8316-pr1978-second-zh-CN",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/f4f5a50c8316-pr1978-second-zh-CN.json",
+					"receipt_sha256": "7c6847e9701441a8a5fc8c96de6f25a34259124736172193d101dcf9b493e1c7",
+					"scope": "PR #1978 second independent audit (safety copy): all 84 move working-set keys + move_receipt_resumed"
 				}
 			],
 			"status": "audited",
