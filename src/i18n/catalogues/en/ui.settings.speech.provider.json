@@ -1,0 +1,13 @@
+{
+	"ui.settings.speech.provider.label": "Speech provider",
+	"ui.settings.speech.provider.description": "Who listens and speaks, for hands-free voice and the Speak button on messages. Only the one you pick is used; nothing falls back to the other.",
+	"ui.settings.speech.provider.radient.label": "Radient cloud",
+	"ui.settings.speech.provider.radient.description": "Billed to your Radient credit.",
+	"ui.settings.speech.provider.elevenlabs.label": "My ElevenLabs key",
+	"ui.settings.speech.provider.elevenlabs.description": "Uses your own ElevenLabs account, which ElevenLabs bills.",
+	"ui.settings.speech.provider.ready": "Ready",
+	"ui.settings.speech.provider.not_ready": "Not ready yet.",
+	"ui.settings.speech.provider.setup": "Set up in Providers",
+	"ui.settings.speech.provider.none_chosen": "No provider chosen yet. Hands-free voice stays off until you pick one.",
+	"ui.settings.speech.provider.save_failed": "The choice could not be saved."
+}

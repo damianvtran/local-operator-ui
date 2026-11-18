@@ -66,6 +66,7 @@ import { AudioLines, RotateCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import type { FallbackProps } from "react-error-boundary";
+import type { SpeechProvider } from "../../../../../shared/desktop-control-contract";
 import { tierFor } from "../backend-settings-tiers";
 import {
 	parseVoicePathResolution,
@@ -81,10 +82,14 @@ import {
 } from "./backend-settings-drafts";
 import { backendSettingsKeys } from "./backend-settings-section";
 import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
+import { SpeechProviderSetting } from "./speech-provider-setting";
+import { VoiceSwitchSetting } from "./voice-switch-setting";
 
 type SpeechSectionProps = {
 	/** Scroll target for the settings sidebar. */
 	sectionRef?: RefObject<HTMLDivElement>;
+	/** Take the person to the Providers section for a provider that is not ready. */
+	onOpenProviders?: (provider: SpeechProvider) => void;
 };
 
 /**
@@ -164,7 +169,10 @@ function groupState(state: DesktopFeatureState): "ready" | "older" | "pairing" {
 	return "pairing";
 }
 
-export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
+export const SpeechSection: FC<SpeechSectionProps> = ({
+	sectionRef,
+	onOpenProviders,
+}) => {
 	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const pairingCause = usePairingCause();
@@ -374,7 +382,11 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 				description={description}
 				sectionRef={sectionRef}
 			>
-				<Alert variant="warning">{sentence}</Alert>
+				<div className="flex flex-col gap-6">
+					<Alert variant="warning">{sentence}</Alert>
+					{/* The switch is the person's, not the backend's: it stays reachable. */}
+					<VoiceSwitchSetting />
+				</div>
 			</SettingsSection>
 		);
 	}
@@ -387,7 +399,10 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 				description={description}
 				sectionRef={sectionRef}
 			>
-				<Alert variant="warning">{t(BACKEND_OLDER_SENTENCE)}</Alert>
+				<div className="flex flex-col gap-6">
+					<Alert variant="warning">{t(BACKEND_OLDER_SENTENCE)}</Alert>
+					<VoiceSwitchSetting />
+				</div>
 			</SettingsSection>
 		);
 	}
@@ -407,23 +422,26 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 				description={description}
 				sectionRef={sectionRef}
 			>
-				<Alert variant="warning">
-					<div className="flex items-center justify-between gap-3">
-						<span>{sentence}</span>
-						{remedy && (
-							<Button
-								variant="secondary"
-								size="sm"
-								className="shrink-0"
-								onClick={() => {
-									void settingsQuery.refetch();
-								}}
-							>
-								{t("ui.settings.speech.speech_section.retry")}
-							</Button>
-						)}
-					</div>
-				</Alert>
+				<div className="flex flex-col gap-6">
+					<Alert variant="warning">
+						<div className="flex items-center justify-between gap-3">
+							<span>{sentence}</span>
+							{remedy && (
+								<Button
+									variant="secondary"
+									size="sm"
+									className="shrink-0"
+									onClick={() => {
+										void settingsQuery.refetch();
+									}}
+								>
+									{t("ui.settings.speech.speech_section.retry")}
+								</Button>
+							)}
+						</div>
+					</Alert>
+					<VoiceSwitchSetting />
+				</div>
 			</SettingsSection>
 		);
 	}
@@ -469,6 +487,14 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 			sectionRef={sectionRef}
 		>
 			<div className="flex flex-col gap-6">
+				{/*
+				 * WHO SPEAKS comes first: it decides which provider every line below is
+				 * about, and hands-free voice (the switch right after it) cannot start
+				 * without one. The switch is the person's own setting, held by main; it sits
+				 * here, beside the voice controls, rather than under Appearance.
+				 */}
+				<SpeechProviderSetting onOpenProviders={onOpenProviders} />
+				<VoiceSwitchSetting />
 				<section className="flex flex-col gap-3">
 					{pathsQuery.isPending && (
 						<p className="flex items-center gap-2 text-body-sm text-ink-muted">

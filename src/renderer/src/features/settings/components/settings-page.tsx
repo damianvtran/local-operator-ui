@@ -53,8 +53,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
-import { useLocation } from "react-router-dom";
-import { VoiceSwitchSetting } from "./voice-switch-setting";
+import { useLocation, useNavigate } from "react-router-dom";
 import { WindowGlassSetting } from "./window-glass-setting";
 
 import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
@@ -419,6 +418,7 @@ export const SettingsPage: FC = () => {
 	const contentContainerRef = useRef<HTMLDivElement>(null);
 	const { startTour: startOnboardingTour } = useOnboardingTour();
 	const location = useLocation();
+	const navigate = useNavigate();
 
 	const { data: credentialsData, refetch: refetchCredentials } =
 		useCredentials();
@@ -1453,8 +1453,6 @@ export const SettingsPage: FC = () => {
 								 * platform cannot do it. See `window-glass-setting.tsx`.
 								 */}
 								<WindowGlassSetting state={glass.state} onChange={glass.set} />
-								{/* Session voice: OFF by default; off means nothing voice runs. */}
-								<VoiceSwitchSetting />
 							</div>
 						</SettingsSection>
 
@@ -1467,7 +1465,14 @@ export const SettingsPage: FC = () => {
 						 * this machine, and what to do when none can. See its module docstring for
 						 * why it carries no credential field.
 						 */}
-						<SpeechSection sectionRef={sectionRefs.speech} />
+						<SpeechSection
+							sectionRef={sectionRefs.speech}
+							onOpenProviders={(provider) =>
+								navigate(
+									`/settings?section=providers&provider=${encodeURIComponent(provider)}`,
+								)
+							}
+						/>
 						<KeyboardShortcutsSection sectionRef={sectionRefs.keyboard} />
 
 						{/*

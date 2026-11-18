@@ -74,6 +74,7 @@ import enUiSettingsModelProviderCallout from "./catalogues/en/ui.settings.model.
 import enUiSettingsNavigation from "./catalogues/en/ui.settings.navigation.json";
 import enUiSettingsShortcuts from "./catalogues/en/ui.settings.shortcuts.json";
 import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
+import enUiSettingsSpeechProvider from "./catalogues/en/ui.settings.speech.provider.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
 import enUiSettingsVoice from "./catalogues/en/ui.settings.voice.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
@@ -306,6 +307,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsNavigation,
 	...enUiSettingsShortcuts,
 	...enUiSettingsSpeech,
+	...enUiSettingsSpeechProvider,
 	...enUiSettingsUpdates,
 	...enUiSettingsVoice,
 	...enUiShell,
@@ -3966,6 +3968,17 @@ export type MessageParams = {
 	"ui.settings.speech.speech_section.try_again": undefined;
 	"ui.settings.speech.speech_settings_model.no_provider": undefined;
 	"ui.settings.speech.speech_settings_model.radient_pass": undefined;
+	"ui.settings.speech.provider.description": undefined;
+	"ui.settings.speech.provider.elevenlabs.description": undefined;
+	"ui.settings.speech.provider.elevenlabs.label": undefined;
+	"ui.settings.speech.provider.label": undefined;
+	"ui.settings.speech.provider.none_chosen": undefined;
+	"ui.settings.speech.provider.not_ready": undefined;
+	"ui.settings.speech.provider.radient.description": undefined;
+	"ui.settings.speech.provider.radient.label": undefined;
+	"ui.settings.speech.provider.ready": undefined;
+	"ui.settings.speech.provider.save_failed": undefined;
+	"ui.settings.speech.provider.setup": undefined;
 	"ui.settings.updates.app_updates_section.application_updates_and_info": undefined;
 	"ui.settings.updates.app_updates_section.application_version": undefined;
 	"ui.settings.updates.app_updates_section.check_for_updates_and_view_information_about_your_local_operator_": undefined;
