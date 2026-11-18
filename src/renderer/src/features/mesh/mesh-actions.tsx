@@ -130,6 +130,14 @@ export const MoveConfirmDialog: FC<{
 		capabilities.data,
 		"session_transfer_working_set",
 	);
+	// Separate key: the destination probe's fields are additive, and a backend
+	// with the working set but without the probe must render the review unchanged.
+	const probeGate =
+		workingSetGate &&
+		desktopFeatureEnabled(
+			capabilities.data,
+			"session_transfer_working_set_probe",
+		);
 	const preflight = useTransferPreflight(
 		plan.sessionId,
 		plan.to,
@@ -287,6 +295,7 @@ export const MoveConfirmDialog: FC<{
 						onConfidentChange={setConfident}
 						changed={workingSetSeed?.changed ?? false}
 						disabled={busy}
+						probe={probeGate}
 					/>
 				)}
 				<DialogFooter>

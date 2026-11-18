@@ -131,7 +131,64 @@ type Preflight =
 	| { kind: "hold" }
 	| { kind: "fail" };
 
-function installBridge(options: { capability: boolean; preflight: Preflight }) {
+/**
+ * The block as a probe-capable core answers it (`apply_probe`, core
+ * `network/workset_probe.py`): the destination checked each remote with its own
+ * credentials. One row cannot fetch over SSH (HTTPS works, push does not, so a
+ * remedy is offered), one cannot push, and the destination lacks `pnpm`/`node`;
+ * the conversation uses Team Bridge and the destination is not enrolled.
+ */
+function probedBlock(carriesFiles = true) {
+	const base = populatedBlock(DIGEST, carriesFiles);
+	const [first, second, ...rest] = base.worktrees;
+	return {
+		...base,
+		source: { device_id: `d_${"a".repeat(32)}`, name: "damian-mac" },
+		worktrees: [
+			{
+				...first,
+				remote_url: "git@github.com:damianvtran/local-operator.git",
+				clone_check: "destination_cannot_fetch",
+				clone_detail: "git@github.com: Permission denied (publickey).",
+				https_rewrite: {
+					url: "https://github.com/damianvtran/local-operator.git",
+					fetch: true,
+					push: false,
+				},
+				remedy: {
+					run_on: "lending_device",
+					command: "lop network credential share github --with build-box",
+				},
+				missing_tools: [],
+			},
+			{
+				...second,
+				clone_check: "destination_cannot_push",
+				clone_detail:
+					"remote: Permission to damianvtran/local-operator-ui.git denied to build-box.",
+				remedy: {
+					run_on: "lending_device",
+					command:
+						"lop network credential github include damianvtran/local-operator-ui",
+				},
+				missing_tools: ["node", "pnpm"],
+			},
+			...rest,
+		],
+		destination_probe: {
+			state: "answered",
+			missing_tools: ["node", "pnpm"],
+			team_bridge: { needed: true, enrolled: false },
+		},
+	};
+}
+
+function installBridge(options: {
+	capability: boolean;
+	preflight: Preflight;
+	/** Also advertise `session_transfer_working_set_probe`. */
+	probe?: boolean;
+}) {
 	const bridge = async (request: {
 		op: string;
 	}): Promise<DesktopResponse> => {
@@ -148,6 +205,9 @@ function installBridge(options: { capability: boolean; preflight: Preflight }) {
 							session_transfer: 1,
 							...(options.capability
 								? { session_transfer_working_set: 1 }
+								: {}),
+							...(options.probe
+								? { session_transfer_working_set_probe: 1 }
 								: {}),
 						},
 					},
@@ -339,6 +399,44 @@ export const PopulatedFilesStay: Story = {
 			},
 		});
 		holdShutter('[data-testid="working-set"]');
+		return <Dialog />;
+	},
+};
+
+/**
+ * The destination probe answered with problems (`session_transfer_working_set_probe`):
+ * per-row reachability with git's error line, the HTTPS alternative, the copyable
+ * remedy command, and the missing-tools and Team Bridge warnings. None of them
+ * gates the checkbox: the core never blocks on reachability or prerequisites.
+ */
+export const ProbeFailures: Story = {
+	render: () => {
+		installBridge({
+			capability: true,
+			probe: true,
+			preflight: { kind: "answer", result: { working_set: probedBlock() } },
+		});
+		holdShutter('[data-testid="working-set"] [data-probe-remedy]');
+		return <Dialog />;
+	},
+};
+
+/**
+ * The same probed block on the first core release (`carries_files: false`): the
+ * kept heading names the device the files stay on (`source`), and the probe
+ * still says whether the destination could fetch the work once it is pushed.
+ */
+export const ProbeFilesStay: Story = {
+	render: () => {
+		installBridge({
+			capability: true,
+			probe: true,
+			preflight: {
+				kind: "answer",
+				result: { working_set: probedBlock(false) },
+			},
+		});
+		holdShutter('[data-testid="working-set"] [data-probe-remedy]');
 		return <Dialog />;
 	},
 };

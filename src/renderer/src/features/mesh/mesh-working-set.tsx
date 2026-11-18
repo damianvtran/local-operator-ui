@@ -36,13 +36,25 @@
  *
  * Every sentence is composed here from the manifest's codes and numbers via
  * `t()`: the core block carries no English beyond paths and commands (§3.4, §12).
+ *
+ * THE DESTINATION PROBE (`session_transfer_working_set_probe`, §11.1a). The
+ * coordinator's live move confirmed rows that all said "pending_destination", and
+ * the destination then could neither fetch the SSH remote nor push the HTTPS one.
+ * The core now asks the destination BEFORE the user confirms, so each row says
+ * whether that device can reach its remote, with git's own error line, the HTTPS
+ * alternative when only SSH failed, and the exact command that grants access
+ * (copyable, because it must be run on ANOTHER device). Missing toolchains and a
+ * missing Team Bridge enrolment are warnings: the core never blocks on them, so
+ * neither does the checkbox. Without the capability none of it renders.
  */
 
+import { CopyButton } from "@shared/components/common/copy-button";
 import { Alert, Checkbox } from "@shared/components/ui";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { FolderGit2 } from "lucide-react";
+import { cn } from "@shared/lib/utils";
+import { AlertTriangle, Check, FolderGit2, Info } from "lucide-react";
 import { type FC, type ReactNode, useId } from "react";
-import { formatBytes } from "../../../../i18n/format";
+import { formatBytes, formatList } from "../../../../i18n/format";
 import { t } from "../../../../i18n/messages";
 import type {
 	WorkingSet,
@@ -149,6 +161,169 @@ export function partitionWorktrees(set: WorkingSet): {
 
 const mono = "font-mono text-meta text-ink break-all";
 
+/**
+ * The probe answers that are a problem the user can act on before confirming.
+ * `no_remote` and `unknown_destination` are information, not failures: the first
+ * has nothing to reach, the second could not be asked (an older lop there).
+ */
+const PROBE_FAILURES: ReadonlySet<string> = new Set([
+	"destination_cannot_fetch",
+	"destination_cannot_push",
+	"destination_cannot_clone",
+]);
+
+/**
+ * The probe's own short codes (`url_refused`, `git_missing`, `timeout`,
+ * `probe_error`, an OSError class name). The row's sentence already states what
+ * they mean, so only git's real stderr line is shown verbatim under it.
+ */
+const PROBE_CODE = /^(?:[a-z_]+|[A-Za-z]+Error)$/;
+
+/** One row's reachability sentence, or `null` when there is nothing to say. */
+export function probeSentence(
+	check: string | null,
+	device: string,
+	remote: string,
+): string | null {
+	switch (check) {
+		case "ok":
+			return t("ui.mesh.mesh_actions.working_set_probe_ok", { device });
+		case "destination_cannot_fetch":
+			return t("ui.mesh.mesh_actions.working_set_probe_cannot_fetch", {
+				device,
+				remote,
+			});
+		case "destination_cannot_push":
+			return t("ui.mesh.mesh_actions.working_set_probe_cannot_push", {
+				device,
+				remote,
+			});
+		case "destination_cannot_clone":
+			return t("ui.mesh.mesh_actions.working_set_probe_cannot_clone", {
+				device,
+				remote,
+			});
+		case "no_remote":
+			return t("ui.mesh.mesh_actions.working_set_probe_no_remote", { device });
+		/*
+		 * `unknown_destination` is said ONCE for the whole list (the block's
+		 * `destination_probe.state`), and `pending_destination` keeps the pre-probe
+		 * clone note: repeating either on every row would bury the rows' own facts.
+		 */
+		default:
+			return null;
+	}
+}
+
+/** The destination's answer for one worktree, under its counts. */
+const ProbeLines: FC<{ tree: WorkingSetWorktree; device: string }> = ({
+	tree,
+	device,
+}) => {
+	const check = tree.cloneCheck ?? "";
+	const sentence = probeSentence(check, device, tree.remoteUrl ?? tree.repo);
+	const failed = PROBE_FAILURES.has(check);
+	const Icon = failed ? AlertTriangle : check === "ok" ? Check : Info;
+	return (
+		<>
+			{sentence && (
+				<span
+					className={cn(
+						"flex items-start gap-1.5 ps-5 text-meta",
+						failed ? "text-warning" : "text-ink-dim",
+					)}
+					data-probe={check}
+				>
+					<Icon aria-hidden="true" className="mt-0.5 size-3 shrink-0" />
+					<span className="min-w-0 break-words">{sentence}</span>
+				</span>
+			)}
+			{failed && tree.cloneDetail && !PROBE_CODE.test(tree.cloneDetail) && (
+				<span className={cn(mono, "ps-5 text-ink-dim")} data-probe-detail>
+					{tree.cloneDetail}
+				</span>
+			)}
+			{tree.httpsRewrite && (
+				<span className="ps-5 text-meta text-ink-dim break-all">
+					{t("ui.mesh.mesh_actions.working_set_probe_https_rewrite", {
+						device,
+						url: tree.httpsRewrite.url,
+					})}
+				</span>
+			)}
+			{tree.remedy && (
+				<span className="flex flex-col gap-1 ps-5" data-probe-remedy>
+					<span className="text-meta text-ink-dim">
+						{t("ui.mesh.mesh_actions.working_set_probe_remedy")}
+					</span>
+					<span className="flex items-center gap-2">
+						<code className={cn(mono, "min-w-0 flex-1")}>
+							{tree.remedy.command}
+						</code>
+						<CopyButton
+							value={tree.remedy.command}
+							label={t("ui.mesh.mesh_actions.working_set_probe_copy")}
+						/>
+					</span>
+				</span>
+			)}
+			{tree.missingTools.length > 0 && (
+				<span className="ps-5 text-meta text-warning">
+					{t("ui.mesh.mesh_actions.working_set_row_missing_tools", {
+						device,
+						tools: formatList(tree.missingTools),
+					})}
+				</span>
+			)}
+		</>
+	);
+};
+
+/**
+ * The block-level prerequisites and the "could not check" note. Warnings, never
+ * gates: the checkbox and Confirm do not depend on any of this.
+ */
+const ProbeNotices: FC<{ set: WorkingSet; device: string }> = ({
+	set,
+	device,
+}) => {
+	const probe = set.destinationProbe;
+	if (!probe) return null;
+	const bridge = probe.teamBridge;
+	return (
+		<>
+			{probe.state === "unknown_destination" && (
+				<Alert variant="info" className="text-meta" data-probe="unknown">
+					{t("ui.mesh.mesh_actions.working_set_probe_unknown", { device })}
+				</Alert>
+			)}
+			{probe.missingTools.length > 0 && (
+				<Alert
+					variant="warning"
+					className="text-meta"
+					data-probe="missing-tools"
+				>
+					<span className="flex flex-col gap-1">
+						{t("ui.mesh.mesh_actions.working_set_missing_tools", { device })}
+						<ul className="m-0 list-disc ps-5">
+							{probe.missingTools.map((tool) => (
+								<li key={tool} className="font-mono">
+									{tool}
+								</li>
+							))}
+						</ul>
+					</span>
+				</Alert>
+			)}
+			{bridge && !bridge.enrolled && (
+				<Alert variant="warning" className="text-meta" data-probe="team-bridge">
+					{t("ui.mesh.mesh_actions.working_set_team_bridge", { device })}
+				</Alert>
+			)}
+		</>
+	);
+};
+
 const WorktreeRow: FC<{
 	tree: WorkingSetWorktree;
 	device: string;
@@ -156,7 +331,9 @@ const WorktreeRow: FC<{
 	showClone: boolean;
 	/** This row carries its repository's one "cloned if missing" note. */
 	clonePending: boolean;
-}> = ({ tree, device, showClone, clonePending }) => (
+	/** The backend serves the destination probe: render its per-row answer. */
+	probe: boolean;
+}> = ({ tree, device, showClone, clonePending, probe }) => (
 	<li className="flex flex-col gap-0.5 py-1.5">
 		<span className="flex items-start gap-1.5">
 			<FolderGit2
@@ -204,6 +381,7 @@ const WorktreeRow: FC<{
 						})}
 			</span>
 		)}
+		{probe && <ProbeLines tree={tree} device={device} />}
 	</li>
 );
 
@@ -296,6 +474,12 @@ export const WorkingSetReview: FC<{
 	/** The route refused `working_set_changed`: say why the list is being asked again. */
 	changed: boolean;
 	disabled: boolean;
+	/**
+	 * `features.session_transfer_working_set_probe`: render the destination's
+	 * reachability and prerequisite answers. False renders exactly the pre-probe
+	 * review even if a block happens to carry the fields.
+	 */
+	probe?: boolean;
 }> = ({
 	workingSet,
 	mode,
@@ -304,6 +488,7 @@ export const WorkingSetReview: FC<{
 	onConfidentChange,
 	changed,
 	disabled,
+	probe = false,
 }) => {
 	useI18nLocale();
 	const checkboxId = useId();
@@ -335,6 +520,7 @@ export const WorkingSetReview: FC<{
 			<Alert variant="warning" className="text-meta" data-mode={mode}>
 				{warning}
 			</Alert>
+			{probe && workingSet && <ProbeNotices set={workingSet} device={device} />}
 			{workingSet && (
 				<div className="flex max-h-72 min-h-0 flex-col gap-3 overflow-y-auto pe-1">
 					{sent.length > 0 && (
@@ -345,15 +531,31 @@ export const WorkingSetReview: FC<{
 											count: sent.length,
 											size: formatBytes(workingSet.totals.bytes),
 										})
-									: t("ui.mesh.mesh_actions.working_set_kept_heading", {
-											count: sent.length,
-										})
+									: /*
+										 * WHERE THEY STAY is a device the user recognises when the
+										 * block names it (`source`): "stays where it is" is ambiguous
+										 * from the destination's side of a recall.
+										 */
+										workingSet.source
+										? t("ui.mesh.mesh_actions.working_set_kept_heading_on", {
+												count: sent.length,
+												source: workingSet.source.name,
+											})
+										: t("ui.mesh.mesh_actions.working_set_kept_heading", {
+												count: sent.length,
+											})
 							}
 						>
 							{sent.map((tree) => {
+								/*
+								 * The "cloned from origin if missing" note stays for an `ok` probe
+								 * (the destination CAN fetch, so a clone would work) and goes for a
+								 * failed one, whose own line says why a clone would not.
+								 */
 								const noteClone =
 									mode === "send" &&
-									tree.cloneCheck === "pending_destination" &&
+									(tree.cloneCheck === "pending_destination" ||
+										(probe && tree.cloneCheck === "ok")) &&
 									tree.remoteUrl !== null &&
 									!cloneNoted.has(tree.repo);
 								if (noteClone) cloneNoted.add(tree.repo);
@@ -364,6 +566,7 @@ export const WorkingSetReview: FC<{
 										device={device}
 										showClone={mode === "send"}
 										clonePending={noteClone}
+										probe={probe}
 									/>
 								);
 							})}

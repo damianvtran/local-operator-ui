@@ -1045,6 +1045,16 @@ export type DesktopFeature =
 	 */
 	| "session_transfer_working_set"
 	/**
+	 * The preflight's DESTINATION PROBE (core `server/features.py`, design
+	 * move-working-set §11.1a): each `working_set.worktrees[]` row carries the
+	 * destination's own `clone_check` answer plus optional `clone_detail` /
+	 * `https_rewrite` / `remedy` / `missing_tools`, and the block carries
+	 * `destination_probe`. Additive members of the same mapping, so its own key:
+	 * without it the review renders exactly what it did before (an unprobed
+	 * `pending_destination` row keeps its "cloned if missing" note).
+	 */
+	| "session_transfer_working_set_probe"
+	/**
 	 * The onboarding approval surface (`features.approvals`): the badge read
 	 * (`GET /v1/desktop/approvals`) plus the two decision posts, and nothing else.
 	 *

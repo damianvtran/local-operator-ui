@@ -2128,5 +2128,70 @@
 		"role": "confirmation explanation — move dialog working-set review",
 		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
 		"note": "Reason line under a worktree that will not be moved, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_ok": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Shown when the destination can both fetch and push the remote. Destination reachability line under one worktree row: the DESTINATION device checked, with its own credentials, whether it can reach this repository's git remote. device = destination device display name; remote = git remote URL, never translated. Keep git fetch/push in the form this locale's style guide uses for git verbs (do not reuse this dialog's \"send\"/\"confirm\" verbs)."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_cannot_fetch": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Warning: the destination cannot read (git fetch) the remote with its own access. Destination reachability line under one worktree row: the DESTINATION device checked, with its own credentials, whether it can reach this repository's git remote. device = destination device display name; remote = git remote URL, never translated. Keep git fetch/push in the form this locale's style guide uses for git verbs (do not reuse this dialog's \"send\"/\"confirm\" verbs)."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_cannot_push": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Warning: the destination can read the remote but cannot git push to it, so work done there cannot be pushed onward. Destination reachability line under one worktree row: the DESTINATION device checked, with its own credentials, whether it can reach this repository's git remote. device = destination device display name; remote = git remote URL, never translated. Keep git fetch/push in the form this locale's style guide uses for git verbs (do not reuse this dialog's \"send\"/\"confirm\" verbs)."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_cannot_clone": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Warning: the destination refuses this remote address (not an allowed https/ssh URL) or has no git installed. Destination reachability line under one worktree row: the DESTINATION device checked, with its own credentials, whether it can reach this repository's git remote. device = destination device display name; remote = git remote URL, never translated. Keep git fetch/push in the form this locale's style guide uses for git verbs (do not reuse this dialog's \"send\"/\"confirm\" verbs)."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_no_remote": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Information: the repository has no git remote configured. Destination reachability line under one worktree row: the DESTINATION device checked, with its own credentials, whether it can reach this repository's git remote. device = destination device display name; remote = git remote URL, never translated. Keep git fetch/push in the form this locale's style guide uses for git verbs (do not reuse this dialog's \"send\"/\"confirm\" verbs)."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_unknown": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Shown once above the lists when the destination could not be asked (older Local Operator there). Information, not an error. device = destination device display name."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_https_rewrite": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Information offered under a cannot-fetch row: the SSH remote is unreachable from the destination but the equivalent HTTPS URL works. device = destination display name; url = HTTPS URL, never translated. SSH/HTTPS stay as is."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_remedy": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Introduces a copyable shell command shown on the next line (rendered separately, not in this string). The command must be run on the OTHER device that shares its GitHub login over the mesh, not on the destination. Ends with a colon because the command follows."
+	},
+	"ui.mesh.mesh_actions.working_set_probe_copy": {
+		"role": "button label — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Button label: copies the remedy shell command to the clipboard. Short."
+	},
+	"ui.mesh.mesh_actions.working_set_missing_tools": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Warning heading above a bulleted list of command-line tool names (go, pnpm, node, uv, cargo, npm) the destination lacks; the list follows, so end with a colon. The move is NOT blocked. device = destination display name."
+	},
+	"ui.mesh.mesh_actions.working_set_row_missing_tools": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Per-worktree line: the tools this worktree needs that the destination lacks. tools = locale-formatted list of tool names (never translated). device = destination display name."
+	},
+	"ui.mesh.mesh_actions.working_set_team_bridge": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Warning: this conversation uses Team Bridge (product name, never translated) and the destination device is not enrolled in it. The move is NOT blocked. device = destination display name."
+	},
+	"ui.mesh.mesh_actions.working_set_kept_heading_on": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Section heading when the move does NOT carry the files: these worktrees stay on the SOURCE device. count = number of worktrees; source = source device display name."
 	}
 }

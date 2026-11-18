@@ -687,3 +687,247 @@ test("an unknown working set offers only the explicit move-without consent", asy
 		"the stale digest is dropped; only the without-consent travels",
 	);
 });
+
+/* ---------------------------------------------------- the destination probe */
+
+/*
+ * `session_transfer_working_set_probe` (core PR #4241 @ 2125f497b, design
+ * move-working-set §11.1a): the destination checked each remote with its own
+ * credentials before the user confirms. Shapes below are `apply_probe`'s output.
+ */
+const PROBE_FEATURES = {
+	peers: 1,
+	session_transfer: 1,
+	session_transfer_working_set: 1,
+	session_transfer_working_set_probe: 1,
+};
+
+function probedBlock(overrides = {}) {
+	const base = block();
+	return {
+		...base,
+		source: { device_id: `d_${"a".repeat(32)}`, name: "damian-mac" },
+		worktrees: [
+			{
+				...base.worktrees[0],
+				remote_url: "git@github.com:o/r.git",
+				clone: undefined,
+				clone_check: "destination_cannot_fetch",
+				clone_detail: "git@github.com: Permission denied (publickey).",
+				https_rewrite: {
+					url: "https://github.com/o/r.git",
+					fetch: true,
+					push: false,
+				},
+				remedy: {
+					run_on: "lending_device",
+					command: "lop network credential share github --with build-box",
+				},
+				missing_tools: ["node", "pnpm"],
+				markers: ["pnpm-lock.yaml"],
+			},
+			base.worktrees[1],
+		],
+		destination_probe: {
+			state: "answered",
+			missing_tools: ["node", "pnpm"],
+			team_bridge: { needed: true, enrolled: false },
+		},
+		...overrides,
+	};
+}
+
+test("the parser reads the probe's row and block answers, and malformed ones never throw", () => {
+	const set = api.workingSet(probedBlock());
+	const [tree] = set.worktrees;
+	assert.equal(tree.cloneCheck, "destination_cannot_fetch");
+	assert.equal(
+		tree.cloneDetail,
+		"git@github.com: Permission denied (publickey).",
+	);
+	assert.deepEqual(tree.httpsRewrite, {
+		url: "https://github.com/o/r.git",
+		push: false,
+	});
+	assert.deepEqual(tree.remedy, {
+		runOn: "lending_device",
+		command: "lop network credential share github --with build-box",
+	});
+	assert.deepEqual(tree.missingTools, ["node", "pnpm"]);
+	assert.deepEqual(set.source, {
+		deviceId: `d_${"a".repeat(32)}`,
+		name: "damian-mac",
+	});
+	assert.deepEqual(set.destinationProbe, {
+		state: "answered",
+		missingTools: ["node", "pnpm"],
+		teamBridge: { needed: true, enrolled: false },
+	});
+	// A pre-probe block reads as "no probe", not as a failure.
+	const bare = api.workingSet(block());
+	assert.equal(bare.destinationProbe, null);
+	assert.equal(bare.source, null);
+	assert.deepEqual(bare.worktrees[0].missingTools, []);
+	assert.equal(bare.worktrees[0].remedy, null);
+	// Wrong-typed members are dropped one by one, never thrown on.
+	const odd = api.workingSet(
+		probedBlock({
+			worktrees: [
+				{
+					path: "~/x",
+					clone_check: "destination_cannot_push",
+					https_rewrite: "https://nope",
+					remedy: { run_on: "lending_device" },
+					missing_tools: ["go", 7, "", null],
+				},
+			],
+			destination_probe: { missing_tools: ["go"] },
+			source: { device_id: "d_x" },
+		}),
+	);
+	assert.equal(odd.worktrees[0].httpsRewrite, null);
+	assert.equal(odd.worktrees[0].remedy, null, "a remedy without a command");
+	assert.deepEqual(odd.worktrees[0].missingTools, ["go"]);
+	assert.equal(odd.destinationProbe, null, "a probe block without a state");
+	assert.equal(odd.source, null, "a source without a name");
+});
+
+test("with the probe, each row says whether the destination can reach its remote, and Confirm still waits only for the tick", async () => {
+	installBridge({
+		features: PROBE_FEATURES,
+		preflight: { working_set: probedBlock() },
+	});
+	const view = await mount({});
+	const review = document.querySelector('[data-testid="working-set"]');
+	const line = review.querySelector('[data-probe="destination_cannot_fetch"]');
+	assert.ok(line, "the failed row carries its reachability line");
+	assert.match(
+		line.textContent,
+		/build-box can't fetch git@github\.com:o\/r\.git/,
+	);
+	assert.match(
+		review.querySelector("[data-probe-detail]").textContent,
+		/Permission denied \(publickey\)/,
+		"git's own error line is shown under it",
+	);
+	assert.match(
+		review.textContent,
+		/HTTPS does: https:\/\/github\.com\/o\/r\.git/,
+	);
+	const remedy = review.querySelector("[data-probe-remedy]");
+	assert.match(
+		remedy.querySelector("code").textContent,
+		/^lop network credential share github --with build-box$/,
+	);
+	assert.ok(
+		[...remedy.querySelectorAll("button")].some((b) =>
+			/Copy command/.test(b.textContent),
+		),
+		"the remedy command is copyable",
+	);
+	assert.match(review.textContent, /Missing on build-box: node, pnpm/);
+	const tools = review.querySelector('[data-probe="missing-tools"]');
+	assert.deepEqual(
+		[...tools.querySelectorAll("li")].map((li) => li.textContent),
+		["node", "pnpm"],
+	);
+	assert.match(
+		review.querySelector('[data-probe="team-bridge"]').textContent,
+		/isn't enrolled in Team Bridge/,
+	);
+	assert.equal(
+		review.querySelectorAll('[role="checkbox"]').length,
+		1,
+		"warnings add no second consent",
+	);
+	assert.equal(view.confirm().disabled, true);
+	await act(async () => review.querySelector('[role="checkbox"]').click());
+	assert.equal(view.confirm().disabled, false, "probe failures never block");
+	await act(async () => view.confirm().click());
+	assert.equal(view.chosen[0].confirmWorkingSet, DIGEST);
+});
+
+test("without the probe capability a probed block renders the review unchanged", async () => {
+	installBridge({
+		features: {
+			peers: 1,
+			session_transfer: 1,
+			session_transfer_working_set: 1,
+		},
+		preflight: { working_set: probedBlock() },
+	});
+	await mount({});
+	const review = document.querySelector('[data-testid="working-set"]');
+	assert.ok(review);
+	assert.equal(review.querySelector("[data-probe]"), null);
+	assert.equal(review.querySelector("[data-probe-remedy]"), null);
+	assert.doesNotMatch(review.textContent, /Team Bridge|Missing on/);
+});
+
+test("an older destination is said once as could-not-check; an ok row keeps its clone note", async () => {
+	const base = block();
+	installBridge({
+		features: PROBE_FEATURES,
+		preflight: {
+			working_set: probedBlock({
+				worktrees: [
+					{
+						...base.worktrees[0],
+						clone: undefined,
+						remote_url: "https://github.com/o/r.git",
+						clone_check: "unknown_destination",
+					},
+				],
+				destination_probe: { state: "unknown_destination" },
+			}),
+		},
+	});
+	await mount({});
+	let review = document.querySelector('[data-testid="working-set"]');
+	assert.equal(review.querySelectorAll('[data-probe="unknown"]').length, 1);
+	assert.equal(
+		review.querySelector('[data-probe="unknown_destination"]'),
+		null,
+		"no per-row repeat",
+	);
+	await mounted();
+	mounted = null;
+	installBridge({
+		features: PROBE_FEATURES,
+		preflight: {
+			working_set: probedBlock({
+				worktrees: [
+					{
+						...base.worktrees[0],
+						clone: undefined,
+						remote_url: "https://github.com/o/r.git",
+						clone_check: "ok",
+					},
+				],
+				destination_probe: { state: "answered", missing_tools: [] },
+			}),
+		},
+	});
+	await mount({});
+	review = document.querySelector('[data-testid="working-set"]');
+	assert.match(
+		review.querySelector('[data-probe="ok"]').textContent,
+		/build-box can fetch and push this repository/,
+	);
+	assert.match(
+		review.textContent,
+		/cloned from https:\/\/github\.com\/o\/r\.git/,
+	);
+	assert.equal(review.querySelector('[data-probe="missing-tools"]'), null);
+	assert.equal(review.querySelector('[data-probe="team-bridge"]'), null);
+});
+
+test("when the files stay, the kept heading names the device they stay on", async () => {
+	installBridge({
+		features: PROBE_FEATURES,
+		preflight: { working_set: probedBlock({ carries_files: false }) },
+	});
+	await mount({});
+	const review = document.querySelector('[data-testid="working-set"]');
+	assert.match(review.textContent, /1 worktree stays on damian-mac/);
+});

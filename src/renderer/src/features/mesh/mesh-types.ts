@@ -774,6 +774,25 @@ export type WorkingSetWorktree = {
 	remoteUrl: string | null;
 	/** This row IS the primary checkout rather than a linked worktree. */
 	primary: boolean;
+	/*
+	 * THE DESTINATION PROBE's per-row answer (`session_transfer_working_set_probe`,
+	 * core `network/workset_probe.py` `apply_probe`). The destination itself ran
+	 * `git ls-remote` and a `push --dry-run` against `remote_url` with ITS OWN
+	 * credentials, so `cloneCheck` becomes `ok` / `destination_cannot_fetch` /
+	 * `destination_cannot_push` / `destination_cannot_clone` / `no_remote` /
+	 * `unknown_destination`. A probe failure FLAGS a row, it never moves it to
+	 * `left_behind` (the gate re-computes without re-probing), which is why these
+	 * are read beside `state`, not instead of it. All four are absent on a backend
+	 * without the probe; the renderer additionally gates on the capability.
+	 */
+	/** git's first stderr line (`ERROR: Permission … denied`) or a probe code. */
+	cloneDetail: string | null;
+	/** The SSH remote failed but its HTTPS twin answered: an offer, never applied here. */
+	httpsRewrite: { url: string; push: boolean } | null;
+	/** The exact command that grants access, and where it must run. */
+	remedy: { runOn: string; command: string } | null;
+	/** Toolchains this worktree's markers need that the destination's PATH lacks. */
+	missingTools: string[];
 };
 
 /** A path withheld from the transfer because it looks like a secret. */
@@ -807,6 +826,25 @@ export type WorkingSet = {
 	 */
 	confirmationRequired: boolean;
 	destination: { deviceId: string; name: string };
+	/**
+	 * The device that holds the files now (core `Manifest.to_dict` `source`). Named
+	 * where the files STAY, so "stays where it is" says which machine. `null` on a
+	 * block without it.
+	 */
+	source: { deviceId: string; name: string } | null;
+	/**
+	 * The destination probe's block-level answer, `null` when the backend has no
+	 * probe. `state: "unknown_destination"` means the destination could not be
+	 * asked (an older lop there): every row then reads `unknown_destination`, which
+	 * is "could not check", never a failure. `missingTools` is the union of the
+	 * rows'; `teamBridge` is present only when the source saw the conversation use
+	 * Team Bridge. Both prerequisites WARN, they never block the move.
+	 */
+	destinationProbe: {
+		state: string;
+		missingTools: string[];
+		teamBridge: { needed: boolean; enrolled: boolean } | null;
+	} | null;
 	totals: {
 		worktrees: number;
 		unpushedCommits: number;
@@ -840,6 +878,42 @@ function cloneOf(raw: Record<string, unknown>): WorkingSetWorktree["clone"] {
 	return bytes === null ? null : { url: text(raw.remote_url), bytes };
 }
 
+/** A string array from the wire: non-strings and blanks dropped, never throws. */
+function names(value: unknown): string[] {
+	return Array.isArray(value)
+		? value.filter(
+				(item): item is string => typeof item === "string" && item.length > 0,
+			)
+		: [];
+}
+
+function httpsRewriteOf(value: unknown): WorkingSetWorktree["httpsRewrite"] {
+	if (!isRecord(value)) return null;
+	const url = text(value.url);
+	return url ? { url, push: value.push === true } : null;
+}
+
+function remedyOf(value: unknown): WorkingSetWorktree["remedy"] {
+	if (!isRecord(value)) return null;
+	const command = text(value.command);
+	return command ? { runOn: text(value.run_on), command } : null;
+}
+
+function destinationProbeOf(value: unknown): WorkingSet["destinationProbe"] {
+	if (!isRecord(value)) return null;
+	const state = text(value.state);
+	if (!state) return null;
+	const bridge = isRecord(value.team_bridge) ? value.team_bridge : null;
+	return {
+		state,
+		missingTools: names(value.missing_tools),
+		teamBridge:
+			bridge && bridge.needed === true
+				? { needed: true, enrolled: bridge.enrolled === true }
+				: null,
+	};
+}
+
 function worktree(raw: Record<string, unknown>): WorkingSetWorktree | null {
 	const path = text(raw.path);
 	if (!path) return null;
@@ -863,6 +937,10 @@ function worktree(raw: Record<string, unknown>): WorkingSetWorktree | null {
 		cloneCheck: textOrNull(raw.clone_check),
 		remoteUrl: textOrNull(raw.remote_url),
 		primary: raw.primary === true,
+		cloneDetail: textOrNull(raw.clone_detail),
+		httpsRewrite: httpsRewriteOf(raw.https_rewrite),
+		remedy: remedyOf(raw.remedy),
+		missingTools: names(raw.missing_tools),
 	};
 }
 
@@ -894,6 +972,7 @@ export function workingSet(value: unknown): WorkingSet | null {
 	const scopeDigest = text(value.scope_digest);
 	if (!SCOPE_DIGEST.test(scopeDigest)) return null;
 	const destination = isRecord(value.destination) ? value.destination : {};
+	const source = isRecord(value.source) ? value.source : null;
 	const totals = isRecord(value.totals) ? value.totals : {};
 	const worktrees = rows(value.worktrees)
 		.map(worktree)
@@ -922,6 +1001,11 @@ export function workingSet(value: unknown): WorkingSet | null {
 			deviceId: text(destination.device_id),
 			name: text(destination.name),
 		},
+		source:
+			source && text(source.name)
+				? { deviceId: text(source.device_id), name: text(source.name) }
+				: null,
+		destinationProbe: destinationProbeOf(value.destination_probe),
 		totals: {
 			worktrees: count(totals.worktrees),
 			unpushedCommits: count(totals.unpushed_commits),
