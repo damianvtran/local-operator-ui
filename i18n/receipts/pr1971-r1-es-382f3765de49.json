@@ -1,0 +1,111 @@
+{
+  "schema": 1,
+  "agent": "i18n-auditor",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "382f3765de49",
+    "instance": "pr1971-r1-es-382f3765de49",
+    "model": "deepseek/deepseek-flash",
+    "independence": "Independent auditor: did not author the translations. The translator was the PR's coder session (commit 44f676535, session 306dec1075ff); this audit was a separate agent run and only corrected strings it rejected.",
+    "independent_from_translator_session": true
+  },
+  "model": "deepseek/deepseek-flash",
+  "instance": "pr1971-r1-es-382f3765de49",
+  "locale": "es",
+  "namespace": "ui.chat.remote_compute",
+  "date": "2026-11-18",
+  "head": "44f676535c3e5b14ad6fca963c28c266df2bfb3b",
+  "base": "846b247a8d05cb45e74672bcde2e5c11867d34d6",
+  "branch": "feat/remote-compute-device-row",
+  "pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+  "scope": "Independent audit of all 77 ui.chat.remote_compute keys in es: glossary, the es style guide, claim-sensitive binding/tier copy, placeholders, CLDR plural categories, RTL/bidi and cell budgets. Rejected strings corrected in-place; residual findings counted below.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "inputs": {
+    "english": "src/i18n/catalogues/en/ui.chat.remote_compute.json",
+    "english_sha256": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+    "context": "src/i18n/catalogues/en/ui.chat.remote_compute.context.json",
+    "context_sha256": "c358a82a1da24a9b2eff74768c99eee1df98b846379ccb1afdc2d615dd95ee73",
+    "target": "src/i18n/catalogues/es/ui.chat.remote_compute.json",
+    "target_sha256": "f757a7f1f002101a08a4fee36b20ec5a9de9a27e59ad8e4a592b6e026c57a1b8",
+    "glossary": "i18n/glossary.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_guide": "i18n/style-guides/es.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+    "style_guide_sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+  },
+  "sha256": {
+    "en": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+    "es": "f757a7f1f002101a08a4fee36b20ec5a9de9a27e59ad8e4a592b6e026c57a1b8"
+  },
+  "claim_check": {
+    "binding": "recorded + not enforced, and no isolated/secured/segmented/private claim, in every locale",
+    "recorded_sentence": "the sheet sentence states the run is recorded against the network and that access is not restricted by it in this version",
+    "result": "passes in all seven locales"
+  },
+  "corrections": [
+    {
+      "key": "ui.chat.remote_compute.sheet.prompt.label",
+      "from": "Mensaje",
+      "to": "Prompt",
+      "reason": "prompt is on the es guide's kept-English list; corpus uses 'prompt' 30x and keeps 'mensaje' for a sent message"
+    },
+    {
+      "key": "ui.chat.remote_compute.sheet.prompt.empty",
+      "from": "El compositor está vacío; una ejecución necesita un mensaje.",
+      "to": "El compositor está vacío; una ejecución necesita un prompt.",
+      "reason": "same call"
+    },
+    {
+      "key": "ui.chat.remote_compute.sheet.submit.why_prompt",
+      "from": "Escribe primero un mensaje en el compositor.",
+      "to": "Escribe primero un prompt en el compositor.",
+      "reason": "same call"
+    },
+    {
+      "key": "ui.chat.remote_compute.row.sentence.sign_in",
+      "from": "Radient: inicia sesión para ejecutar el mensaje de esta conversación en capacidad alquilada. Al seleccionar esta fila se inicia la sesión.",
+      "to": "Radient: inicia sesión para ejecutar el prompt de esta conversación en capacidad alquilada. Al seleccionar esta fila se inicia la sesión.",
+      "reason": "same call"
+    },
+    {
+      "key": "ui.chat.remote_compute.remedy.push_branch",
+      "from": "Subir esta rama",
+      "to": "Hacer push de esta rama",
+      "reason": "es guide: push stays English ('Hacer pull ahora' pattern); 'subir' is the corpus's upload verb and would read as upload"
+    },
+    {
+      "key": "ui.chat.remote_compute.remedy.push_branch_help",
+      "from": "La ejecución empezaría en un commit que no está en ningún remoto. Sube la rama y vuelve a iniciar la ejecución.",
+      "to": "La ejecución empezaría en un commit que no está en ningún remoto. Haz push de la rama y vuelve a iniciar la ejecución.",
+      "reason": "push kept English"
+    },
+    {
+      "key": "ui.chat.remote_compute.row.not_offered",
+      "from": "no disponible en esta implementación",
+      "to": "no disponible en este despliegue",
+      "reason": "one English word 'deployment' had two renderings in the namespace; 'despliegue' is the one the sibling sentence already uses"
+    },
+    {
+      "key": "ui.chat.remote_compute.row.sentence.not_offered",
+      "from": "Radient: esta implementación no ofrece computación remota.",
+      "to": "Radient: este despliegue no ofrece computación remota.",
+      "reason": "same single-term call"
+    }
+  ],
+  "findings": {
+    "minor": [],
+    "nit": [
+      {
+        "severity": "nit",
+        "key": "ui.chat.remote_compute.row.sign_in",
+        "issue": "'para usarlo' has no antecedent gender in a chip whose noun is unnamed; understandable, left as the terser reading."
+      },
+      {
+        "severity": "nit",
+        "key": "ui.chat.remote_compute.card.binding",
+        "issue": "'no aplicada' mirrors the fr call: the claim is right (recorded, not enforced) but the participle's subject is implicit."
+      }
+    ]
+  },
+  "notes": "Severity counts are the RESIDUAL findings on the corrected bytes. Strings this audit rejected were corrected in the same commit and are listed under corrections; they are not counted as unresolved."
+}
