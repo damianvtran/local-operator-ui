@@ -290,7 +290,7 @@
 	"ui.mesh.mesh_actions.working_set_probe_detail_not_found": "ریموٹ کے مطابق یہ ریپوزٹری موجود نہیں، یا {device} اسے نہیں دیکھ سکتی۔",
 	"ui.mesh.mesh_actions.working_set_probe_detail_unreachable": "{device} ریموٹ سے جڑ نہیں سکی۔",
 	"ui.mesh.mesh_actions.working_set_probe_detail_tls": "{device} ریموٹ کا TLS سرٹیفکیٹ تصدیق نہیں کر سکی۔",
-	"ui.mesh.mesh_actions.working_set_probe_detail_host_key": "{device} ریموٹ کی SSH ہوسٹ کی نہیں پہچانتی۔",
+	"ui.mesh.mesh_actions.working_set_probe_detail_host_key": "{device} ریموٹ کی SSH ہوسٹ کلید نہیں پہچانتی۔",
 	"ui.mesh.mesh_actions.working_set_probe_detail_host_refused": "Local Operator اس ہوسٹ سے رابطہ نہیں کرے گا: یہ کسی نجی یا مقامی پتے پر جاتا ہے۔",
 	"ui.mesh.mesh_actions.working_set_probe_detail_error": "{device} پر Git نے ایک خرابی بتائی۔",
 	"ui.mesh.mesh_actions.working_set_probe_remedy_on": "درست کرنے کے لیے، {lender} پر یہ چلائیں:",
