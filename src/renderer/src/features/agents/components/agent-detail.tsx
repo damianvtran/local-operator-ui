@@ -27,6 +27,7 @@ import { AgentMark } from "@shared/agent-avatar/agent-mark";
 import {
 	DesktopControlError,
 	desktopResult,
+	isServerUpdatingError,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import type {
@@ -133,7 +134,7 @@ const TOOL_TOKEN = /^[A-Za-z0-9_.:-]{1,128}$/;
  * copy), and handing that string on put English on the save alert, the install
  * alert and the install toast in EVERY language (QA round 1, Q1).
  *
- * TWO ARMS, in this order:
+ * THREE ARMS, in this order (0 being the server-updating sentence, below):
  *  1. The transport failure itself is worded by
  *     `ui.common.errors.desktop_transport_failed`, the key the sibling read-state
  *     pane (`missing-definition-error.tsx`) already uses for the same refusal.
@@ -147,7 +148,18 @@ const TOOL_TOKEN = /^[A-Za-z0-9_.:-]{1,128}$/;
  *     so `refusalCopy` still recognises and routes it, and a value that is not an
  *     authored message becomes `fallback` instead of a stack-trace fragment.
  */
-function writeFailureSentence(caught: unknown, fallback: string): string {
+export function writeFailureSentence(
+	caught: unknown,
+	fallback: string,
+): string {
+	/*
+	 * SERVER UPDATING FIRST (UI #1952 review, R2-m1). Inside main's update window
+	 * a transport failure carries the `detail.updating` hint, and the transport
+	 * arm below matched it first, so an update read as "the server did not
+	 * answer". `userFacingMessage` already orders updating before everything else;
+	 * this keeps the pane's own arm from overtaking it.
+	 */
+	if (isServerUpdatingError(caught)) return userFacingMessage(caught, fallback);
 	if (
 		caught instanceof DesktopControlError &&
 		(caught.code === DESKTOP_REFUSAL_CODE.transportFailed ||

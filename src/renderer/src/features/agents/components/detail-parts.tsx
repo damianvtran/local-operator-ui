@@ -713,10 +713,12 @@ export function PaneError({
 	meaning,
 	onRetry,
 	retrying = false,
-	retryLabel = "Retry",
-	retryingLabel = "Retrying…",
+	// Defaults are evaluated per render, so they follow the locale; a pane with
+	// its own words still passes them.
+	retryLabel = t("ui.common.actions.retry"),
+	retryingLabel = t("ui.agents.detail.read_state.retrying"),
 }: {
-	/** The Retry button's words; defaults are the English the older panes print. */
+	/** The Retry button's words; defaults are the shared Retry / Retrying… keys. */
 	retryLabel?: string;
 	retryingLabel?: string;
 	title: string;

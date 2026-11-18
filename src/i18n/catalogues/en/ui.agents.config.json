@@ -36,5 +36,21 @@
 	"ui.agents.config.summary.you_asked": "You asked: {topic}",
 	"ui.agents.config.banner.unavailable": "The backend could not be reached, so the composer is unavailable for now.",
 	"ui.agents.config.disabled_gate": "Configure agents by conversation",
-	"ui.agents.config.run_details_region": "Run details"
+	"ui.agents.config.run_details_region": "Run details",
+	"ui.agents.config.title.working": "Working on your request",
+	"ui.agents.config.title.stopping": "Stopping",
+	"ui.agents.config.title.finished": "Finished",
+	"ui.agents.config.title.finished_no_changes": "Finished without changing anything",
+	"ui.agents.config.title.stopped": "Stopped",
+	"ui.agents.config.title.stopped_error": "Stopped with an error",
+	"ui.agents.config.title.finished_error": "Finished with an error",
+	"ui.agents.config.placeholder.working": "Working on your request…",
+	"ui.agents.config.seed_prompt": "Change the {kind, select, agent {agent} team {team} skill {skill} other {definition}} {name}: ",
+	"ui.agents.config.error.lists_unreadable": "The run finished, but the agents and teams lists could not be read to describe what changed.",
+	"ui.agents.config.error.send_after_setup": "The run was set up, but your request could not be sent. It is still in the box — send it again when the backend is reachable.",
+	"ui.agents.config.error.start_failed": "The configuration run could not be started. Your request is still here.",
+	"ui.agents.config.error.send_failed": "The request could not be sent. It is still in the box.",
+	"ui.agents.config.error.stop_unacknowledged": "The run did not acknowledge the request.",
+	"ui.agents.config.disabled.connecting": "Connecting to the backend…",
+	"ui.agents.config.disabled.needs_newer_backend": "Ask for a change needs a newer backend. Update Local Operator to configure agents by conversation."
 }

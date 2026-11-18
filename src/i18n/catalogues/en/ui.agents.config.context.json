@@ -200,5 +200,120 @@
 		"length": "Two words.",
 		"note": "Applied only while the region overflows and is therefore a real tab stop; when everything fits it is not a region and carries no name.",
 		"placeholders": {}
+	},
+	"ui.agents.config.title.working": {
+		"role": "Heading of the configuration run's status row while the run is going and has not reported a step yet",
+		"note": "The run is changing agents or teams in the background on the operator's behalf.",
+		"tone": "Plain status heading, sentence case, no trailing punctuation",
+		"length": "A few words",
+		"placeholders": {}
+	},
+	"ui.agents.config.title.stopping": {
+		"role": "Heading of the configuration run's status row after the operator pressed Stop and before the run has stopped",
+		"note": "No ellipsis: the row's own spinner carries the motion.",
+		"tone": "Plain status heading, sentence case, no trailing punctuation",
+		"length": "A few words",
+		"placeholders": {}
+	},
+	"ui.agents.config.title.finished": {
+		"role": "Heading of the configuration run's status row once the run finished and changed something",
+		"note": "A list of what changed follows under it.",
+		"tone": "Plain status heading, sentence case, no trailing punctuation",
+		"length": "A few words",
+		"placeholders": {}
+	},
+	"ui.agents.config.title.finished_no_changes": {
+		"role": "Heading of the configuration run's status row once the run finished without changing any agent or team",
+		"note": "Not an error: the run simply had nothing to change.",
+		"tone": "Plain status heading, sentence case, no trailing punctuation",
+		"length": "A few words",
+		"placeholders": {}
+	},
+	"ui.agents.config.title.stopped": {
+		"role": "Heading of the configuration run's status row after the operator's own Stop took effect",
+		"note": "The operator stopped it; not a failure.",
+		"tone": "Plain status heading, sentence case, no trailing punctuation",
+		"length": "A few words",
+		"placeholders": {}
+	},
+	"ui.agents.config.title.stopped_error": {
+		"role": "Heading of the configuration run's status row when the request could not be sent or started; a Retry button follows",
+		"note": "Nothing was sent, so retrying is safe; contrast with 'Finished with an error'.",
+		"tone": "Plain status heading, sentence case, no trailing punctuation",
+		"length": "A few words",
+		"placeholders": {}
+	},
+	"ui.agents.config.title.finished_error": {
+		"role": "Heading of the configuration run's status row when the run ran but its result could not be read back",
+		"note": "The run did run; only describing its result failed. Contrast with 'Stopped with an error'.",
+		"tone": "Plain status heading, sentence case, no trailing punctuation",
+		"length": "A few words",
+		"placeholders": {}
+	},
+	"ui.agents.config.placeholder.working": {
+		"role": "Placeholder of the configuration composer's text box while a run is going",
+		"tone": "Plain progress statement, keeps the trailing ellipsis",
+		"length": "One short line",
+		"note": "Same words as the status heading 'Working on your request', plus the ellipsis.",
+		"placeholders": {}
+	},
+	"ui.agents.config.seed_prompt": {
+		"role": "Text pre-filled into the configuration composer by 'Ask for a change'; the operator types their request after it and sends it to the assistant",
+		"tone": "Plain imperative opening, as if the operator wrote it",
+		"length": "A few words",
+		"note": "Keep the trailing colon and space: the operator's own words continue after them. {kind} is a select over agent/team/skill (other is a fallback); inflect each arm to fit the sentence. {name} is the definition's identifier and must stay exactly as given, since the assistant matches it by name.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition",
+			"name": "the definition's identifier, never translated"
+		}
+	},
+	"ui.agents.config.error.lists_unreadable": {
+		"role": "Error line under the configuration run when it finished but the page could not reload the lists to show the changes",
+		"tone": "Plain statement, no blame",
+		"length": "One sentence",
+		"note": "The run's changes did happen; only the description is missing. The lists' own Retry follows.",
+		"placeholders": {}
+	},
+	"ui.agents.config.error.send_after_setup": {
+		"role": "Error line when the configuration run started but the operator's request could not be delivered",
+		"tone": "Plain statement, then the remedy",
+		"length": "Two sentences",
+		"note": "'The box' is the composer text box, which still holds the request.",
+		"placeholders": {}
+	},
+	"ui.agents.config.error.start_failed": {
+		"role": "Error line when the configuration run could not be started at all",
+		"tone": "Plain statement, reassuring",
+		"length": "Two short sentences",
+		"note": "'Here' is the composer text box, which still holds the request.",
+		"placeholders": {}
+	},
+	"ui.agents.config.error.send_failed": {
+		"role": "Error line when a follow-up request to a running configuration run could not be delivered",
+		"tone": "Plain statement, reassuring",
+		"length": "Two short sentences",
+		"note": "'The box' is the composer text box, which still holds the request.",
+		"placeholders": {}
+	},
+	"ui.agents.config.error.stop_unacknowledged": {
+		"role": "Error line when the operator pressed Stop and the run did not confirm it",
+		"tone": "Plain statement",
+		"length": "One short sentence",
+		"note": "'The request' is the stop request; the run may still be going.",
+		"placeholders": {}
+	},
+	"ui.agents.config.disabled.connecting": {
+		"role": "Reason shown in place of the configuration composer while the backend's capabilities are still loading",
+		"tone": "Plain progress statement, keeps the trailing ellipsis",
+		"length": "One short line",
+		"note": "'Backend' is the local Local Operator server.",
+		"placeholders": {}
+	},
+	"ui.agents.config.disabled.needs_newer_backend": {
+		"role": "Reason shown in place of the configuration composer when the backend is too old to support it",
+		"tone": "Plain statement, then the remedy",
+		"length": "Two sentences",
+		"note": "'Ask for a change' is the feature's name (the button label ui.agents.detail.action.ask_change); use the same translation. 'Local Operator' is the product name, never translated.",
+		"placeholders": {}
 	}
 }
