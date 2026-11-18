@@ -121,8 +121,8 @@ export interface ApprovalsOverlayDeps {
 	 */
 	respond?: (entryId: string, decision: ApprovalsCardDecision) => unknown;
 	/**
-	 * The person dismissed the card's password-manager notice (X or Escape). The
-	 * host only marks that hold's notice dismissed (`PasskeyCustody.dismiss`):
+	 * The person dismissed the card's native passkey notice (X or Escape). The
+	 * host only dismisses the projection:
 	 * no release, no reload, no CDP — the prompt itself is untouched.
 	 */
 	onNoticeDismiss?: (notice: { tabId: number; at: number }) => void;
@@ -226,7 +226,7 @@ export function approvalsDocumentUrl(
 	}
 }
 
-/** Whether the card has anything to show: a request, or the custody notice. */
+/** Whether the card has anything to show: a request, or the native passkey notice. */
 function hasContent(model: ApprovalsCardModel): boolean {
 	return model.request !== null || model.notice !== null;
 }
@@ -249,7 +249,7 @@ export class ApprovalsOverlayController {
 	private readonly onNoticeDismiss:
 		| ((notice: { tabId: number; at: number }) => void)
 		| null;
-	/** The custody notice main last set; see `setNotice`. */
+	/** The native passkey notice main last set; see `setNotice`. */
 	private notice: { entryId: string; tabId: number; at: number } | null;
 	private readonly log: (message: string) => void;
 	private readonly onDismissAction: (
@@ -357,18 +357,9 @@ export class ApprovalsOverlayController {
 		this.onDismissAction = (event, payload) => {
 			if (!this.acceptAction(event, payload)) return;
 			const action = payload as ApprovalsCardDismissPayload;
-			// The password-manager notice: hide it, decide and release nothing.
-			if (this.notice && action.entryId === this.model?.notice?.entryId) {
-				this.actionCounts.dismissed += 1;
-				const { tabId, at } = this.notice;
-				try {
-					this.onNoticeDismiss?.({ tabId, at });
-				} catch (error) {
-					this.log(
-						`[browser] approvals card: notice dismiss failed: ${String(error)}`,
-					);
-				}
-				this.returnFocus();
+			if (action.entryId === this.model?.notice?.entryId) {
+				const noticeOnly = this.model?.request === null;
+				if (this.dismissVisibleNotice() && noticeOnly) this.returnFocus();
 				return;
 			}
 			/*
@@ -497,14 +488,14 @@ export class ApprovalsOverlayController {
 	}
 
 	/**
-	 * Set (or clear) the non-deciding password-manager notice: main passes the
-	 * ACTIVE tab's undismissed ceremony hold, or null. Auto-presented unfocused,
+	 * Set (or clear) the non-deciding native passkey notice: main passes the
+	 * active tab's undismissed native request, or null. Auto-presented unfocused,
 	 * like a request; hidden again when it clears and nothing else is pending.
 	 * Idempotent, because the host calls it on every projection change.
 	 */
 	setNotice(next: { tabId: number; at: number } | null): void {
 		if (this.disposed) return;
-		const entryId = next ? `passkey-custody:${next.tabId}:${next.at}` : null;
+		const entryId = next ? `native-passkey:${next.tabId}:${next.at}` : null;
 		if ((this.notice?.entryId ?? null) === entryId) return;
 		this.notice =
 			next && entryId ? { entryId, tabId: next.tabId, at: next.at } : null;
@@ -534,9 +525,32 @@ export class ApprovalsOverlayController {
 		if (this.ready) this.measureAndShow();
 	}
 
+	/** Page-owned Escape and the card's X use the same informational dismissal,
+	 * but Escape from the page leaves its focus where it already is. */
+	dismissVisibleNotice(expectedTabId?: number): boolean {
+		if (
+			!this.visible ||
+			!this.notice ||
+			!this.onNoticeDismiss ||
+			(expectedTabId !== undefined && this.notice.tabId !== expectedTabId)
+		)
+			return false;
+		const { tabId, at } = this.notice;
+		try {
+			this.onNoticeDismiss({ tabId, at });
+			this.actionCounts.dismissed += 1;
+			return true;
+		} catch (error) {
+			this.log(
+				`[browser] approvals card: notice dismiss failed: ${String(error)}`,
+			);
+			return false;
+		}
+	}
+
 	private noticeModel(): ApprovalsCardNotice | null {
 		return this.notice
-			? { entryId: this.notice.entryId, kind: "password_manager" }
+			? { entryId: this.notice.entryId, kind: "native_passkey" }
 			: null;
 	}
 

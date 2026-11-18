@@ -40,7 +40,6 @@ const bundle = await build({
 			'export { assertNotExtensionFrame, listFrames } from "./src/main/browser/actions/frames";',
 			'export { close as closeTab } from "./src/main/browser/actions/tabs";',
 			'export { CustodyHandoffs } from "./src/renderer/src/shared/browser-passkey-custody-handoff";',
-			'export { TabEngagement, admitIfEngaged } from "./src/main/browser/extensions/tab-engagement";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -59,8 +58,6 @@ const {
 	closeTab,
 	PASSKEY_PROMPT_DOCUMENTS,
 	PasskeyCustody,
-	TabEngagement,
-	admitIfEngaged,
 	TabRegistry,
 	assertNotExtensionFrame,
 	passkeyPromptProvider,
@@ -409,85 +406,12 @@ test("dismiss hides the notice and the row only: the hold stays, nothing reloads
 	assert.deepEqual(ended, [], "no release");
 });
 
-/** The host's WAITING projection (`index.ts` `waitingOnUser`). */
+// This legacy state-machine fixture is not the host's WAITING projection.
 function waitingRows(instance) {
 	return instance
 		.views()
 		.filter((view) => view.kind === "ceremony" && !view.dismissed);
 }
-
-test("not engaged: admit is never called, so no hold, no row and the frame stays refused", () => {
-	const { custody: instance, events } = custody();
-	const engagement = new TabEngagement();
-	let calls = 0;
-	const admit = () => {
-		calls += 1;
-		return instance.admit({
-			webContentsId: 10,
-			tabId: 1,
-			url: USO,
-			isInstalled: installed,
-			frame: GONE,
-		});
-	};
-	// An agent opened the tab and navigated to a login page: nobody focused it.
-	assert.equal(admitIfEngaged(engagement, 1, admit), false);
-	assert.equal(calls, 0);
-	assert.equal(instance.isHeld(10), false);
-	assert.deepEqual(events, []);
-	assert.deepEqual(waitingRows(instance), []);
-	// A person clicks into it: now the same frame is admitted under a hold.
-	engagement.focused(1, {
-		activeTabId: 1,
-		presented: true,
-		windowFocused: true,
-	});
-	assert.equal(admitIfEngaged(engagement, 1, admit), true);
-	assert.equal(calls, 1);
-	assert.equal(instance.isHeld(10), true);
-});
-
-test("engagement: only native focus on the active, presented tab in a focused window counts", () => {
-	const engagement = new TabEngagement();
-	const facts = { activeTabId: 1, presented: true, windowFocused: true };
-	assert.equal(
-		engagement.focused(1, { ...facts, windowFocused: false }),
-		false,
-	);
-	assert.equal(engagement.focused(1, { ...facts, presented: false }), false);
-	assert.equal(engagement.focused(1, { ...facts, activeTabId: 2 }), false);
-	assert.equal(
-		engagement.has(1),
-		false,
-		"an agent's tab it merely opened is not engaged",
-	);
-	assert.equal(engagement.focused(1, facts), true);
-	assert.equal(engagement.has(1), true);
-});
-
-test("engagement latch: cleared by activate/close/hand-over/chrome focus, never by blur or time", () => {
-	const facts = { activeTabId: 1, presented: true, windowFocused: true };
-	const engaged = () => {
-		const engagement = new TabEngagement();
-		engagement.focused(1, facts);
-		return engagement;
-	};
-	// Window/page blur has no method to call at all: the OS biometric sheet and
-	// the provider's own window take focus mid-ceremony. Re-laying out the same
-	// active tab (resize, the sheet returning) keeps it.
-	const kept = engaged();
-	kept.activated(1);
-	assert.equal(kept.has(1), true);
-	const activated = engaged();
-	activated.activated(2);
-	assert.equal(activated.has(1), false);
-	const closed = engaged();
-	closed.clear(1);
-	assert.equal(closed.has(1), false);
-	const chrome = engaged();
-	chrome.clearAll();
-	assert.equal(chrome.has(1), false);
-});
 
 test("closing the tab drops the hold", () => {
 	const { custody: instance, events } = custody();

@@ -78,7 +78,7 @@ export interface ApprovalsCardRequest {
  */
 export interface ApprovalsCardNotice {
 	entryId: string;
-	kind: "password_manager";
+	kind: "native_passkey";
 }
 
 /** The whole card document state. Text is resolved by the document's catalogue. */
@@ -116,8 +116,8 @@ export interface ApprovalsCardModel {
 	pending: ApprovalsCardRequest[];
 	/**
 	 * A non-deciding notice, painted alongside (or, with no request, instead of)
-	 * the approval request: a password manager's real prompt is open in the
-	 * active agent tab (`passkey-custody.ts`, ceremony holds only). It carries
+	 * the approval request: the host received a WebAuthn account-selection
+	 * request from the active agent tab. It carries
 	 * no text — the document's catalogue owns the copy — and its only verb is
 	 * `dismiss` with this `entryId`, which hides it and decides nothing.
 	 */

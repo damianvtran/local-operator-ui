@@ -112,6 +112,10 @@ html[data-opaque="1"] #approvals-card {
 	font-size: 11px;
 }
 
+.card-close-x-hidden {
+	display: none;
+}
+
 .card-close:hover,
 .card-review:hover,
 .card-secondary button:hover,
@@ -182,7 +186,7 @@ html[data-opaque="1"] #approvals-card {
 	overflow-y: auto;
 }
 
-/* The password-manager notice: one sentence and its dismiss, in the card's
+/* The native passkey notice: one sentence and its dismiss, in the card's
  * own register (not the warning wash of a blocking band). */
 .card-notice:not([hidden]) {
 	display: flex;
@@ -190,6 +194,11 @@ html[data-opaque="1"] #approvals-card {
 	gap: 8px;
 	flex-shrink: 0;
 	padding: 2px 0 8px;
+}
+
+/* In a mixed card the inline X is secondary to the approval controls. */
+#approvals-notice-dismiss {
+	border-color: transparent;
 }
 
 .card-notice-text {

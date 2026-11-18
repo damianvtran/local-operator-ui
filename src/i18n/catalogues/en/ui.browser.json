@@ -256,5 +256,6 @@
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "This passkey request expired",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "This passkey request was cancelled",
 	"ui.browser.browser_url_bar.reload_shortcut": "Reload ({shortcut})",
-	"ui.browser.approvals_card.password_manager_notice": "Its prompt is open in this tab. The agent is paused on this tab only and keeps working in other tabs."
+	"ui.browser.approvals_card.native_passkey_notice": "This site requested a passkey. Dismissing this notice won’t cancel the request.",
+	"ui.browser.approvals_card.dismiss_passkey_notice": "Dismiss passkey notice"
 }

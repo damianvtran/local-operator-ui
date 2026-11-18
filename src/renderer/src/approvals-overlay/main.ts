@@ -360,8 +360,7 @@ function reserveGloss(): void {
 	glossNode.scrollTop = scrollTop;
 }
 
-/** Hide the password-manager notice. Decides and releases nothing: main only
- * marks the notice dismissed (`PasskeyCustody.dismiss`). */
+/** Hide the passkey notice without answering the chooser. */
 function dismissNotice(): void {
 	if (!model?.notice) return;
 	window.approvalsCard?.dismiss({
@@ -377,7 +376,7 @@ function noticeOnly(): boolean {
 
 function dismiss(): void {
 	if (!model) return;
-	// Close/Escape with nothing to answer is the notice's own dismissal.
+	// Header X dismisses the notice only if there is no approval to close.
 	if (noticeOnly()) {
 		dismissNotice();
 		return;
@@ -683,18 +682,30 @@ function renderNotice(): void {
 	if (noticeView) noticeView.hidden = notice === null;
 	if (noticeTextNode) {
 		noticeTextNode.textContent = notice
-			? t("ui.browser.approvals_card.password_manager_notice")
+			? t("ui.browser.approvals_card.native_passkey_notice")
 			: "";
 	}
 	if (noticeDismissNode) {
-		const label = t("ui.common.actions.dismiss");
-		noticeDismissNode.textContent = label;
+		const label = t("ui.browser.approvals_card.dismiss_passkey_notice");
 		noticeDismissNode.setAttribute("aria-label", label);
+		noticeDismissNode.title = label;
 		noticeDismissNode.onclick = dismissNotice;
-		// In notice-only mode the header's Close is the same action; one button.
+		// In notice-only mode the header X dismisses the notice; one button.
 		noticeDismissNode.hidden = noticeOnly();
 	}
 	const only = noticeOnly();
+	if (closeNode) {
+		const label = only
+			? t("ui.browser.approvals_card.dismiss_passkey_notice")
+			: t("ui.common.actions.close");
+		const text = document.getElementById("approvals-close-text");
+		const icon = document.getElementById("approvals-close-x");
+		if (text) text.textContent = only ? "" : label;
+		icon?.classList.toggle("card-close-x-hidden", !only);
+		closeNode.setAttribute("aria-label", label);
+		closeNode.title = label;
+		closeNode.onclick = dismiss;
+	}
 	if (only) {
 		if (requestView) requestView.hidden = true;
 		if (listView) listView.hidden = true;
@@ -702,7 +713,7 @@ function renderNotice(): void {
 	if (footerNode) footerNode.hidden = only;
 	if (titleNode) {
 		titleNode.textContent = only
-			? t("ui.browser.attention.passkey")
+			? t("ui.browser.browser_webauthn_dialog.choose_a_passkey")
 			: t("ui.browser.browser_approvals_dock.approvals");
 	}
 }
@@ -745,12 +756,6 @@ window.__approvalsCard = {
 		if (titleNode) {
 			titleNode.textContent = t("ui.browser.browser_approvals_dock.approvals");
 		}
-		if (closeNode) {
-			const label = t("ui.common.actions.close");
-			closeNode.textContent = label;
-			closeNode.setAttribute("aria-label", label);
-			closeNode.onclick = dismiss;
-		}
 		render();
 		// Focus is a one-shot command on receipt, not retained render state. The
 		// inert-window timer must not take focus back from Review all or Back.
@@ -764,7 +769,8 @@ window.__approvalsCard = {
 document.addEventListener("keydown", (event) => {
 	if (event.key === "Escape") {
 		event.preventDefault();
-		dismiss();
+		if (model?.notice) dismissNotice();
+		else dismiss();
 	}
 });
 

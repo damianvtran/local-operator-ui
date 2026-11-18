@@ -403,8 +403,8 @@ test("composed card palettes are independently validated inside the document", (
  * `dismiss` verb with the notice's id, and nothing reaches `decide`.
  */
 const NOTICE = {
-	entryId: "passkey-custody:7:1700000000000",
-	kind: "password_manager",
+	entryId: "native-passkey:7:1700000000000",
+	kind: "native_passkey",
 };
 const visible = (dom, node) =>
 	!node.hidden && dom.window.getComputedStyle(node).display !== "none";
@@ -415,11 +415,11 @@ test("notice only: the card is the sentence and its close; Close and Escape dism
 	assert.equal(visible(dom, doc.getElementById("approvals-notice")), true);
 	assert.match(
 		doc.getElementById("approvals-notice-text").textContent,
-		/prompt is open in this tab/,
+		/This site requested a passkey/,
 	);
 	assert.equal(
 		doc.getElementById("approvals-title").textContent,
-		"Password manager needs you",
+		"Choose a passkey",
 	);
 	assert.equal(visible(dom, doc.getElementById("approvals-request")), false);
 	assert.equal(visible(dom, doc.getElementById("approvals-list")), false);
@@ -436,7 +436,7 @@ test("notice only: the card is the sentence and its close; Close and Escape dism
 	]);
 });
 
-test("notice beside a request: the request keeps Close/Escape, the notice has its own Dismiss", () => {
+test("notice beside a request: Escape and the notice X target only the notice; header Close targets approval", () => {
 	const { dom, doc, calls, push } = mount();
 	push(modelOf(1, [req("a")], { notice: NOTICE }));
 	assert.equal(visible(dom, doc.getElementById("approvals-notice")), true);
@@ -445,10 +445,15 @@ test("notice beside a request: the request keeps Close/Escape, the notice has it
 	doc.dispatchEvent(
 		new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
 	);
-	click(dom, doc.getElementById("approvals-notice-dismiss"));
+	const noticeX = doc.getElementById("approvals-notice-dismiss");
+	assert.equal(noticeX.getAttribute("aria-label"), "Dismiss passkey notice");
+	assert.ok(noticeX.querySelector("svg"));
+	click(dom, noticeX);
+	click(dom, doc.getElementById("approvals-close"));
 	assert.deepEqual(calls, [
-		["dismiss", { seq: 1, entryId: "a" }],
 		["dismiss", { seq: 1, entryId: NOTICE.entryId }],
+		["dismiss", { seq: 1, entryId: NOTICE.entryId }],
+		["dismiss", { seq: 1, entryId: "a" }],
 	]);
 });
 

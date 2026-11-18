@@ -1103,8 +1103,8 @@ const api = {
 		 * while the band was open). Main validates the shape rather than trusting it. */
 		closeTabs: (intent: unknown): Promise<unknown> =>
 			ipcRenderer.invoke("browser-close-tabs", intent),
-		activateTab: (tabId: number): Promise<unknown> =>
-			ipcRenderer.invoke("browser-activate-tab", tabId),
+		activateTab: (tabId: number, trusted?: boolean): Promise<unknown> =>
+			ipcRenderer.invoke("browser-activate-tab", tabId, trusted),
 		addressHistory: (
 			request: AddressHistoryRequest,
 		): Promise<AddressHistoryResponse> =>

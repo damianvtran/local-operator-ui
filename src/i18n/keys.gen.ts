@@ -3884,7 +3884,8 @@ export type MessageParams = {
 	"ui.browser.approval_queue_model.this_session_only": undefined;
 	"ui.browser.approval_queue_model.this_site": undefined;
 	"ui.browser.approval_queue_model.whole_domain": undefined;
-	"ui.browser.approvals_card.password_manager_notice": undefined;
+	"ui.browser.approvals_card.dismiss_passkey_notice": undefined;
+	"ui.browser.approvals_card.native_passkey_notice": undefined;
 	"ui.browser.browser_approvals_dock.agents_can_drive_tabs_in_this_app": undefined;
 	"ui.browser.browser_approvals_dock.approvals": undefined;
 	"ui.browser.browser_approvals_dock.approvals_are_kept_per_origin_and_are": undefined;

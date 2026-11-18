@@ -220,7 +220,7 @@ declare global {
 				/** A bulk close. `{ mode: "ids", tabIds }`, or `{ mode: "conversation",
 				 * sessionId }` which main resolves against the live registry. */
 				closeTabs: (intent: unknown) => Promise<unknown>;
-				activateTab: (tabId: number) => Promise<unknown>;
+				activateTab: (tabId: number, trusted?: boolean) => Promise<unknown>;
 				/** Local address suggestions. The expected tab is the one the field's
 				 * draft belongs to; main refuses a request for a tab that is no longer
 				 * active. */

@@ -1288,9 +1288,14 @@
 			"shortcut": "The platform's shortcut glyphs (for example \u2318R); do not translate."
 		}
 	},
-	"ui.browser.approvals_card.password_manager_notice": {
-		"role": "body text \u2014 approvals corner card notice, agent-driven tab only",
-		"tone": "Plain explanatory language; calm, not alarming",
-		"note": "Shown under the title \u201cPassword manager needs you\u201d (ui.browser.attention.passkey) in the small corner card when the user\u2019s password manager (e.g. 1Password) has opened a real prompt, such as a passkey sign-in, inside a browser tab an AI agent was using. \u201cIts\u201d is the password manager; \u201cprompt\u201d is the password manager\u2019s own dialog, NOT an AI prompt (not \u63d0\u793a\u8bcd/\u043f\u0440\u043e\u043c\u043f\u0442). The agent is paused on that one tab only and carries on in its other tabs. The card has a Dismiss button; nothing is cancelled. Compact, around the English footprint."
+	"ui.browser.approvals_card.native_passkey_notice": {
+		"role": "Body text in the approvals corner card on an agent-driven tab",
+		"tone": "Plain, factual, non-alarming",
+		"note": "Shown alone under Choose a passkey or alongside an unrelated approval request under Approvals. The site in the current tab initiated an account-selection request that the browser host can see. This notice does not answer or cancel it. Do not imply a password manager is open or the agent is paused."
+	},
+	"ui.browser.approvals_card.dismiss_passkey_notice": {
+		"role": "Accessible label and tooltip for the X on the passkey notice",
+		"tone": "Compact action label",
+		"note": "Hides only the informational notice, not the neighbouring approval and not the site's passkey request."
 	}
 }

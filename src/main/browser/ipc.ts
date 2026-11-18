@@ -79,6 +79,7 @@ export interface RegisterBrowserIpcOptions {
 	 * `index.html` otherwise. Same value the desktop transport is given. */
 	expectedUrl: string;
 	host: () => BrowserHost | null;
+	onTrustedTabSelection?: (tabId: number) => void;
 	availability?: () => BrowserAvailability;
 	/**
 	 * The passkey chooser, which is what `browser-webauthn-respond` answers.
@@ -433,10 +434,16 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return host.closeTabs(closeTabsIntentOrThrow(intent));
 	});
 
-	ipcMain.handle("browser-activate-tab", (event, tabId: unknown) => {
-		const host = authorize(event);
-		return host.activateTab(numberOrThrow(tabId, "tabId"));
-	});
+	ipcMain.handle(
+		"browser-activate-tab",
+		(event, tabId: unknown, trusted?: unknown) => {
+			const host = authorize(event);
+			const id = numberOrThrow(tabId, "tabId");
+			const state = host.activateTab(id);
+			if (trusted === true) options.onTrustedTabSelection?.(id);
+			return state;
+		},
+	);
 
 	ipcMain.handle(
 		"browser-navigate",

@@ -256,5 +256,6 @@
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "Yêu cầu khóa truy cập này đã hết hạn",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "Yêu cầu khóa truy cập này đã bị hủy",
 	"ui.browser.browser_url_bar.reload_shortcut": "Tải lại ({shortcut})",
-	"ui.browser.approvals_card.password_manager_notice": "Yêu cầu của nó đang mở trong thẻ này. Tác nhân chỉ tạm dừng trên thẻ này và vẫn tiếp tục làm việc ở các thẻ khác."
+	"ui.browser.approvals_card.native_passkey_notice": "Trang trong thẻ này yêu cầu khóa truy cập. Đóng thông báo này không hủy yêu cầu.",
+	"ui.browser.approvals_card.dismiss_passkey_notice": "Đóng thông báo về khóa truy cập"
 }

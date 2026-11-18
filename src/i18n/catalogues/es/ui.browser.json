@@ -256,5 +256,6 @@
 	"ui.browser.browser_tab_strip.close_conversation_tabs": "Cerrar {count, plural, one {{count, number, ::group-off} pestaña} many {{count, number, ::group-off} de pestañas} other {{count, number, ::group-off} pestañas}} de esta conversación",
 	"ui.browser.browser_file_transfer_row.attached_verb": "{count, plural, one {se adjuntó a} other {se adjuntaron a}}",
 	"ui.browser.browser_file_transfer_row.upload_more": "+ {count, plural, other {{count, number, ::group-off} más}}",
-	"ui.browser.approvals_card.password_manager_notice": "Su solicitud está abierta en esta pestaña. El agente está en pausa solo en esta pestaña y sigue trabajando en las demás."
+	"ui.browser.approvals_card.native_passkey_notice": "Este sitio ha solicitado una clave de acceso. Ocultar este aviso no cancela la solicitud.",
+	"ui.browser.approvals_card.dismiss_passkey_notice": "Ocultar el aviso de clave de acceso"
 }

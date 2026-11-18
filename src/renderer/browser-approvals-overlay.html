@@ -35,18 +35,18 @@
       <p class="card-brand" id="approvals-brand"></p>
       <header class="card-header">
         <h1 id="approvals-title"></h1>
-        <button type="button" class="card-close" id="approvals-close"></button>
+        <button type="button" class="card-close" id="approvals-close"><span id="approvals-close-text"></span><svg id="approvals-close-x" aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"><path d="m18 6-12 12M6 6l12 12"/></svg></button>
       </header>
       <div class="card-body" tabindex="-1">
         <!--
-          A NON-DECIDING NOTICE (2026-11-17): a password manager's real prompt is
-          open in this agent tab. It answers nothing and blocks nothing; its one
+          A NON-DECIDING NOTICE: the host received a native passkey request
+          from this agent tab. It answers nothing and blocks nothing; its one
           control hides it (the same `dismiss` verb, the notice's own entry id).
           With no request pending it is the whole card.
         -->
         <section id="approvals-notice" class="card-notice" hidden>
           <p id="approvals-notice-text" class="card-notice-text"></p>
-          <button type="button" class="card-close" id="approvals-notice-dismiss"></button>
+          <button type="button" class="card-close" id="approvals-notice-dismiss"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"><path d="m18 6-12 12M6 6l12 12"/></svg></button>
         </section>
         <section id="approvals-request">
           <div class="card-context" tabindex="-1">

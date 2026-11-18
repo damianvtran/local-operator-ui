@@ -54,20 +54,20 @@ function text(value: unknown, max: number): string {
 }
 
 /** The only notice id shape main mints (`ApprovalsOverlayController.setNotice`). */
-const NOTICE_ENTRY_ID = /^passkey-custody:\d{1,10}:\d{1,16}$/;
+const NOTICE_ENTRY_ID = /^native-passkey:\d{1,10}:\d{1,16}$/;
 
 /**
  * The notice, rebuilt from its allow-list: a bounded id of the shape main mints
- * (`passkey-custody:<tabId>:<at>`) and the one kind there is. Anything else is
+ * (`native-passkey:<tabId>:<at>`) and the one kind there is. Anything else is
  * no notice at all.
  */
 export function sanitizeCardNotice(value: unknown): ApprovalsCardNotice | null {
 	if (!value || typeof value !== "object") return null;
 	const raw = value as { entryId?: unknown; kind?: unknown };
-	if (raw.kind !== "password_manager") return null;
+	if (raw.kind !== "native_passkey") return null;
 	const entryId = text(raw.entryId, APPROVALS_CARD_MODEL_LIMITS.entryId);
 	if (!NOTICE_ENTRY_ID.test(entryId)) return null;
-	return { entryId, kind: "password_manager" };
+	return { entryId, kind: "native_passkey" };
 }
 
 function httpOrigin(value: unknown): string | null {

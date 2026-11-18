@@ -1938,19 +1938,19 @@ test("model: the notice is rebuilt from its allow-list, never forwarded", () => 
 	const ok = mod.approvalsCardModelFrom({
 		...base,
 		notice: {
-			entryId: "passkey-custody:7:1700000000000",
-			kind: "password_manager",
+			entryId: "native-passkey:7:1700000000000",
+			kind: "native_passkey",
 			text: "<b>x</b>",
 		},
 	});
 	assert.deepEqual(ok.notice, {
-		entryId: "passkey-custody:7:1700000000000",
-		kind: "password_manager",
+		entryId: "native-passkey:7:1700000000000",
+		kind: "native_passkey",
 	});
 	for (const notice of [
-		{ entryId: "passkey-custody:7:1", kind: "anything" },
-		{ entryId: "e1", kind: "password_manager" },
-		"passkey-custody:7:1",
+		{ entryId: "native-passkey:7:1", kind: "anything" },
+		{ entryId: "e1", kind: "native_passkey" },
+		"native-passkey:7:1",
 		null,
 	]) {
 		assert.equal(mod.approvalsCardModelFrom({ ...base, notice }).notice, null);
@@ -1958,13 +1958,13 @@ test("model: the notice is rebuilt from its allow-list, never forwarded", () => 
 	assert.equal(
 		mod.sanitizeApprovalsCardModel({
 			...ok,
-			notice: { entryId: "x", kind: "password_manager" },
+			notice: { entryId: "x", kind: "native_passkey" },
 		}).notice,
 		null,
 	);
 });
 
-test("controller: the custody notice auto-presents unfocused, dismisses only through onNoticeDismiss, and clears", async () => {
+test("controller: the native passkey notice auto-presents unfocused, dismisses only through onNoticeDismiss, and clears", async () => {
 	const children = [];
 	const contentView = {
 		get children() {
@@ -2017,14 +2017,14 @@ test("controller: the custody notice auto-presents unfocused, dismisses only thr
 	const event = { sender: view.webContents, senderFrame: view.mainFrame };
 	mod.emitIpc(mod.APPROVALS_CARD_DISMISS_CHANNEL, event, {
 		seq,
-		entryId: "passkey-custody:7:1700000000000",
+		entryId: "native-passkey:7:1700000000000",
 	});
 	assert.deepEqual(noticeDismissed, [{ tabId: 7, at: 1700000000000 }]);
 	assert.deepEqual(responded, [], "a notice dismissal decides nothing");
 	// A forged notice id is dropped like any unknown entry.
 	mod.emitIpc(mod.APPROVALS_CARD_DISMISS_CHANNEL, event, {
 		seq: controller.facts().seq,
-		entryId: "passkey-custody:8:1",
+		entryId: "native-passkey:8:1",
 	});
 	assert.equal(noticeDismissed.length, 1);
 	assert.equal(controller.facts().actions.dropped, 1);

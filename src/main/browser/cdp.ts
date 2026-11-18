@@ -210,6 +210,33 @@ export const PAGE_DISABLED_EVENT = "LocalOperator.pageDisabled";
 
 export class CdpPool {
 	private readonly attachments = new Map<number, Attachment>();
+	private readonly keyDispatches = new Map<number, number>();
+
+	/** CDP key events can enter the page's native input pipeline. Don't treat
+	 * them as an operator's shortcut while the command is in flight. */
+	isDispatchingKey(webContentsId: number): boolean {
+		return this.keyDispatches.has(webContentsId);
+	}
+
+	private trackKeyDispatch<T>(
+		id: number,
+		method: string,
+		send: () => Promise<T>,
+	): Promise<T> {
+		if (method !== "Input.dispatchKeyEvent") return send();
+		this.keyDispatches.set(id, (this.keyDispatches.get(id) ?? 0) + 1);
+		const release = () => {
+			const count = this.keyDispatches.get(id) ?? 0;
+			if (count <= 1) this.keyDispatches.delete(id);
+			else this.keyDispatches.set(id, count - 1);
+		};
+		try {
+			return send().finally(release);
+		} catch (error) {
+			release();
+			throw error;
+		}
+	}
 	/** Per-view CDP event subscribers, by webContents id. See `subscribe`. */
 	private readonly subscribers = new Map<
 		number,
@@ -674,14 +701,27 @@ export class CdpPool {
 		}
 		if (!sessionId) {
 			return deadline(
-				contents.debugger.sendCommand(method, params) as Promise<T>,
+				this.trackKeyDispatch(
+					contents.id,
+					method,
+					() => contents.debugger.sendCommand(method, params) as Promise<T>,
+				),
 				deadlineMs,
 				method,
 			);
 		}
 		try {
 			return await deadline(
-				contents.debugger.sendCommand(method, params, sessionId) as Promise<T>,
+				this.trackKeyDispatch(
+					contents.id,
+					method,
+					() =>
+						contents.debugger.sendCommand(
+							method,
+							params,
+							sessionId,
+						) as Promise<T>,
+				),
 				deadlineMs,
 				method,
 			);

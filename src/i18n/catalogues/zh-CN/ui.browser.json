@@ -256,5 +256,6 @@
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "此通行密钥请求已过期",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "此通行密钥请求已取消",
 	"ui.browser.browser_url_bar.reload_shortcut": "重新加载（{shortcut}）",
-	"ui.browser.approvals_card.password_manager_notice": "它的请求已在此标签页中打开。智能体仅在此标签页上暂停，并会继续在其他标签页中工作。"
+	"ui.browser.approvals_card.native_passkey_notice": "此标签页请求使用通行密钥。关闭此通知不会取消请求。",
+	"ui.browser.approvals_card.dismiss_passkey_notice": "关闭通行密钥通知"
 }

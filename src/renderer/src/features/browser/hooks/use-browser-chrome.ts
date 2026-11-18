@@ -444,7 +444,7 @@ export interface BrowserChrome {
 	 * It is the fact, not the message: the message is `error`'s job.
 	 */
 	closeTabs: (intent: CloseTabsIntent) => Promise<boolean>;
-	activateTab: (tabId: number) => Promise<void>;
+	activateTab: (tabId: number, trusted?: boolean) => Promise<void>;
 	/** `expectedTabId` is the tab the address draft belongs to. Main refuses the
 	 * navigation when that is no longer the active tab, so a commit that raced a
 	 * tab switch cannot load the new tab with the old draft. */
@@ -869,7 +869,8 @@ export function useBrowserChrome(): BrowserChrome {
 			},
 			closeTab: (tabId) => run(() => api?.closeTab(tabId)),
 			closeTabs: (intent) => run(() => api?.closeTabs(intent)),
-			activateTab: (tabId) => runVoid(() => api?.activateTab(tabId)),
+			activateTab: (tabId, trusted) =>
+				runVoid(() => api?.activateTab(tabId, trusted)),
 			navigate: (url, expectedTabId) => {
 				// Recorded before the intent is sent, KEYED TO THE ACTIVE TAB (F3): the reply
 				// may take a while (the tab has to load), the point of the note is to cover
