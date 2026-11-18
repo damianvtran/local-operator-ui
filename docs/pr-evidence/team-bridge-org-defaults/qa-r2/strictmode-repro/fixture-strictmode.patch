@@ -1,0 +1,12 @@
+--- scripts/fixtures/team-bridge-auth-owner-page.mjs	2026-11-18 02:31:44
++++ scratch/fixtures/team-bridge-auth-owner-page.mjs	2026-11-18 04:06:02
+@@ -883,7 +883,8 @@
+ 	};
+ 	const host = document.createElement("div");
+ 	document.body.append(host);
+-	const root = createRoot(host);
++	const root0 = createRoot(host);
++	const root = process.env.STRICT ? { render: (el) => root0.render(React.createElement(React.StrictMode, null, el)), unmount: () => root0.unmount() } : root0;
+ 	const client = ui.queryClient;
+ 	client.clear();
+ 	seed?.({ client, ui, fixture });

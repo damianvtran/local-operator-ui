@@ -1,0 +1,41 @@
+# HEAD faf462107662168d06a825566af7fce8cdc9c835
+## STRICT= node --test restore.test.mjs
+cached STRICT  ["null|null","Organization: Shared|bcv_shared2"]
+✔ restart, memberships cached, STRICT=: the default org's remembered conversation is restored (229.515959ms)
+delayed STRICT  ["null|null","Organization: Shared|bcv_shared2"]
+✔ restart, memberships delayed, STRICT=: the default org's remembered conversation is restored (149.210208ms)
+ℹ pass 2
+ℹ fail 0
+## STRICT= node --test --test-name-pattern=multi-org team-bridge-instant-open.test.mjs (PR's own tests, unmodified but for a SEQ dump on timeout)
+ℹ fail 0
+ℹ pass 5
+✔ multi-org fresh open, memberships cached: only the default org ever paints, and the seed's conversation is never marked read (163.537ms)
+✔ multi-org fresh open, memberships delayed: only the default org ever paints, and the seed's conversation is never marked read (152.601916ms)
+✔ multi-org restart open, memberships cached: only the default org ever paints, and the seed's conversation is never marked read (179.401541ms)
+✔ multi-org restart open, memberships delayed: only the default org ever paints, and the seed's conversation is never marked read (183.092542ms)
+✔ multi-org restart: nothing of yesterday's pick paints or is read before the default org lands (346.58625ms)
+## STRICT=1 node --test restore.test.mjs
+cached STRICT 1 ["null|null","Organization: Shared|bcv_shared2"]
+✔ restart, memberships cached, STRICT=1: the default org's remembered conversation is restored (270.409625ms)
+delayed STRICT 1 ["null|null","Organization: Other|null","Organization: Shared|null","Organization: Shared|bcv_shared"]
+✖ restart, memberships delayed, STRICT=1: the default org's remembered conversation is restored (241.793167ms)
+ℹ pass 1
+ℹ fail 1
+✖ failing tests:
+✖ restart, memberships delayed, STRICT=1: the default org's remembered conversation is restored (241.793167ms)
+## STRICT=1 node --test --test-name-pattern=multi-org team-bridge-instant-open.test.mjs (PR's own tests, unmodified but for a SEQ dump on timeout)
+    actual: [ 'Organization: Other', 'Organization: Shared' ],
+    actual: [ 'org_shared', 'org_shared' ],
+    expected: [ 'Organization: Shared' ],
+    expected: [ 'org_shared' ],
+  AssertionError [ERR_ASSERTION]: no commit ever titled another scope
+  AssertionError [ERR_ASSERTION]: one read: the default org
+  AssertionError [ERR_ASSERTION]: timed out: the default org, on its own conversation
+SEQ fresh delayed ["null|null","Organization: All organizations|null","Organization: Shared|null"] reads ["team_bridge.conversations.list:org_shared","team_bridge.conversations.list:org_shared"]
+ℹ fail 3
+ℹ pass 2
+✔ multi-org fresh open, memberships cached: only the default org ever paints, and the seed's conversation is never marked read (176.398083ms)
+✔ multi-org restart open, memberships cached: only the default org ever paints, and the seed's conversation is never marked read (225.579416ms)
+✖ multi-org fresh open, memberships delayed: only the default org ever paints, and the seed's conversation is never marked read (1967.2925ms)
+✖ multi-org restart open, memberships delayed: only the default org ever paints, and the seed's conversation is never marked read (213.33625ms)
+✖ multi-org restart: nothing of yesterday's pick paints or is read before the default org lands (332.195083ms)
