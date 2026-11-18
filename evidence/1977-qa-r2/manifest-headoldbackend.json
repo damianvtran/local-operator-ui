@@ -1,0 +1,142 @@
+{
+  "arm": "headoldbackend",
+  "appOut": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/after/out",
+  "repo": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body",
+  "backend": "http://127.0.0.1:18978",
+  "repoHead": "25c275e413af6c2cc7264a6ea5e99aea4ae045dc",
+  "started": "2026-11-18T23:35:12.833Z",
+  "frames": [
+    {
+      "label": "headoldbackend-dark-00a-peer-fold-bar",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-headold/headoldbackend-dark-00a-peer-fold-bar.png",
+      "stable": true,
+      "attempts": 3,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      }
+    },
+    {
+      "label": "headoldbackend-dark-01-admitted-short",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-headold/headoldbackend-dark-01-admitted-short.png",
+      "stable": true,
+      "attempts": 3,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_admit",
+            "row": {
+              "x": 413,
+              "y": 192,
+              "w": 790,
+              "h": 156
+            },
+            "expanded": "true",
+            "states": [],
+            "text": "Message body unavailable.",
+            "body": [],
+            "toggle": null,
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_admit"
+    },
+    {
+      "label": "headoldbackend-dark-06-held-awaiting-review",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-headold/headoldbackend-dark-06-held-awaiting-review.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_held",
+            "row": {
+              "x": 413,
+              "y": 236,
+              "w": 790,
+              "h": 156
+            },
+            "expanded": "true",
+            "states": [],
+            "text": "Message body unavailable.",
+            "body": [],
+            "toggle": null,
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_held"
+    }
+  ],
+  "app": {
+    "pid": 1666960,
+    "log": "/tmp/lcap1977-ec2-user/lo-renderer-driver-1666951/app.log"
+  },
+  "windowFacts": {
+    "windowMode": "headless",
+    "appVersion": "0.58.2",
+    "platform": "linux",
+    "title": "Local Operator",
+    "windowSize": {
+      "width": 1380,
+      "height": 872
+    },
+    "contentBounds": {
+      "width": 1380,
+      "height": 872
+    },
+    "visible": false,
+    "focused": false,
+    "minimized": false,
+    "frames": [],
+    "outDir": "/tmp/lcap1977-ec2-user/lo-renderer-driver-1666951/frames"
+  },
+  "readyProbe": {
+    "cards": [],
+    "scroller": null,
+    "viewport": {
+      "w": 1380,
+      "h": 872
+    },
+    "theme": "localOperatorDark",
+    "hash": "#/chat/abcdef012345"
+  },
+  "tagged": 8,
+  "foldOpened": 9,
+  "finished": "2026-11-18T23:35:23.378Z"
+}

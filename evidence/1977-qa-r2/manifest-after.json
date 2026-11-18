@@ -1,0 +1,1335 @@
+{
+  "arm": "after",
+  "appOut": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/after/out",
+  "repo": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body",
+  "backend": "http://127.0.0.1:18977",
+  "repoHead": "25c275e413af6c2cc7264a6ea5e99aea4ae045dc",
+  "started": "2026-11-18T23:33:50.989Z",
+  "frames": [
+    {
+      "label": "after-dark-00a-peer-fold-bar",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-dark-00a-peer-fold-bar.png",
+      "stable": true,
+      "attempts": 3,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      }
+    },
+    {
+      "label": "after-dark-00b-collapsed-rows",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-dark-00b-collapsed-rows.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      }
+    },
+    {
+      "label": "after-dark-01-admitted-short",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-dark-01-admitted-short.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_admit",
+            "row": {
+              "x": 413,
+              "y": 192,
+              "w": 790,
+              "h": 224
+            },
+            "expanded": "true",
+            "states": [
+              "admitted"
+            ],
+            "text": "Hello from Ola — can you check the release notes before Friday?\n\nconfirm the v0.108 changelog\nlink: release board",
+            "body": [
+              {
+                "x": 445,
+                "y": 281,
+                "w": 746,
+                "h": 88,
+                "scrollH": 88,
+                "clientH": 88,
+                "scrollW": 746,
+                "clientW": 746
+              }
+            ],
+            "toggle": null,
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_admit"
+    },
+    {
+      "label": "after-dark-03-long-collapsed",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-dark-03-long-collapsed.png",
+      "stable": true,
+      "attempts": 3,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_long",
+            "row": {
+              "x": 413,
+              "y": 146,
+              "w": 790,
+              "h": 380
+            },
+            "expanded": "true",
+            "states": [
+              "admitted"
+            ],
+            "text": "Release checklist\nLine 1: the quick brown fox jumps over the lazy dog, then checks item 1.\nLine 2: the quick brown fox jumps over the lazy dog, then checks item",
+            "body": [
+              {
+                "x": 445,
+                "y": 235,
+                "w": 746,
+                "h": 222,
+                "scrollH": 222,
+                "clientH": 222,
+                "scrollW": 746,
+                "clientW": 746
+              }
+            ],
+            "toggle": {
+              "text": "Show more",
+              "expanded": "false",
+              "x": 445,
+              "y": 461,
+              "w": 64,
+              "h": 17
+            },
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": {
+          "scrollTop": -23,
+          "scrollHeight": 713,
+          "clientHeight": 622
+        },
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_long"
+    },
+    {
+      "label": "after-dark-04-long-expanded",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-dark-04-long-expanded.png",
+      "stable": true,
+      "attempts": 3,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_long",
+            "row": {
+              "x": 413,
+              "y": 147,
+              "w": 790,
+              "h": 997
+            },
+            "expanded": "true",
+            "states": [
+              "admitted"
+            ],
+            "text": "Release checklist\nLine 1: the quick brown fox jumps over the lazy dog, then checks item 1.\nLine 2: the quick brown fox jumps over the lazy dog, then checks item",
+            "body": [
+              {
+                "x": 445,
+                "y": 236,
+                "w": 746,
+                "h": 838,
+                "scrollH": 838,
+                "clientH": 838,
+                "scrollW": 746,
+                "clientW": 746
+              }
+            ],
+            "toggle": {
+              "text": "Show less",
+              "expanded": "true",
+              "x": 445,
+              "y": 1078,
+              "w": 55,
+              "h": 17
+            },
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": {
+          "scrollTop": -640,
+          "scrollHeight": 1329,
+          "clientHeight": 622
+        },
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_long",
+      "clickedShowMore": true
+    },
+    {
+      "label": "after-dark-05-long-expanded-end",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-dark-05-long-expanded-end.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_long",
+            "row": {
+              "x": 413,
+              "y": -247,
+              "w": 790,
+              "h": 997
+            },
+            "expanded": "true",
+            "states": [
+              "admitted"
+            ],
+            "text": "Release checklist\nLine 1: the quick brown fox jumps over the lazy dog, then checks item 1.\nLine 2: the quick brown fox jumps over the lazy dog, then checks item",
+            "body": [
+              {
+                "x": 445,
+                "y": -158,
+                "w": 746,
+                "h": 838,
+                "scrollH": 838,
+                "clientH": 838,
+                "scrollW": 746,
+                "clientW": 746
+              }
+            ],
+            "toggle": {
+              "text": "Show less",
+              "expanded": "true",
+              "x": 445,
+              "y": 684,
+              "w": 55,
+              "h": 17
+            },
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": {
+          "scrollTop": -246,
+          "scrollHeight": 1329,
+          "clientHeight": 622
+        },
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_long"
+    },
+    {
+      "label": "after-dark-06-held-awaiting-review",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-dark-06-held-awaiting-review.png",
+      "stable": true,
+      "attempts": 3,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_held",
+            "row": {
+              "x": 413,
+              "y": 236,
+              "w": 790,
+              "h": 156
+            },
+            "expanded": "true",
+            "states": [
+              "held"
+            ],
+            "text": "Held by moderation.",
+            "body": [],
+            "toggle": null,
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_held"
+    },
+    {
+      "label": "after-dark-07-held-transient",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-dark-07-held-transient.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_heldt",
+            "row": {
+              "x": 413,
+              "y": 258,
+              "w": 790,
+              "h": 156
+            },
+            "expanded": "true",
+            "states": [
+              "held"
+            ],
+            "text": "Waiting for screening — not shown to your agent yet.",
+            "body": [],
+            "toggle": null,
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_heldt"
+    },
+    {
+      "label": "after-dark-08-refused",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-dark-08-refused.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_refused",
+            "row": {
+              "x": 413,
+              "y": 280,
+              "w": 790,
+              "h": 156
+            },
+            "expanded": "true",
+            "states": [
+              "refused"
+            ],
+            "text": "Refused by moderation.",
+            "body": [],
+            "toggle": null,
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_refused"
+    },
+    {
+      "label": "after-dark-09-deleted",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-dark-09-deleted.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_deleted",
+            "row": {
+              "x": 413,
+              "y": 302,
+              "w": 790,
+              "h": 156
+            },
+            "expanded": "true",
+            "states": [
+              "unavailable"
+            ],
+            "text": "This message was deleted.",
+            "body": [],
+            "toggle": null,
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_deleted"
+    },
+    {
+      "label": "after-dark-10-offline",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-dark-10-offline.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_offline",
+            "row": {
+              "x": 413,
+              "y": 324,
+              "w": 790,
+              "h": 156
+            },
+            "expanded": "true",
+            "states": [
+              "unavailable"
+            ],
+            "text": "Couldn't reach Radient — close and reopen to retry.",
+            "body": [],
+            "toggle": null,
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_offline"
+    },
+    {
+      "label": "after-dark-11-coalesced",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-dark-11-coalesced.png",
+      "stable": true,
+      "attempts": 4,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_coal",
+            "row": {
+              "x": 413,
+              "y": 104,
+              "w": 790,
+              "h": 933
+            },
+            "expanded": "true",
+            "states": [
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted"
+            ],
+            "text": "Coalesced message 1 of 23.\n\nCoalesced message 2 of 23.\n\nCoalesced message 3 of 23.\n\nCoalesced message 4 of 23.\n\nCoalesced message 5 of 23.\n\nCoalesced message 6 ",
+            "body": [
+              {
+                "x": 445,
+                "y": 192,
+                "w": 746,
+                "h": 22,
+                "scrollH": 22,
+                "clientH": 22,
+                "scrollW": 746,
+                "clientW": 746
+              },
+              {
+                "x": 445,
+                "y": 232,
+                "w": 746,
+                "h": 22,
+                "scrollH": 22,
+                "clientH": 22,
+                "scrollW": 746,
+                "clientW": 746
+              }
+            ],
+            "toggle": null,
+            "more": "And 3 more messages",
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": {
+          "scrollTop": -401,
+          "scrollHeight": 1265,
+          "clientHeight": 622
+        },
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_coal"
+    },
+    {
+      "label": "after-dark-12-coalesced-and-more",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-dark-12-coalesced-and-more.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_coal",
+            "row": {
+              "x": 413,
+              "y": -183,
+              "w": 790,
+              "h": 933
+            },
+            "expanded": "true",
+            "states": [
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted"
+            ],
+            "text": "Coalesced message 1 of 23.\n\nCoalesced message 2 of 23.\n\nCoalesced message 3 of 23.\n\nCoalesced message 4 of 23.\n\nCoalesced message 5 of 23.\n\nCoalesced message 6 ",
+            "body": [
+              {
+                "x": 445,
+                "y": -95,
+                "w": 746,
+                "h": 22,
+                "scrollH": 22,
+                "clientH": 22,
+                "scrollW": 746,
+                "clientW": 746
+              },
+              {
+                "x": 445,
+                "y": -55,
+                "w": 746,
+                "h": 22,
+                "scrollH": 22,
+                "clientH": 22,
+                "scrollW": 746,
+                "clientW": 746
+              }
+            ],
+            "toggle": null,
+            "more": "And 3 more messages",
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": {
+          "scrollTop": -114,
+          "scrollHeight": 1265,
+          "clientHeight": 622
+        },
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorDark",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_coal"
+    },
+    {
+      "label": "after-light-00b-collapsed-rows",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-light-00b-collapsed-rows.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_coal",
+            "row": {
+              "x": 413,
+              "y": 346,
+              "w": 790,
+              "h": 20
+            },
+            "expanded": "false",
+            "states": [],
+            "text": null,
+            "body": [],
+            "toggle": null,
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorLight",
+        "hash": "#/chat/abcdef012345"
+      }
+    },
+    {
+      "label": "after-light-01-admitted-short",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-light-01-admitted-short.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_admit",
+            "row": {
+              "x": 413,
+              "y": 192,
+              "w": 790,
+              "h": 224
+            },
+            "expanded": "true",
+            "states": [
+              "admitted"
+            ],
+            "text": "Hello from Ola — can you check the release notes before Friday?\n\nconfirm the v0.108 changelog\nlink: release board",
+            "body": [
+              {
+                "x": 445,
+                "y": 281,
+                "w": 746,
+                "h": 88,
+                "scrollH": 88,
+                "clientH": 88,
+                "scrollW": 746,
+                "clientW": 746
+              }
+            ],
+            "toggle": null,
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorLight",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_admit"
+    },
+    {
+      "label": "after-light-03-long-collapsed",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-light-03-long-collapsed.png",
+      "stable": true,
+      "attempts": 3,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_long",
+            "row": {
+              "x": 413,
+              "y": 146,
+              "w": 790,
+              "h": 380
+            },
+            "expanded": "true",
+            "states": [
+              "admitted"
+            ],
+            "text": "Release checklist\nLine 1: the quick brown fox jumps over the lazy dog, then checks item 1.\nLine 2: the quick brown fox jumps over the lazy dog, then checks item",
+            "body": [
+              {
+                "x": 445,
+                "y": 235,
+                "w": 746,
+                "h": 222,
+                "scrollH": 222,
+                "clientH": 222,
+                "scrollW": 746,
+                "clientW": 746
+              }
+            ],
+            "toggle": {
+              "text": "Show more",
+              "expanded": "false",
+              "x": 445,
+              "y": 461,
+              "w": 64,
+              "h": 17
+            },
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": {
+          "scrollTop": -23,
+          "scrollHeight": 713,
+          "clientHeight": 622
+        },
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorLight",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_long"
+    },
+    {
+      "label": "after-light-04-long-expanded",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-light-04-long-expanded.png",
+      "stable": true,
+      "attempts": 3,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_long",
+            "row": {
+              "x": 413,
+              "y": 147,
+              "w": 790,
+              "h": 997
+            },
+            "expanded": "true",
+            "states": [
+              "admitted"
+            ],
+            "text": "Release checklist\nLine 1: the quick brown fox jumps over the lazy dog, then checks item 1.\nLine 2: the quick brown fox jumps over the lazy dog, then checks item",
+            "body": [
+              {
+                "x": 445,
+                "y": 236,
+                "w": 746,
+                "h": 838,
+                "scrollH": 838,
+                "clientH": 838,
+                "scrollW": 746,
+                "clientW": 746
+              }
+            ],
+            "toggle": {
+              "text": "Show less",
+              "expanded": "true",
+              "x": 445,
+              "y": 1078,
+              "w": 55,
+              "h": 17
+            },
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": {
+          "scrollTop": -640,
+          "scrollHeight": 1329,
+          "clientHeight": 622
+        },
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorLight",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_long",
+      "clickedShowMore": true
+    },
+    {
+      "label": "after-light-05-long-expanded-end",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-light-05-long-expanded-end.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_long",
+            "row": {
+              "x": 413,
+              "y": -247,
+              "w": 790,
+              "h": 997
+            },
+            "expanded": "true",
+            "states": [
+              "admitted"
+            ],
+            "text": "Release checklist\nLine 1: the quick brown fox jumps over the lazy dog, then checks item 1.\nLine 2: the quick brown fox jumps over the lazy dog, then checks item",
+            "body": [
+              {
+                "x": 445,
+                "y": -158,
+                "w": 746,
+                "h": 838,
+                "scrollH": 838,
+                "clientH": 838,
+                "scrollW": 746,
+                "clientW": 746
+              }
+            ],
+            "toggle": {
+              "text": "Show less",
+              "expanded": "true",
+              "x": 445,
+              "y": 684,
+              "w": 55,
+              "h": 17
+            },
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": {
+          "scrollTop": -246,
+          "scrollHeight": 1329,
+          "clientHeight": 622
+        },
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorLight",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_long"
+    },
+    {
+      "label": "after-light-06-held-awaiting-review",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-light-06-held-awaiting-review.png",
+      "stable": true,
+      "attempts": 3,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_held",
+            "row": {
+              "x": 413,
+              "y": 236,
+              "w": 790,
+              "h": 156
+            },
+            "expanded": "true",
+            "states": [
+              "held"
+            ],
+            "text": "Held by moderation.",
+            "body": [],
+            "toggle": null,
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorLight",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_held"
+    },
+    {
+      "label": "after-light-07-held-transient",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-light-07-held-transient.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_heldt",
+            "row": {
+              "x": 413,
+              "y": 258,
+              "w": 790,
+              "h": 156
+            },
+            "expanded": "true",
+            "states": [
+              "held"
+            ],
+            "text": "Waiting for screening — not shown to your agent yet.",
+            "body": [],
+            "toggle": null,
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorLight",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_heldt"
+    },
+    {
+      "label": "after-light-08-refused",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-light-08-refused.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_refused",
+            "row": {
+              "x": 413,
+              "y": 280,
+              "w": 790,
+              "h": 156
+            },
+            "expanded": "true",
+            "states": [
+              "refused"
+            ],
+            "text": "Refused by moderation.",
+            "body": [],
+            "toggle": null,
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorLight",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_refused"
+    },
+    {
+      "label": "after-light-09-deleted",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-light-09-deleted.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_deleted",
+            "row": {
+              "x": 413,
+              "y": 302,
+              "w": 790,
+              "h": 156
+            },
+            "expanded": "true",
+            "states": [
+              "unavailable"
+            ],
+            "text": "This message was deleted.",
+            "body": [],
+            "toggle": null,
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorLight",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_deleted"
+    },
+    {
+      "label": "after-light-10-offline",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-light-10-offline.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_offline",
+            "row": {
+              "x": 413,
+              "y": 324,
+              "w": 790,
+              "h": 156
+            },
+            "expanded": "true",
+            "states": [
+              "unavailable"
+            ],
+            "text": "Couldn't reach Radient — close and reopen to retry.",
+            "body": [],
+            "toggle": null,
+            "more": null,
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": null,
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorLight",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_offline"
+    },
+    {
+      "label": "after-light-11-coalesced",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-light-11-coalesced.png",
+      "stable": true,
+      "attempts": 3,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_coal",
+            "row": {
+              "x": 413,
+              "y": 104,
+              "w": 790,
+              "h": 933
+            },
+            "expanded": "true",
+            "states": [
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted"
+            ],
+            "text": "Coalesced message 1 of 23.\n\nCoalesced message 2 of 23.\n\nCoalesced message 3 of 23.\n\nCoalesced message 4 of 23.\n\nCoalesced message 5 of 23.\n\nCoalesced message 6 ",
+            "body": [
+              {
+                "x": 445,
+                "y": 192,
+                "w": 746,
+                "h": 22,
+                "scrollH": 22,
+                "clientH": 22,
+                "scrollW": 746,
+                "clientW": 746
+              },
+              {
+                "x": 445,
+                "y": 232,
+                "w": 746,
+                "h": 22,
+                "scrollH": 22,
+                "clientH": 22,
+                "scrollW": 746,
+                "clientW": 746
+              }
+            ],
+            "toggle": null,
+            "more": "And 3 more messages",
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": {
+          "scrollTop": -401,
+          "scrollHeight": 1265,
+          "clientHeight": 622
+        },
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorLight",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_coal"
+    },
+    {
+      "label": "after-light-12-coalesced-and-more",
+      "file": "/home/ec2-user/local-operator-ui/.worktrees/bridge-inbound-body/dist/qa1977/frames-after/after-light-12-coalesced-and-more.png",
+      "stable": true,
+      "attempts": 2,
+      "pixels": {
+        "width": 1380,
+        "height": 872
+      },
+      "probe": {
+        "cards": [
+          {
+            "id": "e_coal",
+            "row": {
+              "x": 413,
+              "y": -183,
+              "w": 790,
+              "h": 933
+            },
+            "expanded": "true",
+            "states": [
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted",
+              "admitted"
+            ],
+            "text": "Coalesced message 1 of 23.\n\nCoalesced message 2 of 23.\n\nCoalesced message 3 of 23.\n\nCoalesced message 4 of 23.\n\nCoalesced message 5 of 23.\n\nCoalesced message 6 ",
+            "body": [
+              {
+                "x": 445,
+                "y": -95,
+                "w": 746,
+                "h": 22,
+                "scrollH": 22,
+                "clientH": 22,
+                "scrollW": 746,
+                "clientW": 746
+              },
+              {
+                "x": 445,
+                "y": -55,
+                "w": 746,
+                "h": 22,
+                "scrollH": 22,
+                "clientH": 22,
+                "scrollW": 746,
+                "clientW": 746
+              }
+            ],
+            "toggle": null,
+            "more": "And 3 more messages",
+            "nestedScrollers": []
+          }
+        ],
+        "scroller": {
+          "scrollTop": -114,
+          "scrollHeight": 1265,
+          "clientHeight": 622
+        },
+        "viewport": {
+          "w": 1380,
+          "h": 872
+        },
+        "theme": "localOperatorLight",
+        "hash": "#/chat/abcdef012345"
+      },
+      "case": "e_coal"
+    }
+  ],
+  "app": {
+    "pid": 1653117,
+    "log": "/tmp/lcap1977-ec2-user/lo-renderer-driver-1653081/app.log"
+  },
+  "windowFacts": {
+    "windowMode": "headless",
+    "appVersion": "0.58.2",
+    "platform": "linux",
+    "title": "Local Operator",
+    "windowSize": {
+      "width": 1380,
+      "height": 872
+    },
+    "contentBounds": {
+      "width": 1380,
+      "height": 872
+    },
+    "visible": false,
+    "focused": false,
+    "minimized": false,
+    "frames": [],
+    "outDir": "/tmp/lcap1977-ec2-user/lo-renderer-driver-1653081/frames"
+  },
+  "readyProbe": {
+    "cards": [],
+    "scroller": null,
+    "viewport": {
+      "w": 1380,
+      "h": 872
+    },
+    "theme": "localOperatorDark",
+    "hash": "#/chat/abcdef012345"
+  },
+  "tagged": 8,
+  "foldOpened": 9,
+  "finished": "2026-11-18T23:34:30.692Z"
+}
