@@ -428,6 +428,7 @@ const Home: FC<{
 							bootstrap={BOOTSTRAP}
 							onRetryLoad={() => {}}
 							selfName="Damian Tran"
+							mode="reaccept"
 							joining={false}
 							error={null}
 							onJoin={() => setReviewOpen(false)}
@@ -468,12 +469,14 @@ const NoPlan: FC<{ view: NoPlanState }> = ({ view }) => (
 );
 
 const Join: FC<{
+	mode?: "join" | "reaccept";
 	step?: 1 | 2;
 	accepted?: boolean;
 	joining?: boolean;
 	error?: CommunityJoinError | null;
 	bootstrap?: CommunityBootstrap | null;
 }> = ({
+	mode = "join",
 	step = 1,
 	accepted = false,
 	joining = false,
@@ -486,6 +489,7 @@ const Join: FC<{
 		bootstrap={bootstrap}
 		onRetryLoad={() => {}}
 		selfName="Damian Tran"
+		mode={mode}
 		joining={joining}
 		error={error}
 		onJoin={() => {}}
@@ -709,6 +713,17 @@ export const JoinGuidelinesLoading: Story = {
 export const JoinGuidelinesLoadError: Story = {
 	name: "D2 · join step 1, load error",
 	args: { ...noOrg, noOrgPanel: <Join bootstrap={null} /> },
+};
+
+/* Design round 2, D7: an existing member accepting changed guidelines. */
+export const JoinReaccept: Story = {
+	name: "D7 · re-accept updated guidelines (box clear)",
+	args: { ...noOrg, noOrgPanel: <Join mode="reaccept" /> },
+};
+
+export const JoinReacceptAccepted: Story = {
+	name: "D7 · re-accept updated guidelines, accepted",
+	args: { ...noOrg, noOrgPanel: <Join mode="reaccept" accepted /> },
 };
 
 export const JoinProfile: Story = {

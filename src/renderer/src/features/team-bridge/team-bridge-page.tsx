@@ -7292,6 +7292,7 @@ const TeamBridgeOwnedPage: FC<{
 	const communityJoin = communityList.enabled ? (
 		<CommunityJoinDialog
 			communityId={reacceptFor ?? joinTarget}
+			reaccept={reacceptFor !== null}
 			open={joinOpen}
 			onClose={() => {
 				setJoinOpen(false);

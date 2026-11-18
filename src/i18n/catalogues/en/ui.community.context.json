@@ -341,6 +341,30 @@
 		"length": "Single line in buttons, badges and labels; body copy wraps.",
 		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
 	},
+	"ui.community.join.reaccept.title": {
+		"role": "Re-accept mode of the join dialog (design D7): an EXISTING member whose accepted guidelines version is stale reads the new guidelines and ticks the versioned acceptance box to post again. Not a join: no steps, no profile preview.",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.reaccept.body": {
+		"role": "Re-accept mode of the join dialog (design D7): an EXISTING member whose accepted guidelines version is stale reads the new guidelines and ticks the versioned acceptance box to post again. Not a join: no steps, no profile preview.",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them. Placeholders: {community} (keep exactly; ICU plural arms must follow the locale's plural rules)."
+	},
+	"ui.community.join.reaccept.submit": {
+		"role": "Re-accept mode of the join dialog (design D7): an EXISTING member whose accepted guidelines version is stale reads the new guidelines and ticks the versioned acceptance box to post again. Not a join: no steps, no profile preview.",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
+	"ui.community.join.reaccept.accepting": {
+		"role": "Re-accept mode of the join dialog (design D7): an EXISTING member whose accepted guidelines version is stale reads the new guidelines and ticks the versioned acceptance box to post again. Not a join: no steps, no profile preview.",
+		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",
+		"length": "Single line in buttons, badges and labels; body copy wraps.",
+		"note": "Product names Radient, Radient Console, Team plan/Team trial, Team Bridge, Local Operator and 'Local Operator Community' stay in English. Channel names after '#' (#general) are identifiers: never translate them."
+	},
 	"ui.community.join.loading": {
 		"role": "Two-step dialog to join the public community: step 1 shows the versioned guidelines and the moderation disclosure, step 2 previews the member's public profile and asks for explicit agreement (frames D2/D3).",
 		"tone": "Clear, trustworthy, precise about what is public and what is moderated.",

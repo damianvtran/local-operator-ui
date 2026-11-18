@@ -220,11 +220,15 @@ const CommunityCard: FC<{
 					)}
 				</div>
 			) : (
+				/* The D1 treatment (design round 2, D6): in the two-column no-plan
+				   card a long locale (ru: 287 px against a 250 px box) wraps
+				   inside the card instead of running past its border. */
 				<Button
 					variant="secondary"
 					size="sm"
 					data-community-action={access === "joined" ? "open" : "join"}
 					onClick={access === "joined" ? onOpen : onJoin}
+					className="h-auto min-h-8 max-w-full whitespace-normal py-1.5 text-start"
 				>
 					{access === "joined"
 						? t("ui.community.noplan.community.open")

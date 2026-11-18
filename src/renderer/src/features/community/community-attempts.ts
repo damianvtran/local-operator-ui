@@ -35,6 +35,16 @@
  * PENDING ATTEMPTS ARE PER TARGET (community + conversation + thread) and live
  * as long as the controller does: the community home's lifetime, the same as
  * the memory-only drafts they guard.
+ *
+ * AN ANSWER THAT LANDS WHILE THE READER IS ELSEWHERE (review round 2, R2-M1).
+ * The submit is held open for the whole moderation verdict, so leaving the
+ * conversation before it answers is ordinary. That answer belongs to the
+ * conversation that sent it, not to the one on screen: it is PARKED against its
+ * target and the attempt stays pending until the reader comes back, when
+ * `enter()` shows it exactly as if they had never left (published clears that
+ * draft and re-reads history; a refusal is shown). Settling it on arrival
+ * instead would leave the draft in the box with no attempt behind it, and the
+ * next Send would publish it again under a new key.
  */
 import {
 	type CommunitySubmission,
@@ -71,6 +81,12 @@ export type AttemptContext = {
 	onGuidelinesChanged?: () => void;
 };
 
+/** A final answer for `key`, held until its conversation is on screen again. */
+type ParkedAnswer = { key: string } & (
+	| { outcome: CommunitySubmission }
+	| { error: unknown }
+);
+
 export type AttemptClock = {
 	wait: (ms: number) => Promise<void>;
 	now: () => number;
@@ -88,6 +104,8 @@ export class CommunityAttempts {
 	/** The key whose answers the composer is showing; `null` when idle. */
 	private current: string | null = null;
 	private readonly pending = new Map<string, PendingAttempt>();
+	/** Answers that arrived while their target was off screen (R2-M1). */
+	private readonly parked = new Map<string, ParkedAnswer>();
 	private readonly clock: AttemptClock;
 	private readonly mintKey: () => string;
 
@@ -109,11 +127,26 @@ export class CommunityAttempts {
 		this.current = null;
 		ctx.setPhase({ kind: "idle" });
 		const prior = this.pending.get(ctx.target);
+		const parked = this.parked.get(ctx.target);
+		this.parked.delete(ctx.target);
+		// Only the pending attempt's own answer is shown; anything else is stale.
+		if (parked && prior?.key === parked.key) {
+			this.current = parked.key;
+			if ("outcome" in parked) {
+				this.forget(ctx.target, parked.key);
+				this.settle(ctx, parked.outcome);
+			} else {
+				this.fail(ctx, parked.key, parked.error);
+			}
+			return Promise.resolve();
+		}
 		return prior ? this.recover(ctx, prior, null) : Promise.resolve();
 	}
 
 	/** Send (or Retry) the box's draft. */
 	send(ctx: AttemptContext, draft: CommunityDraftBytes): Promise<void> {
+		// A Send without `enter()` asks the hub by status read instead.
+		this.parked.delete(ctx.target);
 		const prior = this.pending.get(ctx.target);
 		if (prior) return this.recover(ctx, prior, draft);
 		return this.submit(ctx, this.mintKey(), draft);
@@ -129,15 +162,22 @@ export class CommunityAttempts {
 		ctx.setPhase({ kind: "checking", key, cancelling: true });
 		try {
 			const outcome = await ctx.cancel(key);
+			if (this.current !== key) {
+				if (outcome.state !== "checking")
+					this.park(ctx.target, key, { outcome });
+				return;
+			}
 			if (outcome.state !== "checking") this.forget(ctx.target, key);
-			if (this.current !== key) return;
 			this.settle(ctx, outcome);
 			if (outcome.state === "checking") void this.follow(ctx, key);
 		} catch (error) {
-			if (!attemptMayBeLive(communityFailure(error)))
-				this.forget(ctx.target, key);
+			// A failed cancel says nothing about the submission, which was
+			// `checking` a moment ago: it stays pending either way, and the reader
+			// (now or on return) asks about the same key again.
 			if (this.current !== key) return;
-			this.fail(ctx, key, error);
+			ctx.setPhase(
+				phaseAfterFailure(communityFailure(error), this.clock.now()),
+			);
 		}
 	}
 
@@ -160,16 +200,24 @@ export class CommunityAttempts {
 		ctx.setPhase({ kind: "checking", key, cancelling: false });
 		try {
 			const outcome = await ctx.submit(key, draft);
-			// Settled even when the reader has moved on: a stored answer is final
-			// for this key, so it must not be asked about again.
+			if (this.current !== key) {
+				// Still `checking`: the attempt stays pending and `enter()` resumes
+				// it by status read. A final answer waits for the reader (R2-M1).
+				if (outcome.state !== "checking")
+					this.park(ctx.target, key, { outcome });
+				return;
+			}
 			if (outcome.state !== "checking") this.forget(ctx.target, key);
-			if (this.current !== key) return;
 			this.settle(ctx, outcome);
 			if (outcome.state === "checking") void this.follow(ctx, key);
 		} catch (error) {
-			const failure = communityFailure(error);
-			if (!attemptMayBeLive(failure)) this.forget(ctx.target, key);
-			if (this.current !== key) return;
+			if (this.current !== key) {
+				// No answer: pending, resumed by status read. A hub answer (a
+				// refusal, a limit, stale guidelines) is shown on return (R2-M1).
+				if (!attemptMayBeLive(communityFailure(error)))
+					this.park(ctx.target, key, { error });
+				return;
+			}
 			this.fail(ctx, key, error);
 		}
 	}
@@ -247,9 +295,13 @@ export class CommunityAttempts {
 				}
 			} catch (error) {
 				if (this.current !== key) return;
-				// A failed read is not an answer: the attempt stays pending, and
-				// Retry asks about the same key again.
-				this.fail(ctx, key, error);
+				// A failed read is not an answer about the SUBMISSION - even a hub
+				// answer (401, account mismatch, 429) is about the read - so the
+				// attempt stays pending and Retry asks about the same key again,
+				// as `recover()`'s `hold` does (review round 2, m6).
+				ctx.setPhase(
+					phaseAfterFailure(communityFailure(error), this.clock.now()),
+				);
 				return;
 			}
 		}
@@ -277,5 +329,15 @@ export class CommunityAttempts {
 
 	private forget(target: string, key: string): void {
 		if (this.pending.get(target)?.key === key) this.pending.delete(target);
+	}
+
+	/** Hold a final answer for `enter()`; the attempt stays pending until then. */
+	private park(
+		target: string,
+		key: string,
+		answer: { outcome: CommunitySubmission } | { error: unknown },
+	): void {
+		if (this.pending.get(target)?.key === key)
+			this.parked.set(target, { key, ...answer });
 	}
 }

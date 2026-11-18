@@ -8951,6 +8951,10 @@ export type MessageParams = {
 	"ui.community.join.preview.name_avatar": undefined;
 	"ui.community.join.preview.not_shown": undefined;
 	"ui.community.join.preview.pending_note": undefined;
+	"ui.community.join.reaccept.accepting": undefined;
+	"ui.community.join.reaccept.body": { community: string };
+	"ui.community.join.reaccept.submit": undefined;
+	"ui.community.join.reaccept.title": undefined;
 	"ui.community.join.step": { step: string };
 	"ui.community.join.step1.body": undefined;
 	"ui.community.join.step1.label": undefined;

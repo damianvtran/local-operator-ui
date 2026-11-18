@@ -21,6 +21,14 @@
  *
  * The disabled Join button stays focusable (`aria-disabled`, not `disabled`) so
  * its reason - "Check the box to continue" - can be reached and read.
+ *
+ * RE-ACCEPT MODE (design review round 2, D7). A member whose accepted version
+ * is stale opens the same dialog from "Review and accept", but they are not
+ * joining and have a profile already: the step counter, the "Join {community}"
+ * copy and the profile preview would all tell them otherwise. `mode="reaccept"`
+ * is one step - the new guidelines with the same versioned acceptance box -
+ * titled as a review, and its action says Accept. The write is the same join
+ * call (the hub records the newly accepted version on the membership).
  */
 import { TeamBridgeMarkdown } from "@features/team-bridge/team-bridge-markdown";
 import {
@@ -72,6 +80,8 @@ export const CommunityJoinDialogView: FC<{
 	joining: boolean;
 	error: CommunityJoinError | null;
 	onJoin: (guidelinesVersion: string) => void;
+	/** `reaccept`: an existing member accepting changed guidelines (D7). */
+	mode?: "join" | "reaccept";
 	/** Story/capture seed only. */
 	defaultStep?: 1 | 2;
 	/** Story/capture seed only. */
@@ -85,6 +95,7 @@ export const CommunityJoinDialogView: FC<{
 	joining,
 	error,
 	onJoin,
+	mode = "join",
 	defaultStep = 1,
 	defaultAccepted = false,
 }) => {
@@ -95,6 +106,10 @@ export const CommunityJoinDialogView: FC<{
 	const hintId = useId();
 	const version = bootstrap?.guidelines.version ?? "";
 	const community = bootstrap?.community.name ?? "";
+	const reaccept = mode === "reaccept";
+	// Where the acceptance box and the primary action live: the join's step 2,
+	// or re-accept's only step.
+	const accepting = reaccept || step === 2;
 	/*
 	 * A changed version invalidates the acceptance: the reader agreed to the
 	 * text they saw, so new text means step 1 again with the box clear.
@@ -124,26 +139,32 @@ export const CommunityJoinDialogView: FC<{
 	return (
 		<Dialog open={open} onOpenChange={(next) => !next && onClose()}>
 			<DialogContent
-				data-community-join-step={step}
+				data-community-join-step={reaccept ? "reaccept" : step}
 				className="max-h-[calc(100vh-4rem)] max-w-[480px] gap-0 overflow-hidden p-0"
 			>
 				<div className="flex min-h-0 flex-col gap-1 px-5 pt-5 pe-12">
-					<p className="text-meta-sm text-ink-dim">
-						{t("ui.community.join.step", { step: String(step) })}
-						{" · "}
-						{step === 1
-							? t("ui.community.join.step1.label")
-							: t("ui.community.join.step2.label")}
-					</p>
+					{!reaccept && (
+						<p className="text-meta-sm text-ink-dim">
+							{t("ui.community.join.step", { step: String(step) })}
+							{" · "}
+							{step === 1
+								? t("ui.community.join.step1.label")
+								: t("ui.community.join.step2.label")}
+						</p>
+					)}
 					<DialogTitle className="text-[16px] font-medium">
-						{step === 1
-							? t("ui.community.join.step1.title", { community })
-							: t("ui.community.join.step2.title")}
+						{reaccept
+							? t("ui.community.join.reaccept.title")
+							: step === 1
+								? t("ui.community.join.step1.title", { community })
+								: t("ui.community.join.step2.title")}
 					</DialogTitle>
 					<DialogDescription className="text-[13px] text-ink-muted">
-						{step === 1
-							? t("ui.community.join.step1.body")
-							: t("ui.community.join.step2.body")}
+						{reaccept
+							? t("ui.community.join.reaccept.body", { community })
+							: step === 1
+								? t("ui.community.join.step1.body")
+								: t("ui.community.join.step2.body")}
 					</DialogDescription>
 				</div>
 				<div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
@@ -166,7 +187,7 @@ export const CommunityJoinDialogView: FC<{
 								</Button>
 							</AlertDescription>
 						</Alert>
-					) : step === 1 ? (
+					) : reaccept || step === 1 ? (
 						<GuidelinesStep bootstrap={bootstrap} />
 					) : (
 						<ProfileStep selfName={selfName} />
@@ -182,7 +203,7 @@ export const CommunityJoinDialogView: FC<{
 							<AlertDescription>{errorCopy}</AlertDescription>
 						</Alert>
 					)}
-					{step === 2 && bootstrap && (
+					{accepting && bootstrap && (
 						<div className="mt-4 flex items-start gap-2.5">
 							<Checkbox
 								id={checkboxId}
@@ -202,14 +223,14 @@ export const CommunityJoinDialogView: FC<{
 				</div>
 				<div className="flex items-center justify-between gap-3 bg-surface px-5 py-3">
 					<p id={hintId} className="text-meta-sm text-ink-dim">
-						{step === 1
+						{!accepting
 							? t("ui.community.join.next_hint")
 							: accepted
 								? ""
 								: t("ui.community.join.agree_hint")}
 					</p>
 					<div className="flex shrink-0 gap-2">
-						{step === 1 ? (
+						{!accepting ? (
 							<>
 								<Button variant="ghost" size="sm" onClick={onClose}>
 									{t("ui.community.join.cancel")}
@@ -226,9 +247,15 @@ export const CommunityJoinDialogView: FC<{
 							</>
 						) : (
 							<>
-								<Button variant="ghost" size="sm" onClick={() => setStep(1)}>
-									{t("ui.community.join.back")}
-								</Button>
+								{reaccept ? (
+									<Button variant="ghost" size="sm" onClick={onClose}>
+										{t("ui.community.join.cancel")}
+									</Button>
+								) : (
+									<Button variant="ghost" size="sm" onClick={() => setStep(1)}>
+										{t("ui.community.join.back")}
+									</Button>
+								)}
 								<Button
 									variant="primary"
 									size="sm"
@@ -249,9 +276,13 @@ export const CommunityJoinDialogView: FC<{
 										onJoin(bootstrap.guidelines.version);
 									}}
 								>
-									{joining
-										? t("ui.community.join.joining")
-										: t("ui.community.join.submit")}
+									{reaccept
+										? joining
+											? t("ui.community.join.reaccept.accepting")
+											: t("ui.community.join.reaccept.submit")
+										: joining
+											? t("ui.community.join.joining")
+											: t("ui.community.join.submit")}
 								</Button>
 							</>
 						)}
@@ -347,7 +378,9 @@ export const CommunityJoinDialog: FC<{
 	onClose: () => void;
 	selfName: string | null;
 	onJoined: (communityId: string) => void;
-}> = ({ communityId, open, onClose, selfName, onJoined }) => {
+	/** An existing member accepting changed guidelines (D7). */
+	reaccept?: boolean;
+}> = ({ communityId, open, onClose, selfName, onJoined, reaccept = false }) => {
 	const bootstrap = useCommunityBootstrap(open ? communityId : null);
 	const join = useJoinCommunity();
 	const [error, setError] = useState<CommunityJoinError | null>(null);
@@ -361,6 +394,7 @@ export const CommunityJoinDialog: FC<{
 			bootstrap={bootstrap.isError ? null : bootstrap.data}
 			onRetryLoad={() => void bootstrap.refetch()}
 			selfName={selfName}
+			mode={reaccept ? "reaccept" : "join"}
 			joining={join.isPending}
 			error={error}
 			onJoin={(guidelinesVersion) => {
