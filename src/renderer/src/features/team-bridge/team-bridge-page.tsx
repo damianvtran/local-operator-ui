@@ -5635,13 +5635,24 @@ const TeamBridgeOwnedPage: FC<{
 		organizations,
 		openingRows,
 	);
-	const openingHeld = openingDefaultHeld({
-		organizationCount: openingOrganizations,
-		membershipsSettled: !memberships.isPending || memberships.isError,
-		requestedTenant,
-		chosen: scopeChosen.current,
-		session: sessionScope,
-	});
+	/*
+	 * HOLD ONLY WHAT MEMBERSHIPS CAN STILL ANSWER (review round 2, M3). The hold
+	 * ends when memberships settle, and that query is enabled by `readsEnabled`
+	 * alone. Once the verdict is in and refuses reads (plan_required, rate_limited,
+	 * unavailable, ...), memberships never load, so a hold there would replace the
+	 * eligibility panel with an endless gate spinner. While the verdict is still
+	 * pending (`gatePending`) the hold stays, because that is exactly when a
+	 * multi-org seed could otherwise paint; it lifts with the verdict either way.
+	 */
+	const openingHeld =
+		(gatePending || readsEnabled) &&
+		openingDefaultHeld({
+			organizationCount: openingOrganizations,
+			membershipsSettled: !memberships.isPending || memberships.isError,
+			requestedTenant,
+			chosen: scopeChosen.current,
+			session: sessionScope,
+		});
 	/*
 	 * THE SCOPE IS DECIDED BEFORE THE LIST IS READ (tb-instant-open).
 	 *

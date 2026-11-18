@@ -395,6 +395,9 @@ function deferred() {
  *   waitReady   - false when the scenario holds the gate open on purpose.
  *   statusGate  - replaces the fixture's own null status gate, so a caller can
  *                 hold the eligibility verdict open from before the first render.
+ *   statusState - the runtime's `state` ("ready" by default); with
+ *   statusError   `statusError` ({ code }) it models a refused verdict such as
+ *                 `unavailable` or a throttled `rate_limited` one.
  *   sendMentions- advertises `team_bridge_send_mentions`, so the composer's
  *                 @-mentions are serialised onto the wire (off by default).
  *   attachments - advertises the hub's image capability and answers the
@@ -425,6 +428,8 @@ async function mount({
 	seed = null,
 	waitReady = true,
 	statusGate = null,
+	statusState = "ready",
+	statusError = null,
 	sendMentions = false,
 	attachments = false,
 	hostedRail = false,
@@ -468,6 +473,8 @@ async function mount({
 		ownerGuard: 1,
 		authGate: null,
 		statusGate,
+		statusState,
+		statusError,
 		listGate: null,
 		historyGate: null,
 		// Holds the account unread read so a test can observe the refreshing state.
@@ -607,7 +614,7 @@ async function mount({
 						if (fixture.statusGate) await fixture.statusGate.promise;
 						return reply({
 							capability: 1,
-							state: "ready",
+							state: fixture.statusState,
 							read_only: fixture.readOnly,
 							account_id: owner,
 							tenant_id: tenant,
@@ -642,7 +649,7 @@ async function mount({
 								],
 							},
 							consent: null,
-							error: null,
+							error: fixture.statusError,
 						});
 					case "team_bridge.conversations.list":
 						if (fixture.listGate) await fixture.listGate.promise;

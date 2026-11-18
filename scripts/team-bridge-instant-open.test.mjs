@@ -180,6 +180,66 @@ test("an ineligible account is shown no cached surface at all", async () => {
 	}
 });
 
+/*
+ * A MULTI-ORG ACCOUNT THAT MAY NOT READ STILL GETS ITS PANEL (review round 2, M3
+ * on ui#1970). The opening hold waits for the default org, which memberships
+ * answer, and memberships stay disabled once the verdict refuses reads. With two
+ * hub tenants and a two-org watcher snapshot the hold used to win over the
+ * eligibility branch and leave "Checking Team Bridge…" up for good. The test
+ * above passes only because it is single-tenant; these are the two-tenant cases.
+ */
+const twoOrgSnapshot = ({ client, ui: bundle }) =>
+	client.setQueryData(bundle.teamBridgeKeys.conversations("all", "acct_a"), {
+		conversations: [
+			row(),
+			row({ id: "bcv_other", tenant_id: "org_other", name: "Other thread" }),
+		],
+		has_more: false,
+	});
+for (const { verdict, title, options } of [
+	{
+		verdict: "plan_required",
+		title: PLAN_TITLE,
+		options: { surfaceState: "A" },
+	},
+	{
+		verdict: "rate_limited",
+		title: "Slowing down requests",
+		options: {
+			statusState: "unavailable",
+			statusError: { code: "rate_limited", message: "Too many requests" },
+		},
+	},
+	{
+		verdict: "unavailable",
+		title: "Team Bridge is unavailable",
+		options: { statusState: "unavailable" },
+	},
+]) {
+	test(`a two-org ${verdict} account sees its panel, not an endless gate`, async () => {
+		const app = await mount({
+			path: "/team-bridge",
+			waitReady: false,
+			seed: twoOrgSnapshot,
+			...options,
+		});
+		try {
+			await until(
+				() => app.host.textContent.includes(title),
+				`the ${verdict} panel`,
+			);
+			assert.equal(
+				app.host.textContent.includes(ROW),
+				false,
+				"no cached row under a refusing verdict",
+			);
+			assert.deepEqual(listScopes(app), [], "and no list read either");
+		} finally {
+			await app.close();
+		}
+	});
+}
+
 test("an unread refresh is visible, not a silently stale count", async () => {
 	/*
 	 * MECHANISM 4 for the one number a reader acts on. Cached rows stay on screen
