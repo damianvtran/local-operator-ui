@@ -94,7 +94,7 @@
 	"ui.chat.attachments.open_named": {
 		"role": "Accessible name of a picture tile that opens the picture",
 		"tone": "Imperative plus a name",
-		"length_hint": "One word plus a name",
+		"length": "One word plus a name",
 		"note": "Imperative plus the file's display name.",
 		"placeholders": {
 			"name": "File display name; do not translate."
@@ -103,7 +103,7 @@
 	"ui.chat.attachments.expand_aria": {
 		"role": "Accessible name of a pasted or attached picture's expand control",
 		"tone": "Imperative plus a name",
-		"length_hint": "One word plus a name",
+		"length": "One word plus a name",
 		"note": "Imperative plus the file's display name.",
 		"placeholders": {
 			"name": "File display name; do not translate."
@@ -112,7 +112,7 @@
 	"ui.chat.attachments.expand_title": {
 		"role": "Tooltip of a pasted or attached picture's expand control",
 		"tone": "Imperative plus a name",
-		"length_hint": "Three words plus a name",
+		"length": "Three words plus a name",
 		"note": "Pointer-oriented sentence.",
 		"placeholders": {
 			"name": "File display name; do not translate."
@@ -121,7 +121,7 @@
 	"ui.chat.attachments.open_title": {
 		"role": "Tooltip of a file or video attachment's open control",
 		"tone": "Imperative plus a name",
-		"length_hint": "Three words plus a name",
+		"length": "Three words plus a name",
 		"note": "Pointer-oriented sentence.",
 		"placeholders": {
 			"name": "File display name; do not translate."
@@ -130,7 +130,7 @@
 	"ui.chat.attachments.not_viewable": {
 		"role": "Tooltip of an attachment card the app cannot show",
 		"tone": "Statement, colon, name",
-		"length_hint": "Three words plus a name",
+		"length": "Three words plus a name",
 		"note": "The name follows a colon.",
 		"placeholders": {
 			"name": "File display name; do not translate."

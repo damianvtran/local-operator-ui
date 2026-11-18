@@ -356,59 +356,165 @@
 		"note": "Switches the conversation pane to the raw message payload; `Raw` is the app's established word for machine JSON.",
 		"placeholders": {}
 	},
-	"ui.chat.mermaid.zoom_in": "Diagram control tooltip and accessible name for the zoom-in button.",
-	"ui.chat.mermaid.zoom_out": "Diagram control tooltip and accessible name for the zoom-out button.",
-	"ui.chat.mermaid.pan": "Accessible name for the pan (hand) control on a diagram.",
-	"ui.chat.mermaid.pan_hint": "Tooltip explaining that the diagram is dragged to pan it.",
-	"ui.chat.mermaid.reset_view": "Diagram control tooltip and accessible name that restores zoom and pan.",
-	"ui.chat.mermaid.save_svg": "Diagram control tooltip and accessible name that downloads the diagram as an SVG file.",
-	"ui.chat.mermaid.copied": "Brief confirmation state of the copy control, after the diagram source was copied.",
-	"ui.chat.mermaid.copy_text": "Tooltip and accessible name of the control that copies the mermaid source.",
-	"ui.chat.mermaid.error_title": "Heading of the danger alert shown when a diagram cannot be parsed or rendered.",
-	"ui.chat.mermaid.unexpected_error": "Fallback sentence shown when the render failed without a message of its own.",
-	"ui.chat.mermaid.error_contained": "Reassurance that the failure did not break the rest of the conversation.",
-	"ui.chat.mermaid.chart_label": "Small label above the raw diagram source shown in the error alert.",
-	"ui.chat.mermaid.loading": "Placeholder while the diagram is being rendered.",
-	"ui.chat.mermaid.rendering_error": "Heading of the alert for a failure inside the render path.",
-	"ui.chat.mermaid.render_failed": "Body of the alert for a failure inside the render path.",
-	"ui.chat.mermaid.fullscreen": "Tooltip on the control that opens the diagram fullscreen.",
-	"ui.chat.mermaid.open_fullscreen": "Accessible name of the control that opens the diagram fullscreen.",
-	"ui.chat.mermaid.diagram_title": "Title of the fullscreen dialog that holds a diagram.",
-	"ui.chat.mermaid.close_fullscreen": "Tooltip and accessible name that closes the fullscreen diagram dialog.",
-	"ui.chat.aside.question_label": "Screen-reader label that introduces the question in an aside exchange.",
-	"ui.chat.aside.you_label": "Visible quiet marker naming the asker of the aside question.",
-	"ui.chat.aside.thinking": "Placeholder while the aside answer is still streaming.",
-	"ui.chat.aside.title": "Heading of the aside panel: an off-the-record exchange beside the conversation.",
-	"ui.chat.aside.off_record": "Sub-heading stating that the aside is not part of the conversation.",
-	"ui.chat.aside.close_label": "Accessible name of the control that closes the aside panel.",
-	"ui.chat.aside.exchange_label": "Accessible name of the scrollable region holding the aside question and answers.",
-	"ui.chat.aside.empty": "Empty state of the aside panel before any question was asked.",
-	"ui.chat.aside.add_to_conversation": "Action that adopts the aside answer into the conversation.",
-	"ui.chat.error_block.heading": "Label above the danger block that shows raw error output.",
-	"ui.chat.error_block.link.settings": "Link text inside a suggestion sentence pointing at the settings page.",
-	"ui.chat.error_block.link.providers": "Link text pointing at the Providers section of settings.",
-	"ui.chat.error_block.provider.before": "First half of the sentence; a settings link follows, then `provider.after`.",
-	"ui.chat.error_block.provider.after": "Second half of the sentence, after the settings link. 'Radient' is a product name and stays English.",
-	"ui.chat.error_block.model.before": "First half of the sentence; a settings link follows, then `model.after`.",
-	"ui.chat.error_block.model.after": "Second half of the sentence, after the settings link. 'Radient' is a product name and stays English.",
-	"ui.chat.error_block.rate_limit.before": "First half of the rate-limit sentence; a settings link follows, then one of the two `after` keys.",
-	"ui.chat.error_block.rate_limit.after": "Second half of the rate-limit sentence, after the settings link. 'Radient Pass' is a product name and stays English.",
-	"ui.chat.error_block.rate_limit.all_after": "Second half of the rate-limit sentence for the hyphenated wire variant, after the settings link.",
-	"ui.chat.error_block.invalid_key.before": "First half of the invalid-key sentence; the Providers link follows, then `invalid_key.after` which starts with a comma.",
-	"ui.chat.error_block.invalid_key.after": "Second half of the invalid-key sentence; starts with a comma because it follows the link directly.",
-	"ui.chat.error_block.unavailable.before": "First half of the unavailable-model sentence; a settings link follows, then `unavailable.after`.",
-	"ui.chat.error_block.unavailable.after": "Second half of the unavailable-model sentence, after the settings link. 'Radient' is a product name and stays English.",
-	"ui.chat.error_block.schema.before": "First paragraph of the schema-failure suggestion, before a line break.",
-	"ui.chat.error_block.schema.after_before": "Start of the second paragraph; a settings link follows, then `schema.after`.",
-	"ui.chat.error_block.schema.after": "Second half of the schema paragraph, after the settings link. 'Radient Automatic' is a product name and stays English.",
-	"ui.chat.approval.reply_required": "Error shown when an approval answer is neither yes/no nor a listed option.",
-	"ui.chat.question_dock.hint.approval": "Hint under an approval card naming all three exits.",
-	"ui.chat.question_dock.hint.approval_held": "Held-state hint: the card's own buttons cannot send until the outcome is known.",
-	"ui.chat.question_dock.hint.prefix": "Prefix for a multi-question ask; trailing space is intentional, the sentence follows.",
-	"ui.chat.question_dock.hint.secret": "Hint for a secret answer: the card's own field, Enter, and the dock's collapse.",
-	"ui.chat.question_dock.hint.secret_held": "Held-state secret hint: nothing can send, only the card's own Escape works.",
-	"ui.chat.question_dock.hint.type": "Hint when the question offers no options.",
-	"ui.chat.question_dock.hint.options": "Hint when options are offered; {digits} is a precomputed key range such as '1-3'.",
+	"ui.chat.mermaid.zoom_in": {
+		"note": "Diagram control tooltip and accessible name for the zoom-in button."
+	},
+	"ui.chat.mermaid.zoom_out": {
+		"note": "Diagram control tooltip and accessible name for the zoom-out button."
+	},
+	"ui.chat.mermaid.pan": {
+		"note": "Accessible name for the pan (hand) control on a diagram."
+	},
+	"ui.chat.mermaid.pan_hint": {
+		"note": "Tooltip explaining that the diagram is dragged to pan it."
+	},
+	"ui.chat.mermaid.reset_view": {
+		"note": "Diagram control tooltip and accessible name that restores zoom and pan."
+	},
+	"ui.chat.mermaid.save_svg": {
+		"note": "Diagram control tooltip and accessible name that downloads the diagram as an SVG file."
+	},
+	"ui.chat.mermaid.copied": {
+		"note": "Brief confirmation state of the copy control, after the diagram source was copied."
+	},
+	"ui.chat.mermaid.copy_text": {
+		"note": "Tooltip and accessible name of the control that copies the mermaid source."
+	},
+	"ui.chat.mermaid.error_title": {
+		"note": "Heading of the danger alert shown when a diagram cannot be parsed or rendered."
+	},
+	"ui.chat.mermaid.unexpected_error": {
+		"note": "Fallback sentence shown when the render failed without a message of its own."
+	},
+	"ui.chat.mermaid.error_contained": {
+		"note": "Reassurance that the failure did not break the rest of the conversation."
+	},
+	"ui.chat.mermaid.chart_label": {
+		"note": "Small label above the raw diagram source shown in the error alert."
+	},
+	"ui.chat.mermaid.loading": {
+		"note": "Placeholder while the diagram is being rendered."
+	},
+	"ui.chat.mermaid.rendering_error": {
+		"note": "Heading of the alert for a failure inside the render path."
+	},
+	"ui.chat.mermaid.render_failed": {
+		"note": "Body of the alert for a failure inside the render path."
+	},
+	"ui.chat.mermaid.fullscreen": {
+		"note": "Tooltip on the control that opens the diagram fullscreen."
+	},
+	"ui.chat.mermaid.open_fullscreen": {
+		"note": "Accessible name of the control that opens the diagram fullscreen."
+	},
+	"ui.chat.mermaid.diagram_title": {
+		"note": "Title of the fullscreen dialog that holds a diagram."
+	},
+	"ui.chat.mermaid.close_fullscreen": {
+		"note": "Tooltip and accessible name that closes the fullscreen diagram dialog."
+	},
+	"ui.chat.aside.question_label": {
+		"note": "Screen-reader label that introduces the question in an aside exchange."
+	},
+	"ui.chat.aside.you_label": {
+		"note": "Visible quiet marker naming the asker of the aside question."
+	},
+	"ui.chat.aside.thinking": {
+		"note": "Placeholder while the aside answer is still streaming."
+	},
+	"ui.chat.aside.title": {
+		"note": "Heading of the aside panel: an off-the-record exchange beside the conversation."
+	},
+	"ui.chat.aside.off_record": {
+		"note": "Sub-heading stating that the aside is not part of the conversation."
+	},
+	"ui.chat.aside.close_label": {
+		"note": "Accessible name of the control that closes the aside panel."
+	},
+	"ui.chat.aside.exchange_label": {
+		"note": "Accessible name of the scrollable region holding the aside question and answers."
+	},
+	"ui.chat.aside.empty": {
+		"note": "Empty state of the aside panel before any question was asked."
+	},
+	"ui.chat.aside.add_to_conversation": {
+		"note": "Action that adopts the aside answer into the conversation."
+	},
+	"ui.chat.error_block.heading": {
+		"note": "Label above the danger block that shows raw error output."
+	},
+	"ui.chat.error_block.link.settings": {
+		"note": "Link text inside a suggestion sentence pointing at the settings page."
+	},
+	"ui.chat.error_block.link.providers": {
+		"note": "Link text pointing at the Providers section of settings."
+	},
+	"ui.chat.error_block.provider.before": {
+		"note": "First half of the sentence; a settings link follows, then `provider.after`."
+	},
+	"ui.chat.error_block.provider.after": {
+		"note": "Second half of the sentence, after the settings link. 'Radient' is a product name and stays English."
+	},
+	"ui.chat.error_block.model.before": {
+		"note": "First half of the sentence; a settings link follows, then `model.after`."
+	},
+	"ui.chat.error_block.model.after": {
+		"note": "Second half of the sentence, after the settings link. 'Radient' is a product name and stays English."
+	},
+	"ui.chat.error_block.rate_limit.before": {
+		"note": "First half of the rate-limit sentence; a settings link follows, then one of the two `after` keys."
+	},
+	"ui.chat.error_block.rate_limit.after": {
+		"note": "Second half of the rate-limit sentence, after the settings link. 'Radient Pass' is a product name and stays English."
+	},
+	"ui.chat.error_block.rate_limit.all_after": {
+		"note": "Second half of the rate-limit sentence for the hyphenated wire variant, after the settings link."
+	},
+	"ui.chat.error_block.invalid_key.before": {
+		"note": "First half of the invalid-key sentence; the Providers link follows, then `invalid_key.after` which starts with a comma."
+	},
+	"ui.chat.error_block.invalid_key.after": {
+		"note": "Second half of the invalid-key sentence; starts with a comma because it follows the link directly."
+	},
+	"ui.chat.error_block.unavailable.before": {
+		"note": "First half of the unavailable-model sentence; a settings link follows, then `unavailable.after`."
+	},
+	"ui.chat.error_block.unavailable.after": {
+		"note": "Second half of the unavailable-model sentence, after the settings link. 'Radient' is a product name and stays English."
+	},
+	"ui.chat.error_block.schema.before": {
+		"note": "First paragraph of the schema-failure suggestion, before a line break."
+	},
+	"ui.chat.error_block.schema.after_before": {
+		"note": "Start of the second paragraph; a settings link follows, then `schema.after`."
+	},
+	"ui.chat.error_block.schema.after": {
+		"note": "Second half of the schema paragraph, after the settings link. 'Radient Automatic' is a product name and stays English."
+	},
+	"ui.chat.approval.reply_required": {
+		"note": "Error shown when an approval answer is neither yes/no nor a listed option."
+	},
+	"ui.chat.question_dock.hint.approval": {
+		"note": "Hint under an approval card naming all three exits."
+	},
+	"ui.chat.question_dock.hint.approval_held": {
+		"note": "Held-state hint: the card's own buttons cannot send until the outcome is known."
+	},
+	"ui.chat.question_dock.hint.prefix": {
+		"note": "Prefix for a multi-question ask; trailing space is intentional, the sentence follows."
+	},
+	"ui.chat.question_dock.hint.secret": {
+		"note": "Hint for a secret answer: the card's own field, Enter, and the dock's collapse."
+	},
+	"ui.chat.question_dock.hint.secret_held": {
+		"note": "Held-state secret hint: nothing can send, only the card's own Escape works."
+	},
+	"ui.chat.question_dock.hint.type": {
+		"note": "Hint when the question offers no options."
+	},
+	"ui.chat.question_dock.hint.options": {
+		"note": "Hint when options are offered; {digits} is a precomputed key range such as '1-3'."
+	},
 	"ui.chat.session_status.context_heading": {
 		"role": "the word Context as a proportional-heading line in the draft context tooltip",
 		"tone": "noun, sentence case, no trailing punctuation",
@@ -990,49 +1096,49 @@
 	"ui.chat.aside.add_to_conversation_tooltip": {
 		"role": "Tooltip of the control that adopts an aside exchange into the main conversation",
 		"tone": "Imperative sentence, no period",
-		"length_hint": "Six words",
+		"length": "Six words",
 		"note": "Longer sibling of the control's own label; names the verb the keyboard chord alone cannot carry."
 	},
 	"ui.chat.message_controls.content_header": {
 		"role": "Header of the raw content block under a message",
 		"tone": "Single noun",
-		"length_hint": "One word",
+		"length": "One word",
 		"note": "Names the block that shows the message's raw content text."
 	},
 	"ui.chat.message_controls.replacements_header": {
 		"role": "Header of the replacements block under a message",
 		"tone": "Single noun",
-		"length_hint": "One word",
+		"length": "One word",
 		"note": "Names the block that shows text replacements an action applied."
 	},
 	"ui.chat.message_controls.thinking_label": {
 		"role": "Trigger label of the collapsible reasoning block above a reply",
 		"tone": "Single word",
-		"length_hint": "One word",
+		"length": "One word",
 		"note": "Single progressive word; it opens the model's visible reasoning."
 	},
 	"ui.chat.scroll_to_bottom.label": {
 		"role": "Accessible name of the floating button that jumps to the newest message",
 		"tone": "Imperative phrase",
-		"length_hint": "Three words",
+		"length": "Three words",
 		"note": "Imperative; the button sits above the composer."
 	},
 	"ui.chat.scroll_to_bottom.label_new_activity": {
 		"role": "Accessible name of the jump-to-newest button while unseen activity exists",
 		"tone": "Noun phrase, comma, imperative",
-		"length_hint": "Five words",
+		"length": "Five words",
 		"note": "Says why the button matters, then what it does."
 	},
 	"ui.chat.session_status.last_reading_note": {
 		"role": "Sentence marking held session readings as stale (tooltip and accessible name)",
 		"tone": "Plain statement ending in a period",
-		"length_hint": "One sentence",
+		"length": "One sentence",
 		"note": "States that the numbers shown are the last ones received before the connection dropped."
 	},
 	"ui.chat.session_status.readings_aria_held": {
 		"role": "Accessible name of the session readings group while the readings are held",
 		"tone": "Label then sentence",
-		"length_hint": "Two short sentences",
+		"length": "Two short sentences",
 		"note": "Group name followed by the held-readings note.",
 		"placeholders": {
 			"note": "The already-localised last-reading note; interpolate as-is."
@@ -1041,73 +1147,73 @@
 	"ui.chat.session_status.commands_off": {
 		"role": "Reason a session reading cannot be opened",
 		"tone": "Plain explanatory sentence",
-		"length_hint": "One sentence",
+		"length": "One sentence",
 		"note": "Slash commands are the in-conversation commands (for example /model); the server can switch them off."
 	},
 	"ui.chat.session_status.context_click_breakdown_held": {
 		"role": "Hint on the context reading while its numbers are held (measured or estimated)",
 		"tone": "Short imperative plus a clause",
-		"length_hint": "One sentence",
+		"length": "One sentence",
 		"note": "Invites opening the breakdown panel."
 	},
 	"ui.chat.session_status.context_click_breakdown_held_plain": {
 		"role": "Hint on the context reading while held and nothing was measured",
 		"tone": "Short imperative",
-		"length_hint": "Five words",
+		"length": "Five words",
 		"note": "Invites opening the breakdown panel."
 	},
 	"ui.chat.session_status.context_measured_now": {
 		"role": "Hint on a measured context reading",
 		"tone": "Two clauses joined by a semicolon",
-		"length_hint": "One line",
+		"length": "One line",
 		"note": "Says the number is current and invites opening the breakdown; no final period in the source."
 	},
 	"ui.chat.session_status.context_estimated_now": {
 		"role": "Hint on an estimated context reading",
 		"tone": "Two clauses joined by a semicolon",
-		"length_hint": "One line",
+		"length": "One line",
 		"note": "Says the number is an estimate and invites opening the breakdown; no final period in the source."
 	},
 	"ui.chat.session_status.context_click_breakdown": {
 		"role": "Hint on a context reading with no measurement",
 		"tone": "Short imperative",
-		"length_hint": "Five words",
+		"length": "Five words",
 		"note": "Invites opening the breakdown panel; no final period in the source."
 	},
 	"ui.chat.session_status.model_click_choose_draft": {
 		"role": "Hint on the model chip of a draft conversation",
 		"tone": "Imperative plus a statement",
-		"length_hint": "Two sentences",
+		"length": "Two sentences",
 		"note": "Tells the person the model choice applies to the conversation about to start."
 	},
 	"ui.chat.session_status.model_click_choose": {
 		"role": "Hint on the model chip of a running conversation",
 		"tone": "Short imperative",
-		"length_hint": "Six words",
+		"length": "Six words",
 		"note": "No final period in the source."
 	},
 	"ui.chat.session_status.model_draft_inert": {
 		"role": "Reason the model chip of a draft is not openable",
 		"tone": "Two plain statements",
-		"length_hint": "Two sentences",
+		"length": "Two sentences",
 		"note": "The model is fixed until the draft becomes a real conversation."
 	},
 	"ui.chat.session_status.effort_change_draft": {
 		"role": "Hint on the reasoning-effort chip of a draft",
 		"tone": "Imperative plus a statement",
-		"length_hint": "Two short sentences",
+		"length": "Two short sentences",
 		"note": "'It' is the reasoning effort."
 	},
 	"ui.chat.session_status.effort_change": {
 		"role": "Hint on the reasoning-effort chip of a running conversation",
 		"tone": "Short imperative",
-		"length_hint": "Two words",
+		"length": "Two words",
 		"note": "'It' is the reasoning effort."
 	},
 	"ui.chat.session_status.model_aria": {
 		"role": "Accessible name of the model chip",
 		"tone": "Label, identifier, clause, sentence",
-		"length_hint": "One line plus a sentence",
+		"length": "One line plus a sentence",
 		"note": "Model identifier, then fast-mode state when on, then the reason or hint sentence.",
 		"placeholders": {
 			"selector": "Model identifier such as a vendor/model slug; do not translate.",
@@ -1118,7 +1224,7 @@
 	"ui.chat.session_status.model_aria_pending": {
 		"role": "Accessible name of the model chip while a switch is pending",
 		"tone": "Label, identifier, clause, two clauses",
-		"length_hint": "One line plus a sentence",
+		"length": "One line plus a sentence",
 		"note": "Model identifier, fast-mode state when on, then a statement that the session has not yet confirmed the switch.",
 		"placeholders": {
 			"selector": "Model identifier such as a vendor/model slug; do not translate.",
@@ -1128,31 +1234,31 @@
 	"ui.chat.session_status.switching_model": {
 		"role": "Spinner accessible name while the model switch is in flight",
 		"tone": "Progressive phrase, no ellipsis",
-		"length_hint": "Three words",
+		"length": "Three words",
 		"note": "Announced by assistive technology next to the model chip."
 	},
 	"ui.chat.session_status.model_aria_unresolved": {
 		"role": "Accessible name of the model reading when resolving a draft's model failed",
 		"tone": "Label, statement, imperative",
-		"length_hint": "Two short sentences",
+		"length": "Two short sentences",
 		"note": "'Retry' is the action the reading offers."
 	},
 	"ui.chat.session_status.model_aria_resolving": {
 		"role": "Accessible name of the model reading while a draft's model resolves",
 		"tone": "Label then progressive statement",
-		"length_hint": "One sentence",
+		"length": "One sentence",
 		"note": "Progress statement."
 	},
 	"ui.chat.session_status.resolving_model_spinner": {
 		"role": "Spinner accessible name while a draft's model resolves",
 		"tone": "Progressive phrase, no final period",
-		"length_hint": "Eight words",
+		"length": "Eight words",
 		"note": "Announced next to the 'Resolving the model' text."
 	},
 	"ui.chat.session_status.context_aria_no_reading": {
 		"role": "Accessible name of the context reading before any measurement",
 		"tone": "Label, statement, sentence",
-		"length_hint": "One line plus a hint",
+		"length": "One line plus a hint",
 		"note": "Label, statement, then the already-localised hint.",
 		"placeholders": {
 			"hint": "The already-localised breakdown hint; interpolate as-is."
@@ -1161,7 +1267,7 @@
 	"ui.chat.session_status.context_aria_reading": {
 		"role": "Accessible name of the context reading with a value",
 		"tone": "Label, value, clause, sentence",
-		"length_hint": "One line plus a hint",
+		"length": "One line plus a hint",
 		"note": "Label, the value as the strip spells it, 'estimated' when it is an estimate, then the hint.",
 		"placeholders": {
 			"spelling": "The value as spelled in the strip (for example 20.3%/1M); do not translate.",
@@ -1172,7 +1278,7 @@
 	"ui.chat.session_status.active_time_aria": {
 		"role": "Accessible name of the session's active-time reading",
 		"tone": "Label, value, sentence",
-		"length_hint": "One line plus a sentence",
+		"length": "One line plus a sentence",
 		"note": "Label, the formatted duration, then the short explanation.",
 		"placeholders": {
 			"duration": "The already-formatted duration; interpolate as-is.",
@@ -1182,7 +1288,7 @@
 	"ui.chat.session_status.duration_explanation": {
 		"role": "Short explanation of the active-time reading, for the accessible name",
 		"tone": "Plain clause pair",
-		"length_hint": "One sentence",
+		"length": "One sentence",
 		"note": "Spoken in one breath after the number, so it is a single clause with a semicolon."
 	},
 	"ui.chat.session_status.effort_level.low": {
