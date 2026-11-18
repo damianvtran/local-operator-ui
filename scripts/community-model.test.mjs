@@ -26,6 +26,7 @@ const bundle = await build({
 			`export * from "./src/renderer/src/features/community/community-model";`,
 			`export { communityFailure } from "./src/renderer/src/shared/api/local-operator/community-api";`,
 			`export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";`,
+			`export { paletteShortcutIntent } from "./src/renderer/src/features/command-palette/palette-shortcut";`,
 			`export { desktopEndpoint, desktopRequestSchema, desktopRequestDeadlineMs, desktopRequestByteBudget, COMMUNITY_OPS } from "./src/shared/desktop-contract";`,
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -53,6 +54,7 @@ const noPlan = (overrides = {}) =>
 		selectedTenantId: "tnt_robotics",
 		selectedOrgName: "Tran Robotics",
 		subscribeUrl: subscribe,
+		trialStartEnabled: true,
 		...overrides,
 	});
 
@@ -62,10 +64,58 @@ test("D1: signed out offers sign-in only", () => {
 	assert.deepEqual(noPlan({ signedIn: false }), { kind: "signed_out" });
 });
 
-test("D1: existing Team access is never covered by the upsell", () => {
+test("D1/M3: memberships showing a Team plan under the plan-required gate draw the shipped panel plus the join, never a blank canvas", () => {
 	assert.deepEqual(noPlan({ privateAccess: "available" }), {
-		kind: "has_team",
+		kind: "plan_panel",
+		community: "joinable",
 	});
+});
+
+test("m5: the trial hold keeps the shipped upgrade panel, never trial copy, and always offers the join", () => {
+	for (const privateAccess of [
+		"available",
+		"no_org",
+		"no_team_plan",
+		"other_unavailable",
+		"unknown",
+	])
+		for (const trialOffer of ["eligible", "checkout_open", "reconciling"]) {
+			const view = noPlan({
+				trialStartEnabled: false,
+				privateAccess,
+				trialOffer,
+				communityAccess: "joined",
+			});
+			assert.deepEqual(
+				view,
+				{ kind: "plan_panel", community: "joined" },
+				JSON.stringify({ privateAccess, trialOffer }),
+			);
+		}
+	// Signed out still answers sign-in only.
+	assert.equal(
+		noPlan({ trialStartEnabled: false, signedIn: false }).kind,
+		"signed_out",
+	);
+});
+
+test("m3: a pending list read is checking and a failed one is retryable - neither is 'unavailable'", () => {
+	const access = (over) =>
+		m.communityAccessFrom({
+			pending: false,
+			failure: null,
+			joined: 0,
+			featured: 0,
+			...over,
+		});
+	assert.equal(access({ pending: true }), "checking");
+	assert.equal(access({ failure: "unreachable" }), "failed");
+	assert.equal(access({ failure: "error" }), "failed");
+	// A real off is not retryable.
+	assert.equal(access({ failure: "disabled" }), "unavailable");
+	assert.equal(access({}), "unavailable");
+	assert.equal(access({ featured: 1 }), "joinable");
+	assert.equal(access({ joined: 1, featured: 1 }), "joined");
 });
 
 test("D1: an outage is a retryable plan check, never a commercial claim, and keeps the join", () => {
@@ -722,4 +772,149 @@ test("ops: submit, edit and the long poll sit above the daemon's own bounds", ()
 	assert.ok(
 		m.desktopRequestByteBudget("community.submit") >= 4 * perImage + 16_000,
 	);
+});
+
+test("M1: only a call that ended without a hub answer leaves its attempt live", () => {
+	const fail = (error) => m.attemptMayBeLive(m.communityFailure(error));
+	assert.equal(fail(new m.DesktopControlError(null, "deadline")), true);
+	assert.equal(
+		fail(refusal(502, { code: "community_unreachable" })),
+		true,
+		"daemon 502: the hub may have it",
+	);
+	for (const detail of [
+		{
+			code: "refused",
+			category: "spam_or_promotion",
+			reference: "MOD-AB12-CD34",
+		},
+		{ code: "rate_limited", retry_after: 30 },
+		{ code: "moderation_unavailable" },
+		{ code: "guidelines_changed", guidelines_version: "v2" },
+		{ code: "payload_too_large" },
+		{ code: "account_mismatch" },
+	])
+		assert.equal(fail(refusal(409, detail)), false, detail.code);
+	const draft = {
+		text: "a",
+		images: [{ content_type: "image/png", data_base64: "AA" }],
+	};
+	assert.equal(
+		m.sameDraftBytes(draft, { ...draft, images: [...draft.images] }),
+		true,
+	);
+	assert.equal(m.sameDraftBytes(draft, { ...draft, text: "b" }), false);
+	assert.equal(m.sameDraftBytes(draft, { ...draft, images: [] }), false);
+});
+
+test("M2: stale guidelines block sending; only the composer that hit the 409 keeps its box", () => {
+	const now = 1_000_000;
+	assert.equal(
+		m.canSend({ kind: "guidelines_changed", version: "v2" }, now, "hi"),
+		false,
+	);
+	assert.equal(
+		m.guidelinesNeedReaccept({
+			guidelines: { version: "v2" },
+			membership: { guidelines_version: "v1" },
+		}),
+		true,
+	);
+	assert.equal(
+		m.guidelinesNeedReaccept({
+			guidelines: { version: "v2" },
+			membership: { guidelines_version: "v2" },
+		}),
+		false,
+	);
+	assert.equal(
+		m.guidelinesNeedReaccept({
+			guidelines: { version: "v2" },
+			membership: null,
+		}),
+		false,
+		"a non-member joins; there is nothing to re-accept",
+	);
+	const idle = { kind: "idle" };
+	const hit = { kind: "guidelines_changed", version: "v2" };
+	assert.equal(m.postingFor("open", true, idle), "guidelines_changed");
+	assert.equal(m.postingFor("open", true, hit), "open");
+	assert.equal(m.postingFor("open", false, idle), "open");
+	// A channel closed anyway keeps its own reason.
+	assert.equal(m.postingFor("locked", true, idle), "locked");
+});
+
+test("m4: own messages survive a reload through the learned, per-account public id", () => {
+	const values = new Map();
+	const storage = {
+		getItem: (key) => values.get(key) ?? null,
+		setItem: (key, value) => values.set(key, value),
+	};
+	const message = (id, publicId, kind = "human") => ({
+		id,
+		conversation_id: "c",
+		seq: 1,
+		created_at: "2026-11-18T00:00:00Z",
+		author: { kind, display_name: "x", public_id: publicId },
+	});
+	const loaded = [message("m1", "pub_other"), message("m2", "pub_me")];
+	assert.equal(m.learnSelfPublicId(loaded, new Set(["m2"])), "pub_me");
+	assert.equal(m.learnSelfPublicId(loaded, new Set()), null);
+	m.writeSelfPublicId(storage, "acct_a", "com_1", "pub_me");
+	// "Reload": a fresh read from storage, no session ids.
+	const self = m.readSelfPublicId(storage, "acct_a", "com_1");
+	assert.equal(self, "pub_me");
+	assert.equal(m.isOwnMessage(message("m9", "pub_me"), self), true);
+	assert.equal(m.isOwnMessage(message("m8", "pub_other"), self), false);
+	// Another account, or another community, is someone else.
+	assert.equal(m.readSelfPublicId(storage, "acct_b", "com_1"), null);
+	assert.equal(m.readSelfPublicId(storage, "acct_a", "com_2"), null);
+	assert.equal(m.readSelfPublicId(storage, undefined, "com_1"), null);
+	// A corrupt entry is no answer, never a throw.
+	values.set(m.COMMUNITY_SELF_KEY, "{not json");
+	assert.equal(m.readSelfPublicId(storage, "acct_a", "com_1"), null);
+});
+
+test("M4: Browse is Cmd/Ctrl+Shift+K, which the global palette never claims", () => {
+	const press = (over) => ({
+		key: "k",
+		metaKey: false,
+		ctrlKey: false,
+		altKey: false,
+		shiftKey: false,
+		repeat: false,
+		defaultPrevented: false,
+		...over,
+	});
+	for (const mod of [{ metaKey: true }, { ctrlKey: true }]) {
+		const browse = press({ ...mod, shiftKey: true, key: "K" });
+		assert.equal(m.isCommunityBrowsePress(browse), true);
+		assert.equal(m.paletteShortcutIntent(browse), null, "no double dialog");
+		const palette = press(mod);
+		assert.equal(
+			m.isCommunityBrowsePress(palette),
+			false,
+			"Cmd+K stays the palette's",
+		);
+		assert.equal(m.paletteShortcutIntent(palette), "chats");
+	}
+	assert.equal(
+		m.isCommunityBrowsePress(
+			press({ metaKey: true, shiftKey: true, repeat: true }),
+		),
+		false,
+	);
+	assert.equal(
+		m.isCommunityBrowsePress(
+			press({ metaKey: true, shiftKey: true, defaultPrevented: true }),
+		),
+		false,
+	);
+	assert.equal(
+		m.isCommunityBrowsePress(
+			press({ metaKey: true, shiftKey: true, altKey: true }),
+		),
+		false,
+	);
+	assert.equal(m.COMMUNITY_BROWSE_CHORD, "primary+shift+k");
 });

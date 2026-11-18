@@ -283,6 +283,7 @@ import {
 	openingOrganizationCount,
 	readScopePreference,
 	readSessionScope,
+	resolveDefaultSelection,
 	resolveOpeningScope,
 	shouldRecordSessionScope,
 	snapshotForScope,
@@ -5628,6 +5629,15 @@ const TeamBridgeOwnedPage: FC<{
 		landing: string | null;
 	} | null>(null);
 	const [joinOpen, setJoinOpen] = useState(false);
+	/*
+	 * Set when the join dialog is a RE-ACCEPTANCE by a member of this community
+	 * (the composer's "Review and accept", review round 1 M2 / design D2): the
+	 * dialog targets that community, and success keeps the reader where they
+	 * are instead of landing on #welcome-and-rules like a fresh join.
+	 */
+	const [reacceptFor, setReacceptFor] = useState<TeamBridgeCommunityId | null>(
+		null,
+	);
 	const joinTarget =
 		communityList.featured[0]?.id ??
 		communityList.communities[0]?.communityId ??
@@ -5645,21 +5655,6 @@ const TeamBridgeOwnedPage: FC<{
 			openCommunity(joined.communityId);
 		else if (joinTarget) setJoinOpen(true);
 	};
-	/*
-	 * THE ONE WAY A COMMUNITY IS A LAUNCH DEFAULT (`resolveDefaultSelection` rule
-	 * 7): no private Team org at all (the plan-required gate) and a joined
-	 * community. Once per mount, so choosing the empty private side afterwards
-	 * is not overridden.
-	 */
-	const communityAutoOpened = useRef(false);
-	useEffect(() => {
-		if (!communityList.enabled || communityAutoOpened.current) return;
-		if (eligibility !== "plan_required") return;
-		const first = communityList.communities[0];
-		if (!first) return;
-		communityAutoOpened.current = true;
-		setCommunityScope({ id: first.communityId, landing: null });
-	}, [communityList.enabled, communityList.communities, eligibility]);
 	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE, {
 		accountId,
 	});
@@ -5679,6 +5674,31 @@ const TeamBridgeOwnedPage: FC<{
 	);
 	const { pending: organizationsPending, failed: organizationsFailed } =
 		organizationsReadState(hubTenants, memberships);
+	/*
+	 * THE ONE WAY A COMMUNITY IS A LAUNCH DEFAULT (`resolveDefaultSelection` rule
+	 * 7): no private Team org at all (the plan-required gate) and a joined
+	 * community. Once per mount, so choosing the empty private side afterwards
+	 * is not overridden. The decision is the shared rule's, not a re-derivation
+	 * (review round 1, m1): its rule 1 - a pending private invitation opens the
+	 * invited org even with a community joined (D22) - must win here too.
+	 */
+	const communityAutoOpened = useRef(false);
+	useEffect(() => {
+		if (!communityList.enabled || communityAutoOpened.current) return;
+		if (eligibility !== "plan_required") return;
+		const selection = resolveDefaultSelection({
+			organizations,
+			communities: communityList.communities,
+		});
+		if (selection?.kind !== "community") return;
+		communityAutoOpened.current = true;
+		setCommunityScope({ id: selection.communityId, landing: null });
+	}, [
+		communityList.enabled,
+		communityList.communities,
+		eligibility,
+		organizations,
+	]);
 	/*
 	 * The account's DEFAULT private org (Amendment A rule 2): the Radient home
 	 * tenant, which `GET /v1/me/memberships` marks `is_home`. Only an active row
@@ -7271,12 +7291,21 @@ const TeamBridgeOwnedPage: FC<{
 			: draftKey;
 	const communityJoin = communityList.enabled ? (
 		<CommunityJoinDialog
-			communityId={joinTarget}
+			communityId={reacceptFor ?? joinTarget}
 			open={joinOpen}
-			onClose={() => setJoinOpen(false)}
+			onClose={() => {
+				setJoinOpen(false);
+				setReacceptFor(null);
+			}}
 			selfName={selfName ?? null}
 			onJoined={(communityId) => {
 				setJoinOpen(false);
+				if (reacceptFor) {
+					// The join invalidated bootstrap; the home re-reads it and opens
+					// the composer again in the channel the reader is in.
+					setReacceptFor(null);
+					return;
+				}
 				setCommunityScope({
 					id: asTeamBridgeCommunityId(communityId),
 					landing: COMMUNITY_WELCOME_CHANNEL,
@@ -7296,6 +7325,10 @@ const TeamBridgeOwnedPage: FC<{
 					key={`${accountId ?? ""}:${communityScope.id}`}
 					communityId={communityScope.id}
 					initialChannelName={communityScope.landing}
+					onReviewGuidelines={() => {
+						setReacceptFor(communityScope.id);
+						setJoinOpen(true);
+					}}
 					switcher={
 						<TeamBridgeOrgSwitcher
 							organizations={organizations}
@@ -7791,6 +7824,8 @@ const TeamBridgeOwnedPage: FC<{
 						<CommunityNoPlanEntry
 							communityAccess={communityList.access}
 							selfName={selfName}
+							onRetryCommunity={communityList.retry}
+							planPanel={<TeamBridgeEligibilityPanel reason="plan_required" />}
 							onJoin={() => setJoinOpen(true)}
 							onOpen={() => {
 								const joined = communityList.communities[0];

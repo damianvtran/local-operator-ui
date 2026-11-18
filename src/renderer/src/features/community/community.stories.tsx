@@ -12,12 +12,16 @@ import type {
 	CommunityChannel,
 	CommunityMessage,
 } from "@shared/api/local-operator/community-api";
+import { chordCaption } from "@shared/keymap/keymap-chord";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type FC, type ReactElement, useState } from "react";
 import { subscribeUrlFor } from "../team-bridge-trial/team-bridge-trial-model";
 import { asTeamBridgeCommunityId } from "../team-bridge/team-bridge-model";
 import { TeamBridgeOrgSwitcher } from "../team-bridge/team-bridge-org-switcher";
-import type { TeamBridgePageView } from "../team-bridge/team-bridge-page";
+import {
+	TeamBridgeEligibilityPanel,
+	type TeamBridgePageView,
+} from "../team-bridge/team-bridge-page";
 import pageMeta from "../team-bridge/team-bridge-page.stories";
 import { CommunityBrowseView } from "./community-browse";
 import {
@@ -42,9 +46,11 @@ import {
 	CommunityThreadPane,
 } from "./community-messages";
 import {
+	COMMUNITY_BROWSE_CHORD,
 	type ComposerPhase,
 	type CommunityNoPlanView as NoPlanState,
 	composerAudience,
+	postingFor,
 	postingState,
 	threadReplies,
 	timelineMessages,
@@ -308,6 +314,10 @@ const Home: FC<{
 	threadId?: string;
 	requests?: boolean;
 	browse?: "channels" | "people";
+	/** The guidelines changed since the reader accepted them (M2/D2). */
+	guidelinesStale?: boolean;
+	/** Open the re-accept join dialog (what "Review and accept" opens). */
+	reviewOpen?: boolean;
 }> = ({
 	channelId,
 	pane = "ready",
@@ -318,16 +328,25 @@ const Home: FC<{
 	threadId,
 	requests = false,
 	browse,
+	guidelinesStale = false,
+	reviewOpen: initialReviewOpen = false,
 }) => {
 	const [draft, setDraft] = useState(initialDraft);
+	const [reviewOpen, setReviewOpen] = useState(initialReviewOpen);
 	const current = CHANNELS.find((row) => row.id === channelId) ?? null;
 	const rows = MESSAGES[channelId] ?? [];
-	const posting = postingState(current, "active");
+	const channelPosting = postingState(current, "active");
+	const posting = postingFor(channelPosting, guidelinesStale, { kind: "idle" });
 	const root = threadId ? rows.find((row) => row.id === threadId) : undefined;
 	const composer = (variant: "channel" | "thread") => (
 		<CommunityComposerView
 			channelName={current?.name ?? ""}
-			posting={posting}
+			posting={postingFor(
+				channelPosting,
+				guidelinesStale,
+				variant === "channel" ? phase : { kind: "idle" },
+			)}
+			onReviewGuidelines={() => setReviewOpen(true)}
 			audience={composerAudience(current)}
 			phase={variant === "channel" ? phase : { kind: "idle" }}
 			draft={variant === "channel" ? draft : EMPTY_DRAFT}
@@ -357,7 +376,10 @@ const Home: FC<{
 						onSelectChannel={() => {}}
 						onSelectRequests={() => {}}
 						onBrowse={() => {}}
-						browseShortcut="Ctrl K"
+						browseShortcut={chordCaption(COMMUNITY_BROWSE_CHORD, "linux").glyph}
+						browseShortcutAria={
+							chordCaption(COMMUNITY_BROWSE_CHORD, "linux").aria
+						}
 					/>
 				}
 				header={
@@ -399,7 +421,18 @@ const Home: FC<{
 					) : undefined
 				}
 				overlay={
-					browse ? (
+					reviewOpen ? (
+						<CommunityJoinDialogView
+							open
+							onClose={() => setReviewOpen(false)}
+							bootstrap={BOOTSTRAP}
+							onRetryLoad={() => {}}
+							selfName="Damian Tran"
+							joining={false}
+							error={null}
+							onJoin={() => setReviewOpen(false)}
+						/>
+					) : browse ? (
 						<CommunityBrowseView
 							open
 							onClose={() => {}}
@@ -424,6 +457,13 @@ const NoPlan: FC<{ view: NoPlanState }> = ({ view }) => (
 		onJoin={() => {}}
 		onOpen={() => {}}
 		onRetry={() => {}}
+		onRetryCommunity={() => {}}
+		planPanel={
+			<TeamBridgeEligibilityPanel
+				reason="plan_required"
+				trialStartEnabled={false}
+			/>
+		}
 	/>
 );
 
@@ -597,6 +637,44 @@ export const NoPlanCommunityUnavailable: Story = {
 				)}
 			/>
 		),
+	},
+};
+
+/*
+ * THE SHIPPING D1 (review round 1, m5 + M3). While `TEAM_TRIAL_START_ENABLED`
+ * holds the trial, and whenever memberships already show a Team plan, the slot
+ * is the shipped plan-required panel with the community card beside it. The
+ * trial-card stories above render the arms that appear once the hold lifts.
+ */
+export const NoPlanTrialHeld: Story = {
+	name: "D1 · trial held: shipped panel + community join",
+	args: {
+		...noOrg,
+		noOrgPanel: <NoPlan view={{ kind: "plan_panel", community: "joinable" }} />,
+	},
+};
+
+export const NoPlanTrialHeldJoined: Story = {
+	name: "D1 · trial held: shipped panel + open community",
+	args: {
+		...noOrg,
+		noOrgPanel: <NoPlan view={{ kind: "plan_panel", community: "joined" }} />,
+	},
+};
+
+export const NoPlanCommunityChecking: Story = {
+	name: "D1 · community card loading",
+	args: {
+		...noOrg,
+		noOrgPanel: <NoPlan view={{ kind: "plan_panel", community: "checking" }} />,
+	},
+};
+
+export const NoPlanCommunityFailed: Story = {
+	name: "D1 · community read failed, Retry",
+	args: {
+		...noOrg,
+		noOrgPanel: <NoPlan view={{ kind: "plan_panel", community: "failed" }} />,
 	},
 };
 
@@ -814,12 +892,31 @@ export const ComposerImagesUnavailable: Story = {
 };
 
 export const ComposerGuidelinesChanged: Story = {
-	name: "D7 · guidelines changed",
+	name: "D7 · guidelines changed, Review and accept",
 	...homeStory(() => (
 		<Home
 			channelId="ch_help"
+			guidelinesStale
 			phase={{ kind: "guidelines_changed", version: "2026-12" }}
 			draft={DRAFT}
+		/>
+	)),
+};
+
+export const ComposerGuidelinesReadOnly: Story = {
+	name: "D7 · guidelines changed, other channel read-only",
+	...homeStory(() => <Home channelId="ch_general" guidelinesStale />),
+};
+
+export const ComposerGuidelinesReview: Story = {
+	name: "D7 · Review and accept opens join step 1",
+	...homeStory(() => (
+		<Home
+			channelId="ch_help"
+			guidelinesStale
+			phase={{ kind: "guidelines_changed", version: "2026-12" }}
+			draft={DRAFT}
+			reviewOpen
 		/>
 	)),
 };

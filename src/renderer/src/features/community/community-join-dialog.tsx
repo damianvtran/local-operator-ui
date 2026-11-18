@@ -175,6 +175,8 @@ export const CommunityJoinDialogView: FC<{
 						<Alert
 							variant={error?.kind === "guidelines_changed" ? "info" : "danger"}
 							className="mt-3"
+							// Mounted by the reader's Join press: announce it (design D4).
+							role="alert"
 							data-community-join-error={error?.kind}
 						>
 							<AlertDescription>{errorCopy}</AlertDescription>

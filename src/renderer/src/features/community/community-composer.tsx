@@ -125,6 +125,7 @@ export const CommunityOutcomeNotice: FC<{
 			return (
 				<Alert
 					variant="warning"
+					role="alert"
 					data-community-outcome="refused"
 					icon={<TriangleAlert size={15} aria-hidden="true" />}
 				>
@@ -178,7 +179,11 @@ export const CommunityOutcomeNotice: FC<{
 					data-community-outcome="rate-limited"
 					icon={<Clock size={15} aria-hidden="true" />}
 				>
-					<AlertTitle>{t("ui.community.outcome.limit.title")}</AlertTitle>
+					{/* The live region is the title only: the countdown below changes
+					    every second and must not chatter (design round 1, D4). */}
+					<AlertTitle>
+						<output>{t("ui.community.outcome.limit.title")}</output>
+					</AlertTitle>
 					<AlertDescription className="flex flex-col gap-1">
 						<p>
 							{t(
@@ -198,7 +203,11 @@ export const CommunityOutcomeNotice: FC<{
 		}
 		case "moderation_unavailable":
 			return (
-				<Alert variant="info" data-community-outcome="moderation-unavailable">
+				<Alert
+					variant="info"
+					role="alert"
+					data-community-outcome="moderation-unavailable"
+				>
 					<AlertTitle>{t("ui.community.outcome.unavailable.title")}</AlertTitle>
 					<AlertDescription className="flex flex-col gap-2">
 						<p>{t("ui.community.outcome.unavailable.body")}</p>
@@ -215,7 +224,11 @@ export const CommunityOutcomeNotice: FC<{
 			);
 		case "images_unavailable":
 			return (
-				<Alert variant="info" data-community-outcome="images-unavailable">
+				<Alert
+					variant="info"
+					role="alert"
+					data-community-outcome="images-unavailable"
+				>
 					<AlertTitle>{t("ui.community.outcome.images.title")}</AlertTitle>
 					<AlertDescription className="flex flex-col gap-2">
 						<p>{t("ui.community.outcome.images.body")}</p>
@@ -231,7 +244,11 @@ export const CommunityOutcomeNotice: FC<{
 			);
 		case "guidelines_changed":
 			return (
-				<Alert variant="info" data-community-outcome="guidelines-changed">
+				<Alert
+					variant="info"
+					role="alert"
+					data-community-outcome="guidelines-changed"
+				>
 					<AlertTitle>
 						{t("ui.community.outcome.guidelines_changed.title")}
 					</AlertTitle>
@@ -262,6 +279,9 @@ export const CommunityOutcomeNotice: FC<{
 			return (
 				<Alert
 					variant={phase.kind === "cancelled" ? "neutral" : "warning"}
+					// A cancel is the reader's own act (polite); the rest are failures
+					// they did not cause and must hear at once (design round 1, D4).
+					role={phase.kind === "cancelled" ? "status" : "alert"}
 					data-community-outcome={phase.kind}
 				>
 					<AlertDescription className="flex items-center justify-between gap-3">
@@ -282,7 +302,8 @@ export const CommunityOutcomeNotice: FC<{
 const ReadOnlyBar: FC<{
 	posting: Exclude<CommunityPostingState, "open">;
 	onGoGeneral?: () => void;
-}> = ({ posting, onGoGeneral }) => (
+	onReviewGuidelines?: () => void;
+}> = ({ posting, onGoGeneral, onReviewGuidelines }) => (
 	<div
 		data-community-composer="read-only"
 		className="flex items-center gap-3 rounded-lg border border-hairline bg-surface px-3 py-2.5"
@@ -293,8 +314,20 @@ const ReadOnlyBar: FC<{
 				? t("ui.community.composer.locked")
 				: posting === "archived"
 					? t("ui.community.composer.archived")
-					: t("ui.community.composer.community_read_only")}
+					: posting === "guidelines_changed"
+						? t("ui.community.outcome.guidelines_changed.title")
+						: t("ui.community.composer.community_read_only")}
 		</p>
+		{posting === "guidelines_changed" && onReviewGuidelines && (
+			<Button
+				variant="secondary"
+				size="sm"
+				data-community-action="review-guidelines"
+				onClick={onReviewGuidelines}
+			>
+				{t("ui.community.outcome.guidelines_changed.review")}
+			</Button>
+		)}
 		{posting === "locked" && onGoGeneral && (
 			<Button variant="secondary" size="sm" onClick={onGoGeneral}>
 				{t("ui.community.composer.go_general")}
@@ -354,7 +387,11 @@ export const CommunityComposerView: FC<{
 	if (posting !== "open")
 		return (
 			<div className="flex flex-col gap-1.5">
-				<ReadOnlyBar posting={posting} onGoGeneral={onGoGeneral} />
+				<ReadOnlyBar
+					posting={posting}
+					onGoGeneral={onGoGeneral}
+					onReviewGuidelines={onReviewGuidelines}
+				/>
 				{variant === "channel" && (
 					<AudienceLine audience={audience} offline={false} />
 				)}

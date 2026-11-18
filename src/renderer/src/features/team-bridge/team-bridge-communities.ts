@@ -1,9 +1,16 @@
-import { communityUnreadTotal } from "@features/community/community-model";
+import {
+	type CommunityAccess,
+	communityAccessFrom,
+	communityUnreadTotal,
+} from "@features/community/community-model";
 import {
 	useCommunityChannels,
 	useCommunityList,
 } from "@features/community/use-community";
-import type { CommunityRecord } from "@shared/api/local-operator/community-api";
+import {
+	type CommunityRecord,
+	communityFailure,
+} from "@shared/api/local-operator/community-api";
 import { FeatureFlagContext } from "@shared/providers/feature-flags/feature-flag-context";
 import { useContext, useMemo } from "react";
 import {
@@ -63,8 +70,10 @@ export function useTeamBridgeCommunities(): {
 	/** Joinable communities the hub features (the D1 card's community). */
 	featured: readonly CommunityRecord[];
 	/** `community_access` for the featured community (RFC §5.1). */
-	access: "joinable" | "joined" | "unavailable";
+	access: CommunityAccess;
 	loading: boolean;
+	/** Re-read the list (the D1 card's Retry after a failed read). */
+	retry: () => void;
 } {
 	const flags = useContext(FeatureFlagContext);
 	const enabled = flags?.isEnabled(TEAM_BRIDGE_COMMUNITY_FLAG) ?? false;
@@ -88,17 +97,18 @@ export function useTeamBridgeCommunities(): {
 					),
 		[joined, firstJoined, unread],
 	);
-	const access =
-		joined.length > 0
-			? "joined"
-			: featured.length > 0
-				? "joinable"
-				: "unavailable";
+	const access = communityAccessFrom({
+		pending: enabled && list.isPending,
+		failure: list.isError ? communityFailure(list.error).kind : null,
+		joined: joined.length,
+		featured: featured.length,
+	});
 	return {
 		communities,
 		enabled,
 		featured,
 		access,
 		loading: enabled && list.isPending,
+		retry: () => void list.refetch(),
 	};
 }

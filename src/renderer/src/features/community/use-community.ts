@@ -33,12 +33,11 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { type AttemptContext, CommunityAttempts } from "./community-attempts";
 import {
 	type ComposerPhase,
 	eventsBackoffMs,
 	invalidationsFor,
-	phaseAfterFailure,
-	phaseAfterSubmission,
 	toggleReaction,
 } from "./community-model";
 
@@ -285,14 +284,15 @@ export function useJoinCommunity() {
 }
 
 /**
- * The composer's send loop: one attempt at a time, with its own key.
+ * The composer's send loop, bound to one conversation (or thread).
  *
- * The key is minted BEFORE the request so Cancel can name the in-flight attempt
- * and a lost answer can be asked about (`submission.status`). Every retry
- * mints a new key: the hub answers a reused key with the first attempt's stored
- * outcome, so reusing one after a refusal or an outage would replay it. A
- * `checking` answer (the verdict outlived the request) is followed by status
- * reads every 2 s until it settles.
+ * The attempt rules - one key per attempt for as long as it may still
+ * publish, a status read before anything is re-sent - live in
+ * `CommunityAttempts` (`community-attempts.ts`, review round 1 M1), which is
+ * driven by node tests without React. This hook owns only what React must:
+ * the phase state, the per-render context (this conversation's ids, the owner
+ * receipt, the draft callbacks) and re-entering on a conversation switch, so a
+ * conversation with an attempt still in flight shows that attempt again.
  */
 export function useCommunityComposer(input: {
 	communityId: string;
@@ -301,130 +301,71 @@ export function useCommunityComposer(input: {
 	guidelinesVersion?: string;
 	/** The published message's id, when the hub returned one. */
 	onPublished: (messageId: string | null) => void;
+	/** The hub answered 409 `guidelines_changed` (the home goes read-only). */
+	onGuidelinesChanged?: () => void;
 }) {
 	const accountId = useCommunityOwner();
 	const client = useQueryClient();
 	const [phase, setPhase] = useState<ComposerPhase>({ kind: "idle" });
-	const attempt = useRef<string | null>(null);
+	const attempts = useRef<CommunityAttempts | null>(null);
+	if (!attempts.current) attempts.current = new CommunityAttempts();
 	const { communityId, conversationId, threadRootId, guidelinesVersion } =
 		input;
-	const onPublished = input.onPublished;
+	const target = `${communityId}\u0000${conversationId}\u0000${threadRootId ?? ""}`;
 
-	// A conversation switch abandons any attempt's UI (the hub keeps the
-	// verdict; the reader sees the post land through the next history read).
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on target change only
+	// Rebuilt every render so a late answer reaches the CURRENT callbacks; the
+	// controller's own key check keeps it from painting another target.
+	const ctx: AttemptContext = {
+		target,
+		submit: (key, draft) =>
+			communityApi.submit(communityId, conversationId, {
+				text: draft.text,
+				images: [...draft.images],
+				...(threadRootId ? { threadRootId } : {}),
+				...(guidelinesVersion ? { guidelinesVersion } : {}),
+				idempotencyKey: key,
+				expectedAccountId: accountId,
+			}),
+		status: (key) =>
+			communityApi.submissionStatus(communityId, key, {
+				expectedAccountId: accountId,
+			}),
+		cancel: (key) =>
+			communityApi.cancelSubmission(communityId, key, {
+				expectedAccountId: accountId,
+			}),
+		setPhase,
+		onPublished: input.onPublished,
+		onHistoryChanged: () =>
+			void client.invalidateQueries({
+				queryKey: communityKeys.history(accountId, communityId, conversationId),
+			}),
+		...(input.onGuidelinesChanged
+			? { onGuidelinesChanged: input.onGuidelinesChanged }
+			: {}),
+	};
+	const latest = useRef(ctx);
+	latest.current = ctx;
+
+	// A conversation switch shows that conversation's own attempt: idle, or -
+	// when one may still be in flight there - its status, read again by key.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: re-enter on target change only
 	useEffect(() => {
-		attempt.current = null;
-		setPhase({ kind: "idle" });
-	}, [communityId, conversationId, threadRootId]);
-
-	const settle = useCallback(
-		(key: string, outcome: Parameters<typeof phaseAfterSubmission>[0]) => {
-			if (attempt.current !== key) return;
-			const next = phaseAfterSubmission(outcome);
-			setPhase(next.phase);
-			if (next.clearDraft) {
-				attempt.current = null;
-				onPublished(outcome.message_id ?? null);
-				void client.invalidateQueries({
-					queryKey: communityKeys.history(
-						accountId,
-						communityId,
-						conversationId,
-					),
-				});
-			}
-		},
-		[client, accountId, communityId, conversationId, onPublished],
-	);
-
-	const followUp = useCallback(
-		async (key: string) => {
-			for (;;) {
-				await new Promise((resolve) => setTimeout(resolve, 2000));
-				if (attempt.current !== key) return;
-				try {
-					const outcome = await communityApi.submissionStatus(
-						communityId,
-						key,
-						{
-							expectedAccountId: accountId,
-						},
-					);
-					if (attempt.current !== key) return;
-					if (outcome.state !== "checking") {
-						settle(key, outcome);
-						return;
-					}
-				} catch (error) {
-					if (attempt.current !== key) return;
-					setPhase(phaseAfterFailure(communityFailure(error), Date.now()));
-					return;
-				}
-			}
-		},
-		[accountId, communityId, settle],
-	);
+		if (!conversationId) return;
+		void attempts.current?.enter(latest.current);
+	}, [target]);
 
 	const send = useCallback(
 		async (text: string, images: CommunityImageInput[] = []) => {
-			const key = newCommunityIdempotencyKey();
-			attempt.current = key;
-			setPhase({ kind: "checking", key, cancelling: false });
-			try {
-				const outcome = await communityApi.submit(communityId, conversationId, {
-					text,
-					images,
-					...(threadRootId ? { threadRootId } : {}),
-					...(guidelinesVersion ? { guidelinesVersion } : {}),
-					idempotencyKey: key,
-					expectedAccountId: accountId,
-				});
-				if (attempt.current !== key) return;
-				if (outcome.state === "checking") {
-					settle(key, outcome);
-					void followUp(key);
-					return;
-				}
-				settle(key, outcome);
-			} catch (error) {
-				if (attempt.current !== key) return;
-				setPhase(phaseAfterFailure(communityFailure(error), Date.now()));
-			}
+			await attempts.current?.send(latest.current, { text, images });
 		},
-		[
-			accountId,
-			communityId,
-			conversationId,
-			threadRootId,
-			guidelinesVersion,
-			settle,
-			followUp,
-		],
+		[],
 	);
-
-	/**
-	 * Best-effort cancel (RFC §5.5): if the hub already published, the reader
-	 * sees it posted. The UI says "Cancelling" until the hub answers.
-	 */
 	const cancel = useCallback(async () => {
-		const key = attempt.current;
-		if (!key) return;
-		setPhase({ kind: "checking", key, cancelling: true });
-		try {
-			const outcome = await communityApi.cancelSubmission(communityId, key, {
-				expectedAccountId: accountId,
-			});
-			settle(key, outcome);
-		} catch (error) {
-			if (attempt.current !== key) return;
-			setPhase(phaseAfterFailure(communityFailure(error), Date.now()));
-		}
-	}, [accountId, communityId, settle]);
-
+		await attempts.current?.cancel(latest.current);
+	}, []);
 	const dismiss = useCallback(() => {
-		attempt.current = null;
-		setPhase({ kind: "idle" });
+		attempts.current?.dismiss(latest.current);
 	}, []);
 
 	return { phase, send, cancel, dismiss };
@@ -505,5 +446,43 @@ export function useCommunityMessageActions(
 		onSettled: () => void client.invalidateQueries({ queryKey: key }),
 	});
 
-	return { react, remove, edit };
+	/*
+	 * An edit answered `checking` (the verdict outlived the request) is followed
+	 * by the same status reads as a post, by the edit's own key, so the row's
+	 * "Checking…" ends on its real outcome instead of sitting there with Save
+	 * disabled (review round 1, m4). Stops when the history unmounts.
+	 */
+	const live = useRef(true);
+	useEffect(() => {
+		live.current = true;
+		return () => {
+			live.current = false;
+		};
+	}, []);
+	const followEdit = useCallback(
+		async (idempotencyKey: string) => {
+			for (;;) {
+				await new Promise((resolve) => setTimeout(resolve, 2000));
+				if (!live.current) throw new Error("community history closed");
+				const outcome = await communityApi.submissionStatus(
+					communityId,
+					idempotencyKey,
+					{ expectedAccountId: accountId },
+				);
+				if (outcome.state !== "checking") {
+					void client.invalidateQueries({
+						queryKey: communityKeys.history(
+							accountId,
+							communityId,
+							conversationId,
+						),
+					});
+					return outcome;
+				}
+			}
+		},
+		[client, accountId, communityId, conversationId],
+	);
+
+	return { react, remove, edit, followEdit };
 }

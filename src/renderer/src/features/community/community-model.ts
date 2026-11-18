@@ -19,6 +19,7 @@ import type {
 	CommunityChannel,
 	CommunityEventBatch,
 	CommunityFailure,
+	CommunityImageInput,
 	CommunityMessage,
 	CommunityRefusalCategory,
 	CommunitySubmission,
@@ -43,8 +44,37 @@ export type CommunityTrialOffer =
 	| "ineligible"
 	| "unknown";
 
-/** `community_access` of RFC §5.1. */
-export type CommunityAccess = "joinable" | "joined" | "unavailable";
+/**
+ * `community_access` of RFC §5.1, plus the two states of the READ behind it.
+ *
+ * `checking` and `failed` exist because "join stays available in every state"
+ * (review round 1, m3): a pending list read and a failed one are not "the
+ * community is unavailable". Pending draws a quiet placeholder; a failure draws
+ * a Retry. Only a real `community_disabled` answer (or an empty catalogue) is
+ * `unavailable`, which has nothing to retry.
+ */
+export type CommunityAccess =
+	| "joinable"
+	| "joined"
+	| "unavailable"
+	| "checking"
+	| "failed";
+
+/** `CommunityAccess` from the community list read (one source for switcher and card). */
+export function communityAccessFrom(input: {
+	pending: boolean;
+	/** The failure kind of a failed read, or `null` when the read did not fail. */
+	failure: CommunityFailure["kind"] | null;
+	joined: number;
+	featured: number;
+}): CommunityAccess {
+	if (input.joined > 0) return "joined";
+	if (input.featured > 0) return "joinable";
+	if (input.failure === "disabled") return "unavailable";
+	if (input.failure) return "failed";
+	if (input.pending) return "checking";
+	return "unavailable";
+}
 
 /** The trial card's one state (RFC §5.1 "Entry paths, by state"). */
 export type CommunityTrialCard =
@@ -67,8 +97,20 @@ export type CommunityNoPlanView =
 	| { kind: "checking"; community: CommunityAccess }
 	/** "Couldn't check your Team plan · Retry" - never a commercial claim. */
 	| { kind: "plan_check_failed"; community: CommunityAccess }
-	/** Existing Team access is never hidden by the upsell. */
-	| { kind: "has_team" }
+	/**
+	 * The shipped plan-required panel, with the community card beside it.
+	 *
+	 * Two ways in. (1) The trial is held (`TEAM_TRIAL_START_ENABLED` false): the
+	 * no-plan slot keeps showing exactly what the page shows without the
+	 * community flag - the plan-required panel and its existing upgrade link -
+	 * so turning the community on never turns trial copy on (review round 1,
+	 * m5). (2) Memberships show a Team plan while the gate still says
+	 * plan_required (e.g. just after Console checkout, before the runtime moves
+	 * off surface A): the base's `TeamBridgeTrialEmpty` answers that disagreement
+	 * with the same panel, and a blank canvas would hide even the community join
+	 * (review round 1, M3). Either way the join is never withheld.
+	 */
+	| { kind: "plan_panel"; community: CommunityAccess }
 	| {
 			kind: "offer";
 			/** `null` = no trial card (ineligible): community join only. */
@@ -100,11 +142,15 @@ export function communityNoPlanView(input: {
 	selectedTenantId: string | null;
 	selectedOrgName: string | null;
 	subscribeUrl: (tenantId: string) => string;
+	/** The reviewed release hold (`TEAM_TRIAL_START_ENABLED`). */
+	trialStartEnabled: boolean;
 }): CommunityNoPlanView {
 	if (input.signedIn === false) return { kind: "signed_out" };
 	const community = input.communityAccess;
 	if (input.signedIn === "unknown") return { kind: "checking", community };
-	if (input.privateAccess === "available") return { kind: "has_team" };
+	if (!input.trialStartEnabled) return { kind: "plan_panel", community };
+	if (input.privateAccess === "available")
+		return { kind: "plan_panel", community };
 	if (input.privateAccess === "unknown") return { kind: "checking", community };
 	if (input.privateAccess === "other_unavailable")
 		return { kind: "plan_check_failed", community };
@@ -320,7 +366,13 @@ export type CommunityPostingState =
 	| "open"
 	| "locked"
 	| "archived"
-	| "community_read_only";
+	| "community_read_only"
+	/**
+	 * The guidelines changed since the reader accepted them: read access stays,
+	 * posting waits for Review and accept (RFC §5.2, §10). Not a channel fact,
+	 * so `postingState` never returns it; the home applies it (`postingFor`).
+	 */
+	| "guidelines_changed";
 
 export function postingState(
 	channel: Pick<CommunityChannel, "locked" | "archived"> | null,
@@ -330,6 +382,21 @@ export function postingState(
 	if (channel?.archived) return "archived";
 	if (channel?.locked) return "locked";
 	return "open";
+}
+
+/**
+ * The posting state a composer renders. A channel that is closed anyway keeps
+ * its own reason; an open one waits for re-acceptance while the guidelines are
+ * stale - except in the composer that just hit the 409, which keeps its draft
+ * and shows the D7 notice with the same Review and accept action.
+ */
+export function postingFor(
+	channelPosting: CommunityPostingState,
+	guidelinesStale: boolean,
+	phase: ComposerPhase,
+): CommunityPostingState {
+	if (channelPosting !== "open" || !guidelinesStale) return channelPosting;
+	return phase.kind === "guidelines_changed" ? "open" : "guidelines_changed";
 }
 
 /** The audience label under the composer (RFC §5.3: always stated). */
@@ -443,6 +510,111 @@ export function toggleReaction(
 	}
 	reactions[index] = { ...current, count: current.count + 1, mine: true };
 	return { reactions, remove: false };
+}
+
+/**
+ * THE READER'S OWN COMMUNITY PUBLIC ID, LEARNED AND REMEMBERED PER ACCOUNT
+ * (review round 1, m4).
+ *
+ * WHY LEARNED. The 13 member ops carry no "me" read: bootstrap's membership has
+ * no public id, and the contract's `Author` names a public id, never an
+ * account. The one fact this client holds for certain is which message ids it
+ * published itself (the submit answer's `message_id`), so the first history row
+ * with one of those ids names the reader's public id. From then on ownership is
+ * `author.public_id === self`, which also covers posts made before a reload or
+ * on another device.
+ *
+ * WHY PERSISTED, AND KEYED BY ACCOUNT. Without it a reload forgets the session's
+ * published ids and the reader can no longer edit or delete their own posts.
+ * The entry is `{ "<accountId>": { "<communityId>": "<publicId>" } }`: per
+ * account because another account on this machine is another person, and per
+ * community because a public id is a community-scoped pseudonym. It stores an
+ * id the hub already shows every member beside each post - no draft, no text,
+ * no account fact - under its own namespaced key (the `team-bridge-scope-
+ * preference.ts` pattern), and the storage is a parameter so node tests drive
+ * it with a fake. A `mine` flag from a later hub still wins over all of this.
+ */
+export const COMMUNITY_SELF_KEY = "lo.community.self.v1";
+
+/** Public ids are server-issued opaque ids; anything longer is corrupt. */
+const MAX_PUBLIC_ID_LENGTH = 128;
+
+function readSelfEntries(
+	storage: Pick<Storage, "getItem">,
+): Record<string, Record<string, unknown>> {
+	try {
+		const value: unknown = JSON.parse(
+			storage.getItem(COMMUNITY_SELF_KEY) ?? "{}",
+		);
+		return value && typeof value === "object" && !Array.isArray(value)
+			? (value as Record<string, Record<string, unknown>>)
+			: {};
+	} catch {
+		return {};
+	}
+}
+
+export function readSelfPublicId(
+	storage: Pick<Storage, "getItem">,
+	accountId: string | null | undefined,
+	communityId: string,
+): string | null {
+	if (!accountId) return null;
+	const perAccount = readSelfEntries(storage)[accountId];
+	const value =
+		perAccount && typeof perAccount === "object"
+			? perAccount[communityId]
+			: undefined;
+	return typeof value === "string" &&
+		value.length > 0 &&
+		value.length <= MAX_PUBLIC_ID_LENGTH
+		? value
+		: null;
+}
+
+export function writeSelfPublicId(
+	storage: Pick<Storage, "getItem" | "setItem">,
+	accountId: string | null | undefined,
+	communityId: string,
+	publicId: string,
+): void {
+	if (!accountId || !publicId || publicId.length > MAX_PUBLIC_ID_LENGTH) return;
+	const entries = readSelfEntries(storage);
+	const perAccount =
+		entries[accountId] && typeof entries[accountId] === "object"
+			? entries[accountId]
+			: {};
+	if (perAccount[communityId] === publicId) return;
+	try {
+		storage.setItem(
+			COMMUNITY_SELF_KEY,
+			JSON.stringify({
+				...entries,
+				[accountId]: { ...perAccount, [communityId]: publicId },
+			}),
+		);
+	} catch {
+		/* A full or blocked store only costs the convenience after a reload. */
+	}
+}
+
+/**
+ * The reader's public id, from the first loaded message this client published
+ * itself (a human author with a public id), or `null` when none is loaded.
+ */
+export function learnSelfPublicId(
+	messages: readonly CommunityMessage[],
+	publishedIds: ReadonlySet<string>,
+): string | null {
+	for (const message of messages) {
+		if (
+			publishedIds.has(message.id) &&
+			message.author.kind === "human" &&
+			message.author.public_id
+		)
+			return message.author.public_id;
+	}
+	return null;
 }
 
 /** Whether the reader authored this message (edit and delete are theirs only). */
@@ -576,9 +748,160 @@ export function canSend(
 ): boolean {
 	if (!text.trim()) return false;
 	if (phase.kind === "checking") return false;
+	// Every post against the old version answers 409 again (RFC §10 "Rules
+	// updated -> read-only until re-accepted"): the way on is Review and accept.
+	if (phase.kind === "guidelines_changed") return false;
 	if (phase.kind === "rate_limited" && secondsLeft(phase, now) > 0)
 		return false;
 	return true;
+}
+
+/* ============================================ one attempt, one key (M1) */
+
+/**
+ * WHY AN ATTEMPT OUTLIVES ITS ANSWER (review round 1, M1).
+ *
+ * The hub's Idempotency-Key contract: a REUSED key replays the first attempt's
+ * stored outcome, a NEW key is a new post. The daemon's request budget equals
+ * the moderation budget (30 s), and its own note says an answer that outlasts
+ * it "is recoverable through the submission status read by its
+ * Idempotency-Key". So a timeout, a 502 `community_unreachable`, a status read
+ * that failed mid-follow-up, or a channel switch while `checking` all leave an
+ * attempt that MAY STILL PUBLISH. Re-sending its draft under a fresh key would
+ * publish the same text twice and count it twice against the sender's limits.
+ *
+ * The rule the composer keeps instead:
+ * - such an attempt stays PENDING (key + the exact bytes it carried) until
+ *   something settles it - `attemptMayBeLive` says which failures those are;
+ * - the next Send/Retry first asks the hub about the pending key
+ *   (`submission.status`) and acts on the answer (`recoveryAfterStatusRead`);
+ * - a hub ANSWER (refused, limit, outage, guidelines, too large) is settled:
+ *   nothing was posted, so the next Send mints a new key - reusing it would
+ *   only replay that answer.
+ */
+export type CommunityDraftBytes = {
+	text: string;
+	images: readonly CommunityImageInput[];
+};
+
+export type PendingAttempt = { key: string; draft: CommunityDraftBytes };
+
+/** Whether two drafts are the same bytes (a reused key may only carry these). */
+export function sameDraftBytes(
+	a: CommunityDraftBytes,
+	b: CommunityDraftBytes,
+): boolean {
+	return (
+		a.text === b.text &&
+		a.images.length === b.images.length &&
+		a.images.every(
+			(image, index) =>
+				image.content_type === b.images[index].content_type &&
+				image.data_base64 === b.images[index].data_base64,
+		)
+	);
+}
+
+/**
+ * Whether the attempt behind this failure may still publish: the call ended
+ * without a hub answer (transport deadline, daemon 502, an unreadable reply).
+ * Every other failure is an answer from the hub or a refusal by the daemon
+ * before sending, and in both nothing was posted.
+ */
+export function attemptMayBeLive(failure: CommunityFailure): boolean {
+	return failure.kind === "unreachable" || failure.kind === "error";
+}
+
+/** What to do with a pending attempt once its status read answered. */
+export type AttemptRecovery =
+	/** Show the stored outcome (published clears the draft); attempt settled. */
+	| { kind: "settle" }
+	/** Still being checked: keep following the SAME key; Send stays blocked. */
+	| { kind: "follow" }
+	/** Submit the current draft - under the pending key, or a new one. */
+	| { kind: "submit"; key: "same" | "new" }
+	/** The hub could not be asked: keep the attempt pending, show this phase. */
+	| { kind: "hold"; phase: ComposerPhase };
+
+/**
+ * The decision after `submission.status(pendingKey)`.
+ *
+ * - `checking`: the first attempt is still live, whatever the box says now -
+ *   follow it rather than race it with a second post.
+ * - A terminal outcome with the draft UNCHANGED is the answer to this draft
+ *   (published clears it; a refusal, cancel or expiry is shown, and the next
+ *   Send mints a new key). With the draft CHANGED the old attempt is history
+ *   (published lands through the history read) and the edited text is a new
+ *   post under a new key.
+ * - `not_found` (the hub never stored the key): submit; an unchanged draft
+ *   reuses the key, so a request still on the wire and this one are one post.
+ * - Any other failure: nothing can be known, so nothing is sent; the attempt
+ *   stays pending for the next Retry.
+ */
+export function recoveryAfterStatusRead(
+	read:
+		| { outcome: Pick<CommunitySubmission, "state"> }
+		| { failure: CommunityFailure },
+	unchanged: boolean,
+	now: number,
+): AttemptRecovery {
+	if ("failure" in read) {
+		if (read.failure.kind === "not_found")
+			return { kind: "submit", key: unchanged ? "same" : "new" };
+		return { kind: "hold", phase: phaseAfterFailure(read.failure, now) };
+	}
+	if (read.outcome.state === "checking") return { kind: "follow" };
+	return unchanged ? { kind: "settle" } : { kind: "submit", key: "new" };
+}
+
+/**
+ * Whether the reader must re-accept the guidelines before posting (RFC §5.2:
+ * members "keep read access and see Review and accept before they can post").
+ * Bootstrap carries both versions; a 409 `guidelines_changed` says the same
+ * thing before the cached bootstrap does.
+ */
+export function guidelinesNeedReaccept(
+	bootstrap: {
+		guidelines: { version: string };
+		membership: { guidelines_version: string } | null;
+	} | null,
+): boolean {
+	return Boolean(
+		bootstrap?.membership &&
+			bootstrap.membership.guidelines_version !== bootstrap.guidelines.version,
+	);
+}
+
+/* ============================================== the Browse shortcut (D5) */
+
+/**
+ * THE BROWSE CHORD IS ⌘⇧K / Ctrl+Shift+K, NOT ⌘K (review round 1, M4).
+ *
+ * ⌘K is the app-wide palette's chats door (`palette-shortcut.ts`), reserved in
+ * the keymap registry; binding it here opened two modal dialogs on one press.
+ * Shift+K extends the frame's K (D5's muscle memory) and is free: the palette
+ * refuses Shift, no registry default or reserved row uses it, and no other
+ * renderer handler reads it. The community home claims it in the CAPTURE phase
+ * with `preventDefault`, so the keymap router (bubble, `defaultPrevented`
+ * first) cannot also run a user-assigned action for the same press on this
+ * page.
+ */
+export const COMMUNITY_BROWSE_CHORD = "primary+shift+k";
+
+export function isCommunityBrowsePress(event: {
+	key: string;
+	metaKey: boolean;
+	ctrlKey: boolean;
+	altKey: boolean;
+	shiftKey: boolean;
+	repeat: boolean;
+	isComposing?: boolean;
+	defaultPrevented: boolean;
+}): boolean {
+	if (event.defaultPrevented || event.repeat || event.isComposing) return false;
+	if (!(event.metaKey || event.ctrlKey) || event.altKey || !event.shiftKey)
+		return false;
+	return event.key.toLowerCase() === "k";
 }
 
 /** The user-facing label key for a refusal category (canon "Refusal categories"). */

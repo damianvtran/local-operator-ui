@@ -1,3 +1,4 @@
+import { pressLandsOnOverlay } from "@features/chat/keyboard-scopes";
 import { TeamBridgeRouteColumn } from "@features/team-bridge/team-bridge-route-column";
 /**
  * D4 - the community home: rail, channel header, timeline, composer, thread,
@@ -29,6 +30,7 @@ import { communityFailure } from "@shared/api/local-operator/community-api";
 import { Button } from "@shared/components/ui/button";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { chordCaption } from "@shared/keymap/keymap-chord";
 import { cn } from "@shared/lib/utils";
 import { Globe, Hash, Inbox, Lock, RefreshCw, Search } from "lucide-react";
 import {
@@ -52,19 +54,26 @@ import {
 	CommunityThreadPane,
 } from "./community-messages";
 import {
+	COMMUNITY_BROWSE_CHORD,
 	COMMUNITY_GENERAL_CHANNEL,
 	type CommunityRequestsSeam,
 	type ComposerPhase,
 	composerAudience,
+	guidelinesNeedReaccept,
+	isCommunityBrowsePress,
 	isOwnMessage,
 	landingChannel,
+	learnSelfPublicId,
 	mergeHistory,
 	phaseAfterFailure,
 	phaseAfterSubmission,
+	postingFor,
 	postingState,
 	railChannels,
+	readSelfPublicId,
 	threadReplies,
 	timelineMessages,
+	writeSelfPublicId,
 } from "./community-model";
 import {
 	useCommunityBootstrap,
@@ -133,6 +142,8 @@ export const CommunityRailView: FC<{
 	onSelectRequests: () => void;
 	onBrowse: () => void;
 	browseShortcut: string;
+	/** The WAI-ARIA spelling of the same chord (`aria-keyshortcuts`). */
+	browseShortcutAria?: string;
 }> = ({
 	switcher,
 	channels,
@@ -145,6 +156,7 @@ export const CommunityRailView: FC<{
 	onSelectRequests,
 	onBrowse,
 	browseShortcut,
+	browseShortcutAria,
 }) => {
 	useI18nLocale();
 	const sections = railChannels(channels);
@@ -161,6 +173,7 @@ export const CommunityRailView: FC<{
 				<button
 					type="button"
 					data-community-action="browse"
+					aria-keyshortcuts={browseShortcutAria}
 					onClick={onBrowse}
 					className="flex h-7 w-full items-center gap-2 rounded-md px-2 text-[13px] text-ink-muted hover:bg-surface"
 				>
@@ -367,6 +380,12 @@ const isMac =
 	typeof navigator !== "undefined" &&
 	/Mac|iPhone|iPad/.test(navigator.platform);
 
+/** One chord, both captions (glyph for the eye, ARIA for a screen reader). */
+const browseChord = chordCaption(
+	COMMUNITY_BROWSE_CHORD,
+	isMac ? "mac" : "linux",
+);
+
 /**
  * The community home with its reads. Mounted by the Team Bridge page when a
  * community is selected in the switcher; `switcher` is that page's switcher so
@@ -377,7 +396,18 @@ export const CommunityHome: FC<{
 	switcher: ReactNode;
 	/** Open this channel by name first (a fresh join lands on #welcome-and-rules). */
 	initialChannelName?: string | null;
-}> = ({ communityId, switcher, initialChannelName = null }) => {
+	/**
+	 * Open the join dialog at step 1 for THIS community: a member re-accepts the
+	 * current guidelines through the same join (the contract allows it), which
+	 * is the only way back to posting after a guidelines update (RFC §5.2).
+	 */
+	onReviewGuidelines?: () => void;
+}> = ({
+	communityId,
+	switcher,
+	initialChannelName = null,
+	onReviewGuidelines,
+}) => {
 	useI18nLocale();
 	const accountId = useCommunityOwner();
 	const bootstrap = useCommunityBootstrap(communityId);
@@ -402,19 +432,20 @@ export const CommunityHome: FC<{
 		setSelectedId((named ?? landingChannel(channels))?.id ?? null);
 	}, [channels, selectedId, initialChannelName]);
 
-	// Ctrl/Cmd+K opens Browse (D5); the relay surface uses a header button.
+	// ⌘⇧K / Ctrl+Shift+K opens Browse (D5). Not ⌘K: that is the app-wide
+	// palette's (review round 1, M4; `COMMUNITY_BROWSE_CHORD` has the why).
+	// Capture phase + preventDefault, so the keymap router, which skips a
+	// claimed press, cannot also run an action a user assigned to this chord.
 	useEffect(() => {
 		const onKey = (event: KeyboardEvent) => {
-			if (
-				(isMac ? event.metaKey : event.ctrlKey) &&
-				event.key.toLowerCase() === "k"
-			) {
-				event.preventDefault();
-				setBrowseOpen(true);
-			}
+			if (!isCommunityBrowsePress(event)) return;
+			if (pressLandsOnOverlay(event.target)) return;
+			event.preventDefault();
+			setBrowseOpen(true);
 		};
-		window.addEventListener("keydown", onKey);
-		return () => window.removeEventListener("keydown", onKey);
+		window.addEventListener("keydown", onKey, { capture: true });
+		return () =>
+			window.removeEventListener("keydown", onKey, { capture: true });
 	}, []);
 
 	const channel = channels.find((row) => row.id === selectedId) ?? null;
@@ -425,7 +456,22 @@ export const CommunityHome: FC<{
 	);
 	const communityState = bootstrap.data?.community.state ?? "active";
 	const guidelinesVersion = bootstrap.data?.membership?.guidelines_version;
-	const posting = postingState(channel, communityState);
+	/*
+	 * STALE GUIDELINES (review round 1, M2 / design D2). Bootstrap says so when
+	 * its two versions differ; a 409 says so before a cached bootstrap does, and
+	 * is remembered against the version the reader HAD accepted, so a refreshed
+	 * bootstrap after re-acceptance (a new accepted version) clears it.
+	 */
+	const [staleAgainst, setStaleAgainst] = useState<string | null>(null);
+	const guidelinesStale =
+		guidelinesNeedReaccept(bootstrap.data ?? null) ||
+		(staleAgainst !== null && staleAgainst === (guidelinesVersion ?? ""));
+	const onGuidelinesChanged = useCallback(() => {
+		setStaleAgainst(guidelinesVersion ?? "");
+		void bootstrap.refetch();
+	}, [guidelinesVersion, bootstrap.refetch]);
+	const channelPosting = postingState(channel, communityState);
+	const posting = guidelinesStale ? "guidelines_changed" : channelPosting;
 	const actions = useMessageActionsFor(communityId, channel?.id ?? "");
 
 	const draftKey = (threadRoot: string | null) =>
@@ -457,6 +503,7 @@ export const CommunityHome: FC<{
 		conversationId: channel?.id ?? "",
 		...(guidelinesVersion ? { guidelinesVersion } : {}),
 		onPublished: mainOnPublished,
+		onGuidelinesChanged,
 	});
 	const threadComposer = useCommunityComposer({
 		communityId,
@@ -464,14 +511,47 @@ export const CommunityHome: FC<{
 		...(threadRootId ? { threadRootId } : {}),
 		...(guidelinesVersion ? { guidelinesVersion } : {}),
 		onPublished: threadOnPublished,
+		onGuidelinesChanged,
 	});
+	// Re-accepted: the D7 notice has done its job; the box is open again.
+	const { dismiss: dismissMain } = composer;
+	const { dismiss: dismissThread } = threadComposer;
+	const mainPhase = composer.phase.kind;
+	const threadPhase = threadComposer.phase.kind;
+	useEffect(() => {
+		if (guidelinesStale) return;
+		if (mainPhase === "guidelines_changed") dismissMain();
+		if (threadPhase === "guidelines_changed") dismissThread();
+	}, [guidelinesStale, mainPhase, threadPhase, dismissMain, dismissThread]);
+
+	/*
+	 * Own messages after a reload (review round 1, m4): learn the reader's
+	 * public id from a message this app published, remember it per account and
+	 * community, and judge ownership by it (`COMMUNITY_SELF_KEY` has the why).
+	 */
+	const [selfPublicId, setSelfPublicId] = useState<string | null>(() =>
+		typeof localStorage === "undefined"
+			? null
+			: readSelfPublicId(localStorage, accountId, communityId),
+	);
+	useEffect(() => {
+		if (typeof localStorage === "undefined") return;
+		setSelfPublicId(readSelfPublicId(localStorage, accountId, communityId));
+	}, [accountId, communityId]);
+	useEffect(() => {
+		if (selfPublicId || typeof localStorage === "undefined") return;
+		const learned = learnSelfPublicId(messages, published.current);
+		if (!learned) return;
+		writeSelfPublicId(localStorage, accountId, communityId, learned);
+		setSelfPublicId(learned);
+	}, [messages, selfPublicId, accountId, communityId]);
 
 	const handlers: CommunityMessageHandlers = {
 		accountId,
 		isOwn: (message: CommunityMessage) =>
 			message.mine === true ||
 			published.current.has(message.id) ||
-			isOwnMessage(message, null),
+			isOwnMessage(message, selfPublicId),
 		onReact: (messageId, emoji) => actions.react.mutate({ messageId, emoji }),
 		onDelete: (messageId) => actions.remove.mutate(messageId),
 		onEdit: async (messageId, text): Promise<ComposerPhase> => {
@@ -481,9 +561,16 @@ export const CommunityHome: FC<{
 					text,
 					...(guidelinesVersion ? { guidelinesVersion } : {}),
 				});
-				return phaseAfterSubmission(outcome).phase;
+				// A verdict that outlived the request settles by status read.
+				const settled =
+					outcome.state === "checking"
+						? await actions.followEdit(outcome.idempotency_key)
+						: outcome;
+				return phaseAfterSubmission(settled).phase;
 			} catch (error) {
-				return phaseAfterFailure(communityFailure(error), Date.now());
+				const failure = communityFailure(error);
+				if (failure.kind === "guidelines_changed") onGuidelinesChanged();
+				return phaseAfterFailure(failure, Date.now());
 			}
 		},
 		onOpenThread: (messageId) => setThreadRootId(messageId),
@@ -513,7 +600,8 @@ export const CommunityHome: FC<{
 		return (
 			<CommunityComposerView
 				channelName={channel?.name ?? ""}
-				posting={posting}
+				posting={postingFor(channelPosting, guidelinesStale, state.phase)}
+				onReviewGuidelines={onReviewGuidelines}
 				audience={composerAudience(channel)}
 				phase={state.phase}
 				draft={draft}
@@ -577,7 +665,8 @@ export const CommunityHome: FC<{
 						setRequestsOpen(true);
 					}}
 					onBrowse={() => setBrowseOpen(true)}
-					browseShortcut={isMac ? "\u2318 K" : "Ctrl K"}
+					browseShortcut={browseChord.glyph}
+					browseShortcutAria={browseChord.aria}
 				/>
 			}
 			header={

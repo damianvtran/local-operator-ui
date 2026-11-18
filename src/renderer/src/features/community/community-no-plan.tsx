@@ -26,6 +26,7 @@ import {
 	subscribeUrlFor,
 } from "@features/team-bridge-trial/team-bridge-trial-model";
 import { useTeamTrialEligibility } from "@features/team-bridge-trial/use-team-trial";
+import { TEAM_TRIAL_START_ENABLED } from "@shared/api/local-operator/team-trial-activation";
 import { Spinner } from "@shared/components/common/spinner";
 import {
 	Alert,
@@ -155,14 +156,18 @@ const TrialCard: FC<{ card: CommunityTrialCard }> = ({ card }) => {
 				</p>
 			)}
 			<div className="mt-4">
+				{/* The label is RFC-fixed copy and longer in every locale but zh-CN:
+				    it wraps inside the card, never past its edge, and the icon
+				    keeps its size (design round 1, D1). */}
 				<Button
 					variant="primary"
 					size="sm"
 					data-community-action={`trial-${card.kind}`}
 					onClick={() => openConsolePage(card.url)}
+					className="h-auto min-h-8 max-w-full whitespace-normal py-1.5 text-start"
 				>
-					{action.label}
-					<ExternalLink size={13} aria-hidden="true" />
+					<span className="min-w-0">{action.label}</span>
+					<ExternalLink size={13} aria-hidden="true" className="shrink-0" />
 				</Button>
 			</div>
 			<p className="mt-2 text-[12px] leading-relaxed text-ink-dim">
@@ -176,7 +181,8 @@ const CommunityCard: FC<{
 	access: CommunityAccess;
 	onJoin: () => void;
 	onOpen: () => void;
-}> = ({ access, onJoin, onOpen }) => (
+	onRetry?: () => void;
+}> = ({ access, onJoin, onOpen, onRetry }) => (
 	<Card state={`community-${access}`}>
 		<CardGlyph>
 			<Globe size={16} />
@@ -188,10 +194,31 @@ const CommunityCard: FC<{
 			{t("ui.community.noplan.community.body")}
 		</p>
 		<div className="mt-4">
-			{access === "unavailable" ? (
-				<p className="text-[13px] text-ink-muted">
-					{t("ui.community.noplan.community.unavailable")}
-				</p>
+			{access === "checking" ? (
+				/* The list read is in flight: a quiet placeholder where the button
+				   will be, never "unavailable" (review round 1, m3). Unlabelled -
+				   the card's title and body already say what is coming. */
+				<div aria-busy="true" className="flex h-8 items-center">
+					<Spinner size="sm" />
+				</div>
+			) : access === "unavailable" || access === "failed" ? (
+				<div className="flex flex-col items-start gap-2">
+					<p className="text-[13px] text-ink-muted">
+						{t("ui.community.noplan.community.unavailable")}
+					</p>
+					{/* A failed read is retryable; a disabled community is not. */}
+					{access === "failed" && onRetry && (
+						<Button
+							variant="secondary"
+							size="sm"
+							data-community-action="retry-community"
+							onClick={onRetry}
+						>
+							<RefreshCw size={13} aria-hidden="true" />
+							{t("ui.community.noplan.retry")}
+						</Button>
+					)}
+				</div>
 			) : (
 				<Button
 					variant="secondary"
@@ -241,7 +268,24 @@ export const CommunityNoPlanView: FC<{
 	onOpen: () => void;
 	onRetry: () => void;
 	onSignIn?: () => void;
-}> = ({ view, selfName, onJoin, onOpen, onRetry, onSignIn }) => {
+	/** Re-read the community list after a failed read (the card's Retry). */
+	onRetryCommunity?: () => void;
+	/**
+	 * The shipped plan-required panel (`TeamBridgeEligibilityPanel`), drawn for
+	 * `plan_panel`. A slot rather than an import: that panel lives in the page
+	 * module, which already imports this one.
+	 */
+	planPanel?: ReactNode;
+}> = ({
+	view,
+	selfName,
+	onJoin,
+	onOpen,
+	onRetry,
+	onSignIn,
+	onRetryCommunity,
+	planPanel,
+}) => {
 	useI18nLocale();
 	if (view.kind === "signed_out")
 		return (
@@ -264,7 +308,24 @@ export const CommunityNoPlanView: FC<{
 				)}
 			</Frame>
 		);
-	if (view.kind === "has_team") return null;
+	if (view.kind === "plan_panel")
+		return (
+			<div
+				data-glass-region="canvas"
+				data-community-noplan="plan-panel"
+				className="flex h-full min-h-0 w-full flex-col overflow-y-auto bg-canvas"
+			>
+				<div className="flex min-h-[280px] flex-1 flex-col">{planPanel}</div>
+				<div className="mx-auto w-full max-w-[600px] shrink-0 px-6 pb-10">
+					<CommunityCard
+						access={view.community}
+						onJoin={onJoin}
+						onOpen={onOpen}
+						onRetry={onRetryCommunity}
+					/>
+				</div>
+			</div>
+		);
 	if (view.kind === "checking")
 		return (
 			<Frame state="checking" centered>
@@ -291,6 +352,7 @@ export const CommunityNoPlanView: FC<{
 					access={view.community}
 					onJoin={onJoin}
 					onOpen={onOpen}
+					onRetry={onRetryCommunity}
 				/>
 			</div>
 		</Frame>
@@ -319,13 +381,55 @@ const Frame: FC<{ children: ReactNode; state: string; centered?: boolean }> = ({
  * The container the Team Bridge page mounts in its plan-required slot when the
  * community flag is on. `communityAccess` comes from the page's community list
  * read (one source for the switcher and this card).
+ *
+ * THE TRIAL HOLD IS RESPECTED (review round 1, m5; product decision). While
+ * `TEAM_TRIAL_START_ENABLED` is false the slot shows what the page shows today
+ * without the community - the plan-required panel with its existing upgrade
+ * link - plus the community card, and mounts neither the eligibility read nor
+ * the trial copy: turning the community flag on must not also turn on a trial
+ * the release has not opened. The wrapper boundary is the
+ * `TeamBridgeTrialEmpty` pattern, so hook order is unchanged when the hold is
+ * lifted.
  */
-export const CommunityNoPlanEntry: FC<{
+export const CommunityNoPlanEntry: FC<NoPlanEntryProps> = ({
+	trialStartEnabled = TEAM_TRIAL_START_ENABLED,
+	...props
+}) => {
+	if (!trialStartEnabled)
+		return (
+			<CommunityNoPlanView
+				view={{ kind: "plan_panel", community: props.communityAccess }}
+				selfName={props.selfName}
+				onJoin={props.onJoin}
+				onOpen={props.onOpen}
+				onRetry={() => undefined}
+				onRetryCommunity={props.onRetryCommunity}
+				planPanel={props.planPanel}
+			/>
+		);
+	return <TrialNoPlanEntry {...props} />;
+};
+
+type NoPlanEntryProps = {
 	communityAccess: CommunityAccess;
 	selfName?: string | null;
 	onJoin: () => void;
 	onOpen: () => void;
-}> = ({ communityAccess, selfName, onJoin, onOpen }) => {
+	onRetryCommunity?: () => void;
+	/** The shipped plan-required panel; see `CommunityNoPlanView`. */
+	planPanel: ReactNode;
+	/** The release hold; a parameter only so stories can render both ways. */
+	trialStartEnabled?: boolean;
+};
+
+const TrialNoPlanEntry: FC<Omit<NoPlanEntryProps, "trialStartEnabled">> = ({
+	communityAccess,
+	selfName,
+	onJoin,
+	onOpen,
+	onRetryCommunity,
+	planPanel,
+}) => {
 	const memberships = useMembershipsQuery();
 	const eligibility = useTeamTrialEligibility(true);
 	const { access, selected } = privateAccessFromMemberships({
@@ -353,6 +457,7 @@ export const CommunityNoPlanEntry: FC<{
 		selectedTenantId: selected?.tenant_id ?? null,
 		selectedOrgName: selected?.tenant_name ?? null,
 		subscribeUrl: subscribeUrlFor,
+		trialStartEnabled: true,
 	});
 	return (
 		<CommunityNoPlanView
@@ -364,6 +469,8 @@ export const CommunityNoPlanEntry: FC<{
 				void memberships.refetch();
 				void eligibility.refetch?.();
 			}}
+			onRetryCommunity={onRetryCommunity}
+			planPanel={planPanel}
 		/>
 	);
 };
