@@ -116731,6 +116731,223 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.remote_compute",
+			"source_sha256": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+			"target_sha256": "53585481adc4816ea30c7ee449d22d6daea5757ffeec689cd5fca08fa9a24d22",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "pr1971-r1-fr-382f3765de49",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/pr1971-r1-fr-382f3765de49.json",
+					"receipt_sha256": "699a1c123ac97c45af99c76af1770800354c122d569ad70c15eb956ee0ee1267",
+					"scope": "PR #1971 round 1: all 77 ui.chat.remote_compute keys in fr, claim-sensitive binding/tier copy, plural categories, RTL and cell budgets",
+					"note": "PR #1971: translator = the PR's coder session (feat commit 44f676535); independent audit i18n-auditor session 382f3765de49; rejected strings corrected in-round, receipts under i18n/receipts/"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.remote_compute",
+			"source_sha256": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+			"target_sha256": "f757a7f1f002101a08a4fee36b20ec5a9de9a27e59ad8e4a592b6e026c57a1b8",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "pr1971-r1-es-382f3765de49",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/pr1971-r1-es-382f3765de49.json",
+					"receipt_sha256": "c949223f5e6da8fe874131773d234260af6a336218cb875f0516a468f1230675",
+					"scope": "PR #1971 round 1: all 77 ui.chat.remote_compute keys in es, claim-sensitive binding/tier copy, plural categories, RTL and cell budgets",
+					"note": "PR #1971: translator = the PR's coder session (feat commit 44f676535); independent audit i18n-auditor session 382f3765de49; rejected strings corrected in-round, receipts under i18n/receipts/"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.remote_compute",
+			"source_sha256": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+			"target_sha256": "0771a7b2ce166d693167451d52531c581975c38eef247b669374a1db7d45dacf",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "pr1971-r1-zh-CN-382f3765de49",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/pr1971-r1-zh-CN-382f3765de49.json",
+					"receipt_sha256": "27df071723dc3da976fed5164a97cfd22dab0c6d8b972fa99ab3ab128f6f062b",
+					"scope": "PR #1971 round 1: all 77 ui.chat.remote_compute keys in zh-CN, claim-sensitive binding/tier copy, plural categories, RTL and cell budgets",
+					"note": "PR #1971: translator = the PR's coder session (feat commit 44f676535); independent audit i18n-auditor session 382f3765de49; rejected strings corrected in-round, receipts under i18n/receipts/"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.remote_compute",
+			"source_sha256": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+			"target_sha256": "295747208fa6e93056540c6cc69bb15d3a8e566401115fb6369fb834793087e9",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "pr1971-r1-ru-382f3765de49",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/pr1971-r1-ru-382f3765de49.json",
+					"receipt_sha256": "3d04e367e182975c7d5cbaf7e5dc9959261e04e023577dc2ea8c9eebb0a777fb",
+					"scope": "PR #1971 round 1: all 77 ui.chat.remote_compute keys in ru, claim-sensitive binding/tier copy, plural categories, RTL and cell budgets",
+					"note": "PR #1971: translator = the PR's coder session (feat commit 44f676535); independent audit i18n-auditor session 382f3765de49; rejected strings corrected in-round, receipts under i18n/receipts/"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.remote_compute",
+			"source_sha256": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+			"target_sha256": "0393d40defc064d57ac48244ae4e18ea9198ea294b8aadc78c4c17231b117c7b",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "pr1971-r1-vi-382f3765de49",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/pr1971-r1-vi-382f3765de49.json",
+					"receipt_sha256": "5978d444f28bef51f14442738e663ef9f3067bbc077ec03a2fe18072ffef32d4",
+					"scope": "PR #1971 round 1: all 77 ui.chat.remote_compute keys in vi, claim-sensitive binding/tier copy, plural categories, RTL and cell budgets",
+					"note": "PR #1971: translator = the PR's coder session (feat commit 44f676535); independent audit i18n-auditor session 382f3765de49; rejected strings corrected in-round, receipts under i18n/receipts/"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.remote_compute",
+			"source_sha256": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+			"target_sha256": "11fb4543883c528bba2322a8d48438b9e5b1453b53c36c679bc2b9ba9ea19f93",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "pr1971-r1-ur-382f3765de49",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/pr1971-r1-ur-382f3765de49.json",
+					"receipt_sha256": "da4a9f9e867e3a242ba1d96ec324567ccf0c5439c1b56e99f218184523903368",
+					"scope": "PR #1971 round 1: all 77 ui.chat.remote_compute keys in ur, claim-sensitive binding/tier copy, plural categories, RTL and cell budgets",
+					"note": "PR #1971: translator = the PR's coder session (feat commit 44f676535); independent audit i18n-auditor session 382f3765de49; rejected strings corrected in-round, receipts under i18n/receipts/"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.remote_compute",
+			"source_sha256": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+			"target_sha256": "3c6a2aa88002301769884f3dd62dfae0322062ef70cba23c81db18878735c7e5",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "pr1971-r1-hi-382f3765de49",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/pr1971-r1-hi-382f3765de49.json",
+					"receipt_sha256": "25cd44c44a198147c1d53a1b26fde8fed833fb6cd6a06bc4630e6357cda1f3bb",
+					"scope": "PR #1971 round 1: all 77 ui.chat.remote_compute keys in hi, claim-sensitive binding/tier copy, plural categories, RTL and cell budgets",
+					"note": "PR #1971: translator = the PR's coder session (feat commit 44f676535); independent audit i18n-auditor session 382f3765de49; rejected strings corrected in-round, receipts under i18n/receipts/"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

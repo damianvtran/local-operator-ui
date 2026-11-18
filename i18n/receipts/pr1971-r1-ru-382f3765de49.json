@@ -1,0 +1,123 @@
+{
+  "schema": 1,
+  "agent": "i18n-auditor",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "382f3765de49",
+    "instance": "pr1971-r1-ru-382f3765de49",
+    "model": "deepseek/deepseek-flash",
+    "independence": "Independent auditor: did not author the translations. The translator was the PR's coder session (commit 44f676535, session 306dec1075ff); this audit was a separate agent run and only corrected strings it rejected.",
+    "independent_from_translator_session": true
+  },
+  "model": "deepseek/deepseek-flash",
+  "instance": "pr1971-r1-ru-382f3765de49",
+  "locale": "ru",
+  "namespace": "ui.chat.remote_compute",
+  "date": "2026-11-18",
+  "head": "44f676535c3e5b14ad6fca963c28c266df2bfb3b",
+  "base": "846b247a8d05cb45e74672bcde2e5c11867d34d6",
+  "branch": "feat/remote-compute-device-row",
+  "pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+  "scope": "Independent audit of all 77 ui.chat.remote_compute keys in ru: glossary, the ru style guide, claim-sensitive binding/tier copy, placeholders, CLDR plural categories, RTL/bidi and cell budgets. Rejected strings corrected in-place; residual findings counted below.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "inputs": {
+    "english": "src/i18n/catalogues/en/ui.chat.remote_compute.json",
+    "english_sha256": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+    "context": "src/i18n/catalogues/en/ui.chat.remote_compute.context.json",
+    "context_sha256": "c358a82a1da24a9b2eff74768c99eee1df98b846379ccb1afdc2d615dd95ee73",
+    "target": "src/i18n/catalogues/ru/ui.chat.remote_compute.json",
+    "target_sha256": "295747208fa6e93056540c6cc69bb15d3a8e566401115fb6369fb834793087e9",
+    "glossary": "i18n/glossary.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_guide": "i18n/style-guides/ru.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+    "style_guide_sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+  },
+  "sha256": {
+    "en": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+    "ru": "295747208fa6e93056540c6cc69bb15d3a8e566401115fb6369fb834793087e9"
+  },
+  "claim_check": {
+    "binding": "recorded + not enforced, and no isolated/secured/segmented/private claim, in every locale",
+    "recorded_sentence": "the sheet sentence states the run is recorded against the network and that access is not restricted by it in this version",
+    "result": "passes in all seven locales"
+  },
+  "corrections": [
+    {
+      "key": "ui.chat.remote_compute.sheet.prompt.label",
+      "from": "Запрос",
+      "to": "Промпт",
+      "reason": "ru guide records промпт as the established Cyrillic transliteration; corpus uses it 36x; запрос in this family means an HTTP request"
+    },
+    {
+      "key": "ui.chat.remote_compute.sheet.prompt.empty",
+      "from": "Поле ввода пустое; для запуска нужен запрос.",
+      "to": "Поле ввода пустое; для запуска нужен промпт.",
+      "reason": "same call"
+    },
+    {
+      "key": "ui.chat.remote_compute.sheet.submit.why_prompt",
+      "from": "Сначала введите запрос в поле ввода.",
+      "to": "Сначала введите промпт в поле ввода.",
+      "reason": "same call"
+    },
+    {
+      "key": "ui.chat.remote_compute.row.sentence.sign_in",
+      "from": "Radient: войдите, чтобы выполнить запрос этого диалога на арендованных ресурсах. Выбор этой строки запускает вход.",
+      "to": "Radient: войдите, чтобы выполнить промпт этого диалога на арендованных ресурсах. Выбор этой строки запускает вход.",
+      "reason": "same call"
+    },
+    {
+      "key": "ui.chat.remote_compute.card.status.failed",
+      "from": "Ошибка",
+      "to": "Сбой",
+      "reason": "status chips are participles/nouns of state (Отменён, Завершён); 'Ошибка' names an error, not the run's failure"
+    },
+    {
+      "key": "ui.chat.remote_compute.card.artifacts_soon",
+      "from": "Журналы и результаты появятся в следующей версии.",
+      "to": "Журналы и результаты появятся в одной из следующих версий.",
+      "reason": "the en context note forbids promising a version; 'в следующей версии' promises the very next one"
+    },
+    {
+      "key": "ui.chat.remote_compute.remedy.push_branch",
+      "from": "Отправить эту ветку",
+      "to": "Сделать push этой ветки",
+      "reason": "ru guide keeps push Latin for git operations (corpus: 'выполнили push'); 'отправить' is the corpus's message-send verb"
+    },
+    {
+      "key": "ui.chat.remote_compute.remedy.push_branch_help",
+      "from": "Запуск начнётся с коммита, которого нет ни в одном удалённом репозитории. Отправьте ветку и запустите снова.",
+      "to": "Запуск начнётся с коммита, которого нет ни в одном удалённом репозитории. Сделайте push ветки и запустите снова.",
+      "reason": "push kept Latin"
+    },
+    {
+      "key": "ui.chat.remote_compute.row.sentence.checking",
+      "from": "Radient: проверяем, может ли это устройство запустить там выполнение.",
+      "to": "Radient: проверяем, может ли это устройство начать там запуск.",
+      "reason": "one English 'run' had two nouns (запуск everywhere else, выполнение here)"
+    },
+    {
+      "key": "ui.chat.remote_compute.runs.record_only",
+      "from": "Вы вышли из аккаунта, поэтому это последние известные запуски на этом устройстве. Войдите, чтобы прочитать данные сервера.",
+      "to": "Вы вышли из аккаунта, поэтому это последние известные запуски на этом устройстве. Войдите, чтобы прочитать строки сервера.",
+      "reason": "en says the server's rows; card.not_found already renders 'строки сервера'"
+    }
+  ],
+  "findings": {
+    "minor": [],
+    "nit": [
+      {
+        "severity": "nit",
+        "key": "ui.chat.remote_compute.sheet.tier.dedicated.spot.title",
+        "issue": "'Спот' is a transliterated noun beside the adjective 'Выделенный' and the phrase 'Запуск в облаке'; 'Спотовый' would parallel them. Left: no corpus precedent either way and the label is a market term."
+      },
+      {
+        "severity": "nit",
+        "key": "ui.chat.remote_compute.row.create_one",
+        "issue": "'создать' drops the object ('create one'); the row's own 'нужна сеть' supplies it."
+      }
+    ]
+  },
+  "notes": "Severity counts are the RESIDUAL findings on the corrected bytes. Strings this audit rejected were corrected in the same commit and are listed under corrections; they are not counted as unresolved."
+}

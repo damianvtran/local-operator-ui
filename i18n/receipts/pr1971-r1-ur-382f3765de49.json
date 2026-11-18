@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "agent": "i18n-auditor",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "382f3765de49",
+    "instance": "pr1971-r1-ur-382f3765de49",
+    "model": "deepseek/deepseek-flash",
+    "independence": "Independent auditor: did not author the translations. The translator was the PR's coder session (commit 44f676535, session 306dec1075ff); this audit was a separate agent run and only corrected strings it rejected.",
+    "independent_from_translator_session": true
+  },
+  "model": "deepseek/deepseek-flash",
+  "instance": "pr1971-r1-ur-382f3765de49",
+  "locale": "ur",
+  "namespace": "ui.chat.remote_compute",
+  "date": "2026-11-18",
+  "head": "44f676535c3e5b14ad6fca963c28c266df2bfb3b",
+  "base": "846b247a8d05cb45e74672bcde2e5c11867d34d6",
+  "branch": "feat/remote-compute-device-row",
+  "pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+  "scope": "Independent audit of all 77 ui.chat.remote_compute keys in ur: glossary, the ur style guide, claim-sensitive binding/tier copy, placeholders, CLDR plural categories, RTL/bidi and cell budgets. Rejected strings corrected in-place; residual findings counted below.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "inputs": {
+    "english": "src/i18n/catalogues/en/ui.chat.remote_compute.json",
+    "english_sha256": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+    "context": "src/i18n/catalogues/en/ui.chat.remote_compute.context.json",
+    "context_sha256": "c358a82a1da24a9b2eff74768c99eee1df98b846379ccb1afdc2d615dd95ee73",
+    "target": "src/i18n/catalogues/ur/ui.chat.remote_compute.json",
+    "target_sha256": "11fb4543883c528bba2322a8d48438b9e5b1453b53c36c679bc2b9ba9ea19f93",
+    "glossary": "i18n/glossary.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_guide": "i18n/style-guides/ur.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+    "style_guide_sha256": "7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4"
+  },
+  "sha256": {
+    "en": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+    "ur": "11fb4543883c528bba2322a8d48438b9e5b1453b53c36c679bc2b9ba9ea19f93"
+  },
+  "claim_check": {
+    "binding": "recorded + not enforced, and no isolated/secured/segmented/private claim, in every locale",
+    "recorded_sentence": "the sheet sentence states the run is recorded against the network and that access is not restricted by it in this version",
+    "result": "passes in all seven locales"
+  },
+  "corrections": [
+    {
+      "key": "ui.chat.remote_compute.sheet.tier.dedicated.spot.note",
+      "from": "متاثر ہو سکتا ہے · سستا · واپس لیا جا سکتا ہے",
+      "to": "وقفے کا شکار ہو سکتا ہے · سستا · واپس لیا جا سکتا ہے",
+      "reason": "'متاثر ہو سکتا ہے' means 'may be affected', not 'interruptible' — the tier's defining property was mistranslated"
+    },
+    {
+      "key": "ui.chat.remote_compute.row.not_offered",
+      "from": "یہ تعیناتی یہ سہولت نہیں دیتی",
+      "to": "یہ ڈیپلائمنٹ یہ سہولت نہیں دیتا",
+      "reason": "one 'deployment' had two renderings inside the namespace (تعیناتی here, ڈیپلائمنٹ in runs.disabled); 'تعیناتی' primarily reads as an official's posting"
+    },
+    {
+      "key": "ui.chat.remote_compute.row.sentence.not_offered",
+      "from": "Radient: یہ تعیناتی ریموٹ کمپیوٹ فراہم نہیں کرتی۔",
+      "to": "Radient: یہ ڈیپلائمنٹ ریموٹ کمپیوٹ فراہم نہیں کرتا۔",
+      "reason": "same single-term call, with the masculine agreement of ڈیپلائمنٹ"
+    }
+  ],
+  "findings": {
+    "minor": [],
+    "nit": [
+      {
+        "severity": "nit",
+        "key": "ui.chat.remote_compute.card.charged",
+        "issue": "'{amount} وصول' is verbless where the sibling 'held' reads '{amount} روکا گیا'; 'وصول کیا' would parallel it."
+      },
+      {
+        "severity": "nit",
+        "key": "ui.chat.remote_compute.card.status.running",
+        "issue": "'چل رہا ہے' is a full clause where the sibling chips are bare states (منسوخ، ناکام، مکمل)."
+      }
+    ]
+  },
+  "notes": "Severity counts are the RESIDUAL findings on the corrected bytes. Strings this audit rejected were corrected in the same commit and are listed under corrections; they are not counted as unresolved."
+}

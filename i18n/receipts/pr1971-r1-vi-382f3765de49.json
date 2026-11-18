@@ -1,0 +1,123 @@
+{
+  "schema": 1,
+  "agent": "i18n-auditor",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "382f3765de49",
+    "instance": "pr1971-r1-vi-382f3765de49",
+    "model": "deepseek/deepseek-flash",
+    "independence": "Independent auditor: did not author the translations. The translator was the PR's coder session (commit 44f676535, session 306dec1075ff); this audit was a separate agent run and only corrected strings it rejected.",
+    "independent_from_translator_session": true
+  },
+  "model": "deepseek/deepseek-flash",
+  "instance": "pr1971-r1-vi-382f3765de49",
+  "locale": "vi",
+  "namespace": "ui.chat.remote_compute",
+  "date": "2026-11-18",
+  "head": "44f676535c3e5b14ad6fca963c28c266df2bfb3b",
+  "base": "846b247a8d05cb45e74672bcde2e5c11867d34d6",
+  "branch": "feat/remote-compute-device-row",
+  "pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+  "scope": "Independent audit of all 77 ui.chat.remote_compute keys in vi: glossary, the vi style guide, claim-sensitive binding/tier copy, placeholders, CLDR plural categories, RTL/bidi and cell budgets. Rejected strings corrected in-place; residual findings counted below.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "inputs": {
+    "english": "src/i18n/catalogues/en/ui.chat.remote_compute.json",
+    "english_sha256": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+    "context": "src/i18n/catalogues/en/ui.chat.remote_compute.context.json",
+    "context_sha256": "c358a82a1da24a9b2eff74768c99eee1df98b846379ccb1afdc2d615dd95ee73",
+    "target": "src/i18n/catalogues/vi/ui.chat.remote_compute.json",
+    "target_sha256": "0393d40defc064d57ac48244ae4e18ea9198ea294b8aadc78c4c17231b117c7b",
+    "glossary": "i18n/glossary.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_guide": "i18n/style-guides/vi.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+    "style_guide_sha256": "99eed3b6f9b619f9eb7fb00e4ffc8963df0adaea29891dfa3aefc58d658eba51"
+  },
+  "sha256": {
+    "en": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+    "vi": "0393d40defc064d57ac48244ae4e18ea9198ea294b8aadc78c4c17231b117c7b"
+  },
+  "claim_check": {
+    "binding": "recorded + not enforced, and no isolated/secured/segmented/private claim, in every locale",
+    "recorded_sentence": "the sheet sentence states the run is recorded against the network and that access is not restricted by it in this version",
+    "result": "passes in all seven locales"
+  },
+  "corrections": [
+    {
+      "key": "ui.chat.remote_compute.sheet.prompt.label",
+      "from": "Câu lệnh",
+      "to": "Prompt",
+      "reason": "prompt is on the vi guide's kept-English list and the corpus uses it 31x; 'câu lệnh' is the word for a command"
+    },
+    {
+      "key": "ui.chat.remote_compute.sheet.prompt.empty",
+      "from": "Ô soạn thảo đang trống; một lần chạy cần câu lệnh.",
+      "to": "Ô soạn thảo đang trống; một lần chạy cần prompt.",
+      "reason": "same call"
+    },
+    {
+      "key": "ui.chat.remote_compute.sheet.submit.why_prompt",
+      "from": "Hãy nhập câu lệnh vào ô soạn thảo trước.",
+      "to": "Hãy nhập prompt vào ô soạn thảo trước.",
+      "reason": "same call"
+    },
+    {
+      "key": "ui.chat.remote_compute.card.artifacts_soon",
+      "from": "Nhật ký và kết quả sẽ có trong phiên bản sau.",
+      "to": "Nhật ký và kết quả sẽ có trong một phiên bản sau.",
+      "reason": "en context forbids naming the next version; 'phiên bản sau' reads as the next one"
+    },
+    {
+      "key": "ui.chat.remote_compute.row.capacity",
+      "from": "không có dung lượng",
+      "to": "không có tài nguyên",
+      "reason": "'dung lượng' is the corpus's disk-space word (15x, all storage); compute capacity is not storage"
+    },
+    {
+      "key": "ui.chat.remote_compute.sheet.tier.capacity_why",
+      "from": "không có dung lượng",
+      "to": "không có tài nguyên",
+      "reason": "same call"
+    },
+    {
+      "key": "ui.chat.remote_compute.sheet.submit.why_capacity",
+      "from": "Dung lượng hiện không khả dụng.",
+      "to": "Tài nguyên hiện không khả dụng.",
+      "reason": "same call"
+    },
+    {
+      "key": "ui.chat.remote_compute.row.sentence.capacity",
+      "from": "Radient: hiện không thể cấp dung lượng. Chọn dòng này để kiểm tra lại.",
+      "to": "Radient: hiện không thể cấp tài nguyên. Chọn dòng này để kiểm tra lại.",
+      "reason": "same call"
+    },
+    {
+      "key": "ui.chat.remote_compute.row.not_offered",
+      "from": "bản triển khai này không cung cấp",
+      "to": "không khả dụng ở bản triển khai này",
+      "reason": "the chip had no object in Vietnamese ('does not offer' + nothing), so it read as a cut sentence"
+    },
+    {
+      "key": "ui.chat.remote_compute.runs.record_only",
+      "from": "Đã đăng xuất, nên đây là các lần chạy gần nhất mà thiết bị này biết. Đăng nhập để đọc dữ liệu của máy chủ.",
+      "to": "Đã đăng xuất, nên đây là các lần chạy gần nhất mà thiết bị này biết. Đăng nhập để đọc các dòng của máy chủ.",
+      "reason": "en says rows; the sibling runs.unavailable already says 'các dòng'"
+    }
+  ],
+  "findings": {
+    "minor": [],
+    "nit": [
+      {
+        "severity": "nit",
+        "key": "ui.chat.remote_compute.sheet.tier.dedicated.spot.title",
+        "issue": "'Spot' stays Latin beside the translated 'Chuyên dụng'; consistent with the vi guide's kept-English register (mesh, node, gateway) but not recorded there."
+      },
+      {
+        "severity": "nit",
+        "key": "ui.chat.remote_compute.card.status.succeeded",
+        "issue": "'Đã xong' is the colloquial 'done'; 'Hoàn tất' would be the formal register. Understandable and terse."
+      }
+    ]
+  },
+  "notes": "Severity counts are the RESIDUAL findings on the corrected bytes. Strings this audit rejected were corrected in the same commit and are listed under corrections; they are not counted as unresolved."
+}

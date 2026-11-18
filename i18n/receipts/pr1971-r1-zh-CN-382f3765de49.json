@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "agent": "i18n-auditor",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "382f3765de49",
+    "instance": "pr1971-r1-zh-CN-382f3765de49",
+    "model": "deepseek/deepseek-flash",
+    "independence": "Independent auditor: did not author the translations. The translator was the PR's coder session (commit 44f676535, session 306dec1075ff); this audit was a separate agent run and only corrected strings it rejected.",
+    "independent_from_translator_session": true
+  },
+  "model": "deepseek/deepseek-flash",
+  "instance": "pr1971-r1-zh-CN-382f3765de49",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.remote_compute",
+  "date": "2026-11-18",
+  "head": "44f676535c3e5b14ad6fca963c28c266df2bfb3b",
+  "base": "846b247a8d05cb45e74672bcde2e5c11867d34d6",
+  "branch": "feat/remote-compute-device-row",
+  "pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+  "scope": "Independent audit of all 77 ui.chat.remote_compute keys in zh-CN: glossary, the zh-CN style guide, claim-sensitive binding/tier copy, placeholders, CLDR plural categories, RTL/bidi and cell budgets. Rejected strings corrected in-place; residual findings counted below.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "inputs": {
+    "english": "src/i18n/catalogues/en/ui.chat.remote_compute.json",
+    "english_sha256": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+    "context": "src/i18n/catalogues/en/ui.chat.remote_compute.context.json",
+    "context_sha256": "c358a82a1da24a9b2eff74768c99eee1df98b846379ccb1afdc2d615dd95ee73",
+    "target": "src/i18n/catalogues/zh-CN/ui.chat.remote_compute.json",
+    "target_sha256": "0771a7b2ce166d693167451d52531c581975c38eef247b669374a1db7d45dacf",
+    "glossary": "i18n/glossary.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_guide": "i18n/style-guides/zh-CN.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+    "style_guide_sha256": "615a126a8dbff72c52875a56aa80728f8af858764ef4974e1f74192589b830b6"
+  },
+  "sha256": {
+    "en": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+    "zh-CN": "0771a7b2ce166d693167451d52531c581975c38eef247b669374a1db7d45dacf"
+  },
+  "claim_check": {
+    "binding": "recorded + not enforced, and no isolated/secured/segmented/private claim, in every locale",
+    "recorded_sentence": "the sheet sentence states the run is recorded against the network and that access is not restricted by it in this version",
+    "result": "passes in all seven locales"
+  },
+  "corrections": [
+    {
+      "key": "ui.chat.remote_compute.sheet.prompt.label",
+      "from": "提示",
+      "to": "提示词",
+      "reason": "the zh guide's own row is prompt → 提示词, and the corpus uses it 59x; '提示' is the generic 'hint'"
+    },
+    {
+      "key": "ui.chat.remote_compute.sheet.prompt.empty",
+      "from": "输入框为空；运行需要一条提示。",
+      "to": "输入框为空；运行需要一条提示词。",
+      "reason": "same call"
+    },
+    {
+      "key": "ui.chat.remote_compute.sheet.submit.why_prompt",
+      "from": "请先在输入框中输入提示。",
+      "to": "请先在输入框中输入提示词。",
+      "reason": "same call"
+    },
+    {
+      "key": "ui.chat.remote_compute.row.sentence.sign_in",
+      "from": "Radient：登录后即可在租用的容量上运行此对话的提示。选择此行将开始登录。",
+      "to": "Radient：登录后即可在租用的容量上运行此对话的提示词。选择此行将开始登录。",
+      "reason": "same call"
+    },
+    {
+      "key": "ui.chat.remote_compute.row.runs_capped",
+      "from": "{count} 次以上运行",
+      "to": "{count}+ 次运行",
+      "reason": "'{count} 次以上运行' puts 运行 after the bound and reads as an ungrammatical fragment; the '+' form mirrors the en and keeps the 次 classifier"
+    }
+  ],
+  "findings": {
+    "minor": [],
+    "nit": [
+      {
+        "severity": "nit",
+        "key": "ui.chat.remote_compute.card.status.queued",
+        "issue": "'排队中' is progressive where the sibling chips are perfective (已取消、 已完成); both are idiomatic for a queue chip."
+      },
+      {
+        "severity": "nit",
+        "key": "ui.chat.remote_compute.card.not_found",
+        "issue": "'记录' renders the server's rows as records; the runs list already uses 记录 for the same object, so the metaphor is consistent, but '行' would match the table wording."
+      }
+    ]
+  },
+  "notes": "Severity counts are the RESIDUAL findings on the corrected bytes. Strings this audit rejected were corrected in the same commit and are listed under corrections; they are not counted as unresolved."
+}
