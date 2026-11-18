@@ -197,6 +197,10 @@ const IDENTICAL_OK = new Map([
 		"Spanish standard unit copy is {size, number} bytes; independently audited by f93eb129057e (S3 receipt). Exact locale/key only, not an English fallback.",
 	],
 	[
+		"es:ui.teamBridge.sender.app_badge",
+		"Spanish UI loanword: the sender badge is « App », same spelling as English; independently audited by bcc4b8aad6ff (receipt i18n/receipts/bcc4b8aad6ff-pr1969-r1-es.json). Exact locale/key only, not an English fallback.",
+	],
+	[
 		"fr:ui.chat.thread_search.role.agent",
 		"French cognate: the role name for an agent turn is « Agent », same spelling; scoped to fr so other locales still translate it",
 	],
@@ -245,6 +249,10 @@ const IDENTICAL_OK = new Map([
 	[
 		"fr:ui.teamBridge.profile.agent_badge",
 		"French glossary term for agent is « agent » — same spelling as English; scoped to fr so other locales still translate it",
+	],
+	[
+		"fr:ui.community.message.agent_badge",
+		"French glossary term for agent is « Agent » — the community badge mirrors fr:ui.teamBridge.profile.agent_badge (exempted above); scoped to fr so other locales still translate it",
 	],
 	[
 		"fr:ui.teamBridge.invitations.title",

@@ -1,0 +1,11 @@
+Node v24.22.1, ICU 78.3, intl-messageformat 12.1.3
+Scope f879a8a3024299e863ee3113eac854a0ac38944e..3fbc7703cda0eb8dcbf42c4156f92facc4ae735b; manifest 8 locales; only eight catalogue files change.
+en: 4/4 literal ICU renders; original recovery/condition preserved; matches escalation CTA: Copy the diagnostics to share when you ask for help.
+fr: 4/4 literal ICU renders; original recovery/condition preserved; matches escalation CTA: Copiez les diagnostics pour les transmettre quand vous demandez de l’aide.
+es: 4/4 literal ICU renders; original recovery/condition preserved; matches escalation CTA: Copia el diagnóstico para compartirlo cuando pidas ayuda.
+zh-CN: 4/4 literal ICU renders; original recovery/condition preserved; matches escalation CTA: 请复制诊断信息，在寻求帮助时提供。
+ru: 4/4 literal ICU renders; original recovery/condition preserved; matches escalation CTA: Скопируйте диагностику, чтобы передать её, когда обратитесь за помощью.
+vi: 4/4 literal ICU renders; original recovery/condition preserved; matches escalation CTA: Hãy sao chép thông tin chẩn đoán để cung cấp khi bạn nhờ trợ giúp.
+ur: 4/4 literal ICU renders; original recovery/condition preserved; matches escalation CTA: مدد مانگتے وقت دینے کے لیے تشخیصی معلومات نقل کریں۔
+hi: 4/4 literal ICU renders; original recovery/condition preserved; matches escalation CTA: मदद माँगते समय देने के लिए डायग्नॉस्टिक्स कॉपी करें।
+PASS: 32 changed values, 32 drift negative controls, 0 off-scope key changes, 0 non-catalogue paths.

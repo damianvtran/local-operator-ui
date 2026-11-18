@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 2 (delta), PR #1970",
+  "locale": "zh-CN",
+  "namespace": "ui.teamBridge",
+  "pr": 1970,
+  "date": "2026-11-18",
+  "head": "a4697362c0896225de096d6a05edcc9486b3f264",
+  "instance": "pr1970-r2-zh-CN-teambridge-58bd31d0",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (reviewer role); did not translate or author these strings",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Reviewer session e9adf2dc1808, a fresh reviewer task for PR #1970 round 2; not the translator/implementer and not the round-1 auditor session (8c463a3c88c3). Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1970-r2-zh-CN-teambridge-58bd31d0"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.scope.community.trigger",
+      "note": "New key, audited against en 'Community: {name}' and its context entry (screen-reader name while a community is selected; must not be announced as an organization). 社区：{name} — full-width colon, no space, as zh-CN scope.trigger (组织：{name}); same noun as the 社区 group label."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.scope.invited",
+      "note": "Round-1 T3 verified fixed: '已邀请' -> '受邀', the round-1 suggestion verbatim; meaning and placeholders re-checked."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.scope.group.communities_joined",
+      "note": "Round-1 T4 verified fixed: '社区 · 已加入 {count, number} 个' -> '社区 · 已加入{count, number}个', the round-1 suggestion verbatim; meaning and placeholders re-checked."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.scope.community.browse",
+      "note": "Round-1 T5 verified fixed: '浏览社区…' -> '浏览社区……', the round-1 suggestion verbatim; meaning and placeholders re-checked."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical checks at a4697362: key set equals English; the file differs from 2295ee16 only in the keys listed here; all audited values parse with @formatjs/icu-messageformat-parser ({name} argument / {count, number} preserved); U+2026 ellipsis kept, no ASCII '...'; no bidi control characters. Rendered fit not verified in this lane (no browser tool)."
+    }
+  ],
+  "audited_values": {
+    "ui.teamBridge.scope.invited": "受邀",
+    "ui.teamBridge.scope.group.communities_joined": "社区 · 已加入{count, number}个",
+    "ui.teamBridge.scope.community.browse": "浏览社区……",
+    "ui.teamBridge.scope.community.trigger": "社区：{name}"
+  },
+  "prior_round": {
+    "instance": "pr1970-r1-zh-CN-teambridge-234d7647",
+    "head": "2295ee16d36ac7a749e913e576950320c28d3fb1",
+    "note": "Keys not listed in audited_values are byte-identical to the round-1 audit.",
+    "receipt": "i18n/receipts/pr1970-r1-zh-CN-teambridge-234d7647.json"
+  },
+  "scope": "PR #1970 round 2 delta (2295ee16..a4697362): new ui.teamBridge.scope.community.trigger plus round-1 fixes T3/T4/T5; rest of the file byte-identical to the round-1 audited bytes",
+  "binding": "Verified on the committed tree at a4697362c0896225de096d6a05edcc9486b3f264 (worktree .worktrees/tb-org-defaults): target src/i18n/catalogues/zh-CN/ui.teamBridge.json sha256 16f7f1fea3729e942bd55ef375ae78d58d6b32aa2215109f0e0dcee348231ff9; English sha256 1a40e5bfad7178af53bb2ff1ea1351b74f6b4d66d531ae3b83cad594a5b14321; context sha256 299e34dbb1e2ce1e332e4463d48687467c63b8c9800a99e511857528d551b50a.",
+  "en_sha256": "1a40e5bfad7178af53bb2ff1ea1351b74f6b4d66d531ae3b83cad594a5b14321",
+  "context_sha256": "299e34dbb1e2ce1e332e4463d48687467c63b8c9800a99e511857528d551b50a",
+  "target_sha256": "16f7f1fea3729e942bd55ef375ae78d58d6b32aa2215109f0e0dcee348231ff9",
+  "sha256": {
+    "zh-CN": "16f7f1fea3729e942bd55ef375ae78d58d6b32aa2215109f0e0dcee348231ff9",
+    "en": "1a40e5bfad7178af53bb2ff1ea1351b74f6b4d66d531ae3b83cad594a5b14321"
+  }
+}

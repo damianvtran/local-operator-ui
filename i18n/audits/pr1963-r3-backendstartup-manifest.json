@@ -1,0 +1,56 @@
+{
+	"schema": 1,
+	"scope": "PR #1963 round 3 (f879a8a302..3fbc7703cda0eb8dcbf42c4156f92facc4ae735b): four backend-startup recovery reasons only.",
+	"source_review": "i18n/audits/evidence/en/ui.common.backend_startup/pr1963-r3-4f13c326b41f/record.json",
+	"records": [
+		{
+			"locale": "es",
+			"canonical_record": "i18n/audits/evidence/es/ui.common.backend_startup/pr1963-r3-es-backendstartup-4f13c326b41f/record.json",
+			"receipt": "i18n/receipts/pr1963-r3-es-backendstartup-4f13c326b41f.json",
+			"sha256": "2c2ef30c6fb0cc6640cfd49fd35612abaf4f70f5febb79ea197e206297d63ff5",
+			"result": "clean"
+		},
+		{
+			"locale": "fr",
+			"canonical_record": "i18n/audits/evidence/fr/ui.common.backend_startup/pr1963-r3-fr-backendstartup-4f13c326b41f/record.json",
+			"receipt": "i18n/receipts/pr1963-r3-fr-backendstartup-4f13c326b41f.json",
+			"sha256": "2458d64d3fd91f2523a4d872e7e5a624e506ce729eb1b8577f26a6e6e4d30c75",
+			"result": "clean"
+		},
+		{
+			"locale": "hi",
+			"canonical_record": "i18n/audits/evidence/hi/ui.common.backend_startup/pr1963-r3-hi-backendstartup-4f13c326b41f/record.json",
+			"receipt": "i18n/receipts/pr1963-r3-hi-backendstartup-4f13c326b41f.json",
+			"sha256": "71fc9e0368734087f9f3ec89a0c6845ecf6016d12f7f3c3e9c3edf9ce88890a2",
+			"result": "clean"
+		},
+		{
+			"locale": "ru",
+			"canonical_record": "i18n/audits/evidence/ru/ui.common.backend_startup/pr1963-r3-ru-backendstartup-4f13c326b41f/record.json",
+			"receipt": "i18n/receipts/pr1963-r3-ru-backendstartup-4f13c326b41f.json",
+			"sha256": "0d4e8d5e9f229c88256bf215212538bcd23293f38e0340e1369ce302a1236aed",
+			"result": "clean"
+		},
+		{
+			"locale": "ur",
+			"canonical_record": "i18n/audits/evidence/ur/ui.common.backend_startup/pr1963-r3-ur-backendstartup-4f13c326b41f/record.json",
+			"receipt": "i18n/receipts/pr1963-r3-ur-backendstartup-4f13c326b41f.json",
+			"sha256": "437f27a0c473503a1ae8cf878333272f6f10828a8e4157b95a57bc82a8dc7f7c",
+			"result": "clean"
+		},
+		{
+			"locale": "vi",
+			"canonical_record": "i18n/audits/evidence/vi/ui.common.backend_startup/pr1963-r3-vi-backendstartup-4f13c326b41f/record.json",
+			"receipt": "i18n/receipts/pr1963-r3-vi-backendstartup-4f13c326b41f.json",
+			"sha256": "d650ff6055bc6d468c69d77dcbcf71a3ceafda2ed6a4dc0efc07d541acfcbc67",
+			"result": "clean"
+		},
+		{
+			"locale": "zh-CN",
+			"canonical_record": "i18n/audits/evidence/zh-CN/ui.common.backend_startup/pr1963-r3-zh-cn-backendstartup-4f13c326b41f/record.json",
+			"receipt": "i18n/receipts/pr1963-r3-zh-cn-backendstartup-4f13c326b41f.json",
+			"sha256": "dce742b80cfcfaf8d5359456b8ba22c82e127cc23bf9ad9c72cb30fc721f4f18",
+			"result": "clean"
+		}
+	]
+}

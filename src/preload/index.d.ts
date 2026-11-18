@@ -548,6 +548,8 @@ declare global {
 			backend: {
 				getStatus: () => Promise<DaemonStatusSnapshot>;
 				reconnect: () => Promise<DaemonStatusSnapshot>;
+				/** Stop and start this app's own server (the start-up panel's Restart). */
+				restart?: () => Promise<DaemonStatusSnapshot>;
 				onStatusChange: (
 					callback: (snapshot: DaemonStatusSnapshot) => void,
 				) => () => void;

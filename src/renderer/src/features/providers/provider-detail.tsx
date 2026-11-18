@@ -25,6 +25,8 @@
  * field, and nothing was stored (UX U3).
  */
 
+import { categorizeProviderFailure } from "@shared/analytics/first-run-reasons";
+import { trackProductEvent } from "@shared/analytics/product-events";
 import { pollAuthOperation } from "@shared/api/local-operator/auth-operation";
 import {
 	DesktopControlError,
@@ -93,6 +95,10 @@ import type {
 	DefaultsApplied,
 	SaveKeyResult,
 } from "../../../../shared/desktop-contract";
+import { useMakeLocalDefault } from "./local-default";
+import { checkLocalProvider } from "./local-provider-check";
+import type { LocalDiagnosis } from "./local-provider-diagnosis";
+import { LocalProviderStatusView } from "./local-provider-status";
 import { PhoneAccessBlock } from "./phone-access-block";
 import {
 	brandOf,
@@ -115,100 +121,111 @@ import {
 	setKeyOutcome,
 	useSignInSession,
 } from "./sign-in-sessions";
+import { useDefaultModel } from "./use-provider-status";
 
 /**
- * Reachability for a local provider.
+ * Reachability for a local provider, and what to do when it fails.
  *
  * The probe runs when the panel OPENS (design D11): opening a panel is already
  * an explicit user action, and "Not tested yet" was a state that asked the
  * user to press a button whose result the app could have fetched itself. The
  * "no probe on render" rule is about the provider LIST, which still never
  * probes.
+ *
+ * D1 (onboarding friction, 2026-11): the failure used to be one sentence and a
+ * "Check again" that re-ran a probe failing in milliseconds with the same
+ * words, so 146 users pressed it (8.4x each on Windows) and half never sent a
+ * message. The panel now names the cause (`diagnoseLocal`), gives that cause
+ * its next steps, offers the hosted alternative, and makes every check visibly
+ * land: a held in-flight state and a "checked at <time>" receipt that changes
+ * on every press.
  */
-const LocalProviderReachability: FC<{ provider: DesktopProvider }> = ({
-	provider,
-}) => {
+const LocalProviderReachability: FC<{
+	provider: DesktopProvider;
+	/** Opens the hosted sign-in instead; absent where no such row exists. */
+	onUseHosted?: () => void;
+	/** The flow's next step once chats use this runtime; absent in Settings. */
+	onContinue?: () => void;
+	continueLabel?: string;
+}> = ({ provider, onUseHosted, onContinue, continueLabel }) => {
 	useI18nLocale();
+	/*
+	 * U1: whether chats already use this runtime, and the press that makes them.
+	 * The default is the gate `useProviderStatus` reads, so the same read decides
+	 * the receipt here and the composer's line there.
+	 */
+	const defaults = useDefaultModel();
+	const makeDefault = useMakeLocalDefault();
+	const inUse =
+		defaults.hosting === provider.id ? (defaults.model ?? "") : null;
 	const [testing, setTesting] = useState(false);
-	const [result, setResult] = useState<{
-		reachable: boolean;
-		detail: string;
-	} | null>(null);
+	const [diagnosis, setDiagnosis] = useState<LocalDiagnosis | null>(null);
+	const [checkedAt, setCheckedAt] = useState<number | null>(null);
+	const [failedChecks, setFailedChecks] = useState(0);
+	/* A stale answer for a previous provider row must not land on this one. */
+	const generation = useRef(0);
+	const providerId = provider.id;
+	const baseUrl = provider.base_url;
 
 	const test = useCallback(async () => {
+		const mine = ++generation.current;
 		setTesting(true);
-		try {
-			setResult(
-				await desktopResult<{ reachable: boolean; detail: string }>({
-					op: "auth.probe",
-					provider: provider.id,
-				}),
-			);
-		} catch (error) {
-			setResult({
-				reachable: false,
-				detail:
-					error instanceof Error
-						? error.message
-						: t(
-								"ui.providers.provider_detail.the_connection_could_not_be_tested",
-							),
-			});
-		} finally {
-			setTesting(false);
-		}
-	}, [provider.id]);
+		const started = Date.now();
+		const next = await checkLocalProvider({
+			id: providerId,
+			base_url: baseUrl,
+		});
+		/*
+		 * A PERCEPTION FLOOR, not a timeout: a refused connection answers in a few
+		 * milliseconds, so "Checking..." never painted and the press looked
+		 * ignored. 400 ms is long enough to read as "it ran" and short enough not
+		 * to read as slow; a real network probe that takes longer is unaffected.
+		 */
+		const remaining = 400 - (Date.now() - started);
+		if (remaining > 0)
+			await new Promise((resolve) => setTimeout(resolve, remaining));
+		if (mine !== generation.current) return;
+		setDiagnosis(next);
+		setCheckedAt(Date.now());
+		setFailedChecks((count) => (next.kind === "ready" ? 0 : count + 1));
+		setTesting(false);
+	}, [providerId, baseUrl]);
 
 	// A different provider row reuses this component, so the verdict is reset
 	// and re-asked per provider rather than left beside the new name.
 	useEffect(() => {
-		setResult(null);
+		setDiagnosis(null);
+		setCheckedAt(null);
+		setFailedChecks(0);
 		void test();
 	}, [test]);
 
-	const brand = brandOf(provider);
+	const firstModel =
+		diagnosis?.kind === "ready" ? (diagnosis.firstModel ?? null) : null;
 	return (
-		<div className="flex flex-col items-start gap-2">
-			{result === null ? (
-				<p className="flex items-center gap-2 text-body-sm text-ink-muted">
-					<Spinner size="sm" />
-					{t("ui.providers.provider_detail.checking_whether")}
-					{brand} {t("ui.providers.provider_detail.is_running")}
-				</p>
-			) : result.reachable ? (
-				<p className="text-body-sm text-success">
-					{brand} {t("ui.providers.provider_detail.is_running")}
-				</p>
-			) : (
-				<p className="text-body-sm text-ink-muted">
-					{brand} {t("ui.providers.provider_detail.isn_t_answering")}
-					{provider.base_url ? (
-						<>
-							{t("ui.providers.provider_detail.at")}
-							<span className="font-mono">{provider.base_url}</span>
-						</>
-					) : null}
-				</p>
-			)}
-			{/*
-			 * No second failure line when the probe could not answer: the line above
-			 * already carries the verdict AND the address, so the backend's sentence
-			 * printed the same failure twice (design round 2 D9). The old guard hid it
-			 * only when the detail contained the configured address, which never
-			 * matched -- the configured address carries `/v1` and the sentence does not,
-			 * and the real backend (routes/auth.py's probe) sends no address at all.
-			 */}
-			<Button
-				variant="secondary"
-				size="sm"
-				onClick={() => void test()}
-				disabled={testing}
-			>
-				{testing
-					? t("ui.providers.provider_detail.checking")
-					: t("ui.providers.provider_detail.check_again")}
-			</Button>
-		</div>
+		<LocalProviderStatusView
+			provider={provider}
+			diagnosis={diagnosis}
+			testing={testing}
+			checkedAt={checkedAt}
+			failedChecks={failedChecks}
+			onCheckAgain={() => void test()}
+			onUseHosted={onUseHosted}
+			inUse={inUse}
+			onUseForChats={
+				firstModel
+					? () =>
+							void makeDefault.run({
+								provider: provider.id,
+								model_id: firstModel,
+							})
+					: undefined
+			}
+			using={makeDefault.busy}
+			useError={makeDefault.error}
+			onContinue={onContinue}
+			continueLabel={continueLabel}
+		/>
 	);
 };
 
@@ -243,6 +260,12 @@ type ProviderDetailProps = {
 	 * what the panel did before.
 	 */
 	readiness?: ProviderReadiness | null;
+	/**
+	 * Opens the hosted (Radient) sign-in in place of this panel. Passed by the
+	 * grid only when that row exists; the local panel offers it as the clear
+	 * alternative to setting up a model on this computer (D1).
+	 */
+	onUseHosted?: () => void;
 };
 
 const SecretInput: FC<{
@@ -540,6 +563,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	onChangeModel,
 	context = "settings",
 	readiness: readinessProp,
+	onUseHosted,
 }) => {
 	useI18nLocale();
 	const queryClient = useQueryClient();
@@ -943,6 +967,10 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		setKeySaving(true);
 		rememberKey({ error: null });
 		try {
+			trackProductEvent("provider_setup_started", {
+				provider: method.id,
+				method: "api_key",
+			});
 			const result =
 				(await desktopResult<SaveKeyResult | null>({
 					op: "auth.key",
@@ -951,6 +979,10 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				})) ?? {};
 			setKeyValue("");
 			rememberKey({ saved: result });
+			trackProductEvent("provider_connected", {
+				provider: method.id,
+				method: "api_key",
+			});
 			refreshProviders();
 			void adoptDefaultRef.current(
 				provider.id,
@@ -958,6 +990,11 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				provider.suggested_model?.id,
 			);
 		} catch (error) {
+			trackProductEvent("provider_setup_failed", {
+				provider: method.id,
+				method: "api_key",
+				reason: categorizeProviderFailure(error, "key"),
+			});
 			// A 422 is the backend refusing THIS key (validation, or a provider
 			// with no key route), and its sentence belongs under the field.
 			// Anything else is also shown there: the field is what the user
@@ -994,12 +1031,25 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	if (provider.local) {
 		return (
 			<div className="flex flex-col gap-3">
+				{/*
+				 * Short on purpose (design round 1, D7): the old intro's "start <brand>,
+				 * then check the connection" repeated the cause-specific steps the panel
+				 * now shows right under it.
+				 */}
 				<p className="text-body-sm text-ink-muted">
-					{t("ui.providers.provider_detail.runs_on_this_computer_and_needs_no")}
-					{brand}
-					{t("ui.providers.provider_detail.then_check_the_connection")}
+					{t("ui.recovery.local.intro")}
 				</p>
-				<LocalProviderReachability provider={provider} />
+				<LocalProviderReachability
+					provider={provider}
+					onUseHosted={onUseHosted}
+					/*
+					 * Where the flow has a next step (onboarding, the connect dialog),
+					 * the "chats use <brand>" receipt carries it, so a ready runtime
+					 * ends the dialog in one more press (U1). Settings has none.
+					 */
+					onContinue={context === "dialog" ? finish : undefined}
+					continueLabel={context === "dialog" ? doneLabel : undefined}
+				/>
 			</div>
 		);
 	}

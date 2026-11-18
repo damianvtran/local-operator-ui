@@ -20,24 +20,22 @@
 	"ui.chat.thread_search.count.match": {
 		"role": "result count line",
 		"tone": "Plain, terse.",
-		"note": "How many messages matched, when every hit is an exact occurrence of the query. The count is of MESSAGES, not occurrences, and the backend caps the list — the truncation note rides beside it rather than inside it.",
+		"note": "How many messages matched, when every hit is an exact occurrence of the query. The count is of MESSAGES, not occurrences, and the backend caps the list — the truncation note rides beside it rather than inside it. Plural: English one/other is source grammar, not a target-locale limit. Use the target locale's native categories (Russian few/many, Arabic zero/two) as the locale's style guide requires.",
 		"length": "Two or three words.",
 		"placeholders": {
 			"count": "Cardinal number of matching messages.",
 			"countText": "Already-formatted decimal count from String(count); separate from the ICU cardinal so English does not gain thousands separators."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native categories (Russian few/many, Arabic zero/two) as the locale's style guide requires."
+		}
 	},
 	"ui.chat.thread_search.count.related": {
 		"role": "result count line, related-only",
 		"tone": "Plain, terse.",
-		"note": "All hits are RELATED matches: the index matched the sense of the query, not its literal characters, so none of the rows highlights the typed words. The word `related` must stay distinct from the plain match count.",
+		"note": "All hits are RELATED matches: the index matched the sense of the query, not its literal characters, so none of the rows highlights the typed words. The word `related` must stay distinct from the plain match count. Plural: As the plain match count: follow the target locale's own plural categories.",
 		"length": "Three or four words.",
 		"placeholders": {
 			"count": "Cardinal number of matching messages.",
 			"countText": "Already-formatted decimal count from String(count); see the plain match count."
-		},
-		"plural_guidance": "As the plain match count: follow the target locale's own plural categories."
+		}
 	},
 	"ui.chat.thread_search.count.split": {
 		"role": "result count line, mixed tiers (label-first)",

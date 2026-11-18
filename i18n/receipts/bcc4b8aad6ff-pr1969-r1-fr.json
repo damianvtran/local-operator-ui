@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, PR #1969 round 1 (delta: 3 new ui.teamBridge.sender keys)",
+  "locale": "fr",
+  "namespace": "ui.teamBridge",
+  "pr": 1969,
+  "date": "2026-11-17",
+  "head": "f731886a60f0c2867cab71666a62983c05fa3df7 + C1 correction (ui.teamBridge.sender.unknown_app -> 'Application inconnue'), applied by the remediation commit",
+  "instance": "bcc4b8aad6ff-pr1969-r1-fr",
+  "auditor": {
+    "agent": "copy-reviewer",
+    "role": "independent i18n auditor (team radientdev, copy-reviewer role); did not draft these translations",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session bcc4b8aad6ff, a copy-reviewer task dispatched by the manager for PR #1969 copy/i18n round 1. The translations are the implementer's (coder) drafts in commit 776e57b74b; this auditor is a different agent. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT or translation API used.",
+    "instance": "bcc4b8aad6ff-pr1969-r1-fr"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "translator": {
+    "agent": "coder",
+    "note": "PR #1969 implementer drafts (commit 776e57b74b, 'locale values are coder drafts pending the i18n audit'); served model not recorded in the commit"
+  },
+  "references": {
+    "glossary": "damianvtran/local-operator i18n/glossary.md @ origin/main 56662d28b33f (no 'app' or 'sender' row; catalogue usage decides)",
+    "style_guide": "damianvtran/local-operator i18n/style-guides/fr.md @ origin/main 56662d28b33f"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.teamBridge.sender.unknown_app",
+      "note": "C1 (PR #1969 copy round 1). Draft 'Appli inconnue' used 'Appli', which appears in no other fr value; the fr catalogue renders 'app' as 'application' in 235 values (e.g. ui.console.unavailable.title, ui.chat.canonical.link_actions.open_in_default_app). Corrected in the audited bytes to 'Application inconnue' (feminine agreement kept). Disposition: fixed. The correction is the catalogue's established term, authored by this auditor; disclosed, not hidden."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.sender.app_badge",
+      "note": "'Appli' kept for the badge: the context asks for one short word for a small badge, and 'Appli' is the standard French short form; 'Application' would roughly double the badge width beside the name. Rendered beside 'Application inconnue' when the name is missing, which reads as abbreviation + full form, not as two terms."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.sender.unknown_sender",
+      "note": "'Expéditeur inconnu' is byte-identical to the already-audited fr ui.ownerAudit.unknown_sender (same English 'Unknown sender'), so the channel and the owner audit name this state the same way. Sentence case, no Title Case (fr guide)."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.sender.app_badge, ui.teamBridge.sender.unknown_app, ui.teamBridge.sender.unknown_sender",
+      "note": "Mechanical checks on the audited bytes: key set equals English ui.teamBridge.json; the three values carry no placeholders/ICU (English has none), no leading/trailing or double spaces, no bidi control characters anywhere in the file, all NFC. The base-to-head diff of this file is exactly these 3 added lines (git diff 58cbcea2..f731886a: 3 insertions, 0 deletions); every other value is the previously audited bytes."
+    }
+  ],
+  "audited_values": {
+    "ui.teamBridge.sender.app_badge": "Appli",
+    "ui.teamBridge.sender.unknown_app": "Application inconnue",
+    "ui.teamBridge.sender.unknown_sender": "Expéditeur inconnu"
+  },
+  "binding": "Hashed on the audited bytes (f731886a60 with the one-line C1 correction applied in a scratch copy): target src/i18n/catalogues/fr/ui.teamBridge.json sha256 8ce114b81967a2f1dc395d7bd65d45d74746ee5ab96ca236d525bea730c64dc5; English sha256 2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36; context sha256 fc27c3cd4622eea66d7ad9a93aa46ad23a4c57c4b40394d61cb4365799ff4d9a.",
+  "scope": "PR #1969 round 1: ui.teamBridge.sender.app_badge / unknown_app / unknown_sender (integration app sender copy); rest of namespace unchanged from the prior audited bytes",
+  "en_sha256": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36",
+  "context_sha256": "fc27c3cd4622eea66d7ad9a93aa46ad23a4c57c4b40394d61cb4365799ff4d9a",
+  "target_sha256": "8ce114b81967a2f1dc395d7bd65d45d74746ee5ab96ca236d525bea730c64dc5",
+  "sha256": {
+    "fr": "8ce114b81967a2f1dc395d7bd65d45d74746ee5ab96ca236d525bea730c64dc5",
+    "en": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36"
+  }
+}

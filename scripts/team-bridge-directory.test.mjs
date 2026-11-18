@@ -1694,6 +1694,44 @@ test("profile Message scopes existing DMs and allows read-only history but not d
 	);
 });
 
+test("profile Message never targets an app or unknown sender, even on a colliding id", () => {
+	/* An integration app's id that happens to equal a member's must not open
+	 * that member's DM (or a fresh person draft): the page's DM and profile
+	 * lookups refuse any kind that is not a person or an agent (review R2). */
+	const dm = conversation({
+		id: "dm-collide",
+		tenant_id: "tenant-profile",
+		members: [
+			selfMember,
+			{ ...person({ account_id: "bea" }), kind: "human", state: "active" },
+		],
+	});
+	for (const kind of ["integration", "unknown"])
+		for (const readOnly of [true, false])
+			assert.equal(
+				ui.profileMessageTarget(
+					{ account_id: "bea", kind, display_label: "Grafana" },
+					"tenant-profile",
+					[dm],
+					selfMember.account_id,
+					readOnly,
+				),
+				null,
+				`${kind} readOnly=${readOnly}`,
+			);
+	// Control: the same id as a person still resolves to the existing DM.
+	assert.deepEqual(
+		ui.profileMessageTarget(
+			{ account_id: "bea", kind: "human", display_label: "Bea" },
+			"tenant-profile",
+			[dm],
+			selfMember.account_id,
+			true,
+		),
+		{ type: "conversation", id: dm.id },
+	);
+});
+
 test("avatar URL accepts legacy account ids and refuses path or escaped account ids", () => {
 	const parse = (account) =>
 		model.teamBridgeDirectorySchema.parse({

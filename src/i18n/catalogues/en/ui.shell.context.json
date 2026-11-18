@@ -25,12 +25,11 @@
 	"ui.shell.sidebar_navigation.aida_missed": {
 		"role": "navigation accessible name",
 		"tone": "Matter-of-fact notification count.",
-		"note": "Names the chief-of-staff row with unread messages; singular and plural must agree with count. The number skeleton disables grouping to preserve the original English decimal count spelling even at 1000; cardinal selection remains numeric.",
+		"note": "Names the chief-of-staff row with unread messages; singular and plural must agree with count. The number skeleton disables grouping to preserve the original English decimal count spelling even at 1000; cardinal selection remains numeric. Plural: English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement.",
 		"placeholders": {
 			"name": "User-configured chief-of-staff display name, verbatim.",
 			"count": "Number of missed messages; ICU plural cardinal."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+		}
 	},
 	"ui.shell.sidebar_navigation.aida_working": {
 		"role": "navigation accessible name",
@@ -49,12 +48,11 @@
 	"ui.shell.sidebar_navigation.browser_waiting": {
 		"role": "navigation accessible name",
 		"tone": "Pending-work status, not an error.",
-		"note": "Names browser approvals waiting for the operator. English waiting is count-invariant but both grammatical branches are intentional.",
+		"note": "Names browser approvals waiting for the operator. English waiting is count-invariant but both grammatical branches are intentional. Plural: English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement.",
 		"placeholders": {
 			"count": "Uncapped pending cardinal count for grammatical number.",
 			"countText": "Existing decimal display string, without English grouping punctuation."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+		}
 	},
 	"ui.shell.sidebar_navigation.close_sidebar": {
 		"role": "button accessible name",
@@ -88,22 +86,20 @@
 	"ui.shell.sidebar_navigation.mesh_waiting": {
 		"role": "navigation accessible name",
 		"tone": "Pending-work status, not an error.",
-		"note": "Names mesh requests waiting for the operator. English waiting is count-invariant but both grammatical branches are intentional.",
+		"note": "Names mesh requests waiting for the operator. English waiting is count-invariant but both grammatical branches are intentional. Plural: English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement.",
 		"placeholders": {
 			"count": "Uncapped pending cardinal count for grammatical number.",
 			"countText": "Existing decimal display string, without English grouping punctuation."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+		}
 	},
 	"ui.shell.sidebar_navigation.more_waiting": {
 		"role": "navigation accessible name",
 		"tone": "Pending-work status, not an error.",
-		"note": "Names the More disclosure with the summed attention count of the destinations folded inside it. The count is never hidden by customisation: an unread chief of staff must stay reachable. English waiting is count-invariant but both grammatical branches are intentional.",
+		"note": "Names the More disclosure with the summed attention count of the destinations folded inside it. The count is never hidden by customisation: an unread chief of staff must stay reachable. English waiting is count-invariant but both grammatical branches are intentional. Plural: English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement.",
 		"placeholders": {
 			"count": "Uncapped pending cardinal count for grammatical number.",
 			"countText": "Existing decimal display string, without English grouping punctuation."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+		}
 	},
 	"ui.shell.sidebar_navigation.more_working": {
 		"role": "navigation accessible name",

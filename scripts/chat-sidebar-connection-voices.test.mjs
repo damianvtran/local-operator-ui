@@ -93,7 +93,11 @@ const PRESENCE_DEFAULT = /let stripPresent = false;/;
 const PANE_YIELDS = /error && !stripSpeaksConnection/;
 const STRIP_PUBLISHES_IMPORT =
 	/import \{ setChatStatusStripPresent \} from "\.\.\/chat-status-presence";/;
-const STRIP_SPEAKING = /const speaking = display !== null;/;
+// The start-up band (backend-startup-panel) is the strip speaking too, so the
+// published fact is "a display OR a start-up phase is drawn"; both halves are
+// pinned so neither can silently drop out of the sidebar's view.
+const STRIP_SPEAKING =
+	/const speaking = display !== null \|\| startupPhase !== null;/;
 const STRIP_PUBLISH_CALL = /setChatStatusStripPresent\(speaking\);/;
 const STRIP_UNMOUNT_CLEARS =
 	/return \(\) => setChatStatusStripPresent\(false\);/;
@@ -298,7 +302,7 @@ test("the strip publishes its own presence while it is drawn (R11)", () => {
 	assert.match(
 		STRIP_SOURCE,
 		STRIP_SPEAKING,
-		"presence is 'has something to say', and the dismissed pill still counts",
+		"presence is 'has something to say' (a display or the start-up band), and the dismissed pill still counts",
 	);
 	assert.match(STRIP_SOURCE, STRIP_PUBLISH_CALL, "the publish call itself");
 	assert.match(

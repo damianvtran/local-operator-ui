@@ -82,6 +82,31 @@
 	}
 }
 
+/* The composer's refused-send cue (design round 1, D5, onboarding friction
+ * 2026-11). A refused Send re-keys the block line's fix control
+ * (`send-recovery-action.tsx`, `cue`), which replays this ONE-SHOT accent ring:
+ * every refused press gives a new signal, not only the first. A ring (box
+ * shadow), so nothing moves or reflows; 2 x 300 ms, then the control is exactly
+ * as it was. Reduced motion drops the ring and keeps the line's ink step. */
+@keyframes lo-refused-cue {
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 transparent;
+	}
+	50% {
+		box-shadow: 0 0 0 3px
+			color-mix(in oklab, var(--color-accent) 45%, transparent);
+	}
+}
+.lo-refused-cue {
+	animation: lo-refused-cue 300ms var(--ease-out-quart) 2;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-refused-cue {
+		animation: none;
+	}
+}
+
 /* Team Bridge uses the same arrival grammar as the transcript: a message that
  * appears while its stream is open enters quietly, while history and remounts
  * stay still. The final layout box exists from the first frame; only opacity

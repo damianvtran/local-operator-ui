@@ -5,6 +5,7 @@ import {
 } from "@shared/hooks/use-window-glass";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -12,6 +13,7 @@ import { HashRouter } from "react-router-dom";
 import { ThemedToastContainer } from "./shared/components/common";
 import "@assets/fonts/fonts.css";
 import "@renderer/styles/index.css";
+import { registerProductEventClient } from "@shared/analytics/product-events";
 import { config, telemetryEnabled } from "@shared/config";
 import { LocaleDirectionProvider } from "@shared/i18n/locale-direction";
 import { installExternalOpenRefusalToasts } from "@shared/lib/external-open-refusal";
@@ -200,6 +202,13 @@ document.addEventListener("DOMContentLoaded", () => {
 	 * for `posthog` is the feature-flag provider, and it is gated on the same
 	 * decision, so nothing here can re-enable what this skips.
 	 */
+	/*
+	 * The product-event sink gets its client from here rather than importing
+	 * `posthog-js` itself (see `product-events.ts`). Registering it is inert:
+	 * the sink still checks the launch's switch and `__loaded` per capture, and
+	 * `__loaded` turns true only once the gated provider below has run `init`.
+	 */
+	registerProductEventClient(posthog);
 	const appTree = (
 		<QueryClientProvider client={queryClient}>
 			<FeatureFlagProvider>

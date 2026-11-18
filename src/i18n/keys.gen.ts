@@ -114,6 +114,7 @@ import enUiCodeReview from "./catalogues/en/ui.code_review.json";
 import enUiCommandPalette from "./catalogues/en/ui.command_palette.json";
 import enUiCommonAccount from "./catalogues/en/ui.common.account.json";
 import enUiCommonActions from "./catalogues/en/ui.common.actions.json";
+import enUiCommonBackendStartup from "./catalogues/en/ui.common.backend_startup.json";
 import enUiCommonConnection from "./catalogues/en/ui.common.connection.json";
 import enUiCommonEditing from "./catalogues/en/ui.common.editing.json";
 import enUiCommonErrors from "./catalogues/en/ui.common.errors.json";
@@ -126,6 +127,7 @@ import enUiCommonSpeech from "./catalogues/en/ui.common.speech.json";
 import enUiCommonTime from "./catalogues/en/ui.common.time.json";
 import enUiCommonUpdates from "./catalogues/en/ui.common.updates.json";
 import enUiCommonViewer from "./catalogues/en/ui.common.viewer.json";
+import enUiCommunity from "./catalogues/en/ui.community.json";
 import enUiConsoleErrors from "./catalogues/en/ui.console.errors.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
 import enUiHubAdoption from "./catalogues/en/ui.hub.adoption.json";
@@ -160,6 +162,7 @@ import enUiPhonePairing from "./catalogues/en/ui.phone_pairing.json";
 import enUiPresence from "./catalogues/en/ui.presence.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
 import enUiProviders from "./catalogues/en/ui.providers.json";
+import enUiRecovery from "./catalogues/en/ui.recovery.json";
 import enUiSchedulesErrors from "./catalogues/en/ui.schedules.errors.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
 import enUiSchedulesMonitors from "./catalogues/en/ui.schedules.monitors.json";
@@ -286,6 +289,7 @@ import esUiCodeReview from "./catalogues/es/ui.code_review.json";
 import esUiCommandPalette from "./catalogues/es/ui.command_palette.json";
 import esUiCommonAccount from "./catalogues/es/ui.common.account.json";
 import esUiCommonActions from "./catalogues/es/ui.common.actions.json";
+import esUiCommonBackendStartup from "./catalogues/es/ui.common.backend_startup.json";
 import esUiCommonConnection from "./catalogues/es/ui.common.connection.json";
 import esUiCommonEditing from "./catalogues/es/ui.common.editing.json";
 import esUiCommonErrors from "./catalogues/es/ui.common.errors.json";
@@ -298,6 +302,7 @@ import esUiCommonSpeech from "./catalogues/es/ui.common.speech.json";
 import esUiCommonTime from "./catalogues/es/ui.common.time.json";
 import esUiCommonUpdates from "./catalogues/es/ui.common.updates.json";
 import esUiCommonViewer from "./catalogues/es/ui.common.viewer.json";
+import esUiCommunity from "./catalogues/es/ui.community.json";
 import esUiConsoleErrors from "./catalogues/es/ui.console.errors.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
 import esUiHubAdoption from "./catalogues/es/ui.hub.adoption.json";
@@ -332,6 +337,7 @@ import esUiPhonePairing from "./catalogues/es/ui.phone_pairing.json";
 import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
 import esUiProviders from "./catalogues/es/ui.providers.json";
+import esUiRecovery from "./catalogues/es/ui.recovery.json";
 import esUiSchedulesErrors from "./catalogues/es/ui.schedules.errors.json";
 import esUiSchedules from "./catalogues/es/ui.schedules.json";
 import esUiSchedulesMonitors from "./catalogues/es/ui.schedules.monitors.json";
@@ -458,6 +464,7 @@ import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
 import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
 import frUiCommonAccount from "./catalogues/fr/ui.common.account.json";
 import frUiCommonActions from "./catalogues/fr/ui.common.actions.json";
+import frUiCommonBackendStartup from "./catalogues/fr/ui.common.backend_startup.json";
 import frUiCommonConnection from "./catalogues/fr/ui.common.connection.json";
 import frUiCommonEditing from "./catalogues/fr/ui.common.editing.json";
 import frUiCommonErrors from "./catalogues/fr/ui.common.errors.json";
@@ -470,6 +477,7 @@ import frUiCommonSpeech from "./catalogues/fr/ui.common.speech.json";
 import frUiCommonTime from "./catalogues/fr/ui.common.time.json";
 import frUiCommonUpdates from "./catalogues/fr/ui.common.updates.json";
 import frUiCommonViewer from "./catalogues/fr/ui.common.viewer.json";
+import frUiCommunity from "./catalogues/fr/ui.community.json";
 import frUiConsoleErrors from "./catalogues/fr/ui.console.errors.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiHubAdoption from "./catalogues/fr/ui.hub.adoption.json";
@@ -504,6 +512,7 @@ import frUiPhonePairing from "./catalogues/fr/ui.phone_pairing.json";
 import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
 import frUiProviders from "./catalogues/fr/ui.providers.json";
+import frUiRecovery from "./catalogues/fr/ui.recovery.json";
 import frUiSchedulesErrors from "./catalogues/fr/ui.schedules.errors.json";
 import frUiSchedules from "./catalogues/fr/ui.schedules.json";
 import frUiSchedulesMonitors from "./catalogues/fr/ui.schedules.monitors.json";
@@ -630,6 +639,7 @@ import hiUiCodeReview from "./catalogues/hi/ui.code_review.json";
 import hiUiCommandPalette from "./catalogues/hi/ui.command_palette.json";
 import hiUiCommonAccount from "./catalogues/hi/ui.common.account.json";
 import hiUiCommonActions from "./catalogues/hi/ui.common.actions.json";
+import hiUiCommonBackendStartup from "./catalogues/hi/ui.common.backend_startup.json";
 import hiUiCommonConnection from "./catalogues/hi/ui.common.connection.json";
 import hiUiCommonEditing from "./catalogues/hi/ui.common.editing.json";
 import hiUiCommonErrors from "./catalogues/hi/ui.common.errors.json";
@@ -642,6 +652,7 @@ import hiUiCommonSpeech from "./catalogues/hi/ui.common.speech.json";
 import hiUiCommonTime from "./catalogues/hi/ui.common.time.json";
 import hiUiCommonUpdates from "./catalogues/hi/ui.common.updates.json";
 import hiUiCommonViewer from "./catalogues/hi/ui.common.viewer.json";
+import hiUiCommunity from "./catalogues/hi/ui.community.json";
 import hiUiConsoleErrors from "./catalogues/hi/ui.console.errors.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
 import hiUiHubAdoption from "./catalogues/hi/ui.hub.adoption.json";
@@ -676,6 +687,7 @@ import hiUiPhonePairing from "./catalogues/hi/ui.phone_pairing.json";
 import hiUiPresence from "./catalogues/hi/ui.presence.json";
 import hiUiProjects from "./catalogues/hi/ui.projects.json";
 import hiUiProviders from "./catalogues/hi/ui.providers.json";
+import hiUiRecovery from "./catalogues/hi/ui.recovery.json";
 import hiUiSchedulesErrors from "./catalogues/hi/ui.schedules.errors.json";
 import hiUiSchedules from "./catalogues/hi/ui.schedules.json";
 import hiUiSchedulesMonitors from "./catalogues/hi/ui.schedules.monitors.json";
@@ -802,6 +814,7 @@ import ruUiCodeReview from "./catalogues/ru/ui.code_review.json";
 import ruUiCommandPalette from "./catalogues/ru/ui.command_palette.json";
 import ruUiCommonAccount from "./catalogues/ru/ui.common.account.json";
 import ruUiCommonActions from "./catalogues/ru/ui.common.actions.json";
+import ruUiCommonBackendStartup from "./catalogues/ru/ui.common.backend_startup.json";
 import ruUiCommonConnection from "./catalogues/ru/ui.common.connection.json";
 import ruUiCommonEditing from "./catalogues/ru/ui.common.editing.json";
 import ruUiCommonErrors from "./catalogues/ru/ui.common.errors.json";
@@ -814,6 +827,7 @@ import ruUiCommonSpeech from "./catalogues/ru/ui.common.speech.json";
 import ruUiCommonTime from "./catalogues/ru/ui.common.time.json";
 import ruUiCommonUpdates from "./catalogues/ru/ui.common.updates.json";
 import ruUiCommonViewer from "./catalogues/ru/ui.common.viewer.json";
+import ruUiCommunity from "./catalogues/ru/ui.community.json";
 import ruUiConsoleErrors from "./catalogues/ru/ui.console.errors.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
 import ruUiHubAdoption from "./catalogues/ru/ui.hub.adoption.json";
@@ -848,6 +862,7 @@ import ruUiPhonePairing from "./catalogues/ru/ui.phone_pairing.json";
 import ruUiPresence from "./catalogues/ru/ui.presence.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
 import ruUiProviders from "./catalogues/ru/ui.providers.json";
+import ruUiRecovery from "./catalogues/ru/ui.recovery.json";
 import ruUiSchedulesErrors from "./catalogues/ru/ui.schedules.errors.json";
 import ruUiSchedules from "./catalogues/ru/ui.schedules.json";
 import ruUiSchedulesMonitors from "./catalogues/ru/ui.schedules.monitors.json";
@@ -974,6 +989,7 @@ import urUiCodeReview from "./catalogues/ur/ui.code_review.json";
 import urUiCommandPalette from "./catalogues/ur/ui.command_palette.json";
 import urUiCommonAccount from "./catalogues/ur/ui.common.account.json";
 import urUiCommonActions from "./catalogues/ur/ui.common.actions.json";
+import urUiCommonBackendStartup from "./catalogues/ur/ui.common.backend_startup.json";
 import urUiCommonConnection from "./catalogues/ur/ui.common.connection.json";
 import urUiCommonEditing from "./catalogues/ur/ui.common.editing.json";
 import urUiCommonErrors from "./catalogues/ur/ui.common.errors.json";
@@ -986,6 +1002,7 @@ import urUiCommonSpeech from "./catalogues/ur/ui.common.speech.json";
 import urUiCommonTime from "./catalogues/ur/ui.common.time.json";
 import urUiCommonUpdates from "./catalogues/ur/ui.common.updates.json";
 import urUiCommonViewer from "./catalogues/ur/ui.common.viewer.json";
+import urUiCommunity from "./catalogues/ur/ui.community.json";
 import urUiConsoleErrors from "./catalogues/ur/ui.console.errors.json";
 import urUiConsole from "./catalogues/ur/ui.console.json";
 import urUiHubAdoption from "./catalogues/ur/ui.hub.adoption.json";
@@ -1020,6 +1037,7 @@ import urUiPhonePairing from "./catalogues/ur/ui.phone_pairing.json";
 import urUiPresence from "./catalogues/ur/ui.presence.json";
 import urUiProjects from "./catalogues/ur/ui.projects.json";
 import urUiProviders from "./catalogues/ur/ui.providers.json";
+import urUiRecovery from "./catalogues/ur/ui.recovery.json";
 import urUiSchedulesErrors from "./catalogues/ur/ui.schedules.errors.json";
 import urUiSchedules from "./catalogues/ur/ui.schedules.json";
 import urUiSchedulesMonitors from "./catalogues/ur/ui.schedules.monitors.json";
@@ -1146,6 +1164,7 @@ import viUiCodeReview from "./catalogues/vi/ui.code_review.json";
 import viUiCommandPalette from "./catalogues/vi/ui.command_palette.json";
 import viUiCommonAccount from "./catalogues/vi/ui.common.account.json";
 import viUiCommonActions from "./catalogues/vi/ui.common.actions.json";
+import viUiCommonBackendStartup from "./catalogues/vi/ui.common.backend_startup.json";
 import viUiCommonConnection from "./catalogues/vi/ui.common.connection.json";
 import viUiCommonEditing from "./catalogues/vi/ui.common.editing.json";
 import viUiCommonErrors from "./catalogues/vi/ui.common.errors.json";
@@ -1158,6 +1177,7 @@ import viUiCommonSpeech from "./catalogues/vi/ui.common.speech.json";
 import viUiCommonTime from "./catalogues/vi/ui.common.time.json";
 import viUiCommonUpdates from "./catalogues/vi/ui.common.updates.json";
 import viUiCommonViewer from "./catalogues/vi/ui.common.viewer.json";
+import viUiCommunity from "./catalogues/vi/ui.community.json";
 import viUiConsoleErrors from "./catalogues/vi/ui.console.errors.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
 import viUiHubAdoption from "./catalogues/vi/ui.hub.adoption.json";
@@ -1192,6 +1212,7 @@ import viUiPhonePairing from "./catalogues/vi/ui.phone_pairing.json";
 import viUiPresence from "./catalogues/vi/ui.presence.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
 import viUiProviders from "./catalogues/vi/ui.providers.json";
+import viUiRecovery from "./catalogues/vi/ui.recovery.json";
 import viUiSchedulesErrors from "./catalogues/vi/ui.schedules.errors.json";
 import viUiSchedules from "./catalogues/vi/ui.schedules.json";
 import viUiSchedulesMonitors from "./catalogues/vi/ui.schedules.monitors.json";
@@ -1318,6 +1339,7 @@ import zhCNUiCodeReview from "./catalogues/zh-CN/ui.code_review.json";
 import zhCNUiCommandPalette from "./catalogues/zh-CN/ui.command_palette.json";
 import zhCNUiCommonAccount from "./catalogues/zh-CN/ui.common.account.json";
 import zhCNUiCommonActions from "./catalogues/zh-CN/ui.common.actions.json";
+import zhCNUiCommonBackendStartup from "./catalogues/zh-CN/ui.common.backend_startup.json";
 import zhCNUiCommonConnection from "./catalogues/zh-CN/ui.common.connection.json";
 import zhCNUiCommonEditing from "./catalogues/zh-CN/ui.common.editing.json";
 import zhCNUiCommonErrors from "./catalogues/zh-CN/ui.common.errors.json";
@@ -1330,6 +1352,7 @@ import zhCNUiCommonSpeech from "./catalogues/zh-CN/ui.common.speech.json";
 import zhCNUiCommonTime from "./catalogues/zh-CN/ui.common.time.json";
 import zhCNUiCommonUpdates from "./catalogues/zh-CN/ui.common.updates.json";
 import zhCNUiCommonViewer from "./catalogues/zh-CN/ui.common.viewer.json";
+import zhCNUiCommunity from "./catalogues/zh-CN/ui.community.json";
 import zhCNUiConsoleErrors from "./catalogues/zh-CN/ui.console.errors.json";
 import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
 import zhCNUiHubAdoption from "./catalogues/zh-CN/ui.hub.adoption.json";
@@ -1364,6 +1387,7 @@ import zhCNUiPhonePairing from "./catalogues/zh-CN/ui.phone_pairing.json";
 import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
 import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
 import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
+import zhCNUiRecovery from "./catalogues/zh-CN/ui.recovery.json";
 import zhCNUiSchedulesErrors from "./catalogues/zh-CN/ui.schedules.errors.json";
 import zhCNUiSchedules from "./catalogues/zh-CN/ui.schedules.json";
 import zhCNUiSchedulesMonitors from "./catalogues/zh-CN/ui.schedules.monitors.json";
@@ -1493,6 +1517,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiCommandPalette,
 	...enUiCommonAccount,
 	...enUiCommonActions,
+	...enUiCommonBackendStartup,
 	...enUiCommonConnection,
 	...enUiCommonEditing,
 	...enUiCommonErrors,
@@ -1505,6 +1530,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiCommonTime,
 	...enUiCommonUpdates,
 	...enUiCommonViewer,
+	...enUiCommunity,
 	...enUiConsoleErrors,
 	...enUiConsole,
 	...enUiHubAdoption,
@@ -1539,6 +1565,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiPresence,
 	...enUiProjects,
 	...enUiProviders,
+	...enUiRecovery,
 	...enUiSchedulesErrors,
 	...enUiSchedules,
 	...enUiSchedulesMonitors,
@@ -1673,6 +1700,7 @@ export const bundledCatalogues: Readonly<
 		...esUiCommandPalette,
 		...esUiCommonAccount,
 		...esUiCommonActions,
+		...esUiCommonBackendStartup,
 		...esUiCommonConnection,
 		...esUiCommonEditing,
 		...esUiCommonErrors,
@@ -1685,6 +1713,7 @@ export const bundledCatalogues: Readonly<
 		...esUiCommonTime,
 		...esUiCommonUpdates,
 		...esUiCommonViewer,
+		...esUiCommunity,
 		...esUiConsoleErrors,
 		...esUiConsole,
 		...esUiHubAdoption,
@@ -1719,6 +1748,7 @@ export const bundledCatalogues: Readonly<
 		...esUiPresence,
 		...esUiProjects,
 		...esUiProviders,
+		...esUiRecovery,
 		...esUiSchedulesErrors,
 		...esUiSchedules,
 		...esUiSchedulesMonitors,
@@ -1847,6 +1877,7 @@ export const bundledCatalogues: Readonly<
 		...frUiCommandPalette,
 		...frUiCommonAccount,
 		...frUiCommonActions,
+		...frUiCommonBackendStartup,
 		...frUiCommonConnection,
 		...frUiCommonEditing,
 		...frUiCommonErrors,
@@ -1859,6 +1890,7 @@ export const bundledCatalogues: Readonly<
 		...frUiCommonTime,
 		...frUiCommonUpdates,
 		...frUiCommonViewer,
+		...frUiCommunity,
 		...frUiConsoleErrors,
 		...frUiConsole,
 		...frUiHubAdoption,
@@ -1893,6 +1925,7 @@ export const bundledCatalogues: Readonly<
 		...frUiPresence,
 		...frUiProjects,
 		...frUiProviders,
+		...frUiRecovery,
 		...frUiSchedulesErrors,
 		...frUiSchedules,
 		...frUiSchedulesMonitors,
@@ -2021,6 +2054,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiCommandPalette,
 		...hiUiCommonAccount,
 		...hiUiCommonActions,
+		...hiUiCommonBackendStartup,
 		...hiUiCommonConnection,
 		...hiUiCommonEditing,
 		...hiUiCommonErrors,
@@ -2033,6 +2067,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiCommonTime,
 		...hiUiCommonUpdates,
 		...hiUiCommonViewer,
+		...hiUiCommunity,
 		...hiUiConsoleErrors,
 		...hiUiConsole,
 		...hiUiHubAdoption,
@@ -2067,6 +2102,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiPresence,
 		...hiUiProjects,
 		...hiUiProviders,
+		...hiUiRecovery,
 		...hiUiSchedulesErrors,
 		...hiUiSchedules,
 		...hiUiSchedulesMonitors,
@@ -2195,6 +2231,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiCommandPalette,
 		...ruUiCommonAccount,
 		...ruUiCommonActions,
+		...ruUiCommonBackendStartup,
 		...ruUiCommonConnection,
 		...ruUiCommonEditing,
 		...ruUiCommonErrors,
@@ -2207,6 +2244,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiCommonTime,
 		...ruUiCommonUpdates,
 		...ruUiCommonViewer,
+		...ruUiCommunity,
 		...ruUiConsoleErrors,
 		...ruUiConsole,
 		...ruUiHubAdoption,
@@ -2241,6 +2279,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiPresence,
 		...ruUiProjects,
 		...ruUiProviders,
+		...ruUiRecovery,
 		...ruUiSchedulesErrors,
 		...ruUiSchedules,
 		...ruUiSchedulesMonitors,
@@ -2369,6 +2408,7 @@ export const bundledCatalogues: Readonly<
 		...urUiCommandPalette,
 		...urUiCommonAccount,
 		...urUiCommonActions,
+		...urUiCommonBackendStartup,
 		...urUiCommonConnection,
 		...urUiCommonEditing,
 		...urUiCommonErrors,
@@ -2381,6 +2421,7 @@ export const bundledCatalogues: Readonly<
 		...urUiCommonTime,
 		...urUiCommonUpdates,
 		...urUiCommonViewer,
+		...urUiCommunity,
 		...urUiConsoleErrors,
 		...urUiConsole,
 		...urUiHubAdoption,
@@ -2415,6 +2456,7 @@ export const bundledCatalogues: Readonly<
 		...urUiPresence,
 		...urUiProjects,
 		...urUiProviders,
+		...urUiRecovery,
 		...urUiSchedulesErrors,
 		...urUiSchedules,
 		...urUiSchedulesMonitors,
@@ -2543,6 +2585,7 @@ export const bundledCatalogues: Readonly<
 		...viUiCommandPalette,
 		...viUiCommonAccount,
 		...viUiCommonActions,
+		...viUiCommonBackendStartup,
 		...viUiCommonConnection,
 		...viUiCommonEditing,
 		...viUiCommonErrors,
@@ -2555,6 +2598,7 @@ export const bundledCatalogues: Readonly<
 		...viUiCommonTime,
 		...viUiCommonUpdates,
 		...viUiCommonViewer,
+		...viUiCommunity,
 		...viUiConsoleErrors,
 		...viUiConsole,
 		...viUiHubAdoption,
@@ -2589,6 +2633,7 @@ export const bundledCatalogues: Readonly<
 		...viUiPresence,
 		...viUiProjects,
 		...viUiProviders,
+		...viUiRecovery,
 		...viUiSchedulesErrors,
 		...viUiSchedules,
 		...viUiSchedulesMonitors,
@@ -2717,6 +2762,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiCommandPalette,
 		...zhCNUiCommonAccount,
 		...zhCNUiCommonActions,
+		...zhCNUiCommonBackendStartup,
 		...zhCNUiCommonConnection,
 		...zhCNUiCommonEditing,
 		...zhCNUiCommonErrors,
@@ -2729,6 +2775,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiCommonTime,
 		...zhCNUiCommonUpdates,
 		...zhCNUiCommonViewer,
+		...zhCNUiCommunity,
 		...zhCNUiConsoleErrors,
 		...zhCNUiConsole,
 		...zhCNUiHubAdoption,
@@ -2763,6 +2810,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiPresence,
 		...zhCNUiProjects,
 		...zhCNUiProviders,
+		...zhCNUiRecovery,
 		...zhCNUiSchedulesErrors,
 		...zhCNUiSchedules,
 		...zhCNUiSchedulesMonitors,
@@ -8316,6 +8364,28 @@ export type MessageParams = {
 	"ui.common.actions.variable_created": undefined;
 	"ui.common.actions.variable_deleted": undefined;
 	"ui.common.actions.variable_updated": undefined;
+	"ui.common.backend_startup.action.copied": undefined;
+	"ui.common.backend_startup.action.copy_diagnostics": undefined;
+	"ui.common.backend_startup.action.copy_failed": undefined;
+	"ui.common.backend_startup.action.restart": undefined;
+	"ui.common.backend_startup.action.restarting": undefined;
+	"ui.common.backend_startup.detail_starting": { seconds: number };
+	"ui.common.backend_startup.details.hide": undefined;
+	"ui.common.backend_startup.details.show": undefined;
+	"ui.common.backend_startup.progress_label": undefined;
+	"ui.common.backend_startup.reason.crashed": undefined;
+	"ui.common.backend_startup.reason.executable_blocked": undefined;
+	"ui.common.backend_startup.reason.executable_missing": undefined;
+	"ui.common.backend_startup.reason.exited": undefined;
+	"ui.common.backend_startup.reason.port_forbidden": undefined;
+	"ui.common.backend_startup.reason.port_in_use": undefined;
+	"ui.common.backend_startup.reason.stopped": undefined;
+	"ui.common.backend_startup.reason.timed_out": { seconds: number };
+	"ui.common.backend_startup.reason.unknown": undefined;
+	"ui.common.backend_startup.repeated_failures": { count: number };
+	"ui.common.backend_startup.title_failed": undefined;
+	"ui.common.backend_startup.title_starting": undefined;
+	"ui.common.backend_startup.title_stopped": undefined;
 	"ui.common.connection.backend.card_credential_refused": undefined;
 	"ui.common.connection.backend.card_governed": undefined;
 	"ui.common.connection.backend.card_pre_handshake": undefined;
@@ -8910,6 +8980,182 @@ export type MessageParams = {
 	"ui.common.viewer.reset_view": undefined;
 	"ui.common.viewer.zoom_in": undefined;
 	"ui.common.viewer.zoom_out": undefined;
+	"ui.community.browse.count": { count: number };
+	"ui.community.browse.empty": undefined;
+	"ui.community.browse.error": undefined;
+	"ui.community.browse.filter.all": undefined;
+	"ui.community.browse.filter.joined": undefined;
+	"ui.community.browse.filter.label": undefined;
+	"ui.community.browse.filter.not_joined": undefined;
+	"ui.community.browse.filter.private": undefined;
+	"ui.community.browse.joined": undefined;
+	"ui.community.browse.loading": undefined;
+	"ui.community.browse.members": { count: number };
+	"ui.community.browse.not_joined": undefined;
+	"ui.community.browse.open": undefined;
+	"ui.community.browse.people_soon": undefined;
+	"ui.community.browse.private_member": undefined;
+	"ui.community.browse.search": undefined;
+	"ui.community.browse.tab.channels": undefined;
+	"ui.community.browse.tab.people": undefined;
+	"ui.community.browse.title": { community: string };
+	"ui.community.channel.beginning": { channel: string };
+	"ui.community.channel.empty.title": undefined;
+	"ui.community.channel.error.body": undefined;
+	"ui.community.channel.error.title": { channel: string };
+	"ui.community.channel.load_older": undefined;
+	"ui.community.channel.loading": { channel: string };
+	"ui.community.channel.loading_older": undefined;
+	"ui.community.channel.offline": undefined;
+	"ui.community.channel.pick": undefined;
+	"ui.community.channel.retry": undefined;
+	"ui.community.composer.archived": undefined;
+	"ui.community.composer.attach": undefined;
+	"ui.community.composer.audience.all": undefined;
+	"ui.community.composer.audience.all_staff_post": undefined;
+	"ui.community.composer.audience.offline_suffix": undefined;
+	"ui.community.composer.audience.private": undefined;
+	"ui.community.composer.cancel": undefined;
+	"ui.community.composer.cancelling": undefined;
+	"ui.community.composer.checking": undefined;
+	"ui.community.composer.community_read_only": undefined;
+	"ui.community.composer.go_general": undefined;
+	"ui.community.composer.image_rejected.count": undefined;
+	"ui.community.composer.image_rejected.size": undefined;
+	"ui.community.composer.image_rejected.type": undefined;
+	"ui.community.composer.locked": undefined;
+	"ui.community.composer.placeholder": { channel: string };
+	"ui.community.composer.remove_image": { name: string };
+	"ui.community.composer.send": undefined;
+	"ui.community.join.agree": { version: string };
+	"ui.community.join.agree_hint": undefined;
+	"ui.community.join.back": undefined;
+	"ui.community.join.cancel": undefined;
+	"ui.community.join.continue": undefined;
+	"ui.community.join.disclosure.body": undefined;
+	"ui.community.join.disclosure.title": undefined;
+	"ui.community.join.error.generic": undefined;
+	"ui.community.join.error.guidelines_changed": undefined;
+	"ui.community.join.error.rate_limited": { seconds: number };
+	"ui.community.join.guidelines.heading": undefined;
+	"ui.community.join.joining": undefined;
+	"ui.community.join.load_error": undefined;
+	"ui.community.join.loading": undefined;
+	"ui.community.join.next_hint": undefined;
+	"ui.community.join.preview.always_shown": undefined;
+	"ui.community.join.preview.heading": undefined;
+	"ui.community.join.preview.name_avatar": undefined;
+	"ui.community.join.preview.not_shown": undefined;
+	"ui.community.join.preview.pending_note": undefined;
+	"ui.community.join.reaccept.accepting": undefined;
+	"ui.community.join.reaccept.body": { community: string };
+	"ui.community.join.reaccept.submit": undefined;
+	"ui.community.join.reaccept.title": undefined;
+	"ui.community.join.step": { step: string };
+	"ui.community.join.step1.body": undefined;
+	"ui.community.join.step1.label": undefined;
+	"ui.community.join.step1.title": { community: string };
+	"ui.community.join.step2.body": undefined;
+	"ui.community.join.step2.label": undefined;
+	"ui.community.join.step2.title": undefined;
+	"ui.community.join.submit": undefined;
+	"ui.community.message.agent_badge": undefined;
+	"ui.community.message.cancel_edit": undefined;
+	"ui.community.message.delete": undefined;
+	"ui.community.message.delete_confirm": undefined;
+	"ui.community.message.delete_confirm_action": undefined;
+	"ui.community.message.edit": undefined;
+	"ui.community.message.edited": undefined;
+	"ui.community.message.former_member": undefined;
+	"ui.community.message.images": { count: number };
+	"ui.community.message.react": undefined;
+	"ui.community.message.reaction_label": { emoji: string; count: number };
+	"ui.community.message.replies": { count: number };
+	"ui.community.message.reply": undefined;
+	"ui.community.message.save": undefined;
+	"ui.community.noplan.body": { name: string };
+	"ui.community.noplan.body_anonymous": undefined;
+	"ui.community.noplan.checking": undefined;
+	"ui.community.noplan.community.body": undefined;
+	"ui.community.noplan.community.free": undefined;
+	"ui.community.noplan.community.join": undefined;
+	"ui.community.noplan.community.open": undefined;
+	"ui.community.noplan.community.title": undefined;
+	"ui.community.noplan.community.unavailable": undefined;
+	"ui.community.noplan.failed.body": undefined;
+	"ui.community.noplan.failed.title": undefined;
+	"ui.community.noplan.retry": undefined;
+	"ui.community.noplan.signed_out.action": undefined;
+	"ui.community.noplan.signed_out.body": undefined;
+	"ui.community.noplan.signed_out.title": undefined;
+	"ui.community.noplan.title": undefined;
+	"ui.community.noplan.trial.ask_owner": undefined;
+	"ui.community.noplan.trial.ask_owner_body": { org: string };
+	"ui.community.noplan.trial.ask_owner_body_unnamed": undefined;
+	"ui.community.noplan.trial.body": undefined;
+	"ui.community.noplan.trial.create_org": undefined;
+	"ui.community.noplan.trial.create_org_hint": undefined;
+	"ui.community.noplan.trial.no_org": undefined;
+	"ui.community.noplan.trial.reconciling": undefined;
+	"ui.community.noplan.trial.resume": undefined;
+	"ui.community.noplan.trial.resume_hint": undefined;
+	"ui.community.noplan.trial.start": undefined;
+	"ui.community.noplan.trial.start_hint": { org: string };
+	"ui.community.noplan.trial.start_hint_unnamed": undefined;
+	"ui.community.noplan.trial.title": undefined;
+	"ui.community.outcome.cancelled": undefined;
+	"ui.community.outcome.category.harassment_or_abuse": undefined;
+	"ui.community.outcome.category.private_information": undefined;
+	"ui.community.outcome.category.spam_or_promotion": undefined;
+	"ui.community.outcome.category.unsafe_or_illegal": undefined;
+	"ui.community.outcome.copy_reference": undefined;
+	"ui.community.outcome.dismiss": undefined;
+	"ui.community.outcome.edit": undefined;
+	"ui.community.outcome.error": undefined;
+	"ui.community.outcome.expired": undefined;
+	"ui.community.outcome.guidelines_changed.body": undefined;
+	"ui.community.outcome.guidelines_changed.review": undefined;
+	"ui.community.outcome.guidelines_changed.title": undefined;
+	"ui.community.outcome.images.body": undefined;
+	"ui.community.outcome.images.title": undefined;
+	"ui.community.outcome.limit.burst": undefined;
+	"ui.community.outcome.limit.conversation": undefined;
+	"ui.community.outcome.limit.daily": undefined;
+	"ui.community.outcome.limit.generic": undefined;
+	"ui.community.outcome.limit.note": undefined;
+	"ui.community.outcome.limit.probation": undefined;
+	"ui.community.outcome.limit.ready": undefined;
+	"ui.community.outcome.limit.retry": { seconds: number };
+	"ui.community.outcome.limit.title": undefined;
+	"ui.community.outcome.offline": undefined;
+	"ui.community.outcome.only_you": undefined;
+	"ui.community.outcome.reference": { reference: string };
+	"ui.community.outcome.refused.reason": { category: string };
+	"ui.community.outcome.refused.title": undefined;
+	"ui.community.outcome.remove_images": undefined;
+	"ui.community.outcome.retry": undefined;
+	"ui.community.outcome.too_large": undefined;
+	"ui.community.outcome.unavailable.body": undefined;
+	"ui.community.outcome.unavailable.title": undefined;
+	"ui.community.public": undefined;
+	"ui.community.rail.browse": undefined;
+	"ui.community.rail.channels": undefined;
+	"ui.community.rail.empty": undefined;
+	"ui.community.rail.error": undefined;
+	"ui.community.rail.label": undefined;
+	"ui.community.rail.loading": undefined;
+	"ui.community.rail.private": undefined;
+	"ui.community.rail.requests": undefined;
+	"ui.community.rail.unread": { count: number };
+	"ui.community.requests.placeholder": undefined;
+	"ui.community.requests.title": undefined;
+	"ui.community.role.community_admin": undefined;
+	"ui.community.role.moderator": undefined;
+	"ui.community.role.staff": undefined;
+	"ui.community.thread.close": undefined;
+	"ui.community.thread.older_not_loaded": undefined;
+	"ui.community.thread.reply_placeholder": undefined;
+	"ui.community.thread.title": undefined;
 	"ui.console.errors.console_unavailable": undefined;
 	"ui.console.capacity.archived": { archived: number };
 	"ui.console.capacity.full": undefined;
@@ -11499,6 +11745,53 @@ export type MessageParams = {
 	"ui.providers.provider_labels.this_app_could_not_confirm_the_sign": undefined;
 	"ui.providers.provider_labels.unavailable": undefined;
 	"ui.providers.sign_in_flow.sign_in_could_not_start": undefined;
+	"ui.recovery.approval.answer_hint": undefined;
+	"ui.recovery.approval.default_done": undefined;
+	"ui.recovery.approval.session_done": undefined;
+	"ui.recovery.approval.setting_auto": undefined;
+	"ui.recovery.composer.local_not_default": { brand: string };
+	"ui.recovery.composer.no_model": undefined;
+	"ui.recovery.composer.no_provider": undefined;
+	"ui.recovery.composer.offline": undefined;
+	"ui.recovery.local.alternative_body": undefined;
+	"ui.recovery.local.check_failed_body": { brand: string };
+	"ui.recovery.local.check_failed_title": { brand: string };
+	"ui.recovery.local.checked_at": { time: string };
+	"ui.recovery.local.checking": { brand: string };
+	"ui.recovery.local.copy": undefined;
+	"ui.recovery.local.download": { brand: string };
+	"ui.recovery.local.empty_listing_ollama": undefined;
+	"ui.recovery.local.empty_listing_other": { brand: string };
+	"ui.recovery.local.in_use": { brand: string; model: string };
+	"ui.recovery.local.intro": undefined;
+	"ui.recovery.local.no_address_body": undefined;
+	"ui.recovery.local.no_address_title": { brand: string };
+	"ui.recovery.local.no_answer_body": { brand: string };
+	"ui.recovery.local.no_answer_title": { address: string };
+	"ui.recovery.local.not_running_body": { address: string; brand: string };
+	"ui.recovery.local.not_running_title": { brand: string };
+	"ui.recovery.local.running": { brand: string };
+	"ui.recovery.local.running_with_models": { count: number; brand: string };
+	"ui.recovery.local.same_result": { time: string };
+	"ui.recovery.local.start_ollama": undefined;
+	"ui.recovery.local.still_not_found": { time: string };
+	"ui.recovery.local.use_for_chats": { brand: string };
+	"ui.recovery.local.use_radient": undefined;
+	"ui.recovery.local.using_for_chats": { brand: string };
+	"ui.recovery.local.wrong_server_body": { brand: string };
+	"ui.recovery.local.wrong_server_title": {
+		address: string;
+		brand: string;
+		status: string;
+	};
+	"ui.recovery.send.choose_model": undefined;
+	"ui.recovery.send.connect_provider": undefined;
+	"ui.recovery.send.failed_no_model": undefined;
+	"ui.recovery.send.failed_no_provider": undefined;
+	"ui.recovery.send.reconnect": undefined;
+	"ui.recovery.send.reconnecting": undefined;
+	"ui.recovery.send.still_offline": { time: string };
+	"ui.recovery.send.use_local_failed": { brand: string };
 	"ui.schedules.errors.agent_id_missing": undefined;
 	"ui.schedules.errors.agent_id_required": undefined;
 	"ui.schedules.errors.base_url_missing": undefined;
@@ -13743,9 +14036,18 @@ export type MessageParams = {
 	"ui.teamBridge.schedule.when": undefined;
 	"ui.teamBridge.schedule.window": undefined;
 	"ui.teamBridge.scope.all": undefined;
+	"ui.teamBridge.scope.community.browse": undefined;
+	"ui.teamBridge.scope.community.no_match": undefined;
+	"ui.teamBridge.scope.community.public": undefined;
+	"ui.teamBridge.scope.community.search": undefined;
+	"ui.teamBridge.scope.community.trigger": { name: string };
 	"ui.teamBridge.scope.create_needs_org": undefined;
 	"ui.teamBridge.scope.empty": undefined;
 	"ui.teamBridge.scope.error": undefined;
+	"ui.teamBridge.scope.group.communities": undefined;
+	"ui.teamBridge.scope.group.communities_joined": { count: number };
+	"ui.teamBridge.scope.group.organizations": undefined;
+	"ui.teamBridge.scope.invited": undefined;
 	"ui.teamBridge.scope.label": undefined;
 	"ui.teamBridge.scope.loading": undefined;
 	"ui.teamBridge.scope.thread_unknown": undefined;
@@ -13762,8 +14064,11 @@ export type MessageParams = {
 	"ui.teamBridge.section.groups_add": undefined;
 	"ui.teamBridge.section.groups_empty": undefined;
 	"ui.teamBridge.section.groups_none": undefined;
+	"ui.teamBridge.sender.app_badge": undefined;
 	"ui.teamBridge.sender.unknown_agent": undefined;
+	"ui.teamBridge.sender.unknown_app": undefined;
 	"ui.teamBridge.sender.unknown_person": undefined;
+	"ui.teamBridge.sender.unknown_sender": undefined;
 	"ui.teamBridge.thread.empty": undefined;
 	"ui.teamBridge.thread.error": undefined;
 	"ui.teamBridge.thread.intro_chief": { name: string };

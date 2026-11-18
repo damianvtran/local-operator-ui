@@ -1,0 +1,78 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"locale": "vi",
+	"namespace": "ui.common.backend_startup",
+	"date": "2026-11-17",
+	"head": "3fbc7703cda0eb8dcbf42c4156f92facc4ae735b",
+	"base": "f879a8a3024299e863ee3113eac854a0ac38944e",
+	"auditor": "task",
+	"instance": "pr1963-r3-vi-backendstartup-4f13c326b41f",
+	"session": "4f13c326b41f",
+	"model": "openai/gpt-6.2-sol",
+	"fallback": "None used",
+	"independence": "Independent lopdev locale auditor; authored no catalogue or runtime changes.",
+	"translator": {
+		"agent": "lopdev coder",
+		"model": "openai/gpt-6.2-sol",
+		"date": "2026-11-17",
+		"session": "439ea8d6a679",
+		"job": "64924c4e39e8",
+		"fallback": "None indicated in manager-verified completed candidate-author transcript."
+	},
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"audited_keys": [
+		"ui.common.backend_startup.reason.crashed",
+		"ui.common.backend_startup.reason.exited",
+		"ui.common.backend_startup.reason.unknown",
+		"ui.common.backend_startup.reason.stopped"
+	],
+	"changed_keys_outside_requested_scope": [],
+	"source": {
+		"path": "src/i18n/catalogues/en/ui.common.backend_startup.json",
+		"sha256": "9c9cc5470736e507a580880bf1c1fe59146e8ed1995427bb2dc7cc13db6858e6"
+	},
+	"target": {
+		"path": "src/i18n/catalogues/vi/ui.common.backend_startup.json",
+		"sha256": "0db3f40a8fb990ecbb260a64e66ea62480c3b75193ca7c8c21115905791913f8"
+	},
+	"context": {
+		"path": "src/i18n/catalogues/en/ui.common.backend_startup.context.json",
+		"sha256": "25b5c0de21c1ce77ff6269755963be802c66136b63e23bde6885f20d7c91a1b4"
+	},
+	"sha256": {
+		"en": "9c9cc5470736e507a580880bf1c1fe59146e8ed1995427bb2dc7cc13db6858e6",
+		"vi": "0db3f40a8fb990ecbb260a64e66ea62480c3b75193ca7c8c21115905791913f8"
+	},
+	"glossary": {
+		"path": "i18n/glossary.md",
+		"revision": "b42471d3935cb7e95d64428af27c32626665f4c0",
+		"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+	},
+	"notes": [
+		"Máy chủ and khởi động lại identify the server and its restart; thông tin chẩn đoán is the control term. The clause addresses the reader with bạn only where needed.",
+		"The four sentences direct users to restart the server, then copy the shareable diagnostics on recurrence. None promises raw error details, requests stderr, or suggests an in-app support channel. R6 formatter and clipboard path are unchanged.",
+		"Only the named reason values received fresh linguistic review. No native or rendered-UI claim. Unchanged values retain their existing evidence and scope limits."
+	],
+	"execution": {
+		"command": "node i18n/audits/evidence/en/ui.common.backend_startup/pr1963-r3-4f13c326b41f/check-backend-recovery.mjs <frozen-worktree-root>",
+		"stdout": "Verbatim successful rerun in the tracked formatter-output.txt.",
+		"artifacts": [
+			{
+				"path": "i18n/audits/evidence/en/ui.common.backend_startup/pr1963-r3-4f13c326b41f/check-backend-recovery.mjs",
+				"sha256": "d31146aab7a5e9517fa49bf31684844eed6823652ab212df2d3e89a13886b907"
+			},
+			{
+				"path": "i18n/audits/evidence/en/ui.common.backend_startup/pr1963-r3-4f13c326b41f/formatter-output.txt",
+				"sha256": "c687d9af8d5f180980dc60e2bcca25c2cecaeb92de4fbd8e42e77cf34356951b"
+			}
+		]
+	},
+	"style_guide": {
+		"path": "i18n/style-guides/vi.md",
+		"revision": "b42471d3935cb7e95d64428af27c32626665f4c0",
+		"sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+	}
+}

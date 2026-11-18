@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1970",
+  "locale": "hi",
+  "namespace": "ui.teamBridge",
+  "pr": 1970,
+  "date": "2026-11-17",
+  "head": "2295ee16d36ac7a749e913e576950320c28d3fb1",
+  "instance": "pr1970-r1-hi-teambridge-1a3badf4",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (reviewer role); did not translate or author these strings",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Reviewer session 8c463a3c88c3, delegated by manager session 06c3529d8318; not the translator. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1970-r1-hi-teambridge-1a3badf4"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "संगठन vs समुदाय distinct and match the shipped catalogue; आमंत्रित matches members.state.invited_short; सार्वजनिक; polite imperatives खोजें / ब्राउज़ करें (ब्राउज़ is the living loan used across the hi catalogue); '{count, number} में शामिल' natural. No findings."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical checks on all 8 keys: key set equals English; {count, number} preserved verbatim; separator dot kept; trailing ellipsis kept as U+2026 (no ASCII '...'); no bidi control characters; only these 8 keys differ from origin/main in this file (8 insertions, 0 deletions). Rendered fit/RTL not verified in this lane (no browser tool): design/QA own the frame-D21 width check."
+    }
+  ],
+  "audited_values": {
+    "ui.teamBridge.scope.group.organizations": "संगठन",
+    "ui.teamBridge.scope.group.communities": "समुदाय",
+    "ui.teamBridge.scope.group.communities_joined": "समुदाय · {count, number} में शामिल",
+    "ui.teamBridge.scope.invited": "आमंत्रित",
+    "ui.teamBridge.scope.community.public": "सार्वजनिक",
+    "ui.teamBridge.scope.community.search": "समुदाय खोजें",
+    "ui.teamBridge.scope.community.no_match": "कोई समुदाय मेल नहीं खाता।",
+    "ui.teamBridge.scope.community.browse": "समुदाय ब्राउज़ करें…"
+  },
+  "scope": "PR #1970 round 1: 8 new ui.teamBridge.scope.* keys (origin/main..2295ee16); rest of the file byte-identical to the audited base",
+  "binding": "Verified on the committed tree at 2295ee16d36ac7a749e913e576950320c28d3fb1 (worktree .worktrees/tb-org-defaults): target src/i18n/catalogues/hi/ui.teamBridge.json sha256 da1cc9f2c3c8d29df2b75c93357caee96fce98c049dde567f02d079dc3715bae; English sha256 62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b; context sha256 d05e61b2d60a8e855ec9d843e52a93df7cd86ba67c39bb85a7d5fd3b7b873cc8.",
+  "en_sha256": "62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b",
+  "context_sha256": "d05e61b2d60a8e855ec9d843e52a93df7cd86ba67c39bb85a7d5fd3b7b873cc8",
+  "target_sha256": "da1cc9f2c3c8d29df2b75c93357caee96fce98c049dde567f02d079dc3715bae",
+  "sha256": {
+    "hi": "da1cc9f2c3c8d29df2b75c93357caee96fce98c049dde567f02d079dc3715bae",
+    "en": "62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b"
+  }
+}

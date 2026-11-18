@@ -346,16 +346,18 @@ import {
 	CredentialOverlay,
 	composerTextBox,
 } from "@features/chat/components/credential-overlay";
+import {
+	SendBlockedLine,
+	useLocalSelection,
+} from "@features/chat/components/send-recovery-action";
 /*
  * The pre-emptive quota notice (design §6): its own line beside the connect
  * line above, on the empty band only. Imported like the connect card next
  * door, and the module documents its own lift discipline.
  */
 import { QuotaNoticeLine } from "@features/chat/quota-notice/quota-notice-line";
-import {
-	ConnectProviderCard,
-	NoProviderLine,
-} from "@features/providers/connect-provider-card";
+import { sendBlockFor } from "@features/chat/send-recovery";
+import { ConnectProviderCard } from "@features/providers/connect-provider-card";
 import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
@@ -999,6 +1001,16 @@ export type MessageInputProps = {
 	 * Typing is still allowed; the send is not, and the line under the box says why.
 	 */
 	noModel?: boolean;
+	/**
+	 * The app's background service is not answering (`useConnectivityStatus`).
+	 *
+	 * NOT a send gate: a press still goes out and the store's own failure
+	 * classes still answer it, because the health read can lag a recovery by one
+	 * poll. It is the composer's half of D4 (onboarding friction, 2026-11): the
+	 * box says, before the press, that nothing will answer right now, and offers
+	 * the reconnect the pane's status strip offers.
+	 */
+	serverOffline?: boolean;
 	agentData?: AgentDetails | null;
 	/**
 	 * Working directory for this conversation, and the way to change it.
@@ -1939,6 +1951,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			initialSuggestions,
 			noProvider = false,
 			noModel = false,
+			serverOffline = false,
 			agentData,
 			cwd,
 			cwdWritePath,
@@ -2250,11 +2263,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * so it cannot outlive the moment it explains.
 		 */
 		const [noProviderHint, setNoProviderHint] = useState(false);
+		/*
+		 * EVERY refused press, counted (design round 1, D5). Keying the five-second
+		 * window on the boolean let a second Enter inside it change nothing on
+		 * screen; keyed on the count, each press restarts the window and re-keys the
+		 * block line's fix control, which replays its one-shot cue.
+		 */
+		const [refusedPresses, setRefusedPresses] = useState(0);
 		useEffect(() => {
-			if (!noProviderHint) return undefined;
+			if (refusedPresses === 0) return undefined;
+			setNoProviderHint(true);
 			const timer = window.setTimeout(() => setNoProviderHint(false), 5000);
 			return () => window.clearTimeout(timer);
-		}, [noProviderHint]);
+		}, [refusedPresses]);
 		const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 		const audioChunksRef = useRef<Blob[]>([]);
 		const [platform, setPlatform] = useState("");
@@ -5354,6 +5375,43 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * note on `holdCaretOnRefusedPress`.
 		 */
 		const sendRefused = noProvider || noModel;
+		/*
+		 * THE BLOCK THE LINE UNDER THE BOX STATES, before any press (D4). Wider than
+		 * `sendRefused` by one term, `serverOffline`, which is stated but does not
+		 * refuse - see the prop's note.
+		 */
+		/*
+		 * U1: the conversation's chosen model is on a local runtime that is not
+		 * the default, the replays' dead end (Ollama running, a model picked, Send
+		 * refused). Read only while `noProvider` holds; the census is the one the
+		 * chat already caches, so this adds no poll.
+		 */
+		const localSelection = useLocalSelection(quotaNoticeSelection, noProvider);
+		const sendBlock = sendBlockFor({
+			noProvider,
+			noModel,
+			serverOffline,
+			localSelection: localSelection !== null,
+		});
+		/*
+		 * "Choose a model" opens a MODEL PICKER (UX round 1, U3), not the connect
+		 * dialog: the pane's own draft picker where the backend offers one, else the
+		 * `/model` completion in an empty box. A box holding the user's text is not
+		 * overwritten; the caller falls back to the connect dialog.
+		 */
+		const chooseModelFromComposer = useCallback((): boolean => {
+			if (sessionStatus?.onOpenDraftPicker) {
+				sessionStatus.onOpenDraftPicker("session.model");
+				return true;
+			}
+			if (newMessage.trim() !== "") return false;
+			const text = "/model ";
+			pendingCaret.current = text.length;
+			setNewMessage(text);
+			setCaret(text.length);
+			textareaRef.current?.focus();
+			return true;
+		}, [sessionStatus, newMessage, setNewMessage, textareaRef]);
 		/**
 		 * Refuse a send and say so, which is what the KEY already does (U27).
 		 *
@@ -5362,7 +5420,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * the two had drifted apart.
 		 */
 		const explainRefusedSend = useCallback(() => {
-			setNoProviderHint(true);
+			setRefusedPresses((count) => count + 1);
 		}, []);
 
 		const handleSlashAction = useCallback(
@@ -6235,11 +6293,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 *
 			 * THE STALE BRANCH IS A SILENT NO-OP, NOT A LATE SENTENCE, and that is the
 			 * fact the recording understated: Enter is `preventDefault`ed and returns, and
-			 * the sentence the branch raises on its way out is gated by the same pair the
-			 * stale read is wrong about - the notice renders only while
-			 * `(noProvider || noModel) && noProviderHint` - so with a provider now connected
-			 * the hint is set for a notice that draws NOTHING. The reader presses Enter on a
-			 * composer that can send, and the app answers nobody.
+			 * the cue the branch raises on its way out lands on a line gated by the live
+			 * facts the stale read is wrong about - the block line under the box renders
+			 * only while `sendBlock` is set (D4, onboarding friction 2026-11) - so with a
+			 * provider now connected the press is counted for a line that draws NOTHING.
+			 * The reader presses Enter on a composer that can send, and the app answers
+			 * nobody.
 			 *
 			 * THAT GATE IS NAMED BY ITS OWN TEXT, NOT BY A LINE NUMBER, and the reason is the
 			 * history of this one sentence (agent review round 3, MINOR 1): three rounds have
@@ -10238,6 +10297,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									onKeyDown={handleComposerKeyDown}
 									onPointerDown={() => {
 										/*
+										 * A CLICK INTO A BOX THAT CANNOT SEND lands on the reason (D4):
+										 * ~32 users rage-clicked this field with nothing connected, and
+										 * the field answered with a caret and nothing else. Typing stays
+										 * allowed; the line under the box steps up to full ink so the
+										 * click visibly reaches the explanation and its one-click fix.
+										 */
+										if (sendBlock) explainRefusedSend();
+										/*
 										 * "I am about to type here." An ask gate can advance while the
 										 * user is on their way into this box, and the restore must not
 										 * move them off it: the characters they type would reach
@@ -11281,19 +11348,33 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * (the card takes the chips' slot there); the two mirrors main kept for a
 				 * centred band are dropped with the centring they existed for.
 				 */}
-				{noProvider && !showEmptyChatPrompt ? (
+				{/*
+				 * ONE LINE FOR EVERY "CANNOT SEND" STATE, ALWAYS VISIBLE WHILE IT HOLDS
+				 * (D4, onboarding friction 2026-11). It replaces two lines: the
+				 * no-provider line (non-empty chats only) and the five-second hint a
+				 * refused press raised as plain text - the text users rage-clicked,
+				 * because it named a fix and was not one. The line carries the fix as a
+				 * control, shows on the empty chat too (the connect card above is not
+				 * where the user is typing), and a refused press or a click into the box
+				 * steps it to full ink (`noProviderHint`) instead of making it appear.
+				 */}
+				{/*
+				 * EXCEPT the plain no-provider block on the empty chat (design round 1,
+				 * D3): the connect card above already offers "Connect a provider" there,
+				 * and a second identical button 240 px lower made three calls to action
+				 * where activation is decided. Base's guard, restored for that one
+				 * block; no-model, offline, a local runtime not yet the default and every
+				 * non-empty chat keep the line.
+				 */}
+				{sendBlock && !(sendBlock === "no_provider" && showEmptyChatPrompt) ? (
 					<div className={cn("mt-2", CHAT_MEASURE)}>
-						<NoProviderLine />
-					</div>
-				) : null}
-
-				{(noProvider || noModel) && noProviderHint ? (
-					<div className={cn("mt-2", CHAT_MEASURE)}>
-						<output className="block text-body-sm text-ink-muted">
-							{noModel
-								? t("ui.chat.composer_notes.hint.choose_model")
-								: t("ui.chat.composer_notes.hint.connect_provider")}
-						</output>
+						<SendBlockedLine
+							block={sendBlock}
+							emphasis={noProviderHint}
+							cue={refusedPresses}
+							local={localSelection}
+							onChooseModel={chooseModelFromComposer}
+						/>
 					</div>
 				) : null}
 			</form>

@@ -1,3 +1,4 @@
+import { BackendStartupGate } from "@shared/components/common/backend-startup-panel";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
 import { Suspense, lazy, useEffect, useRef } from "react";
@@ -1117,6 +1118,9 @@ const App: FC = () => {
 								{routeHasOwnChromeRow ? null : (
 									<div data-chrome-route-band="" />
 								)}
+								{/* This app's own server starting or failed to start, on
+								    routes the chat status strip does not cover. */}
+								<BackendStartupGate />
 								<Suspense
 									fallback={
 										<>

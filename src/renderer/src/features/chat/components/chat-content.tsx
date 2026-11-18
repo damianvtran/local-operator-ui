@@ -40,6 +40,7 @@ import { PanelRail } from "@shared/components/navigation/panel-rail";
 import { InPanelRailHost } from "@shared/components/navigation/panel-rail-host";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { useServerOffline } from "@shared/hooks/use-connectivity-status";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
@@ -1112,6 +1113,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * connected that this app cannot name a model for (UX round 5, U21).
 		 */
 		const { needsProvider, needsModel } = useProviderStatus();
+		/*
+		 * The composer's third "cannot send" fact (D4): the background service is
+		 * not answering. A passive read of the query `ChatStatusStrip` polls; see
+		 * `useServerOffline` for why it is one boolean and not the snapshot.
+		 */
+		const serverOffline = useServerOffline();
 		const archiveEnabled = desktopFeatureEnabled(
 			capabilities.data,
 			"session_archive",
@@ -3200,14 +3207,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 												canonical.view.temporaryDeleted === true
 											}
 											/*
-											 * The cached paint's own two facts, beside the rows it seeded: where
-											 * the reader was, and whether a turn was running when this window
-											 * last showed the conversation. Both are claims the snapshot
-											 * corrects; both are one-shot reads of the paint, not live state
-											 * (`use-canonical-session` clears them in the snapshot's commit).
+											 * The cached paint's own THREE facts, beside the rows it seeded: where
+											 * the reader was, whether a turn was running when this window
+											 * last showed the conversation, and whether those rows were all of it.
+											 * All are claims the snapshot corrects; all are one-shot reads of the
+											 * paint, not live state (`use-canonical-session` clears them in the
+											 * snapshot's commit).
 											 */
 											restoredScroll={canonical.view.paintScroll}
 											paintRunning={canonical.view.paintBusy}
+											/*
+											 * And the one the LAYOUT reads: a cached fragment shorter than the pane
+											 * must not top-anchor, or the page that lands moves every row.
+											 */
+											paintComplete={canonical.view.paintComplete}
 										/>
 										<JobCancelPopover {...musicJobCancel.popover} />
 									</MusicJobsLiveContext.Provider>,
@@ -3415,6 +3428,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
 								noProvider={needsProvider}
 								noModel={needsModel}
+								serverOffline={serverOffline}
 								deviceHold={deviceHold}
 								/*
 								 * A TEMPORARY DRAFT SAYS SO IN THE BOX (design round 1, D1): the

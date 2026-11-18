@@ -1,0 +1,150 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1962",
+  "locale": "zh-CN",
+  "namespace": "ui.recovery",
+  "pr": 1962,
+  "date": "2026-11-17",
+  "head": "af3ea4461495ccd3de4e6c99df70c95d4f6eb0ff",
+  "instance": "fefddad98e83-recovery-zh-CN",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (team lopdev, task child 'UI-1 i18n audit r1'); not the translator (coder, anthropic/claude-opus-5-5, per PR #1962 body)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session fefddad98e83, a task instance distinct from the translating coder. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Judged from the English, its context sidecar, the core glossary and locale style guide at local-operator origin/main, and shipped catalogue precedent; no MT used. Auditor-authored fixes are listed as findings with before/after.",
+    "instance": "fefddad98e83-recovery-zh-CN"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "glossary": {
+    "path": "local-operator:i18n/glossary.md",
+    "blob": "e3cdd40c909fb4bf515fc88abf57d7a85735a8e2"
+  },
+  "style_guide": {
+    "path": "local-operator:i18n/style-guides/zh-CN.md",
+    "blob": "a614da9c43a24769f4ef0ca03ca1de592820587a"
+  },
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes: key set and order equal English (30); ICU parse OK in intl-messageformat; argument names/types equal English per key; plural arms equal the locale's CLDR cardinal categories (Intl.PluralRules); formats with sample args for counts 0,1,2,5,21,1000000; NFC; no bidi control characters; no em/en dashes."
+    },
+    {
+      "severity": "MINOR",
+      "id": "T7",
+      "key": "ui.recovery.composer.no_provider",
+      "status": "fixed",
+      "note": "'提供方' for provider appears nowhere else in the shipped zh-CN corpus; '提供商' appears 148 times, including the hint this line replaces ('连接提供商后才能发送。').",
+      "before": {
+        "ui.recovery.composer.no_provider": "尚未连接模型提供方，暂时无法发送消息。",
+        "ui.recovery.send.connect_provider": "连接提供方"
+      },
+      "after": {
+        "ui.recovery.composer.no_provider": "尚未连接模型提供商，暂时无法发送消息。",
+        "ui.recovery.send.connect_provider": "连接提供商"
+      }
+    },
+    {
+      "severity": "MINOR",
+      "id": "T8",
+      "key": "ui.recovery.send.reconnecting",
+      "status": "fixed",
+      "note": "zh-CN guide: ellipsis is …… (two marks); shipped corpus 259 vs 31 single.",
+      "before": {
+        "ui.recovery.approval.setting_auto": "正在设为自动…",
+        "ui.recovery.send.reconnecting": "正在重新连接…",
+        "ui.recovery.local.checking": "正在检查 {brand} 是否在运行…"
+      },
+      "after": {
+        "ui.recovery.approval.setting_auto": "正在设为自动……",
+        "ui.recovery.send.reconnecting": "正在重新连接……",
+        "ui.recovery.local.checking": "正在检查{brand}是否在运行……"
+      }
+    },
+    {
+      "severity": "NIT",
+      "id": "T9",
+      "key": "ui.recovery.local.running",
+      "status": "fixed",
+      "note": "zh-CN guide: no space between Chinese and Latin/digit/placeholder runs (origin/main guide examples: '打开Local Operator', '你的Radient登录'). Spaces around the · separator kept. local.checking also carries T8.",
+      "before": {
+        "ui.recovery.composer.offline": "Local Operator 的后台服务没有响应，目前无法发送消息。",
+        "ui.recovery.send.still_offline": "仍无响应 · 检查于 {time}",
+        "ui.recovery.local.running": "{brand} 正在运行",
+        "ui.recovery.local.running_with_models": "{count, plural, other {{brand} 正在运行，有 {count} 个模型}}",
+        "ui.recovery.local.no_models_title": "{brand} 正在运行，但还没有模型",
+        "ui.recovery.local.no_models_other": "请在 {brand} 中加载一个模型，然后重新检查。",
+        "ui.recovery.local.not_running_title": "{brand} 没有在这台电脑上运行",
+        "ui.recovery.local.not_running_body": "{address} 没有任何响应。如果尚未安装 {brand}，请下载；如果已安装，请打开它，然后重新检查。",
+        "ui.recovery.local.download": "下载 {brand}",
+        "ui.recovery.local.no_answer_title": "{address} 没有任何响应",
+        "ui.recovery.local.no_answer_body": "请确认 {brand} 正在运行，且地址和端口正确，然后重新检查。",
+        "ui.recovery.local.wrong_server_title": "{address} 有响应，但不是 {brand}（HTTP {status}）",
+        "ui.recovery.local.wrong_server_body": "可能有其他程序占用了这个端口，或者地址不对。请检查 {brand} 的地址和端口，然后重新检查。",
+        "ui.recovery.local.checked_at": "检查于 {time}",
+        "ui.recovery.local.still_not_found": "仍未找到 · 检查于 {time}",
+        "ui.recovery.local.alternative_body": "不想在这台电脑上运行模型？使用 Radient 账户无需任何设置。",
+        "ui.recovery.local.use_radient": "改用 Radient 账户"
+      },
+      "after": {
+        "ui.recovery.composer.offline": "Local Operator的后台服务没有响应，目前无法发送消息。",
+        "ui.recovery.send.still_offline": "仍无响应 · 检查于{time}",
+        "ui.recovery.local.running": "{brand}正在运行",
+        "ui.recovery.local.running_with_models": "{count, plural, other {{brand}正在运行，有{count}个模型}}",
+        "ui.recovery.local.no_models_title": "{brand}正在运行，但还没有模型",
+        "ui.recovery.local.no_models_other": "请在{brand}中加载一个模型，然后重新检查。",
+        "ui.recovery.local.not_running_title": "{brand}没有在这台电脑上运行",
+        "ui.recovery.local.not_running_body": "{address}没有任何响应。如果尚未安装{brand}，请下载；如果已安装，请打开它，然后重新检查。",
+        "ui.recovery.local.download": "下载{brand}",
+        "ui.recovery.local.no_answer_title": "{address}没有任何响应",
+        "ui.recovery.local.no_answer_body": "请确认{brand}正在运行，且地址和端口正确，然后重新检查。",
+        "ui.recovery.local.wrong_server_title": "{address}有响应，但不是{brand}（HTTP {status}）",
+        "ui.recovery.local.wrong_server_body": "可能有其他程序占用了这个端口，或者地址不对。请检查{brand}的地址和端口，然后重新检查。",
+        "ui.recovery.local.checked_at": "检查于{time}",
+        "ui.recovery.local.still_not_found": "仍未找到 · 检查于{time}",
+        "ui.recovery.local.alternative_body": "不想在这台电脑上运行模型？使用Radient账户无需任何设置。",
+        "ui.recovery.local.use_radient": "改用Radient账户"
+      }
+    },
+    {
+      "severity": "NIT",
+      "id": "T10",
+      "key": "ui.recovery.approval.all_done",
+      "status": "fixed",
+      "note": "Echo the link it replaces ('将所有会话设为自动'): '已设为自动' rather than '已开启自动'.",
+      "before": {
+        "ui.recovery.approval.all_done": "所有会话已开启自动",
+        "ui.recovery.approval.session_done": "此会话已开启自动"
+      },
+      "after": {
+        "ui.recovery.approval.all_done": "所有会话已设为自动",
+        "ui.recovery.approval.session_done": "此会话已设为自动"
+      }
+    },
+    {
+      "severity": "NIT",
+      "id": "T16",
+      "key": "ui.recovery.local.start_ollama",
+      "status": "fixed",
+      "note": "origin/main zh-CN guide 请 rule: a helper body that gives the next step leads its directive clause with 请.",
+      "before": {
+        "ui.recovery.local.start_ollama": "已经安装？在终端中启动它："
+      },
+      "after": {
+        "ui.recovery.local.start_ollama": "已经安装？请在终端中启动它："
+      }
+    }
+  ],
+  "scope": "PR #1962 round 1: all 30 ui.recovery keys, ccc99372ac..af3ea44614 plus auditor fixes",
+  "binding": "Verified on af3ea44614 plus this audit's locale-only fixes: target src/i18n/catalogues/zh-CN/ui.recovery.json sha256 82802ffe4612919157a21b4dd2d53300111422e797cba6fc3d83966173a72f95; English sha256 938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9; context sha256 dea999b123328675580560158f3642f2d34a6ab42528af2bfbad98c313a60caa.",
+  "en_sha256": "938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9",
+  "context_sha256": "dea999b123328675580560158f3642f2d34a6ab42528af2bfbad98c313a60caa",
+  "target_sha256": "82802ffe4612919157a21b4dd2d53300111422e797cba6fc3d83966173a72f95",
+  "sha256": {
+    "zh-CN": "82802ffe4612919157a21b4dd2d53300111422e797cba6fc3d83966173a72f95",
+    "en": "938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9"
+  }
+}

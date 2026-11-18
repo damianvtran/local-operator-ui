@@ -1,23 +1,3 @@
-/** Canonical sessions are the only conversation identities. Profile names stage
- * drafts; the legacy agent mapping is retained only to resolve old deep links.
- *
- * SHARED CONVENTION, NAMED THE SAME WAY AT THE TUI'S ROW-NORMALISATION POINT
- * (`SessionSidebar._unpinned_rank`) AND IN ITS `docs/design/mesh-ui.md` §1.3.1,
- * AND BY THIS SIBLING CHANGE - the sentence kept verbatim across surfaces
- * (design review round 1, D4; agent review round 1, R1):
- *
- * > Remote rows are first-class: they file into the same bins as local rows under
- * > the same ordering rule, carry a per-row indicator, and their hover reads the
- * > owning device and its network; there is no separate remote section.
- *
- * This module is the UI's half of that sentence: `settlePeerCatalogue` merges a
- * peers-inclusive answer's remote rows into this catalogue, the sidebar renders
- * them through the one row component (the reserved locality cell and its mark in
- * `features/chat/components/chat-remote-mark.tsx`, the flyout's and the
- * accessible name's one fragment in `features/chat/chat-remote.ts`), and the
- * bins that sentence names are this list's own - Running, Today, This week,
- * Older, Pinned.
- */
 import {
 	DesktopControlError,
 	UserFacingError,
@@ -93,6 +73,10 @@ import type { LaunchTarget } from "../../../../shared/open-session";
  */
 import { draftCreatesTemporary } from "../../features/chat/chat-temporary";
 import { draftModelForWire } from "../../features/chat/draft-selection";
+import {
+	type FailureCause,
+	failureCauseOf,
+} from "../../features/chat/send-recovery";
 /*
  * THE SEAM'S SHAPE AND THE CODE ITS BUDGET REFUSAL CARRIES. `AdmissionSeam` is
  * a type (erased at build); `MESSAGE_BUDGET_CODE` is a value, because a code is
@@ -114,6 +98,27 @@ import { desktopRefusalSentence } from "../api/local-operator/desktop-refusal-co
 // `@shared` alias and resolve only the `@shared` paths they stub, so a new
 // `@shared/...` import is unresolvable there (merge-gate run 42679243544).
 import { isServerUpdatingError } from "../api/local-operator/server-updating-error";
+/** Canonical sessions are the only conversation identities. Profile names stage
+ * drafts; the legacy agent mapping is retained only to resolve old deep links.
+ *
+ * SHARED CONVENTION, NAMED THE SAME WAY AT THE TUI'S ROW-NORMALISATION POINT
+ * (`SessionSidebar._unpinned_rank`) AND IN ITS `docs/design/mesh-ui.md` §1.3.1,
+ * AND BY THIS SIBLING CHANGE - the sentence kept verbatim across surfaces
+ * (design review round 1, D4; agent review round 1, R1):
+ *
+ * > Remote rows are first-class: they file into the same bins as local rows under
+ * > the same ordering rule, carry a per-row indicator, and their hover reads the
+ * > owning device and its network; there is no separate remote section.
+ *
+ * This module is the UI's half of that sentence: `settlePeerCatalogue` merges a
+ * peers-inclusive answer's remote rows into this catalogue, the sidebar renders
+ * them through the one row component (the reserved locality cell and its mark in
+ * `features/chat/components/chat-remote-mark.tsx`, the flyout's and the
+ * accessible name's one fragment in `features/chat/chat-remote.ts`), and the
+ * bins that sentence names are this list's own - Running, Today, This week,
+ * Older, Pinned.
+ */
+import { quotaSafePersistStorage } from "./quota-safe-storage";
 import {
 	EMPTY_SETTINGS_INTENTS,
 	type SettingsIntentsMirror,
@@ -838,6 +843,14 @@ export type ChatDraft = {
 	 */
 	errorRetry?: boolean;
 	/**
+	 * The configuration cause `sendFailureCopy` classified this failure by, when
+	 * the backend's sentence named one (no provider, no model). Kept on the row
+	 * for the same reason as `errorRetry`: the row outlives the Error, and the
+	 * sentence it keeps is this app's own, so the cause cannot be re-read from it
+	 * (agent review round 1, R1).
+	 */
+	errorCause?: FailureCause;
+	/**
 	 * Set once a message the PREVIOUS release held outside the composer has been
 	 * moved back into it (`migrateHeldClaim`), so the move happens once however
 	 * many times a pane mounts over the row.
@@ -1471,6 +1484,15 @@ export const SEND_FAILURE_COPY = {
 	get unconfirmed() {
 		return t("ui.chat.canonical.send_failure.unconfirmed");
 	},
+	/**
+	 * A configuration cause the backend named (R1): what is missing and the fix,
+	 * in this app's words and the user's language rather than the core's English.
+	 */
+	cause(cause: FailureCause): string {
+		return cause === "no_provider"
+			? t("ui.recovery.send.failed_no_provider")
+			: t("ui.recovery.send.failed_no_model");
+	},
 	/** Unknown, and the specific fact is that nothing answered. */
 	get unreachable() {
 		return t("ui.chat.canonical.send_failure.unreachable");
@@ -1645,6 +1667,8 @@ export function sendFailureCopy(
 	message: string;
 	retry: boolean;
 	code?: string;
+	/** A configuration cause the backend's sentence named (R1); see `failureCauseOf`. */
+	cause?: FailureCause;
 } {
 	const klass = sendFailureClass(error, priorAttemptUnresolved);
 	const code = codeOverride ?? sendFailureCode(error);
@@ -1739,6 +1763,32 @@ export function sendFailureCopy(
 	 * same-id resend is safe (`withholdsRetryHint` is false for it), which is what the
 	 * sentence's second clause promises.
 	 */
+	/*
+	 * A CONFIGURATION CAUSE THE BACKEND NAMED (agent review round 1, R1). The core
+	 * sends its vetted startup reasons ("No model provider is configured yet…",
+	 * "No model is selected for this session…") as the message of a 503
+	 * `runtime_unreachable`, so the arm below rewrote them to "couldn't confirm…
+	 * sending it again is safe" - and a resend is exactly the press that cannot
+	 * work until the cause is fixed. Classified here, the ONE place the raw text is
+	 * in hand: the row keeps this app's translated sentence for the cause (not the
+	 * backend's English) and the cause itself, which the row maps to its fix.
+	 * `retry` keeps the unknown class's answer: once the cause is fixed the
+	 * same-id resend is safe, and the row decides when to offer it.
+	 */
+	const cause = failureCauseOf(
+		error instanceof Error
+			? error.message
+			: typeof error === "string"
+				? error
+				: undefined,
+	);
+	if (cause)
+		return {
+			message: SEND_FAILURE_COPY.cause(cause),
+			retry: !withholdsRetryHint(code),
+			code,
+			cause,
+		};
 	if (code === DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable)
 		return { message: SEND_FAILURE_COPY.unconfirmed, retry: true, code };
 	/*
@@ -3272,6 +3322,7 @@ export async function admitChatDraft(
 			error: undefined,
 			errorCode: undefined,
 			errorRetry: undefined,
+			errorCause: undefined,
 			admissionAttempted: true,
 			submittedRendered: rendered,
 		});
@@ -3428,6 +3479,7 @@ export async function admitChatDraft(
 			 * `errorRetry` for why the row carries it rather than the pane deriving it.
 			 */
 			errorRetry: copy.retry,
+			errorCause: copy.cause,
 		});
 		/*
 		 * DELIVERED AFTER ALL: the send is a success, so the composer stays empty,
@@ -5636,6 +5688,7 @@ function unboundDraftRow(draft: ChatDraft): ChatDraft {
 		error: undefined,
 		errorCode: undefined,
 		errorRetry: undefined,
+		errorCause: undefined,
 		submittedText: undefined,
 		submittedRendered: undefined,
 		submittedAttachments: undefined,
@@ -6062,6 +6115,34 @@ export function launchDraftSeed(
 				createRequestId: crypto.randomUUID(),
 				admissionRequestId: crypto.randomUUID(),
 			},
+		},
+	};
+}
+
+/**
+ * Step 3 of the quota fallback for this store (`quota-safe-storage.ts`), run
+ * only after a full write AND an image-free write were both refused.
+ *
+ * `forgotten` is the one map here that only grows - a fact per session the user
+ * removed, kept so the list does not resurrect it - so under quota pressure it
+ * keeps its NEWER half (records keep insertion order, which is the order facts
+ * were added). Halving rather than a fixed count, because no count has been
+ * measured; the oldest facts are the ones a session list is least likely to
+ * still be showing. Drafts and the active pointers are kept whole.
+ */
+export function shrinkPersistedSessions<
+	V extends { state: { forgotten?: Record<string, unknown> } },
+>(value: V): V {
+	const forgotten = value.state.forgotten;
+	if (!forgotten) return value;
+	const entries = Object.entries(forgotten);
+	return {
+		...value,
+		state: {
+			...value.state,
+			forgotten: Object.fromEntries(
+				entries.slice(Math.floor(entries.length / 2)),
+			),
 		},
 	};
 }
@@ -8793,6 +8874,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						error: _error,
 						errorCode: _errorCode,
 						errorRetry: _errorRetry,
+						errorCause: _errorCause,
 						...kept
 					} = draft;
 					/*
@@ -9463,6 +9545,17 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 		}),
 		{
 			name: "canonical-sessions-storage",
+			/*
+			 * Quota-safe (`quota-safe-storage.ts`): a full localStorage used to throw
+			 * out of zustand's persist as an uncaught `QuotaExceededError` (PostHog,
+			 * Windows). The last resort keeps the active pointers and drafts with
+			 * text, and trims `forgotten` to its newest entries - it only ever runs
+			 * once the platform has refused the full and the image-free copies.
+			 */
+			storage: quotaSafePersistStorage<Partial<CanonicalSessionsState>>({
+				storeName: "canonical-sessions-storage",
+				lastResort: shrinkPersistedSessions,
+			}),
 			merge: mergePersistedSession,
 			partialize: (state) => ({
 				activeSessionId: state.activeSessionId,

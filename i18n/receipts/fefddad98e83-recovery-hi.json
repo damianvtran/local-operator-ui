@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1962",
+  "locale": "hi",
+  "namespace": "ui.recovery",
+  "pr": 1962,
+  "date": "2026-11-17",
+  "head": "af3ea4461495ccd3de4e6c99df70c95d4f6eb0ff",
+  "instance": "fefddad98e83-recovery-hi",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (team lopdev, task child 'UI-1 i18n audit r1'); not the translator (coder, anthropic/claude-opus-5-5, per PR #1962 body)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session fefddad98e83, a task instance distinct from the translating coder. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Judged from the English, its context sidecar, the core glossary and locale style guide at local-operator origin/main, and shipped catalogue precedent; no MT used. Auditor-authored fixes are listed as findings with before/after.",
+    "instance": "fefddad98e83-recovery-hi"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "glossary": {
+    "path": "local-operator:i18n/glossary.md",
+    "blob": "e3cdd40c909fb4bf515fc88abf57d7a85735a8e2"
+  },
+  "style_guide": {
+    "path": "local-operator:i18n/style-guides/hi.md",
+    "blob": "61507c3583dc416d66476874d956562e9ee0dd2d"
+  },
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes: key set and order equal English (30); ICU parse OK in intl-messageformat; argument names/types equal English per key; plural arms equal the locale's CLDR cardinal categories (Intl.PluralRules); formats with sample args for counts 0,1,2,5,21,1000000; NFC; no bidi control characters; no em/en dashes."
+    },
+    {
+      "severity": "MINOR",
+      "id": "T12",
+      "key": "ui.recovery.composer.no_provider",
+      "status": "fixed",
+      "note": "provider is 'प्रोवाइडर' in shipped hi (146 vs 2 'प्रदाता'), including the hint this line replaces ('भेजने के लिए प्रोवाइडर कनेक्ट करें।').",
+      "before": {
+        "ui.recovery.composer.no_provider": "कोई मॉडल प्रदाता कनेक्ट नहीं है, इसलिए अभी संदेश नहीं भेजे जा सकते।",
+        "ui.recovery.send.connect_provider": "प्रदाता कनेक्ट करें"
+      },
+      "after": {
+        "ui.recovery.composer.no_provider": "कोई मॉडल प्रोवाइडर कनेक्ट नहीं है, इसलिए अभी संदेश नहीं भेजे जा सकते।",
+        "ui.recovery.send.connect_provider": "प्रोवाइडर कनेक्ट करें"
+      }
+    },
+    {
+      "severity": "MINOR",
+      "id": "T3",
+      "key": "ui.recovery.local.wrong_server_title",
+      "status": "fixed",
+      "note": "'not as {brand}' was rendered as a 'like {brand}' calque, which reads as a comparison; restated as 'but it is not / not from {brand}', as zh-CN and vi already did. Auditor fix, locale-only, placeholders unchanged.",
+      "before": {
+        "ui.recovery.local.wrong_server_title": "{address} पर जवाब आया, लेकिन {brand} की तरह नहीं (HTTP {status})"
+      },
+      "after": {
+        "ui.recovery.local.wrong_server_title": "{address} पर जवाब आया, लेकिन {brand} की ओर से नहीं (HTTP {status})"
+      }
+    }
+  ],
+  "scope": "PR #1962 round 1: all 30 ui.recovery keys, ccc99372ac..af3ea44614 plus auditor fixes",
+  "binding": "Verified on af3ea44614 plus this audit's locale-only fixes: target src/i18n/catalogues/hi/ui.recovery.json sha256 78799e644bf7af379b2d7bfce1263b670ea2cba0fb8cce46682f00ed01ecdcd8; English sha256 938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9; context sha256 dea999b123328675580560158f3642f2d34a6ab42528af2bfbad98c313a60caa.",
+  "en_sha256": "938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9",
+  "context_sha256": "dea999b123328675580560158f3642f2d34a6ab42528af2bfbad98c313a60caa",
+  "target_sha256": "78799e644bf7af379b2d7bfce1263b670ea2cba0fb8cce46682f00ed01ecdcd8",
+  "sha256": {
+    "hi": "78799e644bf7af379b2d7bfce1263b670ea2cba0fb8cce46682f00ed01ecdcd8",
+    "en": "938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9"
+  }
+}

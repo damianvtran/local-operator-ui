@@ -21,14 +21,13 @@
 		"role": "Trailing clause on a conversation row in the Schedules page Monitors section when some of its monitors are disabled, blind or expired",
 		"tone": "Factual tally, sentence fragment, no terminal period",
 		"length": "Short; English example is 2 monitors · 1 needs attention",
-		"note": "Replaces ui.chat.run_details.monitor.armed_count when not every monitor is working, so the row never calls a disabled monitor armed. Keep the middle dot separator. Two independent counts, each with its own plural.",
+		"note": "Replaces ui.chat.run_details.monitor.armed_count when not every monitor is working, so the row never calls a disabled monitor armed. Keep the middle dot separator. Two independent counts, each with its own plural. Plural: Each count needs its own locale plural arms (ru: one/few/many/other; es/fr: one/many/other).",
 		"placeholders": {
 			"total": "Number of monitors on the conversation, selects the first plural.",
 			"total_display": "total as display text.",
 			"attention": "Number of those monitors that are disabled, blind or expired, selects the second plural.",
 			"attention_display": "attention as display text."
-		},
-		"plural": "Each count needs its own locale plural arms (ru: one/few/many/other; es/fr: one/many/other)."
+		}
 	},
 	"ui.schedules.monitors.expired_state": {
 		"role": "when-label of a monitor row whose until time has passed",
@@ -40,12 +39,11 @@
 		"role": "Schedules page Monitors section truncated-list footnote: visible versus total monitor-carrying conversations",
 		"tone": "Factual count, not a complete-list claim.",
 		"length": "One brief footnote sentence; English example is Showing 1 of 2 conversations with monitors.",
-		"note": "Twin of ui.schedules.count.list_truncated for the Monitors section; keep the two parallel in each locale, with the counted noun naming conversations that have monitors. A monitor is a read-only watch an agent re-runs on an interval. Real ICU one/other arms select the counted noun. Russian translators need few/many arms; Arabic translators need zero/two and locale-appropriate few/many. English 0/1/2 selects other/one/other.",
+		"note": "Twin of ui.schedules.count.list_truncated for the Monitors section; keep the two parallel in each locale, with the counted noun naming conversations that have monitors. A monitor is a read-only watch an agent re-runs on an interval. Real ICU one/other arms select the counted noun. Russian translators need few/many arms; Arabic translators need zero/two and locale-appropriate few/many. English 0/1/2 selects other/one/other. Plural: ru: add few/many; ar: add zero/two; preserve the count parameter and its existing ICU numeric style.",
 		"placeholders": {
 			"shown": "monitorsListing.data.entries.length, raw visible count, ICU number ::group-off.",
 			"total": "monitorsListing.data.total, raw backend count selecting ICU plural."
-		},
-		"plural": "ru: add few/many; ar: add zero/two; preserve the count parameter and its existing ICU numeric style."
+		}
 	},
 	"ui.schedules.monitors.parked_clause": {
 		"role": "Trailing clause on a conversation row in the Schedules page Monitors section when the conversation is stopped or gone",

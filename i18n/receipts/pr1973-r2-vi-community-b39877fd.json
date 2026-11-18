@@ -1,0 +1,62 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "independent translation audit, round 2 (delta), PR #1973",
+ "locale": "vi",
+ "namespace": "ui.community",
+ "pr": 1973,
+ "date": "2026-11-18",
+ "head": "72da4b833910bfe97fdaf9e4198faf24b94e5a8a",
+ "instance": "pr1973-r2-vi-community-b39877fd",
+ "auditor": {
+  "agent": "reviewer",
+  "role": "independent i18n auditor (reviewer role); did not translate, author, suggest or apply these strings",
+  "model": "anthropic/claude-opus-5-5",
+  "independence": "Reviewer session ef5cbe7f8a91, a fresh reviewer task for PR #1973 round 2; not the translator (coder job e584f309bede, session 1e4dc439a105), not the round-1 auditor whose suggestions these values are (session 9bf5768d1c00), and not the implementer who applied them. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT used.",
+  "instance": "pr1973-r2-vi-community-b39877fd"
+ },
+ "model": "anthropic/claude-opus-5-5",
+ "status": "passed",
+ "result": "clean",
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "findings": [],
+ "audited_values": {
+  "ui.community.noplan.trial.body": "Một Team Bridge riêng tư cho tổ chức của bạn: kênh, tin nhắn trực tiếp và các tác nhân của bạn cùng làm việc.",
+  "ui.community.join.disclosure.body": "Tin nhắn, hình ảnh và bài đăng của tác nhân được bộ kiểm duyệt tự động kiểm tra trước. Nếu nội dung bị từ chối, nó sẽ không được đăng hay lưu lại, và chỉ bạn thấy cảnh báo.",
+  "ui.community.requests.placeholder": "Yêu cầu nhắn tin, yêu cầu liên hệ tác nhân và phê duyệt tác nhân sẽ xuất hiện tại đây.",
+  "ui.community.message.agent_badge": "Tác nhân",
+  "ui.community.message.react": "Thêm cảm xúc",
+  "ui.community.message.reaction_label": "{emoji}: {count, plural, other {# cảm xúc}}",
+  "ui.community.message.reply": "Trả lời trong luồng",
+  "ui.community.message.replies": "{count, plural, other {# câu trả lời}}",
+  "ui.community.thread.title": "Luồng trò chuyện",
+  "ui.community.thread.close": "Đóng luồng trò chuyện",
+  "ui.community.thread.reply_placeholder": "Trả lời trong luồng",
+  "ui.community.outcome.limit.note": "Giới hạn áp dụng cho bạn và các tác nhân của bạn, không phải toàn bộ cộng đồng."
+ },
+ "prior_round": {
+  "instance": "pr1973-r1-vi-community-5ca3dc14",
+  "head": "aeecfe4aa9446031abf56959ce723c38aa3a37f0",
+  "rebased_head": "65b1ee0be4e97d49729e77b64a078d4257356e3d",
+  "findings_applied": [
+   "M2-vi",
+   "M2b-vi"
+  ],
+  "note": "Keys not listed in audited_values are byte-identical to the round-1 audited bytes (aeecfe4a == 65b1ee0b for this file). Every audited value equals the round-1 suggestion verbatim; where two round-1 findings touched one key, the value composes both.",
+  "receipt": "i18n/receipts/pr1973-r1-vi-community-5ca3dc14.json"
+ },
+ "scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 12 changed ui.community values (round-1 findings M2-vi, M2b-vi applied); rest of the file byte-identical to the round-1 audited bytes.",
+ "binding": "Verified on the committed tree at 72da4b833910bfe97fdaf9e4198faf24b94e5a8a (worktree .worktrees/community-ui): target src/i18n/catalogues/vi/ui.community.json sha256 b8fb7c1b6d735a9dadf828804de1c7ffe052be4f91bc9205344403023a95ad96; English sha256 1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7; context sha256 8573f915548c463f547f89d929020aa301ef30778898db3b8d37709390f42219.",
+ "en_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+ "context_sha256": "8573f915548c463f547f89d929020aa301ef30778898db3b8d37709390f42219",
+ "target_sha256": "b8fb7c1b6d735a9dadf828804de1c7ffe052be4f91bc9205344403023a95ad96",
+ "sha256": {
+  "vi": "b8fb7c1b6d735a9dadf828804de1c7ffe052be4f91bc9205344403023a95ad96",
+  "en": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7"
+ }
+}

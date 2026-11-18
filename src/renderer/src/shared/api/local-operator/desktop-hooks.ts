@@ -1296,19 +1296,31 @@ function streamCapabilityFlags(
 
 /** Canonical provider registry rows, including aliases folded into methods. */
 export function useDesktopProviders(enabled: boolean) {
-	return useQuery({
-		queryKey: desktopKeys.providers,
-		queryFn: () =>
-			desktopResult<{ providers: DesktopProvider[] }>({
-				op: "providers.list",
-			}).then((result) => result.providers),
-		enabled,
-		staleTime: 30_000,
-		// Same reasoning as `useConfig`: a `status: null` failure already spent
-		// the transport's whole deadline learning nothing, so retrying it doubles
-		// the wait to ~60s without a chance of a different answer. A failure that
-		// carries a status came from a backend that answered and is still worth
-		// one retry.
-		retry: retryDesktopQuery,
-	});
+	/*
+	 * THE PROVIDER GATE, as in `useDesktopCapabilities`: the shared composer now
+	 * reads this census (`useLocalSelection`, the send block's "use local" fix)
+	 * and mounts in documents with no `QueryClientProvider` (the mini view), where
+	 * a bare `useQuery` throws "No QueryClient set". With no provider there is no
+	 * census; every caller already reads `data: undefined` as "not read yet". In
+	 * the app `provided` is always true, so this is a no-op there.
+	 */
+	const { client, provided } = useOptionalQueryClient();
+	return useQuery(
+		{
+			queryKey: desktopKeys.providers,
+			queryFn: () =>
+				desktopResult<{ providers: DesktopProvider[] }>({
+					op: "providers.list",
+				}).then((result) => result.providers),
+			enabled: provided && enabled,
+			staleTime: 30_000,
+			// Same reasoning as `useConfig`: a `status: null` failure already spent
+			// the transport's whole deadline learning nothing, so retrying it doubles
+			// the wait to ~60s without a chance of a different answer. A failure that
+			// carries a status came from a backend that answered and is still worth
+			// one retry.
+			retry: retryDesktopQuery,
+		},
+		client,
+	);
 }
