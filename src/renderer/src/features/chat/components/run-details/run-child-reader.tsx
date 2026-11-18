@@ -117,6 +117,7 @@ import { ChildSubagents } from "./run-child-subagents";
 import type { SubagentRow } from "./run-detail-model";
 import {
 	briefIsInTranscript,
+	childStateLabel,
 	deriveChildWorkingLine,
 	foldBrief,
 	reconcileLaunchTurns,
@@ -810,7 +811,7 @@ export const RunChildReader = ({
 		onUnopenable();
 	}, [onUnopenable, state]);
 
-	const stateWord = row.stateWord;
+	const stateWord = childStateLabel(row);
 	/*
 	 * Whether the brief block has anything left to say: `BriefBlock` renders only
 	 * when the row carries a brief AND the transcript is not already showing it.

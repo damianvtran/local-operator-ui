@@ -39,6 +39,7 @@ export type {
 	LocaleState,
 } from "./locale";
 export { resolveCatalogueLocale } from "./catalogue-locale";
+export type { DurationPart, DurationUnit } from "./format";
 export {
 	applyCapabilities,
 	currentLocale,
@@ -56,7 +57,11 @@ export {
 	formatBytes,
 	formatDate,
 	formatDateTime,
+	formatCompactDuration,
 	formatDuration,
+	formatDurationParts,
+	formatDurationUnit,
+	formatSettledDuration,
 	formatClauses,
 	formatList,
 	formatNumber,

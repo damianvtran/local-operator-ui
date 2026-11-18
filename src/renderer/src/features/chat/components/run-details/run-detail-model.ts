@@ -1,4 +1,15 @@
-import { currentLocale, formatDate, formatTime, t } from "@shared/i18n";
+import {
+	type DurationUnit,
+	type WithParams,
+	type WithoutParams,
+	currentLocale,
+	formatCompactDuration,
+	formatDate,
+	formatDurationParts,
+	formatDurationUnit,
+	formatTime,
+	t,
+} from "@shared/i18n";
 import type {
 	TranscriptRecord,
 	TranscriptState,
@@ -159,6 +170,56 @@ const CHILD_STATE_WORD = {
 } as const satisfies Record<Exclude<ChildStatus, "unknown">, string>;
 
 /**
+ * The DISPLAY spelling of a row's `stateWord`, keyed at render time.
+ *
+ * `CHILD_STATE_WORD` above stays English on purpose: its values are the
+ * model's CODES — grouped on (`subagentTally`), compared against the wire's
+ * own word (`unrecognisedStateWord`) and pinned by the TUI-parity tests — so
+ * translating them in the table would change what the model compares. Every
+ * surface that PAINTS a state word goes through `stateWordLabel` instead; a
+ * word this table does not know is the wire's own and is shown as sent.
+ */
+const STATE_WORD_KEY = {
+	running: "ui.chat.run_details.state.running",
+	queued: "ui.chat.run_details.state.queued",
+	paused: "ui.chat.run_details.state.paused",
+	interrupted: "ui.chat.run_details.state.interrupted",
+	done: "ui.chat.run_details.state.done",
+	cancelled: "ui.chat.run_details.state.cancelled",
+	gone: "ui.chat.run_details.state.gone",
+	failed: "ui.chat.run_details.state.failed",
+	"cancelled before it started":
+		"ui.chat.run_details.state.cancelled_before_start",
+} as const satisfies Record<string, WithoutParams>;
+
+/** `{count} <state>` per known word: a full phrase each, so ru/hi can agree. */
+const STATE_TALLY_KEY = {
+	running: "ui.chat.run_details.tally.running",
+	queued: "ui.chat.run_details.tally.queued",
+	paused: "ui.chat.run_details.tally.paused",
+	interrupted: "ui.chat.run_details.tally.interrupted",
+	done: "ui.chat.run_details.tally.done",
+	cancelled: "ui.chat.run_details.tally.cancelled",
+	gone: "ui.chat.run_details.tally.gone",
+	failed: "ui.chat.run_details.tally.failed",
+	"cancelled before it started":
+		"ui.chat.run_details.tally.cancelled_before_start",
+} as const satisfies Record<string, WithParams>;
+
+const isKnownStateWord = (word: string): word is keyof typeof STATE_WORD_KEY =>
+	Object.prototype.hasOwnProperty.call(STATE_WORD_KEY, word);
+
+/** A row's state word as painted: localized when known, the wire's otherwise. */
+export const stateWordLabel = (word: string): string =>
+	isKnownStateWord(word) ? t(STATE_WORD_KEY[word]) : word;
+
+/** `3 running` / `1 reticulating`: a count of rows sharing one state word. */
+const stateTally = (count: number, word: string): string =>
+	isKnownStateWord(word)
+		? t(STATE_TALLY_KEY[word], { count })
+		: t("ui.chat.run_details.tally.unrecognised", { count, word });
+
+/**
  * The runtime's own stamp for a job cancelled BEFORE its runner was entered.
  *
  * `harness/jobs.py`'s `CANCELLED_BEFORE_START`, written by `cancel()` at
@@ -285,7 +346,12 @@ const labelClose = (): string => t("ui.chat.header.close_run_details");
  */
 export const LABEL_SEAM = " — ";
 
-/** The TUI's name for a plan that arrived with no phases of its own. */
+/**
+ * The TUI's name for a plan that arrived with no phases of its own.
+ *
+ * Not UI copy: it is only COMPARED against the wire's phase name (to hide the
+ * implicit phase's header), never painted, so it stays the wire's English.
+ */
 const IMPLICIT_PHASE_NAME = "Todos";
 
 /* ------------------------------------------------------------------ */
@@ -608,6 +674,8 @@ export const deriveChildWorkingLine = (
 				: { kind: "text", text: wire };
 	return {
 		activity,
+		// A clock-reset KEY (`WorkingLine`'s `phase`), never painted: the label
+		// the line shows is `activity`, keyed at render. So no catalogue entry.
 		phase:
 			activity.kind === "thinking"
 				? "thinking"
@@ -976,24 +1044,8 @@ export const oneLine = (text: string): string =>
  * document; the shape of the string is identical, and the shared test asserts
  * the same expectations against both.
  */
-const formatElapsed = (seconds: number): string => {
-	const total = Math.max(0, Math.floor(seconds));
-	if (total < 60) return `${total}s`;
-	if (total < 3600) {
-		const m = Math.floor(total / 60);
-		const s = total % 60;
-		return s === 0 ? `${m}m` : `${m}m${s}s`;
-	}
-	if (total < 86400) {
-		const h = Math.floor(total / 3600);
-		const m = Math.floor((total % 3600) / 60);
-		return m === 0 ? `${h}h` : `${h}h${m}m`;
-	}
-	const d = Math.floor(total / 86400);
-	if (d > 99) return "100d+";
-	const h = Math.floor((total % 86400) / 3600);
-	return h === 0 ? `${d}d` : `${d}d${h}h`;
-};
+const formatElapsed = (seconds: number): string =>
+	formatCompactDuration(seconds);
 
 /**
  * Context occupancy as a percentage, or `null` when it cannot be stated.
@@ -1542,12 +1594,12 @@ const toWireList = (value: unknown): Array<Record<string, unknown>> =>
  * Milliseconds, and the ORDER is the algorithm: the walk takes the largest unit
  * the value reaches, so a week reads as `1w` rather than `7d`.
  */
-const WAKE_DURATION_UNITS: ReadonlyArray<readonly [string, number]> = [
-	["w", 604_800_000],
-	["d", 86_400_000],
-	["h", 3_600_000],
-	["m", 60_000],
-	["s", 1_000],
+const WAKE_DURATION_UNITS: ReadonlyArray<readonly [DurationUnit, number]> = [
+	["week", 604_800_000],
+	["day", 86_400_000],
+	["hour", 3_600_000],
+	["minute", 60_000],
+	["second", 1_000],
 ];
 
 /**
@@ -1581,18 +1633,27 @@ export const formatWakeDuration = (ms: number): string => {
 	for (let index = 0; index < WAKE_DURATION_UNITS.length; index++) {
 		const [unit, step] = WAKE_DURATION_UNITS[index];
 		if (ms < step) continue;
-		if (ms % step === 0) return `${ms / step}${unit}`;
+		// Spelled through the shared localized helper: English stays `1h30m`
+		// (narrow CLDR units, compact join), other locales take their own units.
+		if (ms % step === 0) return formatDurationUnit(ms / step, unit);
 		const head = Math.floor(ms / step);
 		const remainder = ms % step;
 		for (const [smaller, subStep] of WAKE_DURATION_UNITS.slice(index + 1)) {
 			if (remainder % subStep !== 0) continue;
 			const quotient = remainder / subStep;
-			const cap = smaller === "s" ? 60_000 / subStep : step / subStep;
-			if (quotient < cap) return `${head}${unit}${quotient}${smaller}`;
+			const cap = smaller === "second" ? 60_000 / subStep : step / subStep;
+			if (quotient < cap)
+				return formatDurationParts(
+					[
+						[head, unit],
+						[quotient, smaller],
+					],
+					{ compact: true },
+				);
 		}
 		break;
 	}
-	return `${ms}ms`;
+	return formatDurationUnit(ms, "millisecond");
 };
 
 /**
@@ -3663,7 +3724,7 @@ export function subagentTally(rows: SubagentRow[], maxChars?: number): string {
 		for (const row of matched) {
 			words.set(row.stateWord, (words.get(row.stateWord) ?? 0) + 1);
 		}
-		for (const [word, count] of words) segments.push(`${count} ${word}`);
+		for (const [word, count] of words) segments.push(stateTally(count, word));
 	}
 	return shedSegments(segments, maxChars);
 }
@@ -3696,8 +3757,17 @@ export function todoTally(
 ): string {
 	if (!details) return "";
 	const segments = [
-		`${closedTodos(details)} of ${details.totalTodos} closed`,
-		...(details.droppedTodos > 0 ? [`${details.droppedTodos} dropped`] : []),
+		t("ui.chat.run_details.todos.tally_closed", {
+			closed: closedTodos(details),
+			total: details.totalTodos,
+		}),
+		...(details.droppedTodos > 0
+			? [
+					t("ui.chat.run_details.todos.tally_dropped", {
+						count: details.droppedTodos,
+					}),
+				]
+			: []),
 	];
 	return shedSegments(segments, maxChars);
 }
@@ -3976,9 +4046,6 @@ export function visibleTodoPhases(phases: TodoPhaseView[]): {
 /* Trigger copy                                                        */
 /* ------------------------------------------------------------------ */
 
-const plural = (count: number, noun: string): string =>
-	count === 1 ? `1 ${noun}` : `${count} ${noun}s`;
-
 /**
  * The state word in a clause, from the mark the chip leads with.
  *
@@ -3991,7 +4058,6 @@ const plural = (count: number, noun: string): string =>
  * three are keys of the table, so the lookup is total and there is no
  * unreachable `?? state` arm (agent review round 2, n2).
  */
-const stateWord = (state: OpenChildStatus): string => CHILD_STATE_WORD[state];
 
 /**
  * The word a clause uses for the set: the STATE's word when every open row is in
@@ -4004,8 +4070,8 @@ const stateWord = (state: OpenChildStatus): string => CHILD_STATE_WORD[state];
  * (design round 2, D6). It is also NARROWER than the state word it replaces, so it
  * cannot cost the row a line.
  */
-const tallyWord = (tally: ActivityTally): string =>
-	tally.markCount === tally.count ? stateWord(tally.mark) : "open";
+const tallyWord = (tally: ActivityTally): OpenChildStatus | "open" =>
+	tally.markCount === tally.count ? tally.mark : "open";
 
 /**
  * The busiest state, for the strings that have room for it: the chip's accessible
@@ -4020,7 +4086,9 @@ const tallyWord = (tally: ActivityTally): string =>
 export const busiestClause = (tally: ActivityTally): string =>
 	tally.markCount === tally.count
 		? ""
-		: `, ${tally.markCount} ${stateWord(tally.mark)}`;
+		: t("ui.chat.run_details.chip.busiest", {
+				clause: stateTally(tally.markCount, CHILD_STATE_WORD[tally.mark]),
+			});
 
 /**
  * The subagent clause: `1 subagent running`, `2 subagents queued` when the open set
@@ -4039,7 +4107,24 @@ export const busiestClause = (tally: ActivityTally): string =>
  * the busiest state then travels in `busiestClause`, on the accessible name.
  */
 export const childClause = (tally: ActivityTally): string =>
-	`${plural(tally.count, "subagent")} ${tallyWord(tally)}`;
+	// One full-sentence ICU plural per state word, never an English noun and
+	// state spliced into a frame: the noun's form agrees with the count AND the
+	// state (ru `2 субагента выполняются`), which only the translator can spell.
+	t(SUBAGENT_CLAUSE_KEY[tallyWord(tally)], { count: tally.count });
+
+const SUBAGENT_CLAUSE_KEY = {
+	running: "ui.chat.run_details.chip.subagents_running",
+	queued: "ui.chat.run_details.chip.subagents_queued",
+	paused: "ui.chat.run_details.chip.subagents_paused",
+	open: "ui.chat.run_details.chip.subagents_open",
+} as const satisfies Record<OpenChildStatus | "open", WithParams>;
+
+const JOB_CLAUSE_KEY = {
+	running: "ui.chat.run_details.chip.jobs_running",
+	queued: "ui.chat.run_details.chip.jobs_queued",
+	paused: "ui.chat.run_details.chip.jobs_paused",
+	open: "ui.chat.run_details.chip.jobs_open",
+} as const satisfies Record<OpenChildStatus | "open", WithParams>;
 
 /**
  * The tool-job clause: `1 job running`, `3 jobs running`.
@@ -4064,7 +4149,7 @@ export const childClause = (tally: ActivityTally): string =>
  * `busiestClause`.
  */
 export const jobClause = (tally: ActivityTally): string =>
-	`${plural(tally.count, "job")} ${tallyWord(tally)}`;
+	t(JOB_CLAUSE_KEY[tallyWord(tally)], { count: tally.count });
 
 /**
  * The two counts that decide the plan's clause: how much is still open, and how
@@ -4305,7 +4390,7 @@ export function runDetailTriggerLabel(
  * not know.
  */
 export function childStateLabel(row: SubagentRow): string {
-	return row.stateWord;
+	return stateWordLabel(row.stateWord);
 }
 
 /**
@@ -4330,7 +4415,7 @@ export function childStateLabel(row: SubagentRow): string {
  */
 export const childCountLabel = (row: SubagentRow): string | null =>
 	row.childCount > 0
-		? `${row.childCount} child${row.childCount === 1 ? "" : "ren"}`
+		? t("ui.chat.run_details.children.count", { count: row.childCount })
 		: null;
 
 /**

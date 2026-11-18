@@ -37,6 +37,9 @@ const bundle = await build({
 			'import { englishState } from "./scripts/working-line-english";',
 			"export const deriveChildWorkingLine = (...args) => englishState(rawDeriveChildWorkingLine(...args));",
 			'export * as fixtures from "./src/renderer/src/features/chat/components/run-details/run-details.fixtures";',
+			// The i18n store, from INSIDE the bundle, so a registered catalogue and a
+			// locale switch reach the model's own `t()` (i18n slice C3).
+			'export * as i18n from "./src/renderer/src/shared/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -61,6 +64,8 @@ const {
 	busiestClause,
 	childClause,
 	childStateLabel,
+	i18n,
+	CANCELLED_BEFORE_START,
 	deriveChildWorkingLine,
 	deriveMcpServers,
 	deriveRunDetails,
@@ -4365,4 +4370,88 @@ test("no monitors is absence, and absence is not a state either surface renders"
 		false,
 		"an armed watch is not 'something asking for something right now'",
 	);
+});
+
+/*
+ * i18n slice C3: the run-details state words, tallies and clauses are keyed
+ * ICU messages. These tests register FIXTURE target-locale messages (the real
+ * ru/fr catalogue rows are the translation wave's) so they pin what this code
+ * owns: the count reaches ICU as a number, the plural arms follow the target
+ * locale's CLDR categories, and a row computed once re-spells after a switch.
+ */
+test("C3: ru plurals for subagent clauses and child counts pick CLDR's arms", () => {
+	i18n.registerCatalogue("ru", {
+		"ui.chat.run_details.chip.subagents_running":
+			"{count, plural, one {# субагент работает} few {# субагента работают} many {# субагентов работают} other {# субагента работают}}",
+		"ui.chat.run_details.children.count":
+			"{count, plural, one {# дочерний} few {# дочерних} many {# дочерних} other {# дочерних}}",
+	});
+	i18n.setLocale("ru");
+	try {
+		const tally = (count) => ({ count, markCount: count, mark: "running" });
+		assert.equal(childClause(tally(1)), "1 субагент работает");
+		assert.equal(childClause(tally(3)), "3 субагента работают");
+		assert.equal(childClause(tally(5)), "5 субагентов работают");
+		assert.equal(childClause(tally(21)), "21 субагент работает");
+		assert.equal(childCountLabel({ childCount: 1 }), "1 дочерний");
+		assert.equal(childCountLabel({ childCount: 2 }), "2 дочерних");
+		assert.equal(childCountLabel({ childCount: 11 }), "11 дочерних");
+	} finally {
+		i18n.setLocale("en");
+		i18n.clearRegisteredCatalogues();
+	}
+	assert.equal(
+		childClause({ count: 1, markCount: 1, mark: "running" }),
+		"1 subagent running",
+	);
+	assert.equal(
+		childClause({ count: 2, markCount: 1, mark: "running" }),
+		"2 subagents open",
+	);
+	assert.equal(
+		jobClause({ count: 3, markCount: 3, mark: "queued" }),
+		"3 jobs queued",
+	);
+	assert.equal(
+		busiestClause({ count: 4, markCount: 1, mark: "running" }),
+		", 1 running",
+	);
+	assert.equal(childCountLabel({ childCount: 1 }), "1 child");
+	assert.equal(childCountLabel({ childCount: 2 }), "2 children");
+});
+
+test("C3: a row derived once keeps its state CODE and re-spells its label after a locale switch", () => {
+	// The row is what React memoises: it must hold the code, not English text,
+	// so the painted word follows the live locale without a re-derive.
+	const row = { stateWord: "running" };
+	const cancelled = { stateWord: CANCELLED_BEFORE_START };
+	const wire = { stateWord: "reticulating" };
+	assert.equal(childStateLabel(row), "running");
+	i18n.registerCatalogue("fr", {
+		"ui.chat.run_details.state.running": "en cours",
+		"ui.chat.run_details.state.cancelled_before_start": "annulé avant le début",
+		"ui.chat.run_details.tally.running": "{count, number} en cours",
+		"ui.chat.run_details.todos.tally_closed":
+			"{closed, number} sur {total, number} terminées",
+	});
+	i18n.setLocale("fr");
+	try {
+		assert.equal(childStateLabel(row), "en cours");
+		assert.equal(childStateLabel(cancelled), "annulé avant le début");
+		// The wire's own word for a state the model does not know is data.
+		assert.equal(childStateLabel(wire), "reticulating");
+		assert.equal(row.stateWord, "running");
+		assert.equal(
+			subagentTally([
+				{ status: "running", stateWord: "running" },
+				{ status: "running", stateWord: "running" },
+			]),
+			"2 en cours",
+		);
+	} finally {
+		i18n.setLocale("en");
+		i18n.clearRegisteredCatalogues();
+	}
+	assert.equal(childStateLabel(row), "running");
+	assert.equal(childStateLabel(cancelled), CANCELLED_BEFORE_START);
 });
