@@ -17,7 +17,7 @@
 	"ui.ownerAudit.admitted": "Admitido por tu jefe de gabinete",
 	"ui.ownerAudit.rejected": "Rechazado por el filtrado de tu jefe de gabinete",
 	"ui.ownerAudit.not_screened": "No filtrado por tu jefe de gabinete",
-	"ui.ownerAudit.held_review": "Retenido para tu revisión en la sesión de tu jefe de gabinete",
+	"ui.ownerAudit.held_review": "Retenido para tu revisión en Aprobaciones de Team Bridge",
 	"ui.ownerAudit.screening": "En proceso de filtrado por tu jefe de gabinete",
 	"ui.ownerAudit.screening_retry": "Tu jefe de gabinete aún no pudo filtrarlo; reintentando",
 	"ui.ownerAudit.delivery_pending": "Filtrado; entrega a tu jefe de gabinete pendiente",

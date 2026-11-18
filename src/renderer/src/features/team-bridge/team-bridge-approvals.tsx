@@ -32,6 +32,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Info, ShieldAlert } from "lucide-react";
 import {
+	type ReactNode,
 	useCallback,
 	useEffect,
 	useId,
@@ -62,6 +63,7 @@ import {
 	senderLabel,
 	toggleSelected,
 } from "./team-bridge-approvals-model";
+import { TeamBridgeHeldMessages } from "./team-bridge-held-messages";
 import {
 	type ApprovalFlowState,
 	useApprovalDecide,
@@ -69,6 +71,7 @@ import {
 	useApprovalRequests,
 	useForeignPromptTraces,
 } from "./use-team-bridge-approvals";
+import { useHoldsSupported } from "./use-team-bridge-holds";
 
 type ListState = "loading" | "error" | "ready";
 
@@ -123,7 +126,10 @@ export function TeamBridgeRequestsView({
 	history,
 	initialTab = "waiting",
 	initialSelected,
+	held = null,
 }: {
+	/** The "Held messages" section, drawn under the waiting requests (B4b). */
+	held?: ReactNode;
 	/** Rows ticked on first render; stories use it to frame the batch bar. */
 	initialSelected?: readonly string[];
 	/** Which tab opens first; stories and frames use it to show the history. */
@@ -395,6 +401,7 @@ export function TeamBridgeRequestsView({
 							</ul>
 						</>
 					)}
+					{held}
 				</TabsContent>
 				<TabsContent value="history">
 					<DecisionHistory
@@ -847,6 +854,7 @@ export function TeamBridgeRequests() {
 		[rows],
 	);
 	const decide = useApprovalDecide(lookup);
+	const holdsSupported = useHoldsSupported();
 	const listState: ListState = requests.isError
 		? "error"
 		: requests.isPending
@@ -859,6 +867,7 @@ export function TeamBridgeRequests() {
 			: "ready";
 	return (
 		<TeamBridgeRequestsView
+			held={holdsSupported ? <TeamBridgeHeldMessages /> : null}
 			listState={listState}
 			rows={rows}
 			flow={decide.state}

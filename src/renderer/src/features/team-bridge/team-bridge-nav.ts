@@ -1,11 +1,13 @@
 import { t } from "@shared/i18n";
 import { MessagesSquare } from "lucide-react";
 import { requestsWaitingLabel } from "./team-bridge-approvals-model";
+import { actionableHoldCount } from "./team-bridge-holds-model";
 import { TEAM_BRIDGE_ALL_SCOPE } from "./team-bridge-model";
 import { useTeamBridgeAccount } from "./team-bridge-owner";
 import { useTeamBridgeUnreadView } from "./team-bridge-unread-sync";
 import { useTeamBridgeStatus, useTeamBridgeUnread } from "./use-team-bridge";
 import { useApprovalRequests } from "./use-team-bridge-approvals";
+import { useHeldMessages } from "./use-team-bridge-holds";
 
 /**
  * The sidebar descriptor for the Team Bridge row.
@@ -79,8 +81,13 @@ export function useTeamBridgeNavItem(
 	 * `pending_count` is the DECIDABLE rows only, the ones a person can act on.
 	 */
 	const requests = useApprovalRequests(ready);
+	/* Held messages the owner can act on count toward the same badge: they are
+	   decided on the same Approvals panel the badge opens (B4b). */
+	const holds = useHeldMessages(ready);
 	if (!enabled) return null;
-	const waiting = ready ? (requests.data?.pending_count ?? 0) : 0;
+	const requestCount = ready ? (requests.data?.pending_count ?? 0) : 0;
+	const heldCount = ready ? actionableHoldCount(holds.data) : 0;
+	const waiting = requestCount + heldCount;
 	// Disabled observers can still expose cached data: unresolved auth is zero.
 	const unreadTotal = ready && unread.data ? view.total : 0;
 	return {
@@ -97,7 +104,14 @@ export function useTeamBridgeNavItem(
 		attention: waiting > 0 ? waiting : unreadTotal,
 		attentionTag: TEAM_BRIDGE_BADGE_TAG,
 		attentionName: (count: number) => {
-			const label = waiting > 0 ? requestsWaitingLabel(count) : null;
+			/* Requests alone keep their own wording; once holds are in the count
+			   the label names "items", since not all of them are requests. */
+			const label =
+				waiting <= 0
+					? null
+					: heldCount > 0
+						? t("ui.teamBridge.holds.waiting_total", { count })
+						: requestsWaitingLabel(count);
 			return label
 				? t("ui.teamBridge.approvals.nav_name", { label })
 				: t("ui.teamBridge.nav.unread", { count });
