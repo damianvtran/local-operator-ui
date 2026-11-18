@@ -1,0 +1,129 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation re-audit (i18n round 2, after round-1 remediation), PR #1978 move dialog working set + destination probe",
+  "locale": "ru",
+  "namespace": "ui.mesh",
+  "pr": 1978,
+  "date": "2026-11-18",
+  "head": "486ef6f27052ab3d0695c8f005d76968e1375021",
+  "instance": "d11d211390f8-pr1978-r2-ru",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (lopdev task subagent); did not translate, remediate or author these strings, and is not the round-1 auditor",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Auditor session d11d211390f8 (task role, lopdev lane move-working-set, manager 35c4f00e8d73). Translators were different runs: agent coder, session 76c99189cb1d (initial 42 keys, job eacba7a3806e) and the remediation coder job beaadf6c08ec (13 probe keys + round-1 fixes). Round-1 auditor was session b973c86b28e4. Same served model family (anthropic/claude-opus-5-5), different agent and run; no fallback. No MT or translation API used.",
+    "instance": "d11d211390f8-pr1978-r2-ru"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "references": {
+    "glossary": "damianvtran/local-operator i18n/glossary.md @ origin/main b941eb9dc (sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7)",
+    "style_guide": "damianvtran/local-operator i18n/style-guides/ru.md @ origin/main b941eb9dc (sha256 f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5)",
+    "context": "src/i18n/catalogues/en/ui.mesh.context.json @ 486ef6f27052ab3d0695c8f005d76968e1375021"
+  },
+  "findings": [
+    {
+      "id": "RU-R2-1",
+      "severity": "MINOR",
+      "key": "ui.mesh.mesh_actions.working_set_checkbox",
+      "keys": [
+        "ui.mesh.mesh_actions.working_set_checkbox",
+        "ui.mesh.mesh_actions.working_set_team_bridge"
+      ],
+      "problem": "Neuter agreement on a bare device display name: 'Подтверждаю, что {device} должно получить…' and '{device} не подключено к Team Bridge'. {device} is a user-chosen name (e.g. 'Mac mini', 'Рабочий ноутбук'), so the neuter short form assumes an elided 'устройство' and reads ungrammatical for most names. The ru corpus frames names as 'устройство {device}' / 'на устройстве {device}' (14 values) exactly to avoid this. Not in the required checkbox's meaning, but it is the consent line.",
+      "fix": "'Подтверждаю, что устройство {device} должно получить эти файлы'; 'Устройство {device} не подключено к Team Bridge, которым пользуется этот разговор. …'"
+    },
+    {
+      "id": "RU-R2-2",
+      "severity": "NIT",
+      "key": "ui.mesh.mesh_actions.working_set_probe_no_remote",
+      "problem": "'нет удалённого источника' for 'has no remote'; the ru corpus says 'удалённый репозиторий' (ui.* lop-update remedy).",
+      "fix": "'У этого репозитория нет удалённого репозитория…' or keep Latin 'нет remote'."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical checks on the committed bytes at 486ef6f270 (scratch node script with the repo's @formatjs/icu-messageformat-parser; negative control: the same signature/plural-arm comparison flags a dropped argument and a foreign arm on synthetic input): key set equals English (365 keys); base 1fb3d656c3..head diff of this file is exactly the 55 added working_set_* values (0 changed, 0 removed), so every other value is bytes covered by the superseded audits; every audited value parses with the same arguments, number skeletons (::group-off) and plural arguments as English; plural arms = the locale's CLDR categories, no foreign arm; no bidi controls (U+200E/F, U+202A-E, U+2066-9, U+061C); no ASCII '...'; no value identical to English. Rendered fit NOT verified (no rendered frames in this lane; Electron launch forbidden on this host)."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "mesh-working-set.tsx renders the probe's raw git error line (clone_detail) verbatim in mono when it is not a fixed probe code (PROBE_CODE). That untranslated line is diagnostic terminal output (an LTR island, acceptable under the style guides); once core #4241 replaces raw detail with fixed codes, any code the UI chooses to explain in words needs new keys in all 8 locales. Not an i18n finding at this head."
+    }
+  ],
+  "round1_disposition": "RU-1 (MAJOR) fixed: 'коммиты без push' / 'выполните push'; RU-2 fixed 'память сессии'; RU-3 fixed 'Подтверждаю, что…' (agreement follow-up RU-R2-1).",
+  "audited_values": {
+    "ui.mesh.mesh_actions.working_set_loading": "Проверяем, какие рабочие файлы отправит это перемещение…",
+    "ui.mesh.mesh_actions.working_set_error": "Не удалось проверить, какие рабочие файлы отправит это перемещение. Если у разговора есть рабочие файлы, перемещение попросит вас проверить их, прежде чем что-либо отправить.",
+    "ui.mesh.mesh_actions.working_set_warning": "Перемещение посреди разговора отправит все его рабочие файлы на {device}: рабочие деревья ниже с коммитами без push и незафиксированными изменениями, а также временные файлы и память сессии. Продолжайте, только если эта работа должна быть на {device}.",
+    "ui.mesh.mesh_actions.working_set_changed": "Рабочие файлы изменились после вашей проверки. Просмотрите обновлённый список и подтвердите снова.",
+    "ui.mesh.mesh_actions.working_set_sent_heading": "{count, plural, one {Будет отправлено {count, number, ::group-off} рабочее дерево} few {Будет отправлено {count, number, ::group-off} рабочих дерева} many {Будет отправлено {count, number, ::group-off} рабочих деревьев} other {Будет отправлено {count, number, ::group-off} рабочего дерева}} · всего {size}",
+    "ui.mesh.mesh_actions.working_set_detached": "отсоединённый HEAD",
+    "ui.mesh.mesh_actions.working_set_worktree_counts": "{unpushed, plural, one {{unpushed, number, ::group-off} коммит без push} few {{unpushed, number, ::group-off} коммита без push} many {{unpushed, number, ::group-off} коммитов без push} other {{unpushed, number, ::group-off} коммита без push}} · в индексе: {staged, number, ::group-off} · не в индексе: {unstaged, number, ::group-off} · неотслеживаемых: {untracked, number, ::group-off}",
+    "ui.mesh.mesh_actions.working_set_dest_path": "Окажется в {path}",
+    "ui.mesh.mesh_actions.working_set_clone": "На {device} ещё нет этого репозитория, поэтому он будет клонирован из {url}.",
+    "ui.mesh.mesh_actions.working_set_clone_sized": "На {device} ещё нет этого репозитория, поэтому он будет клонирован из {url} (около {size}).",
+    "ui.mesh.mesh_actions.working_set_withheld_heading": "Удержано — не отправляется",
+    "ui.mesh.mesh_actions.working_set_withheld_secret_path": "Похоже на файл с секретами, поэтому не отправляется.",
+    "ui.mesh.mesh_actions.working_set_withheld_secret_content": "Содержит значение, похожее на секрет, поэтому не отправляется.",
+    "ui.mesh.mesh_actions.working_set_withheld_history_secret_path": "Коммит без push добавляет файл, похожий на секрет, поэтому он не отправляется.",
+    "ui.mesh.mesh_actions.working_set_withheld_history_secret_content": "Коммит без push содержит значение, похожее на секрет, поэтому он не отправляется.",
+    "ui.mesh.mesh_actions.working_set_left_behind_heading": "Остаётся на месте",
+    "ui.mesh.mesh_actions.working_set_kind_dependency_tree": "Зависимости",
+    "ui.mesh.mesh_actions.working_set_kind_build_output": "Результаты сборки",
+    "ui.mesh.mesh_actions.working_set_kind_ignored": "Игнорируется Git",
+    "ui.mesh.mesh_actions.working_set_kind_loose_file": "Файл вне рабочего дерева",
+    "ui.mesh.mesh_actions.working_set_recreate_with": "восстановить командой {command}",
+    "ui.mesh.mesh_actions.working_set_reason_contended": "В этом рабочем дереве работает другой активный разговор, поэтому оно остаётся на месте.",
+    "ui.mesh.mesh_actions.working_set_reason_outside_home": "Это рабочее дерево находится вне домашней папки, поэтому его нельзя разместить на другом устройстве.",
+    "ui.mesh.mesh_actions.working_set_reason_unmerged": "В этом рабочем дереве есть неразрешённые конфликты слияния. Разрешите их и переместите снова.",
+    "ui.mesh.mesh_actions.working_set_reason_in_progress_operation": "Здесь выполняется слияние, перебазирование или cherry-pick. Завершите или прервите его и переместите снова.",
+    "ui.mesh.mesh_actions.working_set_reason_submodule": "Рабочие деревья с подмодулями пока не переносятся.",
+    "ui.mesh.mesh_actions.working_set_reason_lfs": "Рабочие деревья, использующие Git LFS, пока не переносятся.",
+    "ui.mesh.mesh_actions.working_set_reason_history_secret": "История без push содержит данные, похожие на секреты. Выполните push коммита или перепишите его либо уберите его из этой ветки, затем переместите снова.",
+    "ui.mesh.mesh_actions.working_set_reason_over_cap": "Слишком велико для этого перемещения. Выполните push или клонируйте его на другом устройстве, затем переместите снова.",
+    "ui.mesh.mesh_actions.working_set_reason_destination_conflict": "На другом устройстве по этому пути уже есть другая рабочая копия.",
+    "ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer": "Другое устройство пока не может принимать рабочие деревья. Обновите на нём Local Operator и переместите снова.",
+    "ui.mesh.mesh_actions.working_set_reason_unknown": "Не отправляется ({code}).",
+    "ui.mesh.mesh_actions.working_set_checkbox": "Подтверждаю, что {device} должно получить эти файлы",
+    "ui.mesh.mesh_actions.working_set_warning_leave": "Эта версия пока не переносит рабочие файлы. Рабочие деревья ниже останутся на месте, поэтому у разговора на {device} не будет их коммитов без push и незафиксированных изменений. Перед перемещением выполните push или зафиксируйте всё, что вам нужно.",
+    "ui.mesh.mesh_actions.working_set_warning_without": "Эти рабочие файлы нельзя отправить с этим перемещением, поэтому у разговора на {device} их не будет. Можно переместить без них или отменить и сначала выполнить push или зафиксировать работу.",
+    "ui.mesh.mesh_actions.working_set_unknown": "Не удалось проверить рабочие файлы, поэтому их нельзя отправить с этим перемещением и у разговора на {device} их не будет. Можно переместить без них или отменить и попробовать снова.",
+    "ui.mesh.mesh_actions.working_set_kept_heading": "{count, plural, one {{count, number, ::group-off} рабочее дерево остаётся на месте} few {{count, number, ::group-off} рабочих дерева остаются на месте} many {{count, number, ::group-off} рабочих деревьев остаются на месте} other {{count, number, ::group-off} рабочего дерева остаются на месте}}",
+    "ui.mesh.mesh_actions.working_set_checkbox_leave": "Я понимаю, что у разговора на {device} не будет этих файлов",
+    "ui.mesh.mesh_actions.working_set_clone_pending": "Если на другом устройстве нет этого репозитория, он будет клонирован из {url} после проверки свободного места.",
+    "ui.mesh.mesh_actions.working_set_reason_history_unscanned": "История без push слишком велика для проверки на секреты, поэтому не отправляется. Выполните push коммитов или уберите их из этой ветки, затем переместите снова.",
+    "ui.mesh.mesh_actions.working_set_reason_destination_cannot_clone": "Другое устройство не может клонировать этот репозиторий. Сначала клонируйте его там, затем переместите снова.",
+    "ui.mesh.mesh_actions.working_set_reason_not_transferred": "Не перемещено: эта версия пока не переносит рабочие деревья.",
+    "ui.mesh.mesh_actions.working_set_probe_ok": "{device} может выполнять fetch и push для этого репозитория.",
+    "ui.mesh.mesh_actions.working_set_probe_cannot_fetch": "{device} не может выполнить fetch {remote} со своим доступом.",
+    "ui.mesh.mesh_actions.working_set_probe_cannot_push": "{device} может выполнить fetch {remote}, но не может выполнить в него push.",
+    "ui.mesh.mesh_actions.working_set_probe_cannot_clone": "{device} не будет использовать {remote}: адрес не разрешён или там не установлен Git.",
+    "ui.mesh.mesh_actions.working_set_probe_no_remote": "У этого репозитория нет удалённого источника, поэтому {device} не может выполнить для него fetch или push.",
+    "ui.mesh.mesh_actions.working_set_probe_unknown": "Не удалось проверить, есть ли у {device} доступ к этим репозиториям. Возможно, там установлена более старая версия Local Operator.",
+    "ui.mesh.mesh_actions.working_set_probe_https_rewrite": "С {device} SSH до него не доходит, а HTTPS доходит: {url}",
+    "ui.mesh.mesh_actions.working_set_probe_remedy": "Чтобы исправить, выполните это на устройстве, которое предоставляет доступ к GitHub:",
+    "ui.mesh.mesh_actions.working_set_probe_copy": "Копировать команду",
+    "ui.mesh.mesh_actions.working_set_missing_tools": "На {device} нет инструментов, нужных этим проектам. Перемещение всё равно выполнится; установите их там перед сборкой или тестами:",
+    "ui.mesh.mesh_actions.working_set_row_missing_tools": "Нет на {device}: {tools}",
+    "ui.mesh.mesh_actions.working_set_team_bridge": "{device} не подключено к Team Bridge, которым пользуется этот разговор. Перемещение всё равно выполнится.",
+    "ui.mesh.mesh_actions.working_set_kept_heading_on": "{count, plural, one {{count, number, ::group-off} рабочее дерево остаётся на {source}} few {{count, number, ::group-off} рабочих дерева остаются на {source}} many {{count, number, ::group-off} рабочих деревьев остаются на {source}} other {{count, number, ::group-off} рабочего дерева остаются на {source}}}"
+  },
+  "prior_audits": [
+    {
+      "instance": "b973c86b28e4-pr1978-r1-ru",
+      "covers": "round 1 of the 42 working_set_* keys at dd014c1e9d; its findings are re-checked above and the row's audit moves to superseded"
+    }
+  ],
+  "scope": "PR #1978 i18n round 2 (1fb3d656c3..486ef6f270): all 55 added ui.mesh.mesh_actions.working_set_* keys (42 round-1 keys incl. remediation + 13 destination-probe/prereq keys), read in full against English and translator context; the other 310 values are unchanged bytes covered by prior audits",
+  "binding": "Verified on the committed tree at 486ef6f27052ab3d0695c8f005d76968e1375021 (worktree .worktrees/move-confirm-dialog): target src/i18n/catalogues/ru/ui.mesh.json sha256 d916c9bbe7ab48b1b00d42e99fc6786a2666d3259c9e3c873b08cfe4611bae0b; English sha256 d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa; context sha256 177847b403d425e425346371763a0380f4104ed64e7f331065688d03239707b9.",
+  "en_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
+  "context_sha256": "177847b403d425e425346371763a0380f4104ed64e7f331065688d03239707b9",
+  "target_sha256": "d916c9bbe7ab48b1b00d42e99fc6786a2666d3259c9e3c873b08cfe4611bae0b",
+  "sha256": {
+    "ru": "d916c9bbe7ab48b1b00d42e99fc6786a2666d3259c9e3c873b08cfe4611bae0b",
+    "en": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa"
+  }
+}
