@@ -268,6 +268,10 @@ type BandProps = {
 	recording?: boolean;
 	/** Nothing connected: the connect card replaces the chips (design section 6). */
 	noProvider?: boolean;
+	/** A provider is connected but no model is chosen (D4's second block). */
+	noModel?: boolean;
+	/** The background service answered offline (D4's third block). */
+	serverOffline?: boolean;
 };
 
 const composerBand = ({
@@ -276,6 +280,8 @@ const composerBand = ({
 	pool,
 	draft,
 	noProvider,
+	noModel,
+	serverOffline,
 	recording,
 }: BandProps) => {
 	const conversation = conversationFor(story);
@@ -287,6 +293,8 @@ const composerBand = ({
 			initialSuggestions={pool ?? DEFAULT_MESSAGE_SUGGESTIONS}
 			isSmallView={isSmallView ?? false}
 			noProvider={noProvider ?? false}
+			noModel={noModel ?? false}
+			serverOffline={serverOffline ?? false}
 			recordingProbe={recording ? GRANTED_RECORDING_PROBE : undefined}
 			onSendMessage={async () => true}
 		/>
@@ -386,6 +394,33 @@ export const EmptyChatNoProvider: Story = {
 	),
 };
 
+/**
+ * D4 (onboarding friction, 2026-11): the composer's "cannot send" line, one per
+ * block, directly under the box and visible BEFORE any press. Each carries its
+ * one-click fix. `EmptyChatNoProvider` above is the same line under the connect
+ * card; these two are the other blocks, on a chat that already has history so
+ * the splash is not there to explain it.
+ */
+export const BlockedNoModel: Story = {
+	render: () => (
+		<Column label="no model chosen: the line under the box says so and offers Choose a model">
+			{composerBand({
+				story: "blocked-no-model",
+				noModel: true,
+				draft: "Summarise my inbox",
+			})}
+		</Column>
+	),
+};
+
+export const BlockedServerOffline: Story = {
+	render: () => (
+		<Column label="background service offline: the line under the box says so and offers Reconnect">
+			{composerBand({ story: "blocked-offline", serverOffline: true })}
+		</Column>
+	),
+};
+
 /** The same state in the small view, where the band shows the status line. */
 export const EmptyChatNoProviderSmall: Story = {
 	render: () => (
@@ -410,6 +445,22 @@ export const ColumnFloor: Story = {
 			width={550}
 		>
 			{composerBand({ story: "column-floor" })}
+		</Column>
+	),
+};
+
+/**
+ * The D4 line at the column floor (design round 1 evidence gap 2): the longest
+ * block sentence and its fix at the narrowest column, the frame long locales
+ * (ru runs up to 2.5x English) are checked against with `?args=locale:ru`.
+ */
+export const BlockedColumnFloor: Story = {
+	render: () => (
+		<Column
+			label="column floor (550px): the offline block line and its Reconnect"
+			width={550}
+		>
+			{composerBand({ story: "blocked-floor", serverOffline: true })}
 		</Column>
 	),
 };

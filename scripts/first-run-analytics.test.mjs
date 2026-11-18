@@ -29,6 +29,7 @@ const built = await build({
 			'export * from "./src/renderer/src/shared/analytics/product-events";',
 			'export { startupPanelPhase, backendStatusEvent, claimBackendStatusReport, failedBandCopy } from "./src/renderer/src/shared/components/common/backend-startup-rules";',
 			'export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
+			'export { checkLocalProvider } from "./src/renderer/src/features/providers/local-provider-check";',
 		].join("\n"),
 		resolveDir: repo,
 	},
@@ -284,4 +285,89 @@ test("a post-ready death reads as stopped, not as a failed start (U2)", () => {
 	const before = mod.failedBandCopy(failed());
 	assert.notEqual(after.title, before.title);
 	assert.notEqual(after.reason, before.reason);
+});
+
+/*
+ * Base convergence after #1963: #1962 rebuilt the local-model check into a
+ * diagnosis and #1963 instrumented the old one, in the same handler. The merge
+ * keeps one emit per probe; this pins it, so a second instrumentation of the
+ * same check (or a listing read that reports too) shows up as a count.
+ */
+test("local_model_check: exactly one row per probe, none without an address", async () => {
+	const seen = [];
+	mod.setProductEventSink((name, properties) => seen.push([name, properties]));
+	const ollama = { id: "ollama", base_url: "http://localhost:11434/v1" };
+	const io = (probe, listModels = async () => ["qwen3:8b"]) => ({
+		probe,
+		listModels,
+	});
+	try {
+		const ready = await mod.checkLocalProvider(
+			ollama,
+			io(async () => ({ reachable: true, detail: "A server answered (200)." })),
+		);
+		assert.equal(ready.kind, "ready");
+		assert.deepEqual(seen, [
+			[
+				"local_model_check",
+				{ provider: "ollama", result: "reachable", reason: "none" },
+			],
+		]);
+
+		seen.length = 0;
+		// A listing that fails after a reachable probe is not a second row.
+		await mod.checkLocalProvider(
+			ollama,
+			io(
+				async () => ({ reachable: true, detail: "A server answered (200)." }),
+				async () => {
+					throw new Error("listing down");
+				},
+			),
+		);
+		assert.equal(seen.length, 1);
+
+		seen.length = 0;
+		const down = await mod.checkLocalProvider(
+			ollama,
+			io(async () => ({ reachable: false, detail: "No server answered." })),
+		);
+		assert.equal(down.kind, "not_running");
+		assert.deepEqual(seen, [
+			[
+				"local_model_check",
+				{ provider: "ollama", result: "unreachable", reason: "not_answering" },
+			],
+		]);
+
+		seen.length = 0;
+		const failed = await mod.checkLocalProvider(
+			ollama,
+			io(async () => {
+				throw new TypeError("Failed to fetch");
+			}),
+		);
+		assert.equal(failed.kind, "check_failed");
+		assert.equal(seen.length, 1);
+		assert.equal(seen[0][1].result, "error");
+		assert.ok(
+			mod.LOCAL_MODEL_CHECK_REASONS.includes(seen[0][1].reason),
+			`reason ${seen[0][1].reason} is in the declared vocabulary`,
+		);
+
+		seen.length = 0;
+		let probed = false;
+		const none = await mod.checkLocalProvider(
+			{ id: "openai-compatible", base_url: null },
+			io(async () => {
+				probed = true;
+				return { reachable: true, detail: "" };
+			}),
+		);
+		assert.equal(none.kind, "no_address");
+		assert.equal(probed, false);
+		assert.deepEqual(seen, []);
+	} finally {
+		mod.setProductEventSink("default");
+	}
 });

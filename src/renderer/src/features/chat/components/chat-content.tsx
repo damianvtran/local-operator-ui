@@ -40,6 +40,7 @@ import { PanelRail } from "@shared/components/navigation/panel-rail";
 import { InPanelRailHost } from "@shared/components/navigation/panel-rail-host";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { useServerOffline } from "@shared/hooks/use-connectivity-status";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
@@ -1101,6 +1102,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * connected that this app cannot name a model for (UX round 5, U21).
 		 */
 		const { needsProvider, needsModel } = useProviderStatus();
+		/*
+		 * The composer's third "cannot send" fact (D4): the background service is
+		 * not answering. A passive read of the query `ChatStatusStrip` polls; see
+		 * `useServerOffline` for why it is one boolean and not the snapshot.
+		 */
+		const serverOffline = useServerOffline();
 		const archiveEnabled = desktopFeatureEnabled(
 			capabilities.data,
 			"session_archive",
@@ -3407,6 +3414,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
 								noProvider={needsProvider}
 								noModel={needsModel}
+								serverOffline={serverOffline}
 								deviceHold={deviceHold}
 								/*
 								 * A TEMPORARY DRAFT SAYS SO IN THE BOX (design round 1, D1): the
