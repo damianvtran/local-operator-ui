@@ -22,6 +22,10 @@ import {
 import { queryClient as appQueryClient } from "@shared/api/query-client";
 import { type QueryClient, useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
+import {
+	type VoiceProviderStatus,
+	readVoiceProviderStatus,
+} from "../../../../shared/desktop-contract";
 import type {
 	DesktopVoiceActive,
 	DesktopVoiceControlResult,
@@ -80,12 +84,45 @@ export type VoiceStatus = {
 	state: DesktopVoiceState | undefined;
 };
 
+const readVoiceStatus = () =>
+	desktopResult<DesktopVoiceState>({ op: "voice.status" });
+
+/**
+ * THE SPEECH PROVIDER, for the Settings page. Same query entry as
+ * `useVoiceStatus` (one read, one cache), but gated on the daemon serving voice
+ * ONLY - not on the hands-free switch. The provider is not a hands-free setting:
+ * it decides who hears and speaks everywhere, the Speak button included, so a
+ * person with the switch off still has to see and choose it. The read costs the
+ * daemon one credential-store look and no network call, and it is made only
+ * while Settings is open, so "voice off" still means the app's voice machinery
+ * asks the daemon nothing.
+ */
+export function useVoiceProviders(): VoiceProviderStatus & {
+	/** The daemon serves voice at all; false hides the choice. */
+	available: boolean;
+	loaded: boolean;
+} {
+	const capabilities = useDesktopCapabilities();
+	const available = desktopFeatureEnabled(capabilities.data, "voice", 1);
+	const query = useQuery({
+		queryKey: voiceKeys.status,
+		queryFn: readVoiceStatus,
+		enabled: available,
+		staleTime: 15_000,
+	});
+	return {
+		...readVoiceProviderStatus(query.data),
+		available,
+		loaded: query.data !== undefined,
+	};
+}
+
 export function useVoiceStatus(): VoiceStatus {
 	const enabled = useVoiceCapability();
 	const setActive = useVoiceStore((s) => s.setActive);
 	const query = useQuery({
 		queryKey: voiceKeys.status,
-		queryFn: () => desktopResult<DesktopVoiceState>({ op: "voice.status" }),
+		queryFn: readVoiceStatus,
 		enabled,
 		staleTime: 15_000,
 		refetchInterval: 60_000,

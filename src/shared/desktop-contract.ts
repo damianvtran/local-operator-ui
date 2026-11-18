@@ -11,6 +11,10 @@ export type DesiredTag = { id?: string; name: string };
 
 import { z } from "zod";
 import { agentMessagesBoundarySchema } from "./agent-messages-contract";
+import type {
+	SpeechProvider,
+	SpeechProviderReadiness,
+} from "./desktop-control-contract";
 // The feed's frame family lives beside the session stream's, so the two cannot
 // drift into disagreeing about the envelope they deliberately share.
 import type { DesktopFeedFrame } from "./desktop-session-contract";
@@ -5894,6 +5898,10 @@ export const VOICE_REFUSAL_CODES = [
 	"voice_unavailable",
 	"voice_upload_too_large",
 	"unknown_segment",
+	// No speech provider is chosen (backend `speech.provider`): the recording and
+	// the reply are refused before anything is sent anywhere. Its sentence names
+	// both choices, so it travels as the refusal's own text.
+	"voice_provider_unset",
 ] as const;
 export type VoiceRefusalCode = (typeof VOICE_REFUSAL_CODES)[number];
 
@@ -5904,6 +5912,62 @@ export function isVoiceRefusalCode(
 		code !== undefined &&
 		(VOICE_REFUSAL_CODES as readonly string[]).includes(code)
 	);
+}
+
+/** The speech providers, in the order Settings lists them. */
+export const SPEECH_PROVIDERS = ["radient", "elevenlabs"] as const;
+
+export function isSpeechProvider(value: unknown): value is SpeechProvider {
+	return (
+		typeof value === "string" &&
+		(SPEECH_PROVIDERS as readonly string[]).includes(value)
+	);
+}
+
+/** What a `voice.status` answer says about the one speech provider. */
+export type VoiceProviderStatus = {
+	/** The chosen provider; null when none is chosen OR the value is not one of ours. */
+	provider: SpeechProvider | null;
+	/** Each provider's readiness; null when the backend sent none (an older one). */
+	providers: Record<SpeechProvider, SpeechProviderReadiness> | null;
+};
+
+function readReadiness(value: unknown): SpeechProviderReadiness {
+	const entry = value as { ready?: unknown; reason?: unknown } | null;
+	return {
+		ready: entry?.ready === true,
+		reason:
+			typeof entry?.reason === "string" && entry.reason.trim()
+				? entry.reason
+				: null,
+	};
+}
+
+/**
+ * The provider half of a `voice.status` result, tolerant of every shape it has
+ * had. An older backend sends neither field; a value left behind by an earlier
+ * build of this app (an engine word) or by a hand edit is not one of the two
+ * providers. All of those read as "none chosen", which is the one reading that
+ * starts nothing: hands-free voice only ever starts for a provider this function
+ * names.
+ */
+export function readVoiceProviderStatus(result: unknown): VoiceProviderStatus {
+	const value = result as {
+		provider?: unknown;
+		providers?: unknown;
+	} | null;
+	const provider = isSpeechProvider(value?.provider) ? value.provider : null;
+	const raw = value?.providers;
+	const providers =
+		typeof raw === "object" && raw !== null
+			? {
+					radient: readReadiness((raw as Record<string, unknown>).radient),
+					elevenlabs: readReadiness(
+						(raw as Record<string, unknown>).elevenlabs,
+					),
+				}
+			: null;
+	return { provider, providers };
 }
 
 export type DesktopMediaResponse =

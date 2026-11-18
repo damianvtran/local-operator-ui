@@ -22,7 +22,8 @@ import React, { act } from "react";
 const mountBundle = await build({
 	stdin: {
 		contents: `
-			export { useVoiceStatus, controlVoice, applyVoiceActive, voiceKeys } from "./src/renderer/src/features/voice/use-voice-status";
+			export { useVoiceStatus, useVoiceProviders, controlVoice, applyVoiceActive, voiceKeys } from "./src/renderer/src/features/voice/use-voice-status";
+			export { readVoiceProviderStatus, isVoiceRefusalCode, VOICE_REFUSAL_CODES } from "./src/shared/desktop-contract";
 			export { useVoiceStore } from "./src/renderer/src/features/voice/voice-store";
 			export { useVoiceSwitchStore } from "./src/renderer/src/features/voice/use-voice-switch";
 			export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
@@ -74,14 +75,17 @@ async function rig({ switchOn = true } = {}) {
 	globalThis.window = dom.window;
 	globalThis.document = dom.window.document;
 	globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-	const server = { holder: A, holdGets: false, gets: 0 };
+	const server = { holder: A, holdGets: false, gets: 0, extra: {} };
 	dom.window.api = {
 		desktop: {
 			request: async (request) => {
 				if (request.op === "voice.status") {
 					server.gets += 1;
 					if (server.holdGets) return new Promise(() => undefined);
-					return { status: 200, body: { result: statusBody(server.holder) } };
+					return {
+						status: 200,
+						body: { result: { ...statusBody(server.holder), ...server.extra } },
+					};
 				}
 				if (request.op === "voice.control") {
 					const replaced =
@@ -239,4 +243,114 @@ test("SWITCH: with the switch off no GET /voice is made and the holder stays nul
 	assert.equal(mod.useVoiceStore.getState().active, undefined, "never applied");
 	assert.equal(seen.current.activeSessionId, null);
 	await unmount();
+});
+
+/*
+ * THE ONE SPEECH PROVIDER (backend `speech.provider`, `GET /v1/desktop/voice`).
+ * `provider` is the choice (null = none chosen) and `providers` says whether each
+ * could serve; an older backend sends neither, and that must read as "no choice"
+ * and "no readiness", never as ready.
+ */
+const READY = { ready: true, reason: null };
+const NO_KEY = { ready: false, reason: "No ElevenLabs API key is stored." };
+
+test("PROVIDER: the reader keeps a chosen provider and each one's readiness", () => {
+	return import(`${mountPath.href}?${Math.random()}`).then((mod) => {
+		assert.deepEqual(
+			mod.readVoiceProviderStatus({
+				active: null,
+				provider: "elevenlabs",
+				providers: { radient: READY, elevenlabs: NO_KEY },
+			}),
+			{
+				provider: "elevenlabs",
+				providers: { radient: READY, elevenlabs: NO_KEY },
+			},
+		);
+		assert.equal(
+			mod.readVoiceProviderStatus({ provider: null, providers: null }).provider,
+			null,
+		);
+	});
+});
+
+test("PROVIDER: an older backend, junk and an old stored value all read as 'none chosen'", async () => {
+	const mod = await import(`${mountPath.href}?${Math.random()}`);
+	const none = { provider: null, providers: null };
+	for (const input of [
+		undefined,
+		null,
+		"x",
+		7,
+		{},
+		{ active: null },
+		{ provider: "openai" },
+		{ provider: "local" },
+		{ provider: "byok" },
+		{ provider: 3 },
+	]) {
+		assert.deepEqual(mod.readVoiceProviderStatus(input), none, String(input));
+	}
+	// A readiness entry that is not {ready: boolean} is "not ready", with no
+	// sentence invented for it; a missing one is "not ready" too.
+	const partial = mod.readVoiceProviderStatus({
+		provider: "radient",
+		providers: { radient: { ready: "yes" }, elevenlabs: { ready: true } },
+	});
+	assert.deepEqual(partial.providers.radient, { ready: false, reason: null });
+	assert.deepEqual(partial.providers.elevenlabs, { ready: true, reason: null });
+	const missing = mod.readVoiceProviderStatus({
+		provider: "radient",
+		providers: { radient: READY },
+	});
+	assert.deepEqual(missing.providers.elevenlabs, {
+		ready: false,
+		reason: null,
+	});
+});
+
+test("PROVIDER: the provider-unset refusal is a declared voice code", async () => {
+	const mod = await import(`${mountPath.href}?${Math.random()}`);
+	assert.equal(mod.isVoiceRefusalCode("voice_provider_unset"), true);
+});
+
+test("PROVIDER: the Settings reader sees provider and readiness with the voice switch OFF", async () => {
+	const { mod, server, mount, unmount, dom } = await rig({ switchOn: false });
+	server.extra = {
+		provider: "radient",
+		providers: { radient: READY, elevenlabs: NO_KEY },
+	};
+	const seen = { current: null };
+	const { createRoot } = await import("react-dom/client");
+	const client = new mod.QueryClient({
+		defaultOptions: {
+			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+		},
+	});
+	client.setQueryData(mod.desktopKeys.capabilities, {
+		desktop_available: true,
+		features: { voice: 1 },
+	});
+	const root = createRoot(dom.window.document.getElementById("root"));
+	await act(async () => {
+		root.render(
+			React.createElement(
+				mod.QueryClientProvider,
+				{ client },
+				React.createElement(() => {
+					seen.current = mod.useVoiceProviders();
+					return null;
+				}),
+			),
+		);
+	});
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 20));
+	});
+	assert.equal(server.gets, 1, "the settings read asks once");
+	assert.equal(seen.current.provider, "radient");
+	assert.deepEqual(seen.current.providers.elevenlabs, NO_KEY);
+	await act(async () => root.unmount());
+	void mount;
+	void unmount;
 });

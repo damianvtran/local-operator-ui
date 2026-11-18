@@ -734,8 +734,31 @@ export type DesktopVoiceState = {
 	 * ABSENT on a backend that predates pinned voice: read absence as "unknown",
 	 * never as "ready". `ready` is false when no ElevenLabs key is stored, even
 	 * if another provider's login is; pinned voice never falls through to one.
+	 * Kept by the backend for older apps; this app reads `providers` instead.
 	 */
 	byok?: { provider: "elevenlabs"; ready: boolean; reason: string };
+	/**
+	 * THE ONE SPEECH PROVIDER the person chose (`speech.provider`): hearing,
+	 * speaking, hands-free voice and the Speak button all use it and nothing else.
+	 * `null` is "none chosen". ABSENT on a backend that predates the choice; read
+	 * it through `readVoiceProviderStatus`, which also drops a value this app does
+	 * not know.
+	 */
+	provider?: SpeechProvider | null;
+	/** Whether each provider can both hear and speak right now, and why not. */
+	providers?: Record<SpeechProvider, SpeechProviderReadiness>;
+};
+
+/** The two speech providers a person can choose; there is no third. */
+export type SpeechProvider = "radient" | "elevenlabs";
+
+/**
+ * `ready`: the provider can both hear and speak. `reason`: the backend's own
+ * sentence when it cannot (null when ready, or when the backend sent none).
+ */
+export type SpeechProviderReadiness = {
+	ready: boolean;
+	reason: string | null;
 };
 
 /** `POST /v1/desktop/voice/text`'s answer: the words to speak, already cleaned. */
