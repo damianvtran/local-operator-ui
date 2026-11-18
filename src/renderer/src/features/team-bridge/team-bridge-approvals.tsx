@@ -71,7 +71,7 @@ import {
 	useApprovalRequests,
 	useForeignPromptTraces,
 } from "./use-team-bridge-approvals";
-import { useHoldsSupported } from "./use-team-bridge-holds";
+import { useHeldMessages, useHoldsSupported } from "./use-team-bridge-holds";
 
 type ListState = "loading" | "error" | "ready";
 
@@ -127,9 +127,17 @@ export function TeamBridgeRequestsView({
 	initialTab = "waiting",
 	initialSelected,
 	held = null,
+	heldCount = 0,
 }: {
 	/** The "Held messages" section, drawn under the waiting requests (B4b). */
 	held?: ReactNode;
+	/**
+	 * Held messages listed (design D1 / UX U1). While any are listed and no
+	 * request waits, the held section comes FIRST and the requests empty line
+	 * is not drawn: a badge that says "N items waiting" must not open on
+	 * "No requests are waiting."
+	 */
+	heldCount?: number;
 	/** Rows ticked on first render; stories use it to frame the batch bar. */
 	initialSelected?: readonly string[];
 	/** Which tab opens first; stories and frames use it to show the history. */
@@ -164,6 +172,7 @@ export function TeamBridgeRequestsView({
 	const sectionRef = useRef<HTMLElement>(null);
 	const statusRef = useRef<HTMLDivElement>(null);
 	const inFlight = flow.phase === "authorizing" || flow.phase === "deciding";
+	const heldFirst = heldCount > 0 && rows.length === 0;
 	/*
 	 * Once the daemon says batch deciding needs Touch ID this Mac lacks, the
 	 * batch controls and the row buttons go away and every row offers its card
@@ -285,6 +294,7 @@ export function TeamBridgeRequestsView({
 							onDismiss={onDismissFlow}
 						/>
 					</div>
+					{heldFirst && held}
 					{listState === "loading" && rows.length === 0 ? (
 						<Spinner size="sm" label={t("ui.teamBridge.approvals.loading")} />
 					) : listState === "error" && rows.length === 0 ? (
@@ -299,9 +309,11 @@ export function TeamBridgeRequestsView({
 							)}
 						</div>
 					) : rows.length === 0 ? (
-						<p className="text-sm text-ink-muted">
-							{t("ui.teamBridge.approvals.empty")}
-						</p>
+						heldCount > 0 ? null : (
+							<p className="text-sm text-ink-muted">
+								{t("ui.teamBridge.approvals.empty")}
+							</p>
+						)
 					) : (
 						<>
 							{!batchUnavailable && decidable.length > 0 && (
@@ -401,7 +413,7 @@ export function TeamBridgeRequestsView({
 							</ul>
 						</>
 					)}
-					{held}
+					{!heldFirst && held}
 				</TabsContent>
 				<TabsContent value="history">
 					<DecisionHistory
@@ -855,6 +867,7 @@ export function TeamBridgeRequests() {
 	);
 	const decide = useApprovalDecide(lookup);
 	const holdsSupported = useHoldsSupported();
+	const holds = useHeldMessages(holdsSupported, { panel: true });
 	const listState: ListState = requests.isError
 		? "error"
 		: requests.isPending
@@ -867,7 +880,13 @@ export function TeamBridgeRequests() {
 			: "ready";
 	return (
 		<TeamBridgeRequestsView
-			held={holdsSupported ? <TeamBridgeHeldMessages /> : null}
+			held={
+				holdsSupported ? (
+					/* With no requests either, one empty state, not two (D1). */
+					<TeamBridgeHeldMessages hideWhenEmpty={rows.length === 0} />
+				) : null
+			}
+			heldCount={holdsSupported ? (holds.data?.items.length ?? 0) : 0}
 			listState={listState}
 			rows={rows}
 			flow={decide.state}

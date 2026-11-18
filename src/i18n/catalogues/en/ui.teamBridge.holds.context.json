@@ -27,13 +27,6 @@
 		"placeholders": {},
 		"note": "Team Bridge Approvals, Held messages section. Shown with a Retry button."
 	},
-	"ui.teamBridge.holds.retry": {
-		"role": "button",
-		"tone": "neutral",
-		"length": "1 word",
-		"placeholders": {},
-		"note": "Team Bridge Approvals, Held messages section. Retries loading the held messages."
-	},
 	"ui.teamBridge.holds.empty": {
 		"role": "empty state",
 		"tone": "calm",
@@ -97,7 +90,7 @@
 		"tone": "neutral",
 		"length": "1 word",
 		"placeholders": {},
-		"note": "Badge on a held message that no screener could check. Team Bridge Approvals, Held messages section. "
+		"note": "Team Bridge Approvals, Held messages section. Badge on a held message that no AI screening model read. The reason line beside it explains it."
 	},
 	"ui.teamBridge.holds.reason.new_work": {
 		"role": "reason line under the sender",
@@ -225,7 +218,7 @@
 		"placeholders": {
 			"sender": "sender line, already translated"
 		},
-		"note": "Team Bridge Approvals, Held messages section. "
+		"note": "Team Bridge Approvals, Held messages section. {sender} is the whole sender line, e.g. 'From Ana' or 'From Scout, Ana’s agent'. Do not add 'from' again."
 	},
 	"ui.teamBridge.holds.discard_label": {
 		"role": "accessible button name",
@@ -234,7 +227,7 @@
 		"placeholders": {
 			"sender": "sender line, already translated"
 		},
-		"note": "Team Bridge Approvals, Held messages section. "
+		"note": "Team Bridge Approvals, Held messages section. {sender} is the whole sender line, e.g. 'From Ana' or 'From Scout, Ana’s agent'. Do not add 'from' again."
 	},
 	"ui.teamBridge.holds.refusal.release_off": {
 		"role": "error message under a held message",
@@ -292,6 +285,129 @@
 		"placeholders": {
 			"count": "number of items"
 		},
-		"note": "Counts approval requests and held messages together. Keep the ICU plural arms."
+		"note": "Accessible name of the sidebar and Approvals badges when held messages are counted with approval requests. Keep the ICU plural arms."
+	},
+	"ui.teamBridge.holds.from_agent_unnamed": {
+		"role": "sender line",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"person": "the teammate's name"
+		},
+		"note": "Team Bridge Approvals, Held messages section. An agent wrote this message but has no name; it must never read as the person's own words."
+	},
+	"ui.teamBridge.holds.reason.action": {
+		"role": "reason line under the sender",
+		"tone": "plain, calm",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Why the message was held: a wait only the reader can clear (sign in, consent, setup)."
+	},
+	"ui.teamBridge.holds.reason.unscreened": {
+		"role": "reason line under the sender",
+		"tone": "plain, calm",
+		"length": "two sentences",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Explains the 'Not checked' badge: no AI model read the message. Deliver is still possible, so it asks the reader to read it first."
+	},
+	"ui.teamBridge.holds.key_file_only": {
+		"role": "disclosure note",
+		"tone": "factual, calm",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Shown when this device's signing key is a plain file. Other software running under the same user account could also record a decision. Device-neutral: never name a platform."
+	},
+	"ui.teamBridge.holds.cannot_verify": {
+		"role": "status line",
+		"tone": "calm",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. The shown text differs from what screening checked, so no buttons are offered."
+	},
+	"ui.teamBridge.holds.body_withheld": {
+		"role": "status line",
+		"tone": "calm",
+		"length": "one sentence",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. The message text was withheld, so only Discard is possible. Deliver and Discard match the button names."
+	},
+	"ui.teamBridge.holds.read_first": {
+		"role": "status line",
+		"tone": "calm",
+		"length": "short",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Deliver appears only after the reader opens the whole message."
+	},
+	"ui.teamBridge.holds.show_full": {
+		"role": "link button",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Expands a long message to its full text."
+	},
+	"ui.teamBridge.holds.show_full_attachments": {
+		"role": "link button",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"count": "number of attachments"
+		},
+		"note": "Team Bridge Approvals, Held messages section. Expands the message and shows its attachments."
+	},
+	"ui.teamBridge.holds.show_less": {
+		"role": "link button",
+		"tone": "neutral",
+		"length": "2 words",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Collapses the expanded message."
+	},
+	"ui.teamBridge.holds.confirm.deliver": {
+		"role": "confirmation question",
+		"tone": "calm, clear",
+		"length": "two short sentences",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Second step before Deliver. States the consequence. Not an OS prompt."
+	},
+	"ui.teamBridge.holds.confirm.discard": {
+		"role": "confirmation question",
+		"tone": "calm, clear",
+		"length": "two short sentences",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Second step before Discard. States the consequence."
+	},
+	"ui.teamBridge.holds.confirm.deliver_action": {
+		"role": "button",
+		"tone": "neutral",
+		"length": "2 words",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Confirms Deliver."
+	},
+	"ui.teamBridge.holds.confirm.discard_action": {
+		"role": "button",
+		"tone": "neutral",
+		"length": "2 words",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Confirms Discard."
+	},
+	"ui.teamBridge.holds.confirm.cancel": {
+		"role": "button",
+		"tone": "neutral",
+		"length": "1 word",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Leaves the confirmation without deciding."
+	},
+	"ui.teamBridge.holds.delivering": {
+		"role": "button label while busy",
+		"tone": "neutral",
+		"length": "1 word",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Shown on the pressed button while Deliver is recorded."
+	},
+	"ui.teamBridge.holds.discarding": {
+		"role": "button label while busy",
+		"tone": "neutral",
+		"length": "1 word",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Shown on the pressed button while Discard is recorded."
 	}
 }

@@ -21,8 +21,10 @@ import type { OwnerAuditMessage } from "../../../../shared/team-bridge-owner-aud
 import {
 	type HoldItem,
 	type HoldWord,
+	type JoinedDetail,
+	bindShownBody,
 	holdRefusalLabel,
-	shownBodySha256,
+	resolveHoldDetail,
 } from "./team-bridge-holds-model";
 import { teamBridgeKeys } from "./team-bridge-keys";
 import { readForBridgeOwner, useTeamBridgeAccount } from "./team-bridge-owner";
@@ -89,23 +91,34 @@ export function useHeldMessages(
 }
 
 /** What the owner-audit read says about one held message. */
-export type HeldMessageDetail =
-	| { state: "loading" }
-	| { state: "unavailable" }
-	| {
-			state: "ready";
-			message: OwnerAuditMessage;
-			/** `null` when the shown body cannot be bound (see the model). */
-			bodySha256: string | null;
-	  };
+export type HeldMessageDetail = JoinedDetail<OwnerAuditMessage>;
+
+/*
+ * Owner-audit refusals that mean "not in THIS organization" for one lookup:
+ * the conversation is absent (404), or this org refuses the read (403, a 409
+ * read refusal such as an ineligible org). The walk moves on to the next org
+ * instead of stranding the hold (security S-5). Anything else - an authority
+ * change, a transport failure - still throws.
+ */
+function notInThisOrg(error: unknown): boolean {
+	return (
+		error instanceof DesktopControlError &&
+		(error.status === 403 || error.status === 404 || error.status === 409)
+	);
+}
 
 /**
  * THE JOIN. The hold list carries no tenant, sender or body, by contract; the
  * owner-audit read the person can already open carries all three. A held
- * conversation lives in ONE of the account's organizations, so each
- * conversation is looked up across `status.tenants` in order and the first
- * organization that has it answers (a wrong organization answers
- * `conversation_not_found`, which here only means "not this one").
+ * conversation lives in ONE of the account's organizations, so each lookup
+ * walks `status.tenants` in order and the first organization that has it
+ * answers.
+ *
+ * ONE LOOKUP PER HELD MESSAGE, not per conversation (review M1): a page is at
+ * most 50 messages newest-first, so one page per conversation missed a second
+ * hold more than 50 messages older and left it undecidable forever. Each
+ * lookup pages from `before_seq = seq + 1`, so the held message is the newest
+ * row of its own page; a hold with no seq reads the latest page.
  *
  * Private data: `gcTime: 0`, like every owner-audit read, so nothing outlives
  * the section.
@@ -122,26 +135,16 @@ export function useHeldMessageDetails(
 	const tenantIds = (status.data?.status?.tenants ?? []).map(
 		(tenant) => tenant.tenant_id,
 	);
-	const conversations = [...new Set(items.map((item) => item.conversation_id))]
-		.filter(Boolean)
-		.map((conversationId) => ({
-			conversationId,
-			// The newest held seq bounds the page so every hold of the
-			// conversation is on it when at most 50 messages separate them.
-			beforeSeq: Math.max(
-				0,
-				...items
-					.filter((item) => item.conversation_id === conversationId)
-					.map((item) => item.seq ?? 0),
-			),
-		}));
-	const results = useQueries({
-		queries: conversations.map(({ conversationId, beforeSeq }) => ({
+	// QA Q1: a hold with no conversation id gets no lookup at all.
+	const joinable = items.filter((item) => Boolean(item.conversation_id));
+	const lookups = useQueries({
+		queries: joinable.map((item) => ({
 			queryKey: [
 				...holdsKey(accountId),
 				"detail",
-				conversationId,
-				beforeSeq,
+				item.conversation_id,
+				item.message_id,
+				item.seq,
 				tenantIds.join(","),
 			] as const,
 			enabled: auditSupported && Boolean(accountId) && tenantIds.length > 0,
@@ -154,54 +157,79 @@ export function useHeldMessageDetails(
 						const page = await readForBridgeOwner(client, accountId, () =>
 							TeamBridgeOwnerAuditApi.messages(
 								{ accountId: accountId as string, tenantId },
-								conversationId,
-								beforeSeq > 0 ? beforeSeq + 1 : undefined,
+								item.conversation_id,
+								item.seq !== null && item.seq >= 0 ? item.seq + 1 : undefined,
 							),
 						);
-						return page.messages;
+						const message = page.messages.find(
+							(row) => row.id === item.message_id,
+						);
+						if (message) return { message, tenantId };
+						// The conversation is here but the message is not: it is in
+						// no other org either.
+						return null;
 					} catch (error) {
-						if (error instanceof DesktopControlError && error.status === 404)
-							continue;
+						if (notInThisOrg(error)) continue;
 						throw error;
 					}
 				}
-				return [] as OwnerAuditMessage[];
+				return null;
 			},
 		})),
 	});
-	const byConversation = new Map(
-		conversations.map((entry, index) => [entry.conversationId, results[index]]),
+	const lookupById = new Map(
+		joinable.map((item, index) => [item.message_id, lookups[index]]),
 	);
-	const hashes = useQueries({
-		queries: items.map((item) => {
-			const found = byConversation
-				.get(item.conversation_id)
-				?.data?.find((message) => message.id === item.message_id);
+	const bindings = useQueries({
+		queries: joinable.map((item) => {
+			const found = lookupById.get(item.message_id)?.data?.message;
 			return {
 				queryKey: [
 					...holdsKey(accountId),
-					"hash",
+					"binding",
 					item.message_id,
 					found?.body_hash ?? null,
-					found?.body?.length ?? null,
+					found?.body ?? null,
 				] as const,
 				enabled: Boolean(found),
 				gcTime: 0,
-				queryFn: () => shownBodySha256(found?.body, found?.body_hash),
+				queryFn: () => bindShownBody(found?.body, found?.body_hash),
 			};
 		}),
 	});
+	const bindingById = new Map(
+		joinable.map((item, index) => [item.message_id, bindings[index]]),
+	);
 	return (item) => {
-		if (!auditSupported) return { state: "unavailable" };
-		const query = byConversation.get(item.conversation_id);
-		if (!query || query.isPending) return { state: "loading" };
-		const message = query.data?.find((row) => row.id === item.message_id);
-		if (!message) return { state: "unavailable" };
-		const index = items.indexOf(item);
-		const hash = index >= 0 ? hashes[index] : undefined;
-		if (!hash || hash.isPending) return { state: "loading" };
-		return { state: "ready", message, bodySha256: hash.data ?? null };
+		const lookup = lookupById.get(item.message_id);
+		const binding = bindingById.get(item.message_id);
+		return resolveHoldDetail(item, {
+			auditSupported,
+			lookup: lookup && {
+				/* Pending until it settles, unless it can never run: the status
+				   answered with no organizations, so there is nowhere to look. */
+				pending:
+					lookup.isPending && !(status.isFetched && tenantIds.length === 0),
+				found: lookup.isError ? null : lookup.data,
+			},
+			binding: binding && {
+				pending: binding.isPending,
+				value: binding.data,
+			},
+		});
 	};
+}
+
+/** Re-read the joins, for a row whose details could not load (UX U6). */
+export function useRetryHeldDetails() {
+	const client = useQueryClient();
+	return useCallback(
+		() =>
+			client.invalidateQueries({
+				queryKey: [...teamBridgeKeys.all, "holds"],
+			}),
+		[client],
+	);
 }
 
 function invalidateHolds(client: QueryClient) {
@@ -214,12 +242,13 @@ function invalidateHolds(client: QueryClient) {
 export function useHoldDecide() {
 	const client = useQueryClient();
 	const { accountId } = useTeamBridgeAccount();
-	const [busy, setBusy] = useState<string | null>(null);
+	/* The word too, so the pressed button can say "Delivering..." (UX U4). */
+	const [busy, setBusy] = useState<{ id: string; word: HoldWord } | null>(null);
 	const [refusals, setRefusals] = useState<Record<string, string>>({});
 	const run = useCallback(
 		async (item: HoldItem, word: HoldWord, bodySha256: string) => {
 			if (!accountId || busy) return;
-			setBusy(item.message_id);
+			setBusy({ id: item.message_id, word });
 			setRefusals(({ [item.message_id]: _, ...rest }) => rest);
 			try {
 				await TeamBridgeHoldsApi.decide(accountId, word, item, bodySha256);

@@ -19,6 +19,8 @@ import {
 	mapApprovalRefusal,
 	resetAuthorizeNoticesForTests,
 } from "./team-bridge-approvals-model";
+import { HeldMessagesView } from "./team-bridge-held-messages";
+import type { HoldItem } from "./team-bridge-holds-model";
 
 /*
  * The Team Bridge Requests view and the Touch ID prompt notice, in each state
@@ -440,4 +442,92 @@ function NoticeOverDialog() {
 }
 export const PromptNoticeOverDialog: StoryObj = {
 	render: () => <NoticeOverDialog />,
+};
+
+/*
+ * Approvals with the Held messages section composed in (design D1, UX U1):
+ * no requests and three holds (held messages first, no "No requests are
+ * waiting." line), requests and holds together, and neither (one empty
+ * state, not two).
+ */
+const heldAt = (day: number) =>
+	`2026-11-${String(day).padStart(2, "0")}T09:00:00Z`;
+const heldItem = (id: string, over: Partial<HoldItem> = {}): HoldItem => ({
+	message_id: id,
+	conversation_id: "bcv_storyconv",
+	seq: 4,
+	held_at: heldAt(16),
+	kind: "owner_decision",
+	hold_code: "model_hold",
+	releasable: true,
+	can_deliver: true,
+	can_discard: true,
+	deliver_until: heldAt(23),
+	decision: null,
+	...over,
+});
+const heldItems = [
+	heldItem("bcmsg_h1"),
+	heldItem("bcmsg_h2", { hold_code: "work_scope_hold" }),
+	heldItem("bcmsg_h3", {
+		can_deliver: false,
+		held_at: heldAt(1),
+		deliver_until: heldAt(8),
+	}),
+];
+const heldBodies: Record<string, [string, string]> = {
+	bcmsg_h1: [
+		"Renee Park",
+		"Can you check whether the Q4 vendor list is final?",
+	],
+	bcmsg_h2: ["Omar Haddad", "Please start drafting the onboarding plan."],
+	bcmsg_h3: ["Ben Tran", "Are we still on for the demo?"],
+};
+const heldView = (items: HoldItem[], hideWhenEmpty = false) => (
+	<HeldMessagesView
+		listState="ready"
+		items={items}
+		hideWhenEmpty={hideWhenEmpty}
+		now={Date.parse("2026-11-18T12:00:00Z")}
+		onDecide={() => {}}
+		detail={(item) => {
+			const [person, body] = heldBodies[item.message_id] ?? ["", ""];
+			return {
+				state: "ready",
+				tenantId: "tnt_story",
+				binding: { state: "shown", hash: "0".repeat(64) },
+				message: {
+					id: item.message_id,
+					conversation_id: item.conversation_id,
+					seq: 4,
+					sender: {
+						account_id: "acct_x",
+						kind: "human",
+						display_label: person,
+					},
+					body,
+					body_hash: null,
+					origin: "human",
+					agent_label: null,
+					created_at: heldAt(16),
+				} as never,
+			};
+		}}
+	/>
+);
+
+export const HeldOnly: Story = {
+	args: { rows: [], held: heldView(heldItems), heldCount: heldItems.length },
+};
+
+export const HeldAndRequests: Story = {
+	args: {
+		rows: populated,
+		held: heldView(heldItems),
+		heldCount: heldItems.length,
+	},
+};
+
+export const NeitherWithHeldSection: Story = {
+	args: { rows: [], held: heldView([], true), heldCount: 0 },
 };

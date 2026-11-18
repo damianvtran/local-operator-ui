@@ -85,6 +85,8 @@ export type HoldReason =
 	| "records"
 	| "unreadable"
 	| "waiting"
+	| "action"
+	| "unscreened"
 	| "other";
 
 const REASON_BY_CODE: Readonly<Record<string, HoldReason>> = {
@@ -125,10 +127,25 @@ const REASON_BY_CODE: Readonly<Record<string, HoldReason>> = {
 	invalid_content: "unreadable",
 	invalid_content_type: "unreadable",
 	size_exceeded: "unreadable",
+	// Waits core documents as ones only the owner can clear (screening.py
+	// "only they can fix"); its coarse `kind` says `waiting`, which would read
+	// "will move on automatically" (review m2).
+	sign_in_required: "action",
+	consent_required: "action",
+	owner_ineligible: "action",
+	screener_required: "action",
+	open_chief_of_staff: "action",
 };
 
-export function holdReason(item: Pick<HoldItem, "hold_code" | "kind">) {
+export function holdReason(
+	item: Pick<HoldItem, "hold_code" | "kind" | "unscreened">,
+): HoldReason {
 	const byCode = REASON_BY_CODE[item.hold_code];
+	/* `unscreened` (#4212): no model read it, so a family reason such as
+	   "Screening held it for you to review" would contradict the badge (copy
+	   C1). `not_screened` keeps its own Discard-only line. */
+	if (item.unscreened === true && byCode !== "not_screened")
+		return "unscreened";
 	if (byCode) return byCode;
 	// An unlisted code falls back on the daemon's coarse kind, then generic.
 	if (item.kind === "owner_decision") return "review";
@@ -155,6 +172,10 @@ export function holdReasonLabel(reason: HoldReason): string {
 			return t("ui.teamBridge.holds.reason.unreadable");
 		case "waiting":
 			return t("ui.teamBridge.holds.reason.waiting");
+		case "action":
+			return t("ui.teamBridge.holds.reason.action");
+		case "unscreened":
+			return t("ui.teamBridge.holds.reason.unscreened");
 		default:
 			return t("ui.teamBridge.holds.reason.other");
 	}
@@ -179,6 +200,18 @@ export type HoldAffordance =
 	  }
 	| { state: "not_releasable" };
 
+/** Codes core offers Discard for and never Deliver (#4212). */
+const DISCARD_ONLY_CODES: ReadonlySet<string> = new Set(["screening_failed"]);
+
+/**
+ * Whether a recorded decision failed to apply. Core writes `rejected` for a
+ * COMPLETED Discard (connector/conversation.py: admitted for deliver, rejected
+ * for discard), so only `refused` means it did not take (review m1).
+ */
+export function decisionNotApplied(outcome: string): boolean {
+	return outcome === "refused";
+}
+
 export function holdAffordance(
 	item: HoldItem,
 	now: number = Date.now(),
@@ -200,7 +233,14 @@ export function holdAffordance(
 	const until = item.deliver_until
 		? Date.parse(item.deliver_until)
 		: Number.NaN;
-	if (!deliver && item.releasable && Number.isFinite(until) && until <= now) {
+	// A Discard-only code was never deliverable, so it is never "too old" (m4).
+	if (
+		!deliver &&
+		item.releasable &&
+		!DISCARD_ONLY_CODES.has(item.hold_code) &&
+		Number.isFinite(until) &&
+		until <= now
+	) {
 		return { state: "deliver_expired", deliver: false, discard };
 	}
 	return { state: "open", deliver, discard };
@@ -216,6 +256,9 @@ export function actionableHoldCount(
 ): number {
 	if (!page) return 0;
 	return page.items.filter((item) => {
+		// No conversation id: the owner-audit join cannot find the message, so
+		// it can never be decided here and must not hold the badge on (QA Q1).
+		if (!item.conversation_id) return false;
 		const a = holdAffordance(item);
 		return a.state === "open" || a.state === "deliver_expired";
 	}).length;
@@ -248,22 +291,35 @@ export function holdRefusalLabel(code: string | null | undefined): string {
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 /**
- * The `body_sha256` a Deliver/Discard carries: the hash of the body the person
- * was SHOWN. The daemon compares it with the bytes its screener read and
- * refuses `snapshot_stale` on any difference (S-11), so a body edited between
- * the screen and this card can never be released on a stale view.
+ * What the decide may bind, from the body the person was SHOWN. The daemon
+ * compares `body_sha256` with the bytes its screener read and refuses
+ * `snapshot_stale` on any difference (S-11), so the hash is the record of what
+ * the owner consented to.
  *
- * Hashed here from the shown text (UTF-8, as core's `_body_sha256_bytes`
- * does). When a server-sent `body_hash` exists and disagrees, the view is not
- * trustworthy and no hash is returned, so no button can be armed with it. With
- * no body shown, the server hash is used only if it is well-formed.
+ * - `shown`: the body is on screen; hashed here as UTF-8, as core's
+ *   `_body_sha256_bytes` does. Deliver and Discard may bind it.
+ * - `withheld`: the audit withheld the body (`body: null`). Nobody saw it, so
+ *   Deliver is NEVER armed (security S-2); Discard, the safe direction, may
+ *   bind the served hash.
+ * - `mismatch`: the served hash disagrees with the shown text, so the view
+ *   cannot be trusted and nothing is armed (QA Q2 gives it a reason line).
+ * - `none`: no usable hash at all.
  */
-export async function shownBodySha256(
+export type BodyBinding =
+	| { state: "shown"; hash: string }
+	| { state: "withheld"; hash: string }
+	| { state: "mismatch" }
+	| { state: "none" };
+
+export async function bindShownBody(
 	body: string | null | undefined,
 	bodyHash: string | null | undefined,
-): Promise<string | null> {
+): Promise<BodyBinding> {
 	const served = typeof bodyHash === "string" && SHA256_HEX.test(bodyHash);
-	if (typeof body !== "string") return served ? (bodyHash as string) : null;
+	if (typeof body !== "string")
+		return served
+			? { state: "withheld", hash: bodyHash as string }
+			: { state: "none" };
 	const digest = await crypto.subtle.digest(
 		"SHA-256",
 		new TextEncoder().encode(body),
@@ -272,6 +328,119 @@ export async function shownBodySha256(
 		byte.toString(16).padStart(2, "0"),
 	).join("");
 	if (typeof bodyHash === "string" && bodyHash !== "" && bodyHash !== hex)
-		return null;
-	return hex;
+		return { state: "mismatch" };
+	return { state: "shown", hash: hex };
+}
+
+/*
+ * WHEN A BODY IS SHOWN IN FULL. A row clamps a long body to three lines, and a
+ * clamped body or one with attachments has NOT been seen in full: three benign
+ * lines can sit above the payload screening exists to stop (security S-1, UX
+ * U3). A body under this size with no attachments renders unclamped, so it is
+ * seen whole on arrival; anything else needs the owner to expand it, which
+ * shows the whole text and the attachment group, before Deliver arms.
+ */
+const SHORT_BODY_CHARS = 280;
+const SHORT_BODY_LINES = 3;
+
+export function needsExpand(
+	body: string | null | undefined,
+	attachments: number,
+): boolean {
+	if (attachments > 0) return true;
+	if (typeof body !== "string") return false;
+	return (
+		body.length > SHORT_BODY_CHARS || body.split("\n").length > SHORT_BODY_LINES
+	);
+}
+
+/**
+ * Which buttons may be pressed now: the daemon's affordance, narrowed by what
+ * the person has actually seen. Deliver needs a `shown` body seen in full;
+ * Discard needs any bindable hash.
+ */
+export function armedWords(
+	affordance: HoldAffordance,
+	binding: BodyBinding,
+	seenInFull: boolean,
+): { deliver: boolean; discard: boolean } {
+	if (affordance.state !== "open" && affordance.state !== "deliver_expired")
+		return { deliver: false, discard: false };
+	return {
+		deliver: affordance.deliver && binding.state === "shown" && seenInFull,
+		discard:
+			affordance.discard &&
+			(binding.state === "shown" || binding.state === "withheld"),
+	};
+}
+
+/**
+ * The order the owner works the list in (UX U5). Core lists oldest first, so
+ * expired rows would bury the ones still deliverable: deliverable rows come
+ * first, soonest deadline first, then Discard-only rows, then rows with
+ * nothing to decide, then decided ones. Stable inside each group.
+ */
+export function sortHolds(
+	items: readonly HoldItem[],
+	now: number = Date.now(),
+): HoldItem[] {
+	const rank = (item: HoldItem) => {
+		const a = holdAffordance(item, now);
+		if (a.state === "open" && a.deliver) return 0;
+		if (a.state === "open" || a.state === "deliver_expired") return 1;
+		if (a.state === "not_releasable") return 2;
+		return 3;
+	};
+	const deadline = (item: HoldItem) => {
+		const value = item.deliver_until
+			? Date.parse(item.deliver_until)
+			: Number.NaN;
+		return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+	};
+	return items
+		.map((item, index) => ({ item, index }))
+		.sort(
+			(a, b) =>
+				rank(a.item) - rank(b.item) ||
+				(rank(a.item) === 0 ? deadline(a.item) - deadline(b.item) : 0) ||
+				a.index - b.index,
+		)
+		.map((entry) => entry.item);
+}
+
+/**
+ * The join's answer for one hold, kept pure so the "never spins forever" rule
+ * is testable (QA Q1): a hold with no conversation id has no lookup to wait
+ * for, so it is `unavailable` at once, never `loading`.
+ */
+export type JoinedDetail<M> =
+	| { state: "loading" }
+	| { state: "unavailable" }
+	| { state: "ready"; message: M; tenantId: string; binding: BodyBinding };
+
+export function resolveHoldDetail<M extends { id: string }>(
+	item: Pick<HoldItem, "message_id" | "conversation_id">,
+	input: {
+		auditSupported: boolean;
+		lookup?: {
+			pending: boolean;
+			found?: { message: M; tenantId: string } | null;
+		};
+		binding?: { pending: boolean; value?: BodyBinding };
+	},
+): JoinedDetail<M> {
+	if (!input.auditSupported || !item.conversation_id)
+		return { state: "unavailable" };
+	if (!input.lookup || input.lookup.pending) return { state: "loading" };
+	const found = input.lookup.found;
+	if (!found || found.message.id !== item.message_id)
+		return { state: "unavailable" };
+	if (!input.binding || input.binding.pending || !input.binding.value)
+		return { state: "loading" };
+	return {
+		state: "ready",
+		message: found.message,
+		tenantId: found.tenantId,
+		binding: input.binding.value,
+	};
 }
