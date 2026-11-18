@@ -45,7 +45,9 @@ import { type RemoteRun, remoteRunPhase } from "./remote-compute-types";
 const phaseInk = (run: RemoteRun): string => {
 	switch (remoteRunPhase(run.status)) {
 		case "failed":
-			return "text-warning";
+			// `danger`, the role a failed state takes elsewhere in this app: `warning`
+			// is already the wash on the "these rows are last known" banner (design D8).
+			return "text-danger";
 		case "in-flight":
 			return "text-ink";
 		default:
@@ -82,7 +84,17 @@ export const RemoteRunsDialog: FC<RemoteRunsDialogProps> = ({
 				// first control keeps a ring off `Close` in every frame and leaves the
 				// caret on the dialog itself.
 				onOpenAutoFocus={(event) => event.preventDefault()}
-				className="w-[30rem] gap-3 p-5"
+				/*
+				 * AND THE PANEL DOES NOT PAINT ITS OWN EDGE (design round 1, D5).
+				 * `html :focus-visible` draws a 2px accent stroke at 2px offset and its own
+				 * rule 5 lets the outline reach `[data-lo-floating]`, so this dialog - the
+				 * only one of the family that carries the attribute - framed itself in the
+				 * accent while its sibling sheet and its own empty state drew nothing. A
+				 * floating surface separates by ground and the one shadow; a 2px accent
+				 * stroke on the panel is a border by construction. Child focus rings are
+				 * untouched: this removes the PANEL-level one only.
+				 */
+				className="w-[30rem] gap-3 p-5 outline-none"
 			>
 				<DialogHeader>
 					<DialogTitle>{t("ui.chat.remote_compute.runs.title")}</DialogTitle>
@@ -141,7 +153,12 @@ export const RemoteRunsDialog: FC<RemoteRunsDialogProps> = ({
 													{model.status}
 												</span>
 												{model.elapsed ? <span>{model.elapsed}</span> : null}
-												{model.amount ? <span>{model.amount.text}</span> : null}
+												{/* One step louder than the clock it sits beside (design D3). */}
+												{model.amount ? (
+													<span className="tabular-nums text-ink-muted">
+														{model.amount.text}
+													</span>
+												) : null}
 											</span>
 										</div>
 										{model.actions.cancel ? (

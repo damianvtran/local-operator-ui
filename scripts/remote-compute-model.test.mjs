@@ -212,8 +212,14 @@ test("state E: capacity unavailable, with the retry as its affordance", () => {
 	]) {
 		const view = radientRowView({ read: answered(value), now: NOW });
 		assert.equal(view.kind, "capacity");
-		assert.equal(view.label, "capacity unavailable");
-		assert.equal(view.why, "retry");
+		/*
+		 * THE REASON IS ITS OWN LINE, NOT THE STATUS SLOT (design round 1, D2): the
+		 * pressable states print their state on the right (`ready`, the aggregate),
+		 * so an inert row that occupied the same element read as pressable. The
+		 * retry stays IN the reason, because that is the press.
+		 */
+		assert.deepEqual(view.reason, ["capacity unavailable", "retry"]);
+		assert.equal("label" in view, false);
 	}
 	const failed = radientRowView({ read: { state: "failed" }, now: NOW });
 	assert.equal(failed.kind, "capacity");
@@ -225,8 +231,15 @@ test("state F: no network is its own state, with the remedy and no promise", () 
 		now: NOW,
 	});
 	assert.equal(view.kind, "network");
-	assert.equal(view.label, "needs a network");
-	assert.equal(view.why, "create one");
+	assert.deepEqual(view.reason, ["needs a network"]);
+	/*
+	 * THE REMEDY THIS APP CAN NAME IS VISIBLE (UX round 1, U3): creating a network is
+	 * CLI-only, so the commands are printed under the row instead of ending in
+	 * `create one` - an imperative with no control behind it - and instead of living
+	 * only in the accessible name.
+	 */
+	assert.match(view.note, /lop network init/);
+	assert.match(view.note, /lop network join/);
 	assert.match(view.sentence, /lop network init/);
 });
 
@@ -238,7 +251,7 @@ test("state G: the deployment's own switch is off and it outranks the account", 
 		now: NOW,
 	});
 	assert.equal(view.kind, "not-offered");
-	assert.equal(view.label, "not offered by this deployment");
+	assert.deepEqual(view.reason, ["not offered by this deployment"]);
 });
 
 test("a deployment that does not say whether it offers the family still offers it", () => {
@@ -298,7 +311,7 @@ test("one network is pre-selected; the tiers are live", () => {
 	assert.equal(model.submit.why, null);
 });
 
-test("two networks and no choice stand the tiers down and say why", () => {
+test("two networks and no choice stand the submit down, once, at the action", () => {
 	const model = remoteSheetModel({
 		value: read({ networks: [NETWORK, OTHER] }),
 		prompt: "fix the importer",
@@ -307,9 +320,14 @@ test("two networks and no choice stand the tiers down and say why", () => {
 	});
 	assert.equal(model.network.chosen, null);
 	assert.equal(model.network.ambiguous, true);
+	/*
+	 * THE TIER IS NOT STANDING DOWN HERE (design round 1, D7). It used to repeat the
+	 * network's instruction, so one decision was stated three times in one column. The
+	 * tier fact is capacity; the network is said once, beside the disabled primary.
+	 */
 	const cloud = model.tiers.find((row) => row.tier === "cloud_run");
-	assert.equal(cloud.disabled, true);
-	assert.equal(cloud.why, "choose a network");
+	assert.equal(cloud.disabled, false);
+	assert.equal(cloud.why, null);
 	assert.equal(model.submit.enabled, false);
 	assert.equal(model.submit.why, "Choose a network first.");
 });
@@ -342,25 +360,38 @@ test("the tier list is the design's: cloud run live, dedicated and spot disabled
 	const dedicated = model.tiers[1];
 	assert.equal(dedicated.why, "coming soon");
 	assert.equal(dedicated.spot?.title, "Spot");
-	assert.equal(dedicated.spot?.why, "coming soon");
+	// NO REASON OF ITS OWN on the opt-in: it is inside a tier that already cannot be
+	// bought, so a second `coming soon` forty pixels lower was the loudest thing in
+	// the group (design round 1, D4).
+	assert.equal("why" in (dedicated.spot ?? {}), false);
+	// The one buyable tier is STATED, not marked: no check, no selected ground (D10).
+	assert.equal(model.tierNotice, "This run will use Cloud run.");
 	// The spot option belongs UNDER dedicated, not beside it as a third tier.
 	assert.equal(model.tiers.length, 2);
 });
 
 test("the binding sentence says recorded and never claims enforcement", () => {
-	const model = remoteSheetModel({
+	const none = remoteSheetModel({
 		value: read(),
 		prompt: "p",
 		directory: "/d",
 		chosenNetworkId: null,
 	});
-	assert.match(model.network.note, /recorded/);
-	assert.match(model.network.note, /not restricted/);
-	for (const forbidden of ["isolat", "segmented", "private", "secure"]) {
-		assert.doesNotMatch(
-			model.network.note.toLowerCase(),
-			new RegExp(forbidden),
-		);
+	// ONE NETWORK IS PRE-SELECTED, so the sentence names it.
+	assert.match(none.network.note, /Recorded against devmesh/);
+	assert.match(none.network.note, /Not enforced/);
+	const ambiguous = remoteSheetModel({
+		value: read({ networks: [NETWORK, OTHER] }),
+		prompt: "p",
+		directory: "/d",
+		chosenNetworkId: null,
+	});
+	// Nothing chosen: the qualification alone, and no network claimed.
+	assert.equal(ambiguous.network.note, "Not enforced in this version.");
+	for (const note of [none.network.note, ambiguous.network.note]) {
+		for (const forbidden of ["isolat", "segmented", "private", "secure"]) {
+			assert.doesNotMatch(note.toLowerCase(), new RegExp(forbidden));
+		}
 	}
 });
 
@@ -409,7 +440,10 @@ test("a live run prints its age from the server's start and the hold it carries"
 	assert.equal(model.amount?.kind, "held");
 	assert.equal(model.amount?.text, "held $5.09");
 	assert.deepEqual(model.actions, { cancel: true, delete: false });
-	assert.equal(model.binding, "no network recorded");
+	assert.equal(
+		model.binding,
+		"No network recorded. Not enforced in this version.",
+	);
 });
 
 test("a settled run prints its charge, not its old hold, and offers Forget", () => {
@@ -428,7 +462,10 @@ test("a settled run prints its charge, not its old hold, and offers Forget", () 
 	assert.equal(model.amount?.kind, "charged");
 	assert.equal(model.amount?.text, "charged $0.62");
 	assert.deepEqual(model.actions, { cancel: false, delete: true });
-	assert.equal(model.binding, "recorded against devmesh; not enforced");
+	assert.equal(
+		model.binding,
+		"Recorded against devmesh. Not enforced in this version.",
+	);
 });
 
 test("a run that states no amounts prints none, and an unknown status prints its token", () => {
@@ -481,7 +518,17 @@ test("a live run is polled at five seconds, and polling stops when it cannot mov
 /* --------------------------------------------------------------- the refusals */
 
 test("each refusal code chooses an affordance and never a wording", () => {
-	assert.equal(remoteRemedy("not_configured"), "sign-in");
+	/*
+	 * THE TWO CODES THAT MEAN SIGNED OUT (agent review round 1, M1). `signed_out` is
+	 * the 401 `LoginRequired` and `radient_no_credential` the 409 a host without a
+	 * grant answers - a grant that dies between the 30 s read and the press lands
+	 * here, on a money surface, and used to fall through to no remedy at all.
+	 */
+	assert.equal(remoteRemedy("signed_out"), "sign-in");
+	assert.equal(remoteRemedy("radient_no_credential"), "sign-in");
+	// `not_configured` is the OFF SWITCH (403) or an unconfigured model pair (409):
+	// neither is an auth problem, so the one button that cannot fix it is wrong here.
+	assert.equal(remoteRemedy("not_configured"), "none");
 	assert.equal(remoteRemedy("insufficient_credits"), "add-credits");
 	for (const code of [
 		"run_limit",

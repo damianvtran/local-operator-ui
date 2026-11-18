@@ -5,18 +5,17 @@
 		"note": "It arrives in a later version. Promise no date and no version number."
 	},
 	"ui.chat.remote_compute.card.binding": {
-		"role": "the line naming the network a run is recorded against",
-		"tone": "one clause, lower case, no trailing punctuation",
-		"note": "Claim-sensitive: the binding is RECORDED, not enforced, in this version. Keep the word for recorded and the negation of enforcement; never promise isolation, segmentation or privacy.",
+		"role": "the line under the run card naming the network it is recorded against",
+		"tone": "two short sentences, plain statement, full stops",
+		"note": "Claim-sensitive: the binding is RECORDED, not enforced, in this version. It is now its own line rather than the last item of the card's fact chain (design round 1, D3). Keep the word for recorded and the negation of enforcement; never promise isolation, segmentation or privacy.",
 		"placeholders": {
 			"network": "the network's own name, as the user gave it. Keep it verbatim."
-		},
-		"maxCells": 44
+		}
 	},
 	"ui.chat.remote_compute.card.binding_none": {
 		"role": "the same line when the run carries no network",
-		"tone": "a short clause, lower case",
-		"note": "States the fact and stops. It must not imply the run was bound by choice or will be bound later."
+		"tone": "two short sentences, plain statement, full stops",
+		"note": "States the fact and the absent enforcement, and stops. It must not imply the run was bound by choice or will be bound later."
 	},
 	"ui.chat.remote_compute.card.cancel": {
 		"role": "the run card's action that stops a live run",
@@ -181,6 +180,12 @@
 		"note": "The consequence, not an error. The remedy is printed beside it by row.create_one.",
 		"maxCells": 22
 	},
+	"ui.chat.remote_compute.row.network_remedy": {
+		"role": "the visible remedy line under the Radient row when the device is in no network",
+		"tone": "one sentence naming two commands, plain, no exclamation",
+		"note": "Visible text rather than only the accessible name (UX round 1, U3): creating a network is CLI-only, so the row prints the commands instead of ending in an imperative with no control behind it. Never translate the command names, the flags or the quoted token placeholder.",
+		"maxCells": 92
+	},
 	"ui.chat.remote_compute.row.not_offered": {
 		"role": "picker row when the user's switch is on but this deployment runs no remote compute",
 		"tone": "lower-case phrase, no punctuation",
@@ -328,11 +333,18 @@
 		"tone": "one noun, sentence case",
 		"note": "The mesh network the run is recorded against."
 	},
+	"ui.chat.remote_compute.sheet.network.not_enforced": {
+		"role": "the same sentence when no network has been chosen yet",
+		"tone": "one short sentence, plain statement",
+		"note": "The qualification alone: it must state that enforcement is absent without naming a network the user has not chosen. Never say isolated, segmented or private."
+	},
 	"ui.chat.remote_compute.sheet.network.recorded": {
 		"role": "the sentence under the network line explaining what the binding does",
-		"tone": "two short sentences, plain statement",
-		"note": "The most claim-sensitive sentence in the surface: the run is recorded against the network and access is NOT restricted by it in this version. Never say isolated, segmented or private.",
-		"maxCells": 96
+		"tone": "two short sentences, plain statement, full stops",
+		"note": "The most claim-sensitive sentence in the surface: the run is RECORDED against the network and access is NOT enforced by it in this version. It is now printed on its own line at body size (design round 1, D3), so the qualification must stand alone as a sentence. Never say isolated, segmented or private.",
+		"placeholders": {
+			"network": "the network's own name, as the user gave it. Keep it verbatim."
+		}
 	},
 	"ui.chat.remote_compute.sheet.prompt.empty": {
 		"role": "the note under the prompt label when the composer is empty",
@@ -386,6 +398,11 @@
 		"tone": "a fragment, lower case, middot separators",
 		"note": "No price and no duration: the app cannot read rates and has no measured timings. Describe the shape only - one run, one answer, then gone. Keep the middots."
 	},
+	"ui.chat.remote_compute.sheet.tier.cloud_run.selected": {
+		"role": "the line under the tier list naming the tier a run will use",
+		"tone": "one declarative sentence, full stop",
+		"note": "Replaces a check mark and a selected ground that asserted a choice nobody made while only one tier can be bought (design round 1, D10). It names the tier exactly as the tier row does."
+	},
 	"ui.chat.remote_compute.sheet.tier.cloud_run.title": {
 		"role": "the name of the on-demand tier",
 		"tone": "two words or fewer, sentence case",
@@ -420,11 +437,26 @@
 	"ui.chat.remote_compute.sheet.tier.group_label": {
 		"role": "the small heading over the tier rows",
 		"tone": "a short noun phrase, sentence case, no punctuation",
-		"note": "Introduces the rows describing how the run is bought. One enabled row and one disabled row in this version."
+		"note": "Introduces the rows describing what kind of run the tiers are (one-shot vs long-lived workspace) - not how it is paid for, because the sheet quotes no price (design round 1, D6). It is not a sentence and needs no verb agreement with the row count."
 	},
 	"ui.chat.remote_compute.sheet.view_runs": {
 		"role": "the link to the runs list in the sheet's footer",
 		"tone": "an imperative verb phrase, sentence case",
 		"note": "Opens a list of every run the server holds, including ones this conversation did not start."
+	},
+	"ui.chat.remote_compute.store.accepted_without_run": {
+		"role": "error sentence when the server accepted a start but returned no run row",
+		"tone": "one sentence, plain statement",
+		"note": "The run may exist upstream, so this must not say nothing was started; it says the row is missing. The idempotency key makes the retry safe."
+	},
+	"ui.chat.remote_compute.store.refused": {
+		"role": "error sentence when the server refused a request without a code this app knows",
+		"tone": "one sentence, plain, no blame",
+		"note": "The refusal came from the server and carried no message. Never add a remedy here: an invented on-ramp for an unknown code is how a user gets sent to a sign-in for a 404."
+	},
+	"ui.chat.remote_compute.store.transport": {
+		"role": "error sentence when the request never reached the local server",
+		"tone": "two short sentences, plain, no blame",
+		"note": "The daemon was unreachable, so nothing is known about the outcome. It must not claim the run failed or that nothing was charged."
 	}
 }

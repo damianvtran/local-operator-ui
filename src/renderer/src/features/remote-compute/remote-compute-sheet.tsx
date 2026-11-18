@@ -47,7 +47,6 @@ import {
 	openConsolePage,
 } from "@shared/utils/radient-account-copy";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check } from "lucide-react";
 import { type FC, useEffect, useRef, useState } from "react";
 import { useNow } from "./remote-compute-clock";
 import {
@@ -69,58 +68,69 @@ import { RemoteSignIn } from "./remote-sign-in";
 /**
  * One tier, as a row.
  *
- * NOT A RADIO: in this version exactly one tier can run, so a control that looks
- * selectable would offer a choice that does not exist. The check marks the one that
- * will run, and the disabled row states why it cannot. When a second tier ships, this
- * becomes a real radio group and the copy does not change.
+ * A TIER THAT CANNOT BE BOUGHT SPEAKS IN ONE VOICE (design round 1, D4). Its title
+ * used to be `ink-disabled` - measured 2.08:1, the ink `PickerRow` already rejected
+ * for a word "whose whole job is to be read", which `Dedicated` has here, because
+ * the design keeps it on screen precisely so a capability the product has does not
+ * vanish - while its note took the ENABLED roles and read louder than the live
+ * tier's own note. So: titles at `ink-muted`, notes at `ink-dim`, and the reason
+ * riding the shape line instead of arriving as a fourth fact under it.
+ *
+ * NO SELECTION GROUND AND NO CHECK (design round 1, D10). While `Dedicated` cannot
+ * be bought, `Cloud run` is the only option, and both marks asserted a choice nobody
+ * made on a row that is not a control. The group says which tier a run uses in words
+ * instead (`tierNotice`); when a second tier ships this becomes a real radio group.
  */
 const TierRow: FC<{ row: RemoteTierRow }> = ({ row }) => (
 	<div
 		data-radient-tier={row.tier}
 		data-disabled={row.disabled ? "" : undefined}
 		className={cn(
-			"flex items-start gap-2 rounded-sm px-2.5 py-2",
-			row.disabled ? "cursor-not-allowed" : "bg-row-selected",
+			"flex flex-col gap-0.5 px-2.5 py-1.5",
+			row.disabled && "cursor-not-allowed",
 		)}
 	>
-		<span className="mt-0.5 flex size-4 shrink-0 items-center justify-center">
-			{row.disabled ? null : (
-				<Check aria-hidden="true" className="size-3.5 text-ink" />
-			)}
-		</span>
-		<span className="flex min-w-0 flex-1 flex-col gap-0.5">
+		<span className="flex flex-wrap items-baseline gap-x-1.5">
 			<span
 				className={cn(
-					"truncate text-body-sm",
-					row.disabled ? "text-ink-disabled" : "text-ink",
+					"text-body-sm",
+					row.disabled ? "text-ink-muted" : "text-ink",
 				)}
 			>
 				{row.title}
 			</span>
 			{/* One shape fact, never a price: the list is a choice, not a datasheet. */}
+			<span aria-hidden="true" className="text-ink-dim">
+				·
+			</span>
 			<span className="text-meta text-ink-dim">{row.note}</span>
 			{row.why ? (
-				<span className="text-meta text-ink-dim">{row.why}</span>
-			) : null}
-			{row.spot ? (
-				/*
-				 * THE OPT-IN NESTED UNDER ITS PARENT, indented by a hairline so it reads as a
-				 * variant of the row above rather than a third destination. Disabled with the
-				 * same reason: the parent cannot be bought yet, so neither can its
-				 * interruption-tolerant half.
-				 */
-				<span
-					data-radient-tier-spot=""
-					className="mt-1 flex flex-col gap-0.5 border-s border-hairline ps-2"
-				>
-					<span className="text-body-sm text-ink-disabled">
-						{row.spot.title}
+				<>
+					<span aria-hidden="true" className="text-ink-dim">
+						—
 					</span>
-					<span className="text-meta text-ink-dim">{row.spot.note}</span>
-					<span className="text-meta text-ink-dim">{row.spot.why}</span>
-				</span>
+					<span className="text-meta text-ink-dim">{row.why}</span>
+				</>
 			) : null}
 		</span>
+		{row.spot ? (
+			/*
+			 * THE OPT-IN ON ONE LINE UNDER ITS PARENT, indented by a hairline so it reads
+			 * as a variant of the row above rather than a third destination, and with NO
+			 * reason of its own: Spot is an opt-in inside an already unavailable tier, so
+			 * its own `coming soon` was the same sentence forty pixels lower (D4).
+			 */
+			<span
+				data-radient-tier-spot=""
+				className="flex flex-wrap items-baseline gap-x-1.5 border-s border-hairline ps-2"
+			>
+				<span className="text-body-sm text-ink-muted">{row.spot.title}</span>
+				<span aria-hidden="true" className="text-ink-dim">
+					·
+				</span>
+				<span className="text-meta text-ink-dim">{row.spot.note}</span>
+			</span>
+		) : null}
 	</div>
 );
 
@@ -138,7 +148,13 @@ const NetworkLine: FC<{
 			<span className="min-w-0 flex-1 truncate text-body-sm text-ink">
 				{model.network.label}
 			</span>
-			{model.network.options.length > 1 ? (
+			{/*
+			 * `Change` ONLY ONCE THERE IS SOMETHING TO CHANGE FROM (design round 1, D7):
+			 * it used to sit beside "Choose a network", i.e. beside the state that has no
+			 * value to change. The chooser itself is open in that state anyway, and this
+			 * control only re-opens it.
+			 */}
+			{model.network.chosen !== null && model.network.options.length > 1 ? (
 				<Button
 					variant="linkQuiet"
 					size="sm"
@@ -178,8 +194,15 @@ const NetworkLine: FC<{
 				))}
 			</div>
 		) : null}
-		{/* Recorded, not enforced. One sentence, and it never claims protection. */}
-		<p className="text-meta text-ink-dim">{model.network.note}</p>
+		{/*
+		 * RECORDED, NOT ENFORCED - AND THE QUALIFICATION IS ITS OWN LINE, A STEP LOUDER
+		 * (design round 1, D3). The clause that stops a reader believing in isolation
+		 * was the trailing half of the quietest line on a screen that spends money, the
+		 * same role and size as the labels around it; it is now `text-body-sm` at
+		 * `ink-muted`, and the sentence that carries it is split so the qualification
+		 * does not ride behind a network name. It never claims protection.
+		 */}
+		<p className="text-body-sm text-ink-muted">{model.network.note}</p>
 	</div>
 );
 
@@ -254,6 +277,23 @@ export const RemoteComputeSheet: FC<RemoteComputeSheetProps> = ({
 		directory,
 		chosenNetworkId,
 	});
+	/*
+	 * THE KEY IS PER INTENT, NOT PER SHEET-OPEN (agent review round 1, M2). The route
+	 * replays by key, so a key reused after the prompt, the directory or the network
+	 * changed answered the FIRST run - bound to the old network and named for the old
+	 * prompt - while the sheet showed the new ones. That is exactly the case the key
+	 * exists for: a start that reached Radient whose answer was lost, edited before
+	 * the retry. A bare re-press changes none of the three and keeps its key, which is
+	 * the guarantee one purchase stays one purchase.
+	 */
+	const intent = `${prompt}\u0000${directory}\u0000${model.network.chosen?.network_id ?? ""}`;
+	const intentRef = useRef(intent);
+	useEffect(() => {
+		if (intentRef.current === intent) return;
+		intentRef.current = intent;
+		setIdempotencyKey(null);
+		setRefusedAt(null);
+	}, [intent]);
 	const refusal = start.error instanceof RemoteRefusal ? start.error : null;
 	const remedy = refusal ? remoteRemedy(refusal.code) : "none";
 	const retrySeconds = refusal
@@ -316,25 +356,32 @@ export const RemoteComputeSheet: FC<RemoteComputeSheetProps> = ({
 					choosing={choosing}
 				/>
 				<Separator />
-				<div className="flex flex-col gap-1" data-radient-tiers="">
+				<div className="flex flex-col gap-1 pb-1" data-radient-tiers="">
 					<span className="px-0.5 text-meta text-ink-dim">
 						{t("ui.chat.remote_compute.sheet.tier.group_label")}
 					</span>
 					{model.tiers.map((row) => (
 						<TierRow key={row.tier} row={row} />
 					))}
+					{/* Which tier a run will use, in words: see `TierRow` on the marks. */}
+					{model.tierNotice ? (
+						<span
+							data-radient-tier-notice=""
+							className="px-0.5 text-meta text-ink-muted"
+						>
+							{model.tierNotice}
+						</span>
+					) : null}
 				</div>
 				<Separator />
 				<div className="flex flex-col gap-2">
 					<div className="flex flex-col gap-0.5">
 						<span className="text-meta text-ink-dim">{model.prompt.label}</span>
+						{/* Said once, beside the disabled primary: this block is the prompt. */}
 						{model.prompt.summary ? (
 							<span className="text-body-sm text-ink">
 								{model.prompt.summary}
 							</span>
-						) : null}
-						{model.prompt.why ? (
-							<span className="text-meta text-ink-dim">{model.prompt.why}</span>
 						) : null}
 					</div>
 					<div className="flex flex-col gap-0.5">

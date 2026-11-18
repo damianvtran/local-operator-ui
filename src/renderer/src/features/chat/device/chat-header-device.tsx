@@ -379,8 +379,10 @@ const DevicePicker = ({
 	 * those fields asserting things that are not true (see
 	 * `features/remote-compute/remote-compute-picker.tsx`). The picker owns the peer
 	 * group and the rule; the caller composes the other group, exactly as the header
-	 * takes `deviceSlot` as a node. The node renders its own separators and its own
-	 * second-level surfaces.
+	 * takes `deviceSlot` as a node. The node renders its own separator, its own label
+	 * and its own row - but NOT the surfaces that row opens, which are the caller's
+	 * and mounted outside this panel (`remote-compute-surfaces.tsx`), because Radix
+	 * unmounts this content on any select.
 	 */
 	remoteGroup?: ReactNode;
 	/**
@@ -447,7 +449,15 @@ const DevicePicker = ({
 			model.inFlight ||
 			model.offerCheckAgain ? (
 				<>
-					<DropdownMenuSeparator />
+					{/*
+					 * THE PINNED BAND'S RULE IS THE HEAVIER ONE (design round 1, D1 part 3).
+					 * The two rules flanking the Radient row were twins - same ink, same width,
+					 * same inset - so a nameless group between them read as a destination the
+					 * pinned sentence then described. The group rule stays a hairline; this one is
+					 * `hairline-strong`, so "below this line is not a destination" is visible
+					 * rather than inferred.
+					 */}
+					<DropdownMenuSeparator className="bg-hairline-strong" />
 					<div className="flex shrink-0 items-center gap-2 px-2 py-1.5">
 						{/*
 						 * ONE BAND, FOUR SENTENCES, IN THE ORDER THAT MATTERS: a move in flight

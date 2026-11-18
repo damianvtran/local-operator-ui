@@ -53,6 +53,18 @@ import { remoteRunPhase, remoteRunStatusKnown } from "./remote-compute-types";
  * accessible name, which is where the state's consequence lives (a dropdown row is
  * two words wide, so the remedy cannot be in `label`).
  *
+ * THE STATUS SLOT IS FOR THE PRESSABLE STATES ONLY (design round 1, D2). A row that
+ * cannot act says why on a REASON LINE of its own - the same shape and ink the
+ * picker's ineligible device rows already use (`row.why`, `text-warning`) - rather
+ * than in the right-hand slot where `ready` and the aggregate live. Two rows in one
+ * column that look identical at rest but behave differently is the defect: a menu is
+ * photographed the moment it opens, when hover has said nothing.
+ *
+ * `facts` is the aggregate as PARTS, so the row paints its middots as their own spans
+ * instead of joining them into one string - the rule the run card records
+ * (`remote-run-card.tsx`), because a translated separator is not a separator this
+ * file may concatenate.
+ *
  * `hidden` is state A and it is a VALUE rather than an absent render, because the
  * caller's spread is what makes the group disappear - a component that returned
  * `null` for one state and a node for the next is how a group survives a flag it
@@ -68,17 +80,25 @@ export type RadientRowView =
 	| {
 			kind: "runs";
 			label: string;
+			/** The same words `label` joins, one span each. */
+			facts: string[];
 			sentence: string;
 			count: number;
 			/** Saturated: the wire's cap is the count's own wording. */
 			capped: boolean;
 	  }
 	/** Capacity cannot be provisioned now; selecting re-reads (state E). */
-	| { kind: "capacity"; label: string; why: string; sentence: string }
+	| { kind: "capacity"; reason: string[]; sentence: string }
 	/** No network to bind to; the row states the remedy and is not selectable (F). */
-	| { kind: "network"; label: string; why: string; sentence: string }
+	| {
+			kind: "network";
+			reason: string[];
+			/** The remedy this app can name, VISIBLE and not only in `sentence` (UX U3). */
+			note: string;
+			sentence: string;
+	  }
 	/** The deployment does not offer the family; disabled with its own sentence (G). */
-	| { kind: "not-offered"; label: string; sentence: string };
+	| { kind: "not-offered"; reason: string[]; sentence: string };
 
 /** The capability read as the picker sees it. */
 export type RadientRowRead =
@@ -103,17 +123,21 @@ export const RADIENT_COUNT_CAP = 9;
  * THE ORDER IS THE DESIGN'S RESOLVER, and it decides every case where two facts are
  * true at once:
  *
- * 1. `hidden` - the read said the family is off, or nobody has answered yet and
- *    there is nothing to draw. A group that appears before its switch has been read
- *    is a flicker that promises a capability.
+ * 0. `loading` - nobody has answered yet: the row exists and says so, because a
+ *    group that appeared only once the read answered would pop in under the pointer.
+ * 1. `hidden` - the read said the family is off, or the read failed before an
+ *    answer. A group that appears before its switch has been read is a flicker that
+ *    promises a capability.
  * 2. `not-offered` - the deployment's own switch is off. This outranks the account
  *    because signing in would not help: the sentence must not send a user to a
  *    sign-in for a service their server does not run.
  * 3. `sign-in` - the account is signed out or expired. Outranks capacity because it
  *    is the on-ramp rather than a fault, and a signed-out read has no capacity to
  *    report.
- * 4. `capacity` - a read error, or no ready tier. Outranks the network state because
- *    neither can be fixed by the user's next action if provisioning is down.
+ * 4. `capacity` - no ready tier, or a read that failed (a read error has no state of
+ *    its own: what the user can do about it is the same re-read). Outranks the
+ *    network state because neither can be fixed by the user's next action if
+ *    provisioning is down.
  * 5. `network` - nothing to bind to. A run that cannot be recorded against a network
  *    is a run this surface may not offer.
  * 6. `runs` - live runs exist, so the aggregate leads.
@@ -131,8 +155,10 @@ export function radientRowView(input: RadientRowInput): RadientRowView {
 	if (read.state === "failed") {
 		return {
 			kind: "capacity",
-			label: t("ui.chat.remote_compute.row.capacity"),
-			why: t("ui.chat.remote_compute.row.retry"),
+			reason: [
+				t("ui.chat.remote_compute.row.capacity"),
+				t("ui.chat.remote_compute.row.retry"),
+			],
 			sentence: t("ui.chat.remote_compute.row.sentence.capacity"),
 		};
 	}
@@ -141,7 +167,7 @@ export function radientRowView(input: RadientRowInput): RadientRowView {
 	if (value.offered === false) {
 		return {
 			kind: "not-offered",
-			label: t("ui.chat.remote_compute.row.not_offered"),
+			reason: [t("ui.chat.remote_compute.row.not_offered")],
 			sentence: t("ui.chat.remote_compute.row.sentence.not_offered"),
 		};
 	}
@@ -155,16 +181,26 @@ export function radientRowView(input: RadientRowInput): RadientRowView {
 	if (!cloudRunReady(value)) {
 		return {
 			kind: "capacity",
-			label: t("ui.chat.remote_compute.row.capacity"),
-			why: t("ui.chat.remote_compute.row.retry"),
+			reason: [
+				t("ui.chat.remote_compute.row.capacity"),
+				t("ui.chat.remote_compute.row.retry"),
+			],
 			sentence: t("ui.chat.remote_compute.row.sentence.capacity"),
 		};
 	}
 	if (value.networks.length === 0) {
 		return {
 			kind: "network",
-			label: t("ui.chat.remote_compute.row.needs_network"),
-			why: t("ui.chat.remote_compute.row.create_one"),
+			reason: [t("ui.chat.remote_compute.row.needs_network")],
+			/*
+			 * THE REMEDY IS SHOWN, NOT HID IN THE ACCESSIBLE NAME (UX U3, design D2). The
+			 * row's own words used to end in `create one`, an imperative with nothing to
+			 * press behind it: network creation is CLI-only, and the sentence naming the
+			 * command was attached to enabled rows only - so the one state that needs it
+			 * never showed it. `DeviceGuidance` in this same picker sets the precedent:
+			 * the honest instruction is visible text.
+			 */
+			note: t("ui.chat.remote_compute.row.network_remedy"),
 			sentence: t("ui.chat.remote_compute.row.sentence.network"),
 		};
 	}
@@ -174,6 +210,7 @@ export function radientRowView(input: RadientRowInput): RadientRowView {
 		return {
 			kind: "runs",
 			label: aggregate.label,
+			facts: aggregate.facts,
 			sentence: aggregate.sentence,
 			count: live.length,
 			capped: live.length > RADIENT_COUNT_CAP,
@@ -232,7 +269,7 @@ export function radientAggregate(
 	runs: RemoteRun[],
 	now: number,
 	narrow: boolean,
-): { label: string; sentence: string } {
+): { label: string; facts: string[]; sentence: string } {
 	const count = runs.length;
 	const capped = count > RADIENT_COUNT_CAP;
 	const countText = capped
@@ -264,7 +301,13 @@ export function radientAggregate(
 		(part): part is string => part !== null,
 	);
 	return {
+		/*
+		 * `label` IS NOT WHAT THE ROW PAINTS any more: the row draws `facts` as spans
+		 * with their own separators (agent review n5). It stays because the accessible
+		 * name is one string by definition, and it is derived from the same list.
+		 */
 		label: facts.join(" · "),
+		facts,
 		sentence: t("ui.chat.remote_compute.row.sentence.runs", {
 			count: countText,
 			/*
@@ -290,7 +333,14 @@ export type RemoteTierRow = {
 	/** One fact about the tier's shape, never a price. */
 	note: string;
 	disabled: boolean;
-	/** Why the row stands down, in the words the state came in. */
+	/**
+	 * Why the row stands down, in the words the state came in.
+	 *
+	 * Only a TIER fact lives here (`capacity unavailable`). The network's stand-down
+	 * is stated once, beside the disabled primary, where the press would happen
+	 * (design round 1, D7): three phrasings of one decision in one column read as
+	 * three separate things to fix.
+	 */
 	why: string | null;
 	/**
 	 * The opt-in nested UNDER this tier, when the product has one.
@@ -299,8 +349,13 @@ export type RemoteTierRow = {
 	 * reason the disabled tier is: "cheaper, interruptible" is a product fact a user
 	 * will ask about, and a version that cannot sell it yet says so in one line
 	 * instead of leaving them to conclude the app does not know.
+	 *
+	 * NO REASON OF ITS OWN (design round 1, D4): Spot is an opt-in inside an already
+	 * unavailable tier, so its own unavailability adds nothing - and printing
+	 * `coming soon` twice, forty pixels apart, made the reason the loudest thing in
+	 * the group.
 	 */
-	spot: { title: string; note: string; why: string } | null;
+	spot: { title: string; note: string } | null;
 };
 
 /* --------------------------------------------------------------- the sheet */
@@ -329,7 +384,17 @@ export type RemoteSheetModel = {
 		note: string;
 	};
 	tiers: RemoteTierRow[];
-	prompt: { label: string; summary: string; why: string | null };
+	/**
+	 * The one buyable tier, stated instead of marked.
+	 *
+	 * A CHECK AND A SELECTED GROUND ASSERT A CHOICE NOBODY MADE (design round 1, D10):
+	 * the row is not a control and, while `Dedicated` cannot be bought, it is the only
+	 * option. The group says which tier a run will use in words, and spends no
+	 * selection ground on a decision that does not exist. `null` when nothing is
+	 * buyable - the sentence must not promise a tier that is standing down.
+	 */
+	tierNotice: string | null;
+	prompt: { label: string; summary: string };
 	directory: { label: string; path: string };
 	submit: { label: string; enabled: boolean; why: string | null };
 };
@@ -368,6 +433,10 @@ export function remoteSheetModel(input: RemoteSheetInput): RemoteSheetModel {
 	 * decision this screen exists for), then the directory - a run with no directory
 	 * has nowhere to start, and the conversation's own row may not have answered yet -
 	 * then the prompt, then capacity, which is the only one nobody here can fix.
+	 *
+	 * EACH ONE IS SAID ONCE, at the point of action (design round 1, D7). The prompt
+	 * block used to repeat its own reason above the actions as well, and the tier row
+	 * repeated the network's: one decision, three instructions, in one column.
 	 */
 	const submitWhy =
 		chosen === null
@@ -388,19 +457,28 @@ export function remoteSheetModel(input: RemoteSheetInput): RemoteSheetModel {
 				: t("ui.chat.remote_compute.sheet.network.choose"),
 			ambiguous,
 			options,
-			note: t("ui.chat.remote_compute.sheet.network.recorded"),
+			/*
+			 * THE BINDING NAMES THE NETWORK IT BINDS, OR DOES NOT CLAIM ONE (design round
+			 * 1, D3). A placeholder for a choice nobody has made would be a sentence about
+			 * a network that does not exist yet; the qualification - the clause that stops
+			 * a reader believing in isolation - is the part that is always true, so it is
+			 * the part that stays.
+			 */
+			note: chosen
+				? t("ui.chat.remote_compute.sheet.network.recorded", {
+						network: chosen.name || chosen.network_id,
+					})
+				: t("ui.chat.remote_compute.sheet.network.not_enforced"),
 		},
 		tiers: [
 			{
 				tier: "cloud_run",
 				title: t("ui.chat.remote_compute.sheet.tier.cloud_run.title"),
 				note: t("ui.chat.remote_compute.sheet.tier.cloud_run.note"),
-				disabled: !ready || chosen === null,
+				disabled: !ready,
 				why: !ready
 					? t("ui.chat.remote_compute.sheet.tier.capacity_why")
-					: chosen === null
-						? t("ui.chat.remote_compute.sheet.network.choose_why")
-						: null,
+					: null,
 				spot: null,
 			},
 			{
@@ -415,14 +493,15 @@ export function remoteSheetModel(input: RemoteSheetInput): RemoteSheetModel {
 				spot: {
 					title: t("ui.chat.remote_compute.sheet.tier.dedicated.spot.title"),
 					note: t("ui.chat.remote_compute.sheet.tier.dedicated.spot.note"),
-					why: t("ui.chat.remote_compute.sheet.tier.dedicated.why"),
 				},
 			},
 		],
+		tierNotice: ready
+			? t("ui.chat.remote_compute.sheet.tier.cloud_run.selected")
+			: null,
 		prompt: {
 			label: t("ui.chat.remote_compute.sheet.prompt.label"),
 			summary: summarisePrompt(trimmed),
-			why: promptWhy,
 		},
 		directory: {
 			label: t("ui.chat.remote_compute.sheet.directory.label"),
@@ -566,15 +645,21 @@ function statusLabel(status: string, phase: RemoteRunPhase): string {
  * author of a sentence the route owns. The code is read for exactly one thing - which
  * affordance is worth drawing beside it:
  *
- * - `sign-in` - the account is the problem (the two sign-in codes and `not_configured`,
- *   which is this device holding no credential).
+ * - `sign-in` - the account is the problem: `signed_out` (401, the account's own
+ *   `LoginRequired`) and `radient_no_credential` (409, this device holds no
+ *   credential to hand the provider). Both mean the same thing to a user, and the
+ *   app names the second one elsewhere already (`quota-notice.ts`).
  * - `add-credits` - the account exists and cannot pay.
  * - `retry` - a capacity or busy answer, which is time-shaped: the route's own
  *   `Retry-After` is what the countdown reads.
  * - `push-branch` - the run would start on a commit that is not on any remote.
  * - `refresh` - the row is gone or already finished; the honest remedy is a re-read.
- * - `none` - the sentence is the whole answer (a bad request, a refused preview, a
- *   tier this deployment does not offer).
+ * - `none` - the sentence is the whole answer: a bad request, a refused preview, a
+ *   tier this deployment does not offer, or `not_configured`. THAT LAST ONE IS NOT
+ *   AN AUTH CODE, which is why it is here: the start route answers it for the
+ *   family's own off-switch (403) and for a host with no platform configured
+ *   (409), and neither is fixed by signing in - the one button this surface used
+ *   to offer for it could not have helped (agent review M1).
  *
  * THE UNKNOWN CODE IS `none` AND NOT `retry`: an unrecognised refusal gets the
  * server's sentence and no button, because a retry button that re-spends money is
@@ -590,7 +675,8 @@ export type RemoteRemedy =
 
 export function remoteRemedy(code: string): RemoteRemedy {
 	switch (code) {
-		case "not_configured":
+		case "signed_out":
+		case "radient_no_credential":
 			return "sign-in";
 		case "insufficient_credits":
 			return "add-credits";

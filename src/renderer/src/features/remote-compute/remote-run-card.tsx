@@ -48,7 +48,14 @@ import { useRemoteRunPins } from "./remote-run-pins";
 const PHASE_INK: Record<"live" | "settled" | "failed", string> = {
 	live: "text-ink",
 	settled: "text-ink-muted",
-	failed: "text-warning",
+	/*
+	 * A FAILED RUN WEARS `danger`, the role this repository already gives one
+	 * (`mesh-approvals-tray.tsx`, `music-generating-card.tsx`). It was `warning`, the
+	 * same hue the runs dialog spends on "these rows are last known", so one hue
+	 * carried "this run broke" and "nothing is wrong with these rows" in one family
+	 * (design round 1, D8).
+	 */
+	failed: "text-danger",
 };
 
 export type RemoteRunCardProps = {
@@ -149,6 +156,10 @@ export const RemoteRunCard: FC<RemoteRunCardProps> = ({
 				 * aggregate uses, so two lines of this family read as one voice. Painted as
 				 * its own span rather than baked into the strings so a translated sentence
 				 * can never end up with two separators or none.
+				 *
+				 * THE MONEY IS ONE STEP LOUDER THAN THE CLOCK (design round 1, D3): the figure
+				 * a user is charged used to be the identical role as the elapsed seconds, and
+				 * `tabular-nums` keeps it from reflowing as it counts.
 				 */}
 				{(
 					[
@@ -162,20 +173,15 @@ export const RemoteRunCard: FC<RemoteRunCardProps> = ({
 							? {
 									key: "amount",
 									node: (
-										<span data-remote-run-amount={model.amount.kind}>
+										<span
+											data-remote-run-amount={model.amount.kind}
+											className="tabular-nums text-ink-muted"
+										>
 											{model.amount.text}
 										</span>
 									),
 								}
 							: null,
-						{
-							key: "binding",
-							node: (
-								<span data-remote-run-binding="" className="min-w-0 truncate">
-									{model.binding}
-								</span>
-							),
-						},
 					] as const
 				)
 					.filter((fact) => fact !== null)
@@ -190,6 +196,14 @@ export const RemoteRunCard: FC<RemoteRunCardProps> = ({
 						</span>
 					))}
 			</div>
+			{/*
+			 * THE QUALIFICATION IS ITS OWN LINE (design round 1, D3). As the third item of
+			 * that middot chain, the sentence about what the product does NOT do was the
+			 * smallest thing on the card - below the clock it exists to qualify.
+			 */}
+			<span data-remote-run-binding="" className="text-body-sm text-ink-muted">
+				{model.binding}
+			</span>
 			{failure ? (
 				<span data-remote-run-refusal="" className="text-meta text-warning">
 					{failure}

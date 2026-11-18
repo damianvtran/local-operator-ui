@@ -24,12 +24,15 @@
  * explicit re-read. That is the whole cost of having a device control on every
  * conversation.
  *
- * GATING FOLLOWS THE APP'S OWN RULE. `features.peers` is what makes the control
- * exist at all: a control rendered for a capability the backend cannot serve
+ * GATING FOLLOWS THE APP'S OWN RULE. `features.peers` is what makes the mesh half of
+ * the control exist: a control rendered for a capability the backend cannot serve
  * advertises something that cannot work, which is how `app.tsx` gates `session_pins`
  * and `projects`. `features.session_transfer` gates the MOVE and only it, so a
  * daemon that can host a network but cannot move a conversation keeps the placement
- * fact and loses the offer.
+ * fact and loses the offer. The rented-capacity group has NO key of its own in
+ * `capabilities` - its read is the gate - so the control itself survives on a
+ * peers-off deployment that serves it, and disappears on one that does not (agent
+ * review round 1, M3).
  */
 
 import {
@@ -42,7 +45,7 @@ import {
 	panelIdentityFor,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
-import { type FC, useCallback, useMemo } from "react";
+import { type FC, useCallback, useMemo, useState } from "react";
 import {
 	useMeshNetworks,
 	useMeshPeers,
@@ -50,6 +53,11 @@ import {
 } from "../../mesh/mesh-store";
 import type { NetworkSummary, PeerRow } from "../../mesh/mesh-types";
 import { RemoteComputePicker } from "../../remote-compute/remote-compute-picker";
+import { useRemoteComputeRead } from "../../remote-compute/remote-compute-store";
+import {
+	type RemoteComputeSurface,
+	RemoteComputeSurfaces,
+} from "../../remote-compute/remote-compute-surfaces";
 import { useRemoteRunPins } from "../../remote-compute/remote-run-pins";
 import {
 	type DevicePickerModel,
@@ -121,6 +129,23 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	const canTransfer =
 		desktopFeatureState(capabilities.data, "session_transfer") === "enabled";
 	/*
+	 * THE CHIP EXISTS FOR EITHER FAMILY, NOT ONLY THE MESH (agent review round 1, M3 /
+	 * QA Q-002). Gating the whole control on `features.peers` returned `null` before
+	 * the Radient group was composed, so a deployment that serves remote compute but
+	 * not peers had NO entry point for it - and this contract has no feature key of
+	 * its own: the family's own read is the gate (`desktop-contract.ts`). So when the
+	 * mesh is off the control asks that read instead, once per pane through the shared
+	 * query key the picker uses, and shows itself only if the deployment offers the
+	 * family. When the mesh is on, this hook stays disabled and costs nothing: the
+	 * picker's own read decides.
+	 *
+	 * `{enabled: false}` therefore removes the control on a peers-off deployment rather
+	 * than leaving a chip whose only row is this device - a control rendered for a
+	 * capability the backend cannot serve is exactly what the gating above refuses.
+	 */
+	const remoteOffer = useRemoteComputeRead(!peersEnabled);
+	const remoteEnabled = remoteOffer.data?.enabled === true;
+	/*
 	 * ONE READ PER WINDOW. The keys are the mesh store's own, so an open Mesh tab
 	 * shares these entries instead of doubling them; `poll: false` is what keeps a
 	 * device control from becoming a background poller on every conversation - the
@@ -185,6 +210,13 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	/* The pane's identity, from the same helper the composer keys its text by. */
 	const identity = panelIdentityFor(draftKey ?? null, sessionId);
 	const pinRun = useRemoteRunPins((state) => state.pin);
+	/*
+	 * WHICH SECOND LEVEL IS OPEN, AND IT LIVES HERE because the press that asks for it
+	 * happens inside the menu Radix unmounts (UX U1 / QA Q-001). One value, so the
+	 * sheet and the runs list can never both be on screen.
+	 */
+	const [remoteSurface, setRemoteSurface] =
+		useState<RemoteComputeSurface>("none");
 	const settlePlacement = useCanonicalSessionsStore(
 		(state) => state.settlePlacement,
 	);
@@ -426,32 +458,50 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 		],
 	);
 
-	if (!peersEnabled) return null;
+	if (!peersEnabled && !remoteEnabled) return null;
 	/*
 	 * THE OTHER GROUP IN THIS PICKER, composed here for the same reason the mesh's
-	 * rows are: the node reads its own facts, and the header stays chrome. Its prompt
-	 * comes from the composer by `identity`, read inside the node while the picker is
-	 * open; its directory is this pane's own (`draftCwd`, or the live row's `cwd`).
+	 * rows are: the node reads its own facts, and the header stays chrome. Its directory
+	 * is this pane's own (`draftCwd`, or the live row's `cwd`), and a conversation whose
+	 * row is REMOTE has no such directory here - the path on that row is where the
+	 * session runs on the peer - so the group is absent for that pane (agent review m4).
 	 */
 	const remoteGroup = identity ? (
 		<RemoteComputePicker
-			identity={identity}
-			directory={sessionId ? (row?.cwd ?? "") : draftCwd}
-			onSubmitted={(run) => pinRun(identity, run.id)}
+			onOpenSheet={() => setRemoteSurface("sheet")}
+			hostedElsewhere={host !== null}
 		/>
 	) : undefined;
 	return (
-		<ChatHeaderDevice
-			placement={placement}
-			model={model}
-			sessionId={sessionId}
-			busy={move?.kind === "moving"}
-			onPick={onPick}
-			remoteGroup={remoteGroup}
-			onCheckAgain={() => {
-				void peers.refetch();
-				void networks.refetch();
-			}}
-		/>
+		<>
+			<ChatHeaderDevice
+				placement={placement}
+				model={model}
+				sessionId={sessionId}
+				busy={move?.kind === "moving"}
+				onPick={onPick}
+				remoteGroup={remoteGroup}
+				onCheckAgain={() => {
+					void peers.refetch();
+					void networks.refetch();
+				}}
+			/>
+			{/*
+			 * THE SECOND LEVEL, BESIDE THE HEADER RATHER THAN INSIDE THE MENU (UX U1 /
+			 * QA Q-001), which is where `MoveConfirmDialog` already lives for the peer flow.
+			 * A surface mounted inside `DropdownMenuContent` unmounts on the select that
+			 * opens it. No pane identity means no composer text to summarise, so there is
+			 * nothing a surface could be opened for.
+			 */}
+			{identity ? (
+				<RemoteComputeSurfaces
+					surface={remoteSurface}
+					onSurfaceChange={setRemoteSurface}
+					identity={identity}
+					directory={sessionId ? (row?.cwd ?? "") : draftCwd}
+					onSubmitted={(run) => pinRun(identity, run.id)}
+				/>
+			) : null}
+		</>
 	);
 };

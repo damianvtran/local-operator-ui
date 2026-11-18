@@ -7290,6 +7290,7 @@ export type MessageParams = {
 	"ui.chat.remote_compute.row.held": { amount: string };
 	"ui.chat.remote_compute.row.name": undefined;
 	"ui.chat.remote_compute.row.needs_network": undefined;
+	"ui.chat.remote_compute.row.network_remedy": undefined;
 	"ui.chat.remote_compute.row.not_offered": undefined;
 	"ui.chat.remote_compute.row.ready": undefined;
 	"ui.chat.remote_compute.row.retry": undefined;
@@ -7319,7 +7320,8 @@ export type MessageParams = {
 	"ui.chat.remote_compute.sheet.network.choose": undefined;
 	"ui.chat.remote_compute.sheet.network.choose_why": undefined;
 	"ui.chat.remote_compute.sheet.network.label": undefined;
-	"ui.chat.remote_compute.sheet.network.recorded": undefined;
+	"ui.chat.remote_compute.sheet.network.not_enforced": undefined;
+	"ui.chat.remote_compute.sheet.network.recorded": { network: string };
 	"ui.chat.remote_compute.sheet.prompt.empty": undefined;
 	"ui.chat.remote_compute.sheet.prompt.label": undefined;
 	"ui.chat.remote_compute.sheet.submit": undefined;
@@ -7330,6 +7332,7 @@ export type MessageParams = {
 	"ui.chat.remote_compute.sheet.submitting": undefined;
 	"ui.chat.remote_compute.sheet.tier.capacity_why": undefined;
 	"ui.chat.remote_compute.sheet.tier.cloud_run.note": undefined;
+	"ui.chat.remote_compute.sheet.tier.cloud_run.selected": undefined;
 	"ui.chat.remote_compute.sheet.tier.cloud_run.title": undefined;
 	"ui.chat.remote_compute.sheet.tier.dedicated.note": undefined;
 	"ui.chat.remote_compute.sheet.tier.dedicated.spot.note": undefined;
@@ -7338,6 +7341,9 @@ export type MessageParams = {
 	"ui.chat.remote_compute.sheet.tier.dedicated.why": undefined;
 	"ui.chat.remote_compute.sheet.tier.group_label": undefined;
 	"ui.chat.remote_compute.sheet.view_runs": undefined;
+	"ui.chat.remote_compute.store.accepted_without_run": undefined;
+	"ui.chat.remote_compute.store.refused": undefined;
+	"ui.chat.remote_compute.store.transport": undefined;
 	"ui.chat.response_actions.answer_label": undefined;
 	"ui.chat.response_actions.copied": undefined;
 	"ui.chat.response_actions.copy": undefined;

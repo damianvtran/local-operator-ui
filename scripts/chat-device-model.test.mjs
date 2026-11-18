@@ -680,9 +680,11 @@ test("a move narrows eligibility, and the ineligible row stays readable and expl
 	assert.equal(gradient.why, "did not answer the last read");
 	// The reason carries reachability, so the fact line does not say it twice.
 	assert.equal(gradient.facts.includes("unreachable"), false);
-	// The consequence is pinned, and it is the default move's own.
+	// The consequence is pinned, and it is the default move's own - and it now names
+	// its subject, so it cannot be read onto a row above it that moves nothing
+	// (design round 1, D1).
 	assert.equal(model.footer, t("ui.chat.device.footer.move_deletes_copy"));
-	assert.match(model.footer, /copy on this device is deleted/);
+	assert.match(model.footer, /^A move deletes this device's copy/u);
 });
 
 test("a backend that cannot move keeps the fact and loses every offer, with its own reason", () => {
