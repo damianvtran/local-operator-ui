@@ -3686,6 +3686,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			confirmed: z.literal(true),
 		})
 		.strict(),
+	/*
+	 * The ADMITTED body behind one inbound Team Bridge card (core design
+	 * bridge-body §4). Keyed by the card's own journal ENTRY id, never by a
+	 * message id: core answers only for a `team_bridge_message` row of a session
+	 * this reader can already read, so the op cannot be used to probe arbitrary
+	 * hub messages. Dispatched only when `features.team_bridge_card_body >= 1`;
+	 * an older runtime never sees it and the card keeps its old sentence.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.bridgeCardBody"),
+			sessionId,
+			entryId: id,
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.aside.get"),
@@ -8175,6 +8190,9 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	// census, and the app re-reads it rather than caching a stale count.
 	"runtimes.list",
 	"sessions.aside.get",
+	// Reads core's display store (and, for old cards, the hub's admitted history)
+	// and writes nothing the reader can see; a timeout gets the read sentence.
+	"sessions.bridgeCardBody",
 	"sessions.checkpoints",
 	"sessions.failovers",
 	"sessions.find",
@@ -11252,6 +11270,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/asides/${request.asideId}/adopt`,
 				method: "POST",
 				body: { request_id: request.requestId, confirmed: request.confirmed },
+			};
+		case "sessions.bridgeCardBody":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/bridge-cards/${encodeURIComponent(request.entryId)}/body`,
+				method: "GET",
 			};
 		case "sessions.aside.get":
 		case "sessions.aside.close":

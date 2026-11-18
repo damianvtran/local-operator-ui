@@ -1,5 +1,19 @@
 {
 	"ui.chat.bridgeReceipt.received": "Получено от {sender}",
 	"ui.chat.bridgeReceipt.unavailable": "Текст сообщения недоступен.",
-	"ui.chat.bridgeReceipt.provenance": "Внешнее сообщение · недоверенное содержимое"
+	"ui.chat.bridgeReceipt.provenance": "Внешнее сообщение · недоверенное содержимое",
+	"ui.chat.bridgeReceipt.loading": "Загрузка сообщения…",
+	"ui.chat.bridgeReceipt.pending": "Сообщение ещё доставляется.",
+	"ui.chat.bridgeReceipt.held": "Задержано модерацией.",
+	"ui.chat.bridgeReceipt.refused": "Отклонено модерацией.",
+	"ui.chat.bridgeReceipt.not_admitted": "Не доставлено этому агенту.",
+	"ui.chat.bridgeReceipt.unavailable_reason.signed_out": "Текст сообщения недоступен. Войдите в Team Bridge, чтобы загрузить его.",
+	"ui.chat.bridgeReceipt.unavailable_reason.other_account": "Текст сообщения недоступен. Его получила другая учётная запись Team Bridge.",
+	"ui.chat.bridgeReceipt.unavailable_reason.not_member": "Текст сообщения недоступен. Вы больше не участвуете в этом разговоре.",
+	"ui.chat.bridgeReceipt.unavailable_reason.deleted": "Это сообщение удалено.",
+	"ui.chat.bridgeReceipt.unavailable_reason.hub_unsupported": "Текст сообщения недоступен. Team Bridge не может загрузить это старое сообщение.",
+	"ui.chat.bridgeReceipt.unavailable_reason.offline": "Текст сообщения недоступен. Не удалось подключиться к Team Bridge.",
+	"ui.chat.bridgeReceipt.show_more": "Показать больше",
+	"ui.chat.bridgeReceipt.show_less": "Свернуть",
+	"ui.chat.bridgeReceipt.more": "{count, plural, one {И ещё {count, number} сообщение} few {И ещё {count, number} сообщения} many {И ещё {count, number} сообщений} other {И ещё {count, number} сообщения}}"
 }

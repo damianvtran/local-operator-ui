@@ -1,5 +1,19 @@
 {
 	"ui.chat.bridgeReceipt.received": "{sender} से प्राप्त",
 	"ui.chat.bridgeReceipt.unavailable": "संदेश का पाठ उपलब्ध नहीं है।",
-	"ui.chat.bridgeReceipt.provenance": "बाहरी संदेश · अविश्वसनीय सामग्री"
+	"ui.chat.bridgeReceipt.provenance": "बाहरी संदेश · अविश्वसनीय सामग्री",
+	"ui.chat.bridgeReceipt.loading": "संदेश लोड हो रहा है…",
+	"ui.chat.bridgeReceipt.pending": "अभी पहुँचाया जा रहा है।",
+	"ui.chat.bridgeReceipt.held": "मॉडरेशन ने रोक रखा है।",
+	"ui.chat.bridgeReceipt.refused": "मॉडरेशन ने अस्वीकार किया।",
+	"ui.chat.bridgeReceipt.not_admitted": "इस एजेंट तक नहीं पहुँचाया गया।",
+	"ui.chat.bridgeReceipt.unavailable_reason.signed_out": "संदेश का पाठ उपलब्ध नहीं है। इसे लोड करने के लिए Team Bridge में साइन इन करें।",
+	"ui.chat.bridgeReceipt.unavailable_reason.other_account": "संदेश का पाठ उपलब्ध नहीं है। यह किसी दूसरे Team Bridge खाते को मिला था।",
+	"ui.chat.bridgeReceipt.unavailable_reason.not_member": "संदेश का पाठ उपलब्ध नहीं है। आप अब इस बातचीत में शामिल नहीं हैं।",
+	"ui.chat.bridgeReceipt.unavailable_reason.deleted": "यह संदेश हटा दिया गया।",
+	"ui.chat.bridgeReceipt.unavailable_reason.hub_unsupported": "संदेश का पाठ उपलब्ध नहीं है। Team Bridge यह पुराना संदेश लोड नहीं कर सकता।",
+	"ui.chat.bridgeReceipt.unavailable_reason.offline": "संदेश का पाठ उपलब्ध नहीं है। Team Bridge से संपर्क नहीं हो सका।",
+	"ui.chat.bridgeReceipt.show_more": "और दिखाएँ",
+	"ui.chat.bridgeReceipt.show_less": "कम दिखाएँ",
+	"ui.chat.bridgeReceipt.more": "{count, plural, one {और {count, number} संदेश} other {और {count, number} संदेश}}"
 }

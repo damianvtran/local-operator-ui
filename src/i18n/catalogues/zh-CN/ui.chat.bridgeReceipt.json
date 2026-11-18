@@ -1,5 +1,19 @@
 {
 	"ui.chat.bridgeReceipt.received": "收到来自 {sender} 的消息",
 	"ui.chat.bridgeReceipt.unavailable": "消息正文不可用。",
-	"ui.chat.bridgeReceipt.provenance": "外部消息 · 不可信内容"
+	"ui.chat.bridgeReceipt.provenance": "外部消息 · 不可信内容",
+	"ui.chat.bridgeReceipt.loading": "正在加载消息…",
+	"ui.chat.bridgeReceipt.pending": "仍在投递中。",
+	"ui.chat.bridgeReceipt.held": "已被审核暂扣。",
+	"ui.chat.bridgeReceipt.refused": "已被审核拒绝。",
+	"ui.chat.bridgeReceipt.not_admitted": "未投递给此智能体。",
+	"ui.chat.bridgeReceipt.unavailable_reason.signed_out": "消息内容不可用。请登录 Team Bridge 后加载。",
+	"ui.chat.bridgeReceipt.unavailable_reason.other_account": "消息内容不可用。该消息由另一个 Team Bridge 账号接收。",
+	"ui.chat.bridgeReceipt.unavailable_reason.not_member": "消息内容不可用。你已不在此对话中。",
+	"ui.chat.bridgeReceipt.unavailable_reason.deleted": "此消息已被删除。",
+	"ui.chat.bridgeReceipt.unavailable_reason.hub_unsupported": "消息内容不可用。Team Bridge 无法加载这条较早的消息。",
+	"ui.chat.bridgeReceipt.unavailable_reason.offline": "消息内容不可用。无法连接 Team Bridge。",
+	"ui.chat.bridgeReceipt.show_more": "显示更多",
+	"ui.chat.bridgeReceipt.show_less": "收起",
+	"ui.chat.bridgeReceipt.more": "{count, plural, other {另有 {count, number} 条消息}}"
 }
