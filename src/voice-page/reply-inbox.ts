@@ -23,6 +23,11 @@ export class ReplyInbox {
 		resolve(bytes: Uint8Array | null): void;
 	} | null = null;
 
+	/** The reply being played now, or null (retired by a stop or a drain). */
+	get current(): string | null {
+		return this.replyId;
+	}
+
 	/**
 	 * Offer a message. `fresh` means it opened a new reply (the caller restarts
 	 * playback); `accepted` false means it was stale and was dropped.

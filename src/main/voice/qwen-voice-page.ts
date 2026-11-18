@@ -275,6 +275,88 @@ export type QwenVoicePageDeps = {
 	now?: () => number;
 };
 
+/** What the microphone preflight needs; both voice pages share it. */
+export type MicrophonePreflightDeps = {
+	mediaAccess: { status: () => string; ask: () => Promise<boolean> };
+	setTimer: (fn: () => void, ms: number) => unknown;
+	clearTimer: (handle: unknown) => void;
+	log: (message: string) => void;
+};
+
+/**
+ * The OS microphone question (TCC), asked BEFORE a page exists so a denial is a
+ * state the strip shows rather than a page that loads and hears nothing. A free
+ * function because the OS answer does not depend on which page will listen.
+ */
+export async function prepareMicrophoneAccess(
+	deps: MicrophonePreflightDeps,
+	options: MicrophonePreflight = {},
+): Promise<QwenMicAccess> {
+	let status: string;
+	try {
+		status = deps.mediaAccess.status();
+	} catch (error) {
+		deps.log(
+			`qwen-page: microphone status unavailable: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		return "unknown";
+	}
+	if (status === "granted") return "granted";
+	if (status === "denied" || status === "restricted") return "denied";
+	if (status !== "not-determined") return "unknown";
+	/*
+	 * Ask while voice is being turned ON, not from inside a silent page: a
+	 * denial becomes a state the header shows, instead of a page that loads
+	 * with `clients: 1` and hears nothing.
+	 *
+	 * WHERE THE DIALOG IS ATTRIBUTED (QA round 1, Q-4, no code): macOS gives
+	 * a prompt to the RESPONSIBLE process, not necessarily the one that asked.
+	 * In a dev harness that was the lop session host, so the dev app's prompt
+	 * never appeared there. That is a harness artifact - the packaged app is
+	 * its own bundle and answers its own prompt - and not something this call
+	 * can change. Do not chase it here.
+	 */
+	const answer = askMicrophone(deps);
+	const timeoutMs = options.timeoutMs ?? 0;
+	if (timeoutMs <= 0) return (await answer) ?? "unknown";
+	/*
+	 * BOUNDED (review M3/QA): macOS can leave the dialog up indefinitely, and
+	 * a start must not hold on it. The wait expires into `prompting`; the
+	 * answer, whenever it comes, reaches the caller through `onSettled`.
+	 */
+	return new Promise<QwenMicAccess>((resolve) => {
+		let settled = false;
+		const timer = deps.setTimer(() => {
+			if (settled) return;
+			settled = true;
+			resolve("prompting");
+			void answer.then((value) => {
+				if (value) options.onSettled?.(value);
+			});
+		}, timeoutMs);
+		void answer.then((value) => {
+			if (settled) return;
+			settled = true;
+			deps.clearTimer(timer);
+			resolve(value ?? "unknown");
+		});
+	});
+}
+
+/** One `askForMediaAccess`, mapped to the two answers or null on error. */
+async function askMicrophone(
+	deps: MicrophonePreflightDeps,
+): Promise<QwenMicSettled | null> {
+	try {
+		return (await deps.mediaAccess.ask()) ? "granted" : "denied";
+	} catch (error) {
+		deps.log(
+			`qwen-page: microphone prompt failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		return null;
+	}
+}
+
 export class QwenVoicePage implements QwenVoicePagePort {
 	readonly allowed = true;
 	private view: VoicePageView | null = null;
@@ -389,70 +471,16 @@ export class QwenVoicePage implements QwenVoicePagePort {
 		}
 	}
 
-	async prepareMicrophone(
-		options: MicrophonePreflight = {},
-	): Promise<QwenMicAccess> {
-		let status: string;
-		try {
-			status = this.deps.mediaAccess.status();
-		} catch (error) {
-			this.log(
-				`qwen-page: microphone status unavailable: ${error instanceof Error ? error.message : String(error)}`,
-			);
-			return "unknown";
-		}
-		if (status === "granted") return "granted";
-		if (status === "denied" || status === "restricted") return "denied";
-		if (status !== "not-determined") return "unknown";
-		/*
-		 * Ask while voice is being turned ON, not from inside a silent page: a
-		 * denial becomes a state the header shows, instead of a page that loads
-		 * with `clients: 1` and hears nothing.
-		 *
-		 * WHERE THE DIALOG IS ATTRIBUTED (QA round 1, Q-4, no code): macOS gives
-		 * a prompt to the RESPONSIBLE process, not necessarily the one that asked.
-		 * In a dev harness that was the lop session host, so the dev app's prompt
-		 * never appeared there. That is a harness artifact - the packaged app is
-		 * its own bundle and answers its own prompt - and not something this call
-		 * can change. Do not chase it here.
-		 */
-		const answer = this.askMicrophone();
-		const timeoutMs = options.timeoutMs ?? 0;
-		if (timeoutMs <= 0) return (await answer) ?? "unknown";
-		/*
-		 * BOUNDED (review M3/QA): macOS can leave the dialog up indefinitely, and
-		 * a start must not hold on it. The wait expires into `prompting`; the
-		 * answer, whenever it comes, reaches the caller through `onSettled`.
-		 */
-		return new Promise<QwenMicAccess>((resolve) => {
-			let settled = false;
-			const timer = this.setTimer(() => {
-				if (settled) return;
-				settled = true;
-				resolve("prompting");
-				void answer.then((value) => {
-					if (value) options.onSettled?.(value);
-				});
-			}, timeoutMs);
-			void answer.then((value) => {
-				if (settled) return;
-				settled = true;
-				this.clearTimer(timer);
-				resolve(value ?? "unknown");
-			});
-		});
-	}
-
-	/** One `askForMediaAccess`, mapped to the two answers or null on error. */
-	private async askMicrophone(): Promise<QwenMicSettled | null> {
-		try {
-			return (await this.deps.mediaAccess.ask()) ? "granted" : "denied";
-		} catch (error) {
-			this.log(
-				`qwen-page: microphone prompt failed: ${error instanceof Error ? error.message : String(error)}`,
-			);
-			return null;
-		}
+	prepareMicrophone(options: MicrophonePreflight = {}): Promise<QwenMicAccess> {
+		return prepareMicrophoneAccess(
+			{
+				mediaAccess: this.deps.mediaAccess,
+				setTimer: this.setTimer,
+				clearTimer: this.clearTimer,
+				log: this.log,
+			},
+			options,
+		);
 	}
 
 	/** Grant audio, main frame, the Gateway's origin; deny everything else. */

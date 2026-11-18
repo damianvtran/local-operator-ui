@@ -343,10 +343,10 @@ test("CSP: the page's policy is the plan's, and the html carries exactly it", ()
 	assert.equal(meta?.[1], m.VOICE_PAGE_CSP);
 });
 
-test("CHANNELS: five distinct, namespaced channels", () => {
+test("CHANNELS: six distinct, namespaced channels", () => {
 	const values = Object.values(m.VOICE_PAGE_CHANNELS);
-	assert.equal(values.length, 5);
-	assert.equal(new Set(values).size, 5);
+	assert.equal(values.length, 6);
+	assert.equal(new Set(values).size, 6);
 	for (const v of values) assert.match(v, /^voice-page:/);
 });
 
@@ -457,6 +457,34 @@ test("BUILD: the page and its preload are declared where the build and the dev s
 		"renderer dev input AND rollupOptions.input",
 	);
 	assert.equal(config.includes("src/preload/voice-page.ts"), true);
+});
+
+/*
+ * PROGRESS (page -> main): without it main cannot keep one segment ahead, show
+ * Speaking, or know a reply ended - the page owns the audio clock.
+ */
+test("PROGRESS: the page names the reply it is playing, and a stop or a drain retires it", () => {
+	const inbox = new m.ReplyInbox();
+	assert.equal(inbox.current, null);
+	inbox.push({ id: { replyId: "r1", index: 0 }, bytes: new Uint8Array(1) });
+	assert.equal(inbox.current, "r1");
+	inbox.stop();
+	assert.equal(inbox.current, null);
+	inbox.push({ id: { replyId: "r2", index: 0 }, bytes: new Uint8Array(1) });
+	inbox.drained();
+	assert.equal(inbox.current, null);
+});
+
+test("PROGRESS: preload, bridge and page entry all carry it, by the channel constant", () => {
+	const preload = readFileSync("src/preload/voice-page.ts", "utf8");
+	assert.ok(preload.includes("sendProgress"));
+	assert.ok(preload.includes("C.progress"));
+	const bridge = readFileSync("src/voice-page/bridge.ts", "utf8");
+	assert.ok(bridge.includes("sendProgress"));
+	const entry = readFileSync("src/voice-page/main.ts", "utf8");
+	assert.ok(entry.includes('"segment_start"'));
+	assert.ok(entry.includes('"drained"'));
+	assert.equal(m.VOICE_PAGE_CHANNELS.progress, "voice-page:progress");
 });
 
 /* ------------------------- REPLY INBOX (page glue) ------------------------ */

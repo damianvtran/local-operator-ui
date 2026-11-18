@@ -14,6 +14,12 @@ export const VOICE_PAGE_CHANNELS = {
 	stop: "voice-page:stop",
 	/** main -> page: silence (or restore) the page's own output. */
 	mute: "voice-page:mute",
+	/**
+	 * page -> main: where playback is. The page owns the audio clock, so only it
+	 * can tell main a segment has begun (main fetches the next one then, never
+	 * earlier: one request ahead) or that the reply ran out.
+	 */
+	progress: "voice-page:progress",
 } as const;
 
 export type VadEventKind = "speech_start" | "speech_end";
@@ -30,3 +36,8 @@ export type PlayMessage = {
 	bytes: Uint8Array;
 	last?: boolean;
 };
+
+/** What the page reports about the reply it is playing (`replyId` as pushed). */
+export type ProgressMessage =
+	| { kind: "segment_start"; replyId: string; index: number }
+	| { kind: "drained"; replyId: string };

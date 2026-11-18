@@ -38,6 +38,7 @@
 
 import { totalmem } from "node:os";
 import type { QwenVoiceEngine } from "../../shared/desktop-contract";
+import type { ByokSpeakEntry, ByokState, ByokVoicePort } from "./byok-voice";
 import type { GatewayDownMessage, GatewayUpMessage } from "./qwen-gateway";
 import { qwenMachineTooSmall } from "./qwen-rig";
 import {
@@ -73,8 +74,12 @@ export type QwenVoiceStatus = {
 	reason?: string | null;
 	/** Voice pages connected to the Gateway right now. */
 	clients?: number;
-	/** `unexpected_exit`: a rig process died while the rig was ready. */
-	cause?: "unexpected_exit" | null;
+	/**
+	 * `unexpected_exit`: a rig process died while the rig was ready.
+	 * `byok_key_missing`: the bring-your-own-key engine has no ElevenLabs key to
+	 * use, so nothing listens.
+	 */
+	cause?: "unexpected_exit" | "byok_key_missing" | null;
 	/**
 	 * The macOS microphone verdict for this app's identity (plan §2/§4, review
 	 * M3). Additive to the frozen status: `denied` is "Microphone blocked - Open
@@ -171,6 +176,11 @@ export type QwenVoiceDeps = {
 	/** The hidden voice page (plan §1-§3); a no-op in agent-driven runs. */
 	page: QwenVoicePagePort;
 	/**
+	 * The bring-your-own-key engine's listener and speaker (`byok-voice.ts`).
+	 * Absent in a run with no byok half; every call to it is then skipped.
+	 */
+	byok?: ByokVoicePort;
+	/**
 	 * Physical memory in bytes. A machine under 16 GB cannot hold the rig, and
 	 * the header says so before anything spawns (review R1).
 	 */
@@ -181,7 +191,22 @@ export type QwenVoiceDeps = {
 	clearTimer?: (handle: unknown) => void;
 };
 
-type Relayed = { text: string; kind: "reply" | "gate"; at: number };
+type Relayed = {
+	text: string;
+	kind: "reply" | "gate";
+	at: number;
+	/**
+	 * The source reference and segment count `voice.text` answered for. The
+	 * bring-your-own-key engine speaks by reference (`/voice/speech` takes a
+	 * source and an index, never text), so it needs both; the rig ignores them.
+	 */
+	source: ByokSpeakEntry["source"] | null;
+	segments: number;
+};
+
+/** The strip's sentence when the bring-your-own-key engine has no key to use. */
+export const BYOK_KEY_MISSING =
+	"Add your ElevenLabs key in Settings to use voice.";
 
 /** The slot's session id from a `{active}` payload, or null. */
 function slotOf(payload: unknown): string | null {
@@ -216,6 +241,13 @@ export class QwenVoice {
 	 */
 	private paused = false;
 	private muted = false;
+	/**
+	 * Whether the bring-your-own-key engine was STARTED (an enable frame, or the
+	 * renderer's "Start voice"). A slot merely learned from a status read does not
+	 * open the microphone, as with the rig: an app relaunched with voice still on
+	 * must not listen until asked. Cleared with the slot.
+	 */
+	private byokListening = false;
 	/**
 	 * Whether the page is playing a reply right now, as the Gateway's own events
 	 * say. The ONLY thing a move uses it for is deciding whether there is sound
@@ -293,6 +325,9 @@ export class QwenVoice {
 		if (!isSelectableEngine(next) || next === this.engine) return this.engine;
 		this.engine = next;
 		this.log(`qwen-voice: engine is now ${next}`);
+		// Whatever the other engine was doing, this one starts from nothing.
+		this.byokListening = false;
+		this.syncByok();
 		if (next !== "local") {
 			this.applySlot(null, { start: false });
 			this.relayed = [];
@@ -361,6 +396,7 @@ export class QwenVoice {
 		this.paused = true;
 		this.playing = false;
 		this.deps.page.close();
+		this.syncByok();
 		/* No page, so no client: the count is not a guess, it is a fact - and the
 		   private counter moves with it, so a stale `client_attached` cannot put a
 		   page back into a count that has none. */
@@ -378,6 +414,7 @@ export class QwenVoice {
 		if (!this.enabled) return this.getStatus();
 		if (!this.paused) return this.getStatus();
 		this.paused = false;
+		this.syncByok();
 		const webuiUrl = this.status.webui_url;
 		if (this.status.rig === "ready" && webuiUrl) {
 			/* `open` is idempotent, so a page that exists is closed first - the
@@ -400,6 +437,7 @@ export class QwenVoice {
 		if (!this.enabled) return this.getStatus();
 		this.muted = muted;
 		this.deps.page.setMuted(muted);
+		this.syncByok();
 		this.setStatus({ ...this.status, muted });
 		return this.getStatus();
 	}
@@ -450,6 +488,9 @@ export class QwenVoice {
 			}
 		}
 		if (next === null) {
+			// NOTHING LISTENS WITHOUT A HOLDER, whichever engine hears.
+			this.byokListening = false;
+			this.syncByok();
 			/*
 			 * TURNING VOICE OFF ENDS A PAUSE. The page was closed by the pause and
 			 * would now stay closed through the next enable - `readyAgain` rightly
@@ -479,6 +520,9 @@ export class QwenVoice {
 		 */
 		if (!start && previous === null && this.rigUp() && this.status.webui_url)
 			this.openPage(this.status.webui_url);
+		// A move between two live slots reaches the byok half; its start (below)
+		// does the same for an enable.
+		if (!start) this.syncByok();
 		if (start) void this.start("enable");
 	}
 
@@ -488,8 +532,15 @@ export class QwenVoice {
 	 */
 	start(reason: "enable" | "renderer"): Promise<QwenVoiceStatus> {
 		if (!this.enabled) return Promise.resolve(this.getStatus());
-		// Only the local engine has a rig. Another engine loads nothing here.
-		if (this.engine !== "local") return Promise.resolve(this.getStatus());
+		// Only the local engine has a rig. Another engine loads nothing here; the
+		// bring-your-own-key one starts LISTENING, which loads nothing either.
+		if (this.engine !== "local") {
+			if (this.engine === "byok") {
+				this.byokListening = true;
+				this.syncByok();
+			}
+			return Promise.resolve(this.getStatus());
+		}
 		if (this.rigUp()) return this.readyAgain(reason);
 		/*
 		 * A MACHINE THAT CANNOT HOLD THE RIG IS TOLD SO, FIRST (review R1): the
@@ -789,6 +840,7 @@ export class QwenVoice {
 		this.playing = false;
 		this.disarmIdleStop();
 		this.deps.page.close();
+		this.deps.byok?.stop();
 		this.deps.gateway.stop();
 		this.deps.speech.killNow(clearRecord);
 	}
@@ -957,6 +1009,14 @@ export class QwenVoice {
 		if (request?.op === "voice.status" || request?.op === "voice.control") {
 			if (response.status < 200 || response.status >= 300) return;
 			const result = (response.body as { result?: unknown } | null)?.result;
+			if (request.op === "voice.status") {
+				// The backend's own answer for a request pinned to ElevenLabs; an older
+				// backend says nothing, which is "unknown", not "missing".
+				const byok = (result as { byok?: { ready?: unknown } } | null)?.byok;
+				this.deps.byok?.setKeyReady(
+					typeof byok?.ready === "boolean" ? byok.ready : null,
+				);
+			}
 			// An enable's answer also arrives as a feed frame, which is what starts
 			// the rig; this read only keeps the copy current between frames.
 			this.applySlot(slotOf(result), { start: false });
@@ -965,11 +1025,30 @@ export class QwenVoice {
 		if (request?.op !== "voice.text") return;
 		if (response.status < 200 || response.status >= 300) return;
 		if (request.sessionId !== this.slot) return;
-		const text = (response.body as { result?: { text?: unknown } } | null)
-			?.result?.text;
+		const result = (
+			response.body as {
+				result?: { text?: unknown; segments?: unknown };
+			} | null
+		)?.result;
+		const text = result?.text;
 		if (typeof text !== "string" || !text.trim()) return;
 		const kind = request.source?.kind === "gate" ? "gate" : "reply";
-		this.relayed.push({ text, kind, at: this.now() });
+		const asked = request.source as
+			| { kind?: unknown; messageId?: unknown; requestId?: unknown }
+			| undefined;
+		const source: Relayed["source"] =
+			asked?.kind === "gate" && typeof asked.requestId === "string"
+				? { kind: "gate", requestId: asked.requestId }
+				: asked?.kind === "message" && typeof asked.messageId === "string"
+					? { kind: "message", messageId: asked.messageId }
+					: null;
+		this.relayed.push({
+			text,
+			kind,
+			at: this.now(),
+			source,
+			segments: Array.isArray(result?.segments) ? result.segments.length : 0,
+		});
 		if (this.relayed.length > RELAYED_LIMIT)
 			this.relayed.splice(0, this.relayed.length - RELAYED_LIMIT);
 	}
@@ -992,6 +1071,7 @@ export class QwenVoice {
 		);
 		if (index < 0) return { spoken: false, reason: "not_relayed" };
 		if (this.paused) return { spoken: false, reason: "paused" };
+		if (this.engine === "byok") return this.speakByok(index);
 		if (this.status.rig !== "ready")
 			return { spoken: false, reason: "rig_not_ready" };
 		// No voice page connected: nothing would be heard, so nothing is claimed.
@@ -1003,5 +1083,93 @@ export class QwenVoice {
 			kind: entry.kind,
 		});
 		return sent ? { spoken: true } : { spoken: false, reason: "rig_not_ready" };
+	}
+	/**
+	 * Speak through the bring-your-own-key engine: the same guard as the rig's (the
+	 * text is one main relayed, consumed once), then the text's SOURCE and segment
+	 * count go to the page's speaker - never the words.
+	 */
+	private speakByok(index: number): { spoken: boolean; reason?: string } {
+		const byok = this.deps.byok;
+		const entry = this.relayed[index];
+		if (!byok || this.status.rig !== "ready" || this.slot === null)
+			return { spoken: false, reason: "rig_not_ready" };
+		if (entry.source === null) return { spoken: false, reason: "not_relayed" };
+		this.relayed.splice(index, 1);
+		return byok.speak({
+			sessionId: this.slot,
+			kind: entry.kind,
+			source: entry.source,
+			segments: entry.segments,
+		});
+	}
+
+	/**
+	 * Tell the byok half whether it should be listening: voice on, this engine,
+	 * started, a holder, not paused. Idempotent, so every change calls it.
+	 */
+	private syncByok(): void {
+		this.deps.byok?.apply({
+			active:
+				this.enabled &&
+				this.engine === "byok" &&
+				this.byokListening &&
+				this.slot !== null &&
+				!this.paused,
+			slot: this.slot,
+			muted: this.muted,
+		});
+	}
+
+	/**
+	 * What the byok half is doing, in the strip's own vocabulary: listening is a
+	 * ready rig with one page connected, a missing key is the rig's error with its
+	 * own cause, a blocked microphone is the same `mic` field the rig reports.
+	 */
+	byokReport(state: ByokState): void {
+		if (!this.enabled || this.engine !== "byok") return;
+		switch (state) {
+			case "listening":
+				this.setStatus({ rig: "ready", webui_url: null, clients: 1 });
+				return;
+			case "idle":
+				// Paused is the rig's "healthy, nobody connected", not a stopped one.
+				this.setStatus(
+					this.paused && this.byokListening
+						? { rig: "ready", webui_url: null, clients: 0 }
+						: { rig: "stopped", webui_url: null },
+				);
+				return;
+			case "key_missing":
+				this.setStatus({
+					rig: "error",
+					webui_url: null,
+					reason: BYOK_KEY_MISSING,
+					cause: "byok_key_missing",
+				});
+				return;
+			case "mic_denied":
+			case "mic_prompting":
+				this.setStatus({
+					rig: "stopped",
+					webui_url: null,
+					mic: state === "mic_denied" ? "denied" : "prompting",
+				});
+				return;
+			case "page_failed":
+				this.setStatus({
+					rig: "error",
+					webui_url: null,
+					reason: "The voice page stopped",
+				});
+				return;
+			case "no_window":
+				this.setStatus({
+					rig: "error",
+					webui_url: null,
+					reason: QWEN_NO_VOICE_WINDOW,
+				});
+				return;
+		}
 	}
 }

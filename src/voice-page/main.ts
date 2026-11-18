@@ -45,7 +45,17 @@ const scheduler = new SegmentScheduler({
 		},
 	},
 	// Main pushes segments as it fetches them (one ahead); the scheduler pulls.
-	onDrained: () => inbox.drained(),
+	// Both signals name the reply, so a late one from a retired reply is main's to
+	// ignore; the id is read BEFORE `drained()` retires it.
+	onSegmentStart: (index) => {
+		const replyId = inbox.current;
+		if (replyId) bridge.sendProgress({ kind: "segment_start", replyId, index });
+	},
+	onDrained: () => {
+		const replyId = inbox.current;
+		inbox.drained();
+		if (replyId) bridge.sendProgress({ kind: "drained", replyId });
+	},
 	fetchSegment: (index, signal) => inbox.pull(index, signal),
 });
 

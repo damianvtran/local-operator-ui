@@ -12,6 +12,7 @@ import { VOICE_PAGE_CHANNELS as C } from "../voice-page/channels";
 const bridge: VoicePageBridge = {
 	sendTake: (wav) => ipcRenderer.send(C.take, wav),
 	sendVad: (kind) => ipcRenderer.send(C.vad, kind),
+	sendProgress: (message) => ipcRenderer.send(C.progress, message),
 	onPlay: (handler) =>
 		ipcRenderer.on(C.play, (_event, message) => handler(message)),
 	onStop: (handler) => ipcRenderer.on(C.stop, () => handler()),

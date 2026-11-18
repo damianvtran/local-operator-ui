@@ -57,6 +57,7 @@ import {
 	groundWithGlass,
 	windowGlassArgument,
 } from "../shared/window-glass";
+import { VOICE_PAGE_CHANNELS } from "../voice-page/channels";
 import {
 	BackendInstaller,
 	BackendServiceManager,
@@ -137,6 +138,12 @@ import { titlebarOptions } from "./titlebar-options";
 import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
+import { type ByokPagePort, ByokVoice } from "./voice/byok-voice";
+import {
+	BYOK_VOICE_PARTITION,
+	type ByokPageView,
+	ByokVoicePage,
+} from "./voice/byok-voice-page";
 import { QwenGatewayHost, launcherPathFor } from "./voice/qwen-gateway";
 import {
 	DEFAULT_QWEN_RIG_DIR,
@@ -1554,7 +1561,86 @@ const qwenRigDir = process.env.LOP_QWEN_RIG_DIR || DEFAULT_QWEN_RIG_DIR;
 const qwenStateDir = join(app.getPath("userData"), "qwen-voice");
 /** Layers 1 and 3 share this one number (§9). */
 const qwenMemBudgetBytes = qwenMemoryBudget(process.env);
+/*
+ * THE BRING-YOUR-OWN-KEY HALF (`./voice/byok-voice.ts`): the app's own voice
+ * page hears, the daemon's ElevenLabs path transcribes and speaks. Built on
+ * first use like the Gateway's page (`session.fromPartition` needs `app` ready),
+ * and created only in a normal window, for the same reason: nobody is at a
+ * headless run's screen, and the microphone prompt would land on the wrong
+ * process.
+ */
+let byokPageInstance: ByokVoicePage | null = null;
+const byokPage = (): ByokVoicePage => {
+	byokPageInstance ??= new ByokVoicePage({
+		session: session.fromPartition(
+			BYOK_VOICE_PARTITION,
+		) as unknown as VoicePageSession,
+		createView: (options) =>
+			new WebContentsView(
+				options as unknown as ConstructorParameters<typeof WebContentsView>[0],
+			) as unknown as ByokPageView,
+		rendererUrl: rendererDocumentUrl(),
+		preloadPath: join(__dirname, "../preload/voice-page.js"),
+		mediaAccess: {
+			status: () => systemPreferences.getMediaAccessStatus("microphone"),
+			ask: async () => systemPreferences.askForMediaAccess("microphone"),
+		},
+		log: (message) => logger.info(message, LogFileType.BACKEND),
+		onStopped: (reason) => byokVoice.pageStopped(reason),
+	});
+	return byokPageInstance;
+};
+const byokPagePort: ByokPagePort = voicePageAllowed(
+	windowLaunch.mode,
+	process.env,
+)
+	? {
+			allowed: true,
+			open: () => byokPage().open(),
+			close: () => byokPageInstance?.close(),
+			play: (message) => byokPageInstance?.play(message),
+			stop: () => byokPageInstance?.stop(),
+			setMuted: (muted) => byokPage().setMuted(muted),
+			prepareMicrophone: (options) => byokPage().prepareMicrophone(options),
+		}
+	: {
+			allowed: false,
+			open: () => {},
+			close: () => {},
+			play: () => {},
+			stop: () => {},
+			setMuted: () => {},
+			prepareMicrophone: async (_options) => "unknown",
+		};
+const byokVoice: ByokVoice = new ByokVoice({
+	page: byokPagePort,
+	media: (input, bytes) => backendService.requestDesktopMedia(input, bytes),
+	toRenderer: (channel, payload) => {
+		const window = mainWindow;
+		if (!window || window.isDestroyed()) return false;
+		window.webContents.send(channel, payload);
+		return true;
+	},
+	report: (state) => qwenVoice.byokReport(state),
+	log: (message) => logger.info(message, LogFileType.BACKEND),
+});
+/*
+ * THE PAGE'S THREE VOICES UP, each admitted from the page's own contents only:
+ * the main window's renderer (or anything else) cannot inject a take or a
+ * progress report. `ByokVoice` validates each payload again.
+ */
+for (const [channel, handle] of [
+	[VOICE_PAGE_CHANNELS.take, (p: unknown) => byokVoice.onTake(p)],
+	[VOICE_PAGE_CHANNELS.vad, (p: unknown) => byokVoice.onVad(p)],
+	[VOICE_PAGE_CHANNELS.progress, (p: unknown) => byokVoice.onProgress(p)],
+] as const) {
+	ipcMain.on(channel, (event, payload: unknown) => {
+		if (byokPageInstance?.owns(event.sender)) handle(payload);
+	});
+}
+
 const qwenVoice: QwenVoice = new QwenVoice({
+	byok: byokVoice,
 	gateway: new QwenGatewayHost(
 		launcherPathFor(app.getAppPath(), process.resourcesPath, app.isPackaged),
 		qwenRigDir,

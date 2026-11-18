@@ -1,4 +1,4 @@
-import type { PlayMessage, VadEventKind } from "./channels";
+import type { PlayMessage, ProgressMessage, VadEventKind } from "./channels";
 
 /**
  * What the preload exposes to the page as `window.voicePage`. A type-only file
@@ -8,6 +8,7 @@ import type { PlayMessage, VadEventKind } from "./channels";
 export interface VoicePageBridge {
 	sendTake(wav: Uint8Array): void;
 	sendVad(kind: VadEventKind): void;
+	sendProgress(message: ProgressMessage): void;
 	onPlay(handler: (message: PlayMessage) => void): void;
 	onStop(handler: () => void): void;
 	onMute(handler: (muted: boolean) => void): void;
