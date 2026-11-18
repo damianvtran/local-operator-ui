@@ -2256,13 +2256,18 @@ test("byte budgets are per operation, and message ops get the backend's real hea
 		"sessions.command",
 		"sessions.fork",
 		"legacy.agent.systemPrompt.update",
+		"legacy.agent.editFile",
 		"config.update",
 	])
 		assert.ok(
 			MAX_DESKTOP_REQUEST_BYTES >= desktopRequestByteBudget(op),
 			`the streamed read bound must cover ${op}`,
 		);
-	assert.equal(MAX_DESKTOP_REQUEST_BYTES, 1100000);
+	// The inline edit's buffer-sized body is now the widest tier.
+	assert.equal(
+		MAX_DESKTOP_REQUEST_BYTES,
+		desktopRequestByteBudget("legacy.agent.editFile"),
+	);
 	// The proxy weighs the ENVELOPE, which is wider than any body budget.
 	assert.ok(MAX_DESKTOP_ENVELOPE_BYTES > MAX_DESKTOP_REQUEST_BYTES);
 	assert.equal(
@@ -2322,6 +2327,87 @@ test("a message just under the budget is sent and just over is refused before an
 		seen.length,
 		count + 1,
 		"the refused body must never reach HTTP",
+	);
+});
+
+test("the inline edit reaches its chat route with the main-owned bearer, a buffer-sized budget and a model-sized deadline", async () => {
+	// The canvas editor's inline edit used to be a renderer fetch with no bearer;
+	// it must now leave from main like every other control, with the body the
+	// backend's `AgentEditFileRequest` reads arriving byte-for-byte.
+	const agentId = "11111111-2222-4333-8444-555555555555";
+	const editRequest = {
+		hosting: "openai",
+		model: "gpt-synthetic",
+		file_path: "notes/draft.md",
+		file_content: "# Title\n\nsome text\n",
+		edit_prompt: "make the title louder",
+		selection: "# Title",
+		attachments: ["data:image/png;base64,iVBORw0KGgo="],
+	};
+	const response = await requestDesktop(
+		{ op: "legacy.agent.editFile", agentId, request: editRequest },
+		url,
+		token,
+	);
+	assert.equal(response.status, 200);
+	const last = seen.at(-1);
+	assert.equal(last.path, `/v1/chat/agents/${agentId}/edit`);
+	assert.equal(last.method, "POST");
+	assert.equal(last.authorization, `Bearer ${token}`);
+	// Key ORDER is the schema's, not the caller's; the object is the same.
+	assert.deepEqual(JSON.parse(last.body), editRequest);
+	assert.ok(!JSON.stringify(response).includes(token));
+
+	// Unpaired: refused before any HTTP, like every other gated op.
+	const count = seen.length;
+	const unpaired = await requestDesktop(
+		{ op: "legacy.agent.editFile", agentId, request: editRequest },
+		url,
+		null,
+	);
+	assert.equal(unpaired.status, 503);
+	assert.equal(unpaired.body.detail.code, DESKTOP_REFUSAL_CODE.noCredential);
+	assert.equal(seen.length, count);
+
+	// BUDGET: derived from the app's own ceilings (see INLINE_EDIT_BYTE_BUDGET):
+	// a buffer and a whole-buffer selection at MAX_FILE_READ_BYTES (64 MiB), one
+	// MAX_ATTACHMENT_UPLOAD_BYTES (32 MiB) attachment as base64, 64 KiB envelope.
+	// Asserted against the named ceilings, so moving either fails here.
+	const { MAX_FILE_READ_BYTES, MAX_ATTACHMENT_UPLOAD_BYTES } =
+		await importBundle(
+			await build({
+				stdin: {
+					contents:
+						'export { MAX_FILE_READ_BYTES } from "./src/shared/desktop-contract"; export { MAX_ATTACHMENT_UPLOAD_BYTES } from "./src/shared/attachment-upload";',
+					resolveDir: process.cwd(),
+				},
+				bundle: true,
+				format: "esm",
+				platform: "node",
+				write: false,
+			}),
+			"desktop-contract.test.ceilings-bundle.mjs",
+		);
+	assert.equal(
+		desktopRequestByteBudget("legacy.agent.editFile"),
+		2 * MAX_FILE_READ_BYTES +
+			Math.ceil((MAX_ATTACHMENT_UPLOAD_BYTES * 4) / 3) +
+			64 * 1024,
+	);
+	// Far above both tiers it would otherwise have fallen into.
+	assert.ok(
+		desktopRequestByteBudget("legacy.agent.editFile") >
+			desktopRequestByteBudget("sessions.message"),
+	);
+
+	// DEADLINE: the route may make three sequential model calls, so the 20 s
+	// control budget is wrong; main's undici gives up on headers at 300 s by
+	// default, so the deadline sits just inside that to end on its own 504.
+	assert.equal(desktopRequestDeadlineMs("legacy.agent.editFile"), 295000);
+	assert.ok(desktopRequestDeadlineMs("legacy.agent.editFile") < 300000);
+	assert.ok(
+		desktopRequestDeadlineMs("legacy.agent.editFile") >
+			3 * desktopRequestDeadlineMs("config.get"),
 	);
 });
 

@@ -3386,6 +3386,38 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("legacy.agent.download"), agentId: id }).strict(),
+	/*
+	 * The canvas editor's inline edit (`POST /v1/chat/agents/{id}/edit`).
+	 *
+	 * It used to be the one control call the renderer made with its own `fetch`;
+	 * it now rides this transport like every other control, so main attaches the
+	 * desktop credential and the request leaves from main rather than from the
+	 * page. The wire body is forwarded field for field (snake_case, as the
+	 * backend's `AgentEditFileRequest` declares it) so the request the backend
+	 * reads is the one the renderer used to send.
+	 *
+	 * No per-field `.max()`: the old path had none, and the honest bound on these
+	 * strings is the whole body's ({@link INLINE_EDIT_BYTE_BUDGET}), which a
+	 * per-field cap could only contradict. `strict()` still keeps any key the
+	 * backend does not declare from riding along.
+	 */
+	z
+		.object({
+			op: z.literal("legacy.agent.editFile"),
+			agentId: id,
+			request: z
+				.object({
+					hosting: z.string(),
+					model: z.string(),
+					file_path: z.string(),
+					file_content: z.string().optional(),
+					selection: z.string().optional(),
+					edit_prompt: z.string(),
+					attachments: z.array(z.string()).optional(),
+				})
+				.strict(),
+		})
+		.strict(),
 	z.object({ op: z.literal("legacy.job.cancel"), jobId: id }).strict(),
 	z.object({ op: z.literal("commands.list") }).strict(),
 	z
@@ -7580,6 +7612,36 @@ const COMMUNITY_SUBMIT_BYTE_BUDGET =
 const DESKTOP_SYSTEM_PROMPT_BYTE_BUDGET = 1_100_000;
 
 /**
+ * The budget for `legacy.agent.editFile`, the canvas editor's inline edit.
+ *
+ * The body carries the WHOLE editor buffer (`file_content`), the selection, the
+ * prompt, and every pasted attachment as a base64 data URL - so neither the
+ * control budget (256 KiB, less than one screenshot) nor the message budget
+ * (sized to the session control socket's 1 MiB line, which this plain REST POST
+ * never passes through) is honest about it. The backend route declares no body
+ * limit, and the renderer `fetch` this op replaces had none either, so the
+ * number is derived from the app's own ceilings instead:
+ *
+ *  - 64 MiB for the buffer: `MAX_FILE_READ_BYTES`, the largest file the app
+ *    reads into any viewer, so the largest document the editor can hold;
+ *  - 64 MiB again for the selection, which is a substring of that buffer and so
+ *    can be all of it;
+ *  - one maximal attachment, `MAX_ATTACHMENT_UPLOAD_BYTES` (32 MiB) as base64
+ *    (x4/3), the app's declared per-attachment ceiling;
+ *  - 64 KiB for the prompt, model/hosting/path fields and JSON envelope.
+ *
+ * Written as literals because `MAX_FILE_READ_BYTES` is declared further down
+ * this module and `MAX_DESKTOP_REQUEST_BYTES` reads this at module evaluation
+ * (a forward reference would be a TDZ error). `desktop-contract.test.mjs`
+ * asserts the relationship to both named ceilings, so a change to either fails
+ * there instead of silently narrowing the pipe. Like the system-prompt budget,
+ * text that escapes heavily can exceed it while legal by length; that refuses
+ * with a 413 the inline-edit popover reports as its ordinary failure.
+ */
+const INLINE_EDIT_BYTE_BUDGET =
+	2 * (64 * 1024 * 1024) + Math.ceil((32 * 1024 * 1024 * 4) / 3) + 64 * 1024;
+
+/**
  * Ops whose body carries user text and inline images, and so needs the room.
  *
  * 880,000 is the backend's real ceiling minus headroom, not a round number.
@@ -7627,6 +7689,7 @@ export function desktopRequestByteBudget(op: DesktopRequest["op"]): number {
 		return DESKTOP_SYSTEM_PROMPT_BYTE_BUDGET;
 	if (op === "community.submit" || op === "community.edit")
 		return COMMUNITY_SUBMIT_BYTE_BUDGET;
+	if (op === "legacy.agent.editFile") return INLINE_EDIT_BYTE_BUDGET;
 	return MESSAGE_OPS.has(op) || IMPORT_OPS.has(op)
 		? DESKTOP_MESSAGE_BYTE_BUDGET
 		: DESKTOP_CONTROL_BYTE_BUDGET;
@@ -7662,6 +7725,29 @@ export function desktopRequestByteBudget(op: DesktopRequest["op"]): number {
  */
 const DESKTOP_CONTROL_DEADLINE_MS = 20_000;
 const DESKTOP_LONG_READ_DEADLINE_MS = 90_000;
+
+/**
+ * The deadline for `legacy.agent.editFile`, the canvas editor's inline edit.
+ *
+ * The route answers only after its model work is done - up to THREE sequential
+ * model calls, because it re-asks when a returned SEARCH block is not found in
+ * the buffer (`max_retries = 3` in `local_operator/server/routes/chat.py`) - so
+ * the 20 s control budget would abandon an ordinary edit mid-generation.
+ *
+ * The renderer `fetch` this op replaces had no deadline of its own; the bound
+ * that now applies regardless of any signal is main's fetch itself. Main's
+ * `fetch` is Node's bundled undici (7.30.1 here), whose default dispatcher
+ * gives up on a response whose HEADERS have not arrived within
+ * `headersTimeout` = 300 s, and this route sends its headers only when the
+ * whole JSON answer is ready. So any deadline above 300 s is unreachable, and
+ * reaching that ceiling would surface as a generic transport failure rather
+ * than as this op's own deadline. 295 s sits just inside it so the request ends
+ * on THIS deadline, carrying `deadline_exceeded`, which is ~98 s per model call
+ * across the three attempts. The renderer's IPC bound adds
+ * `DESKTOP_DEADLINE_MARGIN_MS` on top as usual.
+ */
+const UNDICI_DEFAULT_HEADERS_TIMEOUT_MS = 300_000;
+const INLINE_EDIT_DEADLINE_MS = UNDICI_DEFAULT_HEADERS_TIMEOUT_MS - 5_000;
 
 /**
  * Ops whose answer is an aggregate over the local usage ledger.
@@ -8003,6 +8089,7 @@ export function desktopRequestDeadlineMs(
 		return APPROVAL_APPROVE_DEADLINE_MS;
 	if (op === "devices.remove" || op === "operator.setup.run")
 		return APPROVAL_APPROVE_DEADLINE_MS;
+	if (op === "legacy.agent.editFile") return INLINE_EDIT_DEADLINE_MS;
 	if (op === "tunnel.setup.run") return PHONE_SETUP_RUN_DEADLINE_MS;
 	if (op === "tunnel.setup.plan") return PHONE_SETUP_PLAN_DEADLINE_MS;
 	const hub = hubWriteDeadlineMs(op);
@@ -8349,6 +8436,9 @@ export const MAX_DESKTOP_REQUEST_BYTES = Math.max(
 	DESKTOP_MESSAGE_BYTE_BUDGET,
 	DESKTOP_CONTROL_BYTE_BUDGET,
 	DESKTOP_SYSTEM_PROMPT_BYTE_BUDGET,
+	// The inline edit's buffer-sized body has to clear the dev proxy's streamed
+	// read too, or the dev app would refuse an edit the packaged app sends.
+	INLINE_EDIT_BYTE_BUDGET,
 );
 
 /**
@@ -11039,6 +11129,12 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "legacy.agent.download":
 			return { path: `/v1/agents/${request.agentId}/download`, method: "GET" };
+		case "legacy.agent.editFile":
+			return {
+				path: `/v1/chat/agents/${request.agentId}/edit`,
+				method: "POST",
+				body: request.request,
+			};
 		case "legacy.job.cancel":
 			return { path: `/v1/jobs/${request.jobId}`, method: "DELETE" };
 		case "commands.list":
