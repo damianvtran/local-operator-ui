@@ -8592,13 +8592,13 @@
 		{
 			"locale": "es",
 			"namespace": "ui.mesh",
-			"source_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
-			"target_sha256": "5c8f821df8287476c0bb026516e2f464962d9716b62a418eff5fd3a2b2748138",
+			"source_sha256": "235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c",
+			"target_sha256": "5e792b5a2cfad478365fd8ab22a5d878d93fb534a8a0718348d8d0785f79ab55",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-18",
-				"note": "PR #1978 lane move-working-set: coder session 76c99189cb1d (job eacba7a3806e) added 42 working_set_* values; remediation coder job beaadf6c08ec added 13 probe keys and round-1 fixes. Other values unchanged from audited bytes in superseded."
+				"note": "PR #1978 lane move-working-set: coder session 76c99189cb1d (job eacba7a3806e) added 42 working_set_* values; coder jobs beaadf6c08ec and 9d716ec66066 added probe/stay keys and audit fixes. Other values unchanged from audited bytes in superseded."
 			},
 			"auditors": [
 				{
@@ -8606,16 +8606,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "d11d211390f8-pr1978-r2-es",
+					"instance": "d11d211390f8-pr1978-r3-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 3
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/d11d211390f8-pr1978-r2-es.json",
-					"receipt_sha256": "8f759e8798ab921fa521822aa35162b67f0ba88667acebfdfc509eaf834b6d8b",
-					"scope": "PR #1978 i18n r2: 55 added ui.mesh.mesh_actions.working_set_* keys at 486ef6f270"
+					"receipt": "i18n/receipts/d11d211390f8-pr1978-r3-es.json",
+					"receipt_sha256": "466b895f4911ac465dc037385b034350d27d133038d0e5511292ee39ff3ede68",
+					"scope": "PR #1978 i18n r3: delta 6fba440baa..741b25f568 (31 added, 2 changed, round-2 fixes)"
 				}
 			],
 			"status": "audited",
@@ -9005,6 +9005,29 @@
 						}
 					],
 					"status": "changes_requested"
+				},
+				{
+					"source_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
+					"target_sha256": "5c8f821df8287476c0bb026516e2f464962d9716b62a418eff5fd3a2b2748138",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "d11d211390f8-pr1978-r2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/d11d211390f8-pr1978-r2-es.json",
+							"receipt_sha256": "8f759e8798ab921fa521822aa35162b67f0ba88667acebfdfc509eaf834b6d8b",
+							"scope": "PR #1978 i18n r2: 55 added ui.mesh.mesh_actions.working_set_* keys at 486ef6f270"
+						}
+					],
+					"status": "audited"
 				},
 				{
 					"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
@@ -22193,13 +22216,13 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.mesh",
-			"source_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
-			"target_sha256": "8fb9c1a29eb8384cf9714ea5f3b985be0b019a41acbae696bc32ed9c8221a235",
+			"source_sha256": "235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c",
+			"target_sha256": "3b65ec696f6006d335fcab6c82c4f87b9521f5d34ffa18c13d43cf89cc16f6ae",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-18",
-				"note": "PR #1978 lane move-working-set: coder session 76c99189cb1d (job eacba7a3806e) added 42 working_set_* values; remediation coder job beaadf6c08ec added 13 probe keys and round-1 fixes. Other values unchanged from audited bytes in superseded."
+				"note": "PR #1978 lane move-working-set: coder session 76c99189cb1d (job eacba7a3806e) added 42 working_set_* values; coder jobs beaadf6c08ec and 9d716ec66066 added probe/stay keys and audit fixes. Other values unchanged from audited bytes in superseded."
 			},
 			"auditors": [
 				{
@@ -22207,16 +22230,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "d11d211390f8-pr1978-r2-fr",
+					"instance": "d11d211390f8-pr1978-r3-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/d11d211390f8-pr1978-r2-fr.json",
-					"receipt_sha256": "7b0b4b18eadfa89703aca56c7a699275c1343c847879e6775c8c5dc09b4409b1",
-					"scope": "PR #1978 i18n r2: 55 added ui.mesh.mesh_actions.working_set_* keys at 486ef6f270"
+					"receipt": "i18n/receipts/d11d211390f8-pr1978-r3-fr.json",
+					"receipt_sha256": "510e06de533404af354cc07167cfe91edd06461cdc76053c502eb858db881701",
+					"scope": "PR #1978 i18n r3: delta 6fba440baa..741b25f568 (31 added, 2 changed, round-2 fixes)"
 				}
 			],
 			"status": "audited",
@@ -22579,6 +22602,29 @@
 							"receipt": "i18n/receipts/b973c86b28e4-pr1978-r1-fr.json",
 							"receipt_sha256": "55c57cfbf80ed2cbcf897d08fa1ce309e6b438fcc4bd6aa7cedca5e6ba75f5c9",
 							"scope": "PR #1978 r1: 42 added ui.mesh.mesh_actions.working_set_* keys at dd014c1e9d"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
+					"target_sha256": "8fb9c1a29eb8384cf9714ea5f3b985be0b019a41acbae696bc32ed9c8221a235",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "d11d211390f8-pr1978-r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/d11d211390f8-pr1978-r2-fr.json",
+							"receipt_sha256": "7b0b4b18eadfa89703aca56c7a699275c1343c847879e6775c8c5dc09b4409b1",
+							"scope": "PR #1978 i18n r2: 55 added ui.mesh.mesh_actions.working_set_* keys at 486ef6f270"
 						}
 					],
 					"status": "audited"
@@ -35962,13 +36008,13 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.mesh",
-			"source_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
-			"target_sha256": "33be2df6961be664cefced016549ea405c3fe0e57455793950775398399154b5",
+			"source_sha256": "235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c",
+			"target_sha256": "5a22740a4201338e4678de6e98b145018cc6f0da015e6a3bc5fd30a1540b4e02",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-18",
-				"note": "PR #1978 lane move-working-set: coder session 76c99189cb1d (job eacba7a3806e) added 42 working_set_* values; remediation coder job beaadf6c08ec added 13 probe keys and round-1 fixes. Other values unchanged from audited bytes in superseded."
+				"note": "PR #1978 lane move-working-set: coder session 76c99189cb1d (job eacba7a3806e) added 42 working_set_* values; coder jobs beaadf6c08ec and 9d716ec66066 added probe/stay keys and audit fixes. Other values unchanged from audited bytes in superseded."
 			},
 			"auditors": [
 				{
@@ -35976,16 +36022,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "d11d211390f8-pr1978-r2-hi",
+					"instance": "d11d211390f8-pr1978-r3-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/d11d211390f8-pr1978-r2-hi.json",
-					"receipt_sha256": "5572c4761eda1d6a96a06d4304d2185662d52b7d684f2dd182fbeda554686da4",
-					"scope": "PR #1978 i18n r2: 55 added ui.mesh.mesh_actions.working_set_* keys at 486ef6f270"
+					"receipt": "i18n/receipts/d11d211390f8-pr1978-r3-hi.json",
+					"receipt_sha256": "5b7fd8752d7c938366b1e74533352490ebc024c1b4cf0a89d2490acc446950c8",
+					"scope": "PR #1978 i18n r3: delta 6fba440baa..741b25f568 (31 added, 2 changed, round-2 fixes)"
 				}
 			],
 			"status": "audited",
@@ -36373,6 +36419,29 @@
 							"receipt": "i18n/receipts/b973c86b28e4-pr1978-r1-hi.json",
 							"receipt_sha256": "e3ca28417cedab28c9dbdcdcc63f950b0ade42dd49d468d335de15bb9febf00c",
 							"scope": "PR #1978 r1: 42 added ui.mesh.mesh_actions.working_set_* keys at dd014c1e9d"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
+					"target_sha256": "33be2df6961be664cefced016549ea405c3fe0e57455793950775398399154b5",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "d11d211390f8-pr1978-r2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/d11d211390f8-pr1978-r2-hi.json",
+							"receipt_sha256": "5572c4761eda1d6a96a06d4304d2185662d52b7d684f2dd182fbeda554686da4",
+							"scope": "PR #1978 i18n r2: 55 added ui.mesh.mesh_actions.working_set_* keys at 486ef6f270"
 						}
 					],
 					"status": "audited"
@@ -49302,13 +49371,13 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.mesh",
-			"source_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
-			"target_sha256": "d916c9bbe7ab48b1b00d42e99fc6786a2666d3259c9e3c873b08cfe4611bae0b",
+			"source_sha256": "235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c",
+			"target_sha256": "6849e4e3aa4f5665dd01a0b2dd1e29cf8b398ef42e7aed33950d82542ba52cdd",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-18",
-				"note": "PR #1978 lane move-working-set: coder session 76c99189cb1d (job eacba7a3806e) added 42 working_set_* values; remediation coder job beaadf6c08ec added 13 probe keys and round-1 fixes. Other values unchanged from audited bytes in superseded."
+				"note": "PR #1978 lane move-working-set: coder session 76c99189cb1d (job eacba7a3806e) added 42 working_set_* values; coder jobs beaadf6c08ec and 9d716ec66066 added probe/stay keys and audit fixes. Other values unchanged from audited bytes in superseded."
 			},
 			"auditors": [
 				{
@@ -49316,16 +49385,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "d11d211390f8-pr1978-r2-ru",
+					"instance": "d11d211390f8-pr1978-r3-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/d11d211390f8-pr1978-r2-ru.json",
-					"receipt_sha256": "2762ec3f139c3c6441e615314fba92492ea733e87582b2aa9208602cce02710e",
-					"scope": "PR #1978 i18n r2: 55 added ui.mesh.mesh_actions.working_set_* keys at 486ef6f270"
+					"receipt": "i18n/receipts/d11d211390f8-pr1978-r3-ru.json",
+					"receipt_sha256": "b51156c150f94f8ac794353e526948a7f732d37430cbcac464e0b94704acc714",
+					"scope": "PR #1978 i18n r3: delta 6fba440baa..741b25f568 (31 added, 2 changed, round-2 fixes)"
 				}
 			],
 			"status": "audited",
@@ -49691,6 +49760,29 @@
 						}
 					],
 					"status": "changes_requested"
+				},
+				{
+					"source_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
+					"target_sha256": "d916c9bbe7ab48b1b00d42e99fc6786a2666d3259c9e3c873b08cfe4611bae0b",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "d11d211390f8-pr1978-r2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/d11d211390f8-pr1978-r2-ru.json",
+							"receipt_sha256": "2762ec3f139c3c6441e615314fba92492ea733e87582b2aa9208602cce02710e",
+							"scope": "PR #1978 i18n r2: 55 added ui.mesh.mesh_actions.working_set_* keys at 486ef6f270"
+						}
+					],
+					"status": "audited"
 				},
 				{
 					"source_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
@@ -62890,30 +62982,30 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.mesh",
-			"source_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
-			"target_sha256": "5051e95d57ef215b0a303935039c7dbb18592aa38b76fa4d026d1dc512fa06b5",
+			"source_sha256": "235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c",
+			"target_sha256": "c04cd5021d653a0cacf6091f21b0a4b963cd6958d021b21b673fac31291ab766",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-18",
-				"note": "PR #1978 lane move-working-set: coder session 76c99189cb1d (job eacba7a3806e) added 42 working_set_* values; remediation coder job beaadf6c08ec added 13 probe keys and round-1 fixes. Other values unchanged from audited bytes in superseded."
+				"note": "PR #1978 lane move-working-set: coder session 76c99189cb1d (job eacba7a3806e) added 42 working_set_* values; coder jobs beaadf6c08ec and 9d716ec66066 added probe/stay keys and audit fixes. Other values unchanged from audited bytes in superseded."
 			},
 			"auditors": [
 				{
 					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-18",
-					"result": "clean",
-					"instance": "d11d211390f8-pr1978-r2-ur",
+					"result": "clean-with-findings",
+					"instance": "d11d211390f8-pr1978-r3-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d11d211390f8-pr1978-r2-ur.json",
-					"receipt_sha256": "2ed0430d89b496c2b07659dfaa49caac54871164d4eb05b76929ce0f9d88f068",
-					"scope": "PR #1978 i18n r2: 55 added ui.mesh.mesh_actions.working_set_* keys at 486ef6f270"
+					"receipt": "i18n/receipts/d11d211390f8-pr1978-r3-ur.json",
+					"receipt_sha256": "29320cc15d05c4a0e250f81bd5f2dadbd4e75eda46bd1f89e09e92cd164f1df1",
+					"scope": "PR #1978 i18n r3: delta 6fba440baa..741b25f568 (31 added, 2 changed, round-2 fixes)"
 				}
 			],
 			"status": "audited",
@@ -63253,6 +63345,29 @@
 							"receipt": "i18n/receipts/b973c86b28e4-pr1978-r1-ur.json",
 							"receipt_sha256": "ee5c04ce504748c39927f893c2d8a51b3b704352355be512ad17e0ed84f5a8d4",
 							"scope": "PR #1978 r1: 42 added ui.mesh.mesh_actions.working_set_* keys at dd014c1e9d"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
+					"target_sha256": "5051e95d57ef215b0a303935039c7dbb18592aa38b76fa4d026d1dc512fa06b5",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "d11d211390f8-pr1978-r2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d11d211390f8-pr1978-r2-ur.json",
+							"receipt_sha256": "2ed0430d89b496c2b07659dfaa49caac54871164d4eb05b76929ce0f9d88f068",
+							"scope": "PR #1978 i18n r2: 55 added ui.mesh.mesh_actions.working_set_* keys at 486ef6f270"
 						}
 					],
 					"status": "audited"
@@ -76361,13 +76476,13 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.mesh",
-			"source_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
-			"target_sha256": "d52ee2b797ccefa8238fffedbb6b6512a792242cc3e21d01c9399c9ab277aa8b",
+			"source_sha256": "235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c",
+			"target_sha256": "b85a1867865dd54dd207b4e7c1c826faffeec4307e8721c0538f52d8295bf58d",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-18",
-				"note": "PR #1978 lane move-working-set: coder session 76c99189cb1d (job eacba7a3806e) added 42 working_set_* values; remediation coder job beaadf6c08ec added 13 probe keys and round-1 fixes. Other values unchanged from audited bytes in superseded."
+				"note": "PR #1978 lane move-working-set: coder session 76c99189cb1d (job eacba7a3806e) added 42 working_set_* values; coder jobs beaadf6c08ec and 9d716ec66066 added probe/stay keys and audit fixes. Other values unchanged from audited bytes in superseded."
 			},
 			"auditors": [
 				{
@@ -76375,16 +76490,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "d11d211390f8-pr1978-r2-vi",
+					"instance": "d11d211390f8-pr1978-r3-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 0
+						"minor": 0,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/d11d211390f8-pr1978-r2-vi.json",
-					"receipt_sha256": "4d0a1332edd6a66b0d1a0014edb6b0b3120b4e5c4402eb4f5475eb2e26a91b52",
-					"scope": "PR #1978 i18n r2: 55 added ui.mesh.mesh_actions.working_set_* keys at 486ef6f270"
+					"receipt": "i18n/receipts/d11d211390f8-pr1978-r3-vi.json",
+					"receipt_sha256": "2a19779142e3b5df3c0445530880ddbc68d93a051bc8d7284157d18cb3729a90",
+					"scope": "PR #1978 i18n r3: delta 6fba440baa..741b25f568 (31 added, 2 changed, round-2 fixes)"
 				}
 			],
 			"status": "audited",
@@ -76772,6 +76887,29 @@
 							"receipt": "i18n/receipts/b973c86b28e4-pr1978-r1-vi.json",
 							"receipt_sha256": "42b3b87d92bd91956a8f308701a5fa8061663814534c13533981d7941690ffe6",
 							"scope": "PR #1978 r1: 42 added ui.mesh.mesh_actions.working_set_* keys at dd014c1e9d"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
+					"target_sha256": "d52ee2b797ccefa8238fffedbb6b6512a792242cc3e21d01c9399c9ab277aa8b",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "d11d211390f8-pr1978-r2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d11d211390f8-pr1978-r2-vi.json",
+							"receipt_sha256": "4d0a1332edd6a66b0d1a0014edb6b0b3120b4e5c4402eb4f5475eb2e26a91b52",
+							"scope": "PR #1978 i18n r2: 55 added ui.mesh.mesh_actions.working_set_* keys at 486ef6f270"
 						}
 					],
 					"status": "audited"
@@ -90620,30 +90758,30 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.mesh",
-			"source_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
-			"target_sha256": "a00a1043808ffec16ebcaf61e9f0d87bbafb0e151251e34b831f7d358d648f85",
+			"source_sha256": "235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c",
+			"target_sha256": "42fa408cccdb4d1deeae08fe9962a768354d4a92430908360a5fb7c2f8891e6a",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-18",
-				"note": "PR #1978 lane move-working-set: coder session 76c99189cb1d (job eacba7a3806e) added 42 working_set_* values; remediation coder job beaadf6c08ec added 13 probe keys and round-1 fixes. Other values unchanged from audited bytes in superseded."
+				"note": "PR #1978 lane move-working-set: coder session 76c99189cb1d (job eacba7a3806e) added 42 working_set_* values; coder jobs beaadf6c08ec and 9d716ec66066 added probe/stay keys and audit fixes. Other values unchanged from audited bytes in superseded."
 			},
 			"auditors": [
 				{
 					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-18",
-					"result": "clean",
-					"instance": "d11d211390f8-pr1978-r2-zh-CN",
+					"result": "clean-with-findings",
+					"instance": "d11d211390f8-pr1978-r3-zh-CN",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/d11d211390f8-pr1978-r2-zh-CN.json",
-					"receipt_sha256": "7e00b53092f9a342e66ed88e42e0167c17afccd8398707b3b29e2c9b8c633bd0",
-					"scope": "PR #1978 i18n r2: 55 added ui.mesh.mesh_actions.working_set_* keys at 486ef6f270"
+					"receipt": "i18n/receipts/d11d211390f8-pr1978-r3-zh-CN.json",
+					"receipt_sha256": "457d0e6a730b1a42fa38c6cc820eacc1add41026261868928744cbbf09e776cb",
+					"scope": "PR #1978 i18n r3: delta 6fba440baa..741b25f568 (31 added, 2 changed, round-2 fixes)"
 				}
 			],
 			"status": "audited",
@@ -91007,6 +91145,29 @@
 							"receipt": "i18n/receipts/b973c86b28e4-pr1978-r1-zh-CN.json",
 							"receipt_sha256": "17a4335fe7c50a3b2be8db3e296753161029ea357e61a6bf83222ed0990978cf",
 							"scope": "PR #1978 r1: 42 added ui.mesh.mesh_actions.working_set_* keys at dd014c1e9d"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
+					"target_sha256": "a00a1043808ffec16ebcaf61e9f0d87bbafb0e151251e34b831f7d358d648f85",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "d11d211390f8-pr1978-r2-zh-CN",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d11d211390f8-pr1978-r2-zh-CN.json",
+							"receipt_sha256": "7e00b53092f9a342e66ed88e42e0167c17afccd8398707b3b29e2c9b8c633bd0",
+							"scope": "PR #1978 i18n r2: 55 added ui.mesh.mesh_actions.working_set_* keys at 486ef6f270"
 						}
 					],
 					"status": "audited"
