@@ -66,6 +66,8 @@ import type { QwenVoiceStatus } from "../../../../shared/desktop-contract";
 import type { DesktopVoiceActive } from "../../../../shared/desktop-control-contract";
 import {
 	openMicrophoneSettings,
+	openProviderSetup,
+	openSpeechSettings,
 	openVoiceSession,
 	pauseQwenVoice,
 	resumeQwenVoice,
@@ -160,7 +162,15 @@ export type VoiceComposerView =
 			chip: VoiceChipKind;
 			caption: VoiceCaption | null;
 			/** The one action this state offers: a failure's remedy, or the card. */
-			action: "retry" | "try_again" | "settings" | "start" | "approve" | null;
+			action:
+				| "retry"
+				| "try_again"
+				| "settings"
+				| "start"
+				| "approve"
+				| "choose_provider"
+				| "provider_setup"
+				| null;
 			/** The reply was cut at the cap and the next take has not started. */
 			cut: boolean;
 	  };
@@ -315,8 +325,19 @@ export function composerVoiceView(
 					kind: "reason",
 					text: errorReason(state.rig, state.exchange?.reason),
 				},
-				/* "Try again" restarts the RIG; a failed take has nothing to restart. */
-				action: state.rig?.rig === "error" ? "try_again" : null,
+				/*
+				 * "Try again" restarts the RIG; a failed take has nothing to restart. The
+				 * two provider causes are not helped by a retry - choosing or fixing the
+				 * provider is - so they offer that instead.
+				 */
+				action:
+					state.rig?.cause === "provider_unset"
+						? "choose_provider"
+						: state.rig?.cause === "provider_not_ready"
+							? "provider_setup"
+							: state.rig?.rig === "error"
+								? "try_again"
+								: null,
 				cut,
 			};
 		case "mic_blocked":
@@ -1004,16 +1025,23 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 				className="shrink-0 text-meta text-ink"
 				onClick={() => {
 					if (view.action === "settings") void openMicrophoneSettings();
+					else if (view.action === "choose_provider") openSpeechSettings();
+					else if (view.action === "provider_setup")
+						openProviderSetup(rig?.provider);
 					else void startQwenRig();
 				}}
 			>
 				{view.action === "settings"
 					? t("ui.chat.voice.open_settings")
-					: view.action === "start"
-						? t("ui.chat.voice.start_rig")
-						: view.action === "retry"
-							? t("ui.chat.voice.retry")
-							: t("ui.chat.voice.try_again")}
+					: view.action === "choose_provider"
+						? t("ui.chat.voice.choose_provider")
+						: view.action === "provider_setup"
+							? t("ui.chat.voice.set_up_provider")
+							: view.action === "start"
+								? t("ui.chat.voice.start_rig")
+								: view.action === "retry"
+									? t("ui.chat.voice.retry")
+									: t("ui.chat.voice.try_again")}
 			</Button>
 		) : null;
 

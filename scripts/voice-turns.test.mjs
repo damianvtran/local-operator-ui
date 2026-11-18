@@ -13,7 +13,9 @@ import { build } from "esbuild";
  */
 const ERROR_CASE = /case "error":/;
 const RETRY_ONLY_FOR_THE_RIG =
-	/action: state\.rig\?\.rig === "error" \? "try_again" : null,/;
+	// After the two provider causes, which offer their own remedy instead; formatted
+	// over lines by the formatter, so whitespace is not part of the rule.
+	/: state\.rig\?\.rig === "error"\s*\?\s*"try_again"\s*:\s*null/;
 const RIG_REASON_SHOWN = /const reason = rig\.reason\?\.trim\(\);/;
 
 /*
@@ -2339,7 +2341,7 @@ test("U9: a rig error wins over a stale exchange error, so its reason and Try ag
 	 */
 	const errorAt = indicator.search(ERROR_CASE);
 	assert.ok(errorAt > 0, "the strip's error case is gone");
-	assert.match(indicator.slice(errorAt, errorAt + 700), RETRY_ONLY_FOR_THE_RIG);
+	assert.match(indicator.slice(errorAt, errorAt + 1400), RETRY_ONLY_FOR_THE_RIG);
 	// D10: the start failure's own sentence is the visible reason.
 	assert.match(reason, RIG_REASON_SHOWN);
 	store.setExchange(null, null);
@@ -2412,6 +2414,8 @@ test("BYOK: each refused take is said in plain words and leaves the right state"
 		["approval_pending", "warning", "ui.chat.voice.card_pending", "listening"],
 		["voice_rate_limited", "error", "ui.chat.voice.byok_rate_limited", "error"],
 		["stt_unavailable", "error", "ui.chat.voice.byok_stt_failed", "error"],
+		["voice_unavailable", "error", "ui.chat.voice.byok_stt_failed", "error"],
+		["voice_provider_unset", "error", "ui.chat.voice.provider_unset", "error"],
 		["voice_not_enabled", "error", "ui.chat.voice.not_enabled", "error"],
 		["failed", "error", "ui.chat.voice.error_not_sent", "error"],
 	];
@@ -2428,6 +2432,77 @@ test("BYOK: each refused take is said in plain words and leaves the right state"
 	useVoiceStore
 		.getState()
 		.setRig({ rig: "ready", webui_url: null, clients: 1 });
+});
+
+test("BYOK: a provider's own sentence is shown as written, for its codes and for a 402", async () => {
+	const { applyByokMessage, useVoiceStore, phase } = await controller();
+	const sentences = [
+		[
+			402,
+			"voice_unavailable",
+			"Your Radient credit balance is too low for speech. Add credits in the Radient Console to continue.",
+		],
+		[409, "stt_unavailable", "Not signed in to Radient."],
+		[409, "voice_unavailable", "No ElevenLabs API key is stored."],
+		[
+			409,
+			"voice_provider_unset",
+			"Choose a speech provider first: Radient or your own ElevenLabs key. Voice mode uses only the one you pick.",
+		],
+		[
+			402,
+			"failed",
+			"Your Radient credit balance is too low for speech. Add credits in the Radient Console to continue.",
+		],
+	];
+	for (const [status, code, detail] of sentences) {
+		useVoiceStore.getState().setExchange(null, null);
+		useVoiceStore.getState().setActive({ session_id: "s-byok", enabled_at: 1 });
+		globalThis.__voiceToasts = [];
+		applyByokMessage(takeMessage("take_start"));
+		applyByokMessage(takeMessage("take_failed", { status, code, detail }));
+		assert.deepEqual(toasts(), [["error", detail]], `${status} ${code}`);
+		assert.equal(phase(), "error", `${status} ${code}`);
+	}
+});
+
+test("BYOK: a reply a provider could not speak shows that provider's sentence as a warning", async () => {
+	const { applyByokMessage, useVoiceStore, phase } = await controller();
+	useVoiceStore.getState().setExchange(null, null);
+	useVoiceStore.getState().setActive({ session_id: "s-byok", enabled_at: 1 });
+	globalThis.__voiceToasts = [];
+	applyByokMessage({
+		kind: "speech_failed",
+		sessionId: "s-byok",
+		code: "voice_unavailable",
+		detail: "No ElevenLabs API key is stored.",
+	});
+	applyByokMessage({
+		kind: "speech_failed",
+		sessionId: "s-byok",
+		code: "voice_provider_unset",
+		detail: "Choose a speech provider first.",
+	});
+	assert.deepEqual(toasts(), [
+		["warning", "No ElevenLabs API key is stored."],
+		["warning", "Choose a speech provider first."],
+	]);
+	assert.equal(phase(), "listening");
+});
+
+test("BYOK: the toast words name no provider the person did not choose", () => {
+	const words = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.voice.json", "utf8"),
+	);
+	for (const key of [
+		"ui.chat.voice.byok_rate_limited",
+		"ui.chat.voice.byok_stt_failed",
+		"ui.chat.voice.byok_speech_rate_limited",
+		"ui.chat.voice.byok_speech_failed",
+	]) {
+		assert.doesNotMatch(words[key], /ElevenLabs|Radient/, key);
+	}
+	assert.equal(words["ui.chat.voice.error_byok_key_missing"], undefined);
 });
 
 test("BYOK: a refused take disarms the binding, so a later typed turn is not spoken as its answer", async () => {

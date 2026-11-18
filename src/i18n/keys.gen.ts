@@ -1189,6 +1189,7 @@ export type MessageParams = {
 	"ui.chat.voice.byok_stt_failed": undefined;
 	"ui.chat.voice.card_pending": undefined;
 	"ui.chat.voice.card_pending_short": undefined;
+	"ui.chat.voice.choose_provider": undefined;
 	"ui.chat.voice.connecting_caption": undefined;
 	"ui.chat.voice.cut_chip": undefined;
 	"ui.chat.voice.cut_note": undefined;
@@ -1235,9 +1236,11 @@ export type MessageParams = {
 	"ui.chat.voice.phase_starting": undefined;
 	"ui.chat.voice.phase_unheard": undefined;
 	"ui.chat.voice.phase_working": undefined;
+	"ui.chat.voice.provider_unset": undefined;
 	"ui.chat.voice.reply_ended": undefined;
 	"ui.chat.voice.retry": undefined;
 	"ui.chat.voice.said_label": undefined;
+	"ui.chat.voice.set_up_provider": undefined;
 	"ui.chat.voice.silenced_caption": undefined;
 	"ui.chat.voice.start_rig": undefined;
 	"ui.chat.voice.starting_caption": undefined;

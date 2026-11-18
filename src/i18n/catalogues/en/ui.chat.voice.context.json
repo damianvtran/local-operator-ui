@@ -367,12 +367,12 @@
 	"ui.chat.voice.byok_rate_limited": {
 		"role": "error toast",
 		"tone": "plain, calm, one or two short sentences",
-		"note": "The person's own ElevenLabs account refused a request for hitting its limit while their words were being heard. Their spoken words were not sent."
+		"note": "The speech provider the person chose refused a request for hitting its limit while their words were being heard. Their spoken words were not sent."
 	},
 	"ui.chat.voice.byok_stt_failed": {
 		"role": "error toast",
 		"tone": "plain, one short sentence then a hint",
-		"note": "ElevenLabs could not turn the recording into words, most often a missing or wrong key. Their spoken words were not sent."
+		"note": "The chosen speech provider could not turn the recording into words, with no sentence of its own to show. Settings is the app's settings page. Their spoken words were not sent."
 	},
 	"ui.chat.voice.byok_speech_failed": {
 		"role": "warning toast",
@@ -382,6 +382,24 @@
 	"ui.chat.voice.byok_speech_rate_limited": {
 		"role": "warning toast",
 		"tone": "plain, one sentence",
-		"note": "The person's ElevenLabs limit stopped a reply being read aloud. The reply is already on screen."
+		"note": "The chosen speech provider's limit stopped a reply being read aloud. The reply is already on screen."
+	},
+	"ui.chat.voice.provider_unset": {
+		"role": "error toast",
+		"tone": "plain instruction, two short sentences",
+		"length": "Wrapping toast.",
+		"note": "The backend's own refusal sentence, used only when it sent none: no speech provider is chosen. Radient and ElevenLabs are product names; the person picks exactly one and nothing falls back to the other."
+	},
+	"ui.chat.voice.choose_provider": {
+		"role": "text button in the voice strip",
+		"tone": "imperative, sentence case",
+		"length": "Two short words; English is 15 characters.",
+		"note": "Opens the Speech section of Settings, where the one speech provider is chosen. Shown when none is chosen."
+	},
+	"ui.chat.voice.set_up_provider": {
+		"role": "text button in the voice strip",
+		"tone": "imperative, sentence case",
+		"length": "Three words; English is 19 characters.",
+		"note": "Opens the Providers section of Settings for the speech provider that is not ready, where its key or sign-in is set up. 'Providers' is that section's name."
 	}
 }

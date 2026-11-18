@@ -533,6 +533,11 @@ export async function sendVoiceTake(text: string): Promise<VoiceTakeOutcome> {
  * holds the slot changes nothing here (the upload already happened; the server
  * decided what it was).
  */
+/** The provider's sentence when main passed one on, else null: none is invented here. */
+function providerWords(detail: unknown): string | null {
+	return typeof detail === "string" && detail.trim() ? detail : null;
+}
+
 export function applyByokMessage(message: unknown): void {
 	const value = message as Partial<QwenByokMessage> | null;
 	if (!value || typeof value !== "object") return;
@@ -541,13 +546,16 @@ export function applyByokMessage(message: unknown): void {
 	if (useVoiceStore.getState().active?.session_id !== sessionId) return;
 	const store = useVoiceStore.getState();
 	if (value.kind === "speech_failed") {
-		// The reply is on screen either way; this only says it was not spoken.
+		// The reply is on screen either way; this only says it was not spoken. A
+		// provider's own sentence (credit too low, signed out, no key, none chosen)
+		// is shown as written; otherwise the app's short line.
 		showWarningToast(
-			t(
-				value.code === "voice_rate_limited"
-					? "ui.chat.voice.byok_speech_rate_limited"
-					: "ui.chat.voice.byok_speech_failed",
-			),
+			providerWords(value.detail) ??
+				t(
+					value.code === "voice_rate_limited"
+						? "ui.chat.voice.byok_speech_rate_limited"
+						: "ui.chat.voice.byok_speech_failed",
+				),
 		);
 		return;
 	}
@@ -568,6 +576,24 @@ export function applyByokMessage(message: unknown): void {
 	}
 	if (value.kind !== "take_failed") return;
 	feedTurns(sessionId, { kind: "disarmed", requestId });
+	/*
+	 * A PROVIDER'S OWN SENTENCE WINS for the refusals that carry one (the codes
+	 * below and a 402): "Your Radient credit balance is too low...", "Not signed in
+	 * to Radient.", "No ElevenLabs API key is stored.". The take was not sent, so
+	 * the strip says so as it does for every other refused take.
+	 */
+	const words = providerWords(value.detail);
+	if (
+		words !== null &&
+		(value.status === 402 ||
+			value.code === "stt_unavailable" ||
+			value.code === "voice_unavailable" ||
+			value.code === "voice_provider_unset")
+	) {
+		store.setExchange("error", sessionId, "not_sent");
+		showErrorToast(words);
+		return;
+	}
 	switch (value.code) {
 		case "approval_pending":
 			// The card is on screen and blocking; the take changed nothing (V7, V13).
@@ -583,8 +609,13 @@ export function applyByokMessage(message: unknown): void {
 			showErrorToast(t("ui.chat.voice.byok_rate_limited"));
 			return;
 		case "stt_unavailable":
+		case "voice_unavailable":
 			store.setExchange("error", sessionId, "not_sent");
 			showErrorToast(t("ui.chat.voice.byok_stt_failed"));
+			return;
+		case "voice_provider_unset":
+			store.setExchange("error", sessionId, "not_sent");
+			showErrorToast(t("ui.chat.voice.provider_unset"));
 			return;
 		case "voice_not_enabled":
 			store.setExchange("error", sessionId, "not_sent");
@@ -792,6 +823,35 @@ export function voiceEventEffects(
 
 /** The router's navigate, set by the mounted controller (it sits inside the router). */
 let openSession: ((sessionId: string) => void) | null = null;
+/** The same router, for a route that is not a conversation (Settings). */
+let openRoute: ((route: string) => void) | null = null;
+
+/**
+ * Install the route opener; returns its remover. The controller installs the
+ * router's navigate while it is mounted; a test installs a recorder.
+ */
+export function registerVoiceRouteOpener(
+	open: (route: string) => void,
+): () => void {
+	openRoute = open;
+	return () => {
+		if (openRoute === open) openRoute = null;
+	};
+}
+
+/** The strip's "Choose provider": the Speech section, where the choice is made. */
+export function openSpeechSettings(): void {
+	openRoute?.("/settings?section=speech");
+}
+
+/** The strip's "Set up in Providers": that provider's own page. */
+export function openProviderSetup(provider: string | null | undefined): void {
+	openRoute?.(
+		provider
+			? `/settings?section=providers&provider=${encodeURIComponent(provider)}`
+			: "/settings?section=providers",
+	);
+}
 
 /**
  * Go to the conversation that holds the slot, for the composer's "Go there".
@@ -943,8 +1003,10 @@ export const QwenVoiceController: FC = () => {
 	useEffect(() => {
 		openSession = (sessionId) =>
 			navigate(`/chat/${encodeURIComponent(sessionId)}`);
+		const offRoute = registerVoiceRouteOpener((route) => navigate(route));
 		return () => {
 			openSession = null;
+			offRoute();
 		};
 	}, [navigate]);
 

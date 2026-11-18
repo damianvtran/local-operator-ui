@@ -226,6 +226,7 @@ const bundle = await build({
 		contents: `
 			export { VoiceComposerStrip, ComposerVoiceButton, composerVoiceView, dictationOffReason, storyTime } from "./src/renderer/src/features/voice/voice-composer";
 			export { useVoiceStore } from "./src/renderer/src/features/voice/voice-store";
+			export { registerVoiceRouteOpener } from "./src/renderer/src/features/voice/qwen-voice-controller";
 			export { applyVoiceActive, controlVoice } from "./src/renderer/src/features/voice/use-voice-status";
 			export { MessageInput } from "./src/renderer/src/shared/components/composer/message-input.tsx";
 			export { useVoiceSwitchStore } from "./src/renderer/src/features/voice/use-voice-switch";
@@ -268,6 +269,7 @@ const {
 	applyVoiceActive,
 	useVoiceStore,
 	useVoiceSwitchStore,
+	registerVoiceRouteOpener,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 // The switch is OFF by default; these cases are about voice ON.
@@ -529,6 +531,153 @@ test("a failure replaces the actions with one, and names the rig's reason", asyn
 	assert.match(caption().textContent, /Port 8765 is in use/);
 	const action = window.document.querySelector("[data-voice-action]");
 	assert.equal(action?.textContent?.trim(), "Try again");
+});
+
+/*
+ * THE TWO PROVIDER STATES OF THE STRIP. No provider chosen says so in the app's
+ * own words and offers the one place to choose (Settings > Speech). A chosen
+ * provider that is not ready shows the BACKEND's sentence as written and offers
+ * that provider's page in Providers. Neither offers "Try again": nothing about
+ * pressing it would change the answer - fixing the provider does, and main picks
+ * that up from the re-read status by itself.
+ */
+const providerRig = (extra) => ({
+	rig: "error",
+	webui_url: null,
+	...extra,
+});
+const withRoutes = () => {
+	const opened = [];
+	const off = registerVoiceRouteOpener((route) => opened.push(route));
+	return { opened, off };
+};
+
+test("no provider chosen: the strip says so and offers Choose provider, which opens Settings > Speech", async () => {
+	const { opened, off } = withRoutes();
+	try {
+		await mountStrip();
+		await act(async () => {
+			const store = useVoiceStore.getState();
+			store.setActive(slot(AT));
+			store.setRig(
+				providerRig({
+					cause: "provider_unset",
+					reason: "Choose a speech provider in Settings to use voice.",
+				}),
+			);
+		});
+		await flush();
+		assert.equal(chipText(), "Voice error");
+		assert.match(caption().textContent, /Choose a speech provider/);
+		const action = window.document.querySelector("[data-voice-action]");
+		assert.equal(action?.getAttribute("data-voice-action"), "choose_provider");
+		assert.equal(action?.textContent?.trim(), "Choose provider");
+		await act(async () => action.click());
+		assert.deepEqual(opened, ["/settings?section=speech"]);
+	} finally {
+		off();
+	}
+});
+
+test("a provider that is not ready: the backend's sentence as written, and Set up in Providers for that provider", async () => {
+	const { opened, off } = withRoutes();
+	try {
+		await mountStrip();
+		await act(async () => {
+			const store = useVoiceStore.getState();
+			store.setActive(slot(AT));
+			store.setRig(
+				providerRig({
+					cause: "provider_not_ready",
+					provider: "elevenlabs",
+					reason: "No ElevenLabs API key is stored.",
+				}),
+			);
+		});
+		await flush();
+		assert.match(caption().textContent, /No ElevenLabs API key is stored\./);
+		const action = window.document.querySelector("[data-voice-action]");
+		assert.equal(action?.getAttribute("data-voice-action"), "provider_setup");
+		assert.equal(action?.textContent?.trim(), "Set up in Providers");
+		await act(async () => action.click());
+		assert.deepEqual(opened, [
+			"/settings?section=providers&provider=elevenlabs",
+		]);
+		assert.equal(
+			window.document.querySelector('[data-voice-action="try_again"]'),
+			null,
+		);
+	} finally {
+		off();
+	}
+});
+
+test("a Radient credit failure shows Radient's own sentence and links to Radient", async () => {
+	const { opened, off } = withRoutes();
+	try {
+		await mountStrip();
+		await act(async () => {
+			const store = useVoiceStore.getState();
+			store.setActive(slot(AT));
+			store.setRig(
+				providerRig({
+					cause: "provider_not_ready",
+					provider: "radient",
+					reason:
+						"Your Radient credit balance is too low for speech. Add credits in the Radient Console to continue.",
+				}),
+			);
+		});
+		await flush();
+		assert.match(caption().textContent, /Add credits in the Radient Console/);
+		await act(async () =>
+			window.document.querySelector("[data-voice-action]").click(),
+		);
+		assert.deepEqual(opened, ["/settings?section=providers&provider=radient"]);
+	} finally {
+		off();
+	}
+});
+
+test("checking the provider is the neutral 'starting' word, not an error", async () => {
+	await mountStrip();
+	await act(async () => {
+		const store = useVoiceStore.getState();
+		store.setActive(slot(AT));
+		store.setRig({ rig: "starting", webui_url: null });
+	});
+	await flush();
+	assert.notEqual(chipText(), "Voice error");
+	assert.equal(window.document.querySelector("[data-voice-action]"), null);
+});
+
+test("the view model keeps a provider state's action, and a plain rig error keeps Try again", () => {
+	const base = {
+		active: slot(AT),
+		exchange: null,
+		activity: null,
+		cardPending: {},
+		lastTake: null,
+		lastSpoken: null,
+		lastRefused: null,
+		muted: false,
+		readyAt: null,
+		tick: null,
+	};
+	const view = (rig) => composerVoiceView({ ...base, rig }, AT, 0);
+	assert.equal(
+		view(providerRig({ cause: "provider_unset" })).action,
+		"choose_provider",
+	);
+	assert.equal(
+		view(providerRig({ cause: "provider_not_ready", provider: "radient" }))
+			.action,
+		"provider_setup",
+	);
+	assert.equal(
+		view(providerRig({ reason: "Port in use" })).action,
+		"try_again",
+	);
 });
 
 test("a blocked microphone offers Open Settings, not Retry", async () => {
