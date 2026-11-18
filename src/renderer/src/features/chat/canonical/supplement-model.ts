@@ -15,7 +15,7 @@
  *     (`local_operator/tui/supplements.py`): one spelling per line, because the
  *     two surfaces are reviewed against a shared copy table;
  *   - the paint-boundary string discipline (`displayText`, `fileSizeText`,
- *     `countClause`, `moreText`) — the same functions the TUI ports, so all
+ *     `moreText`) — the same functions the TUI ports, so all
  *     surfaces agree on what a display string is;
  *   - the IFRAME MESSAGE WIRE (host-side half): the accepted shapes
  *     (`acceptFrameMessage`, the port of the core's reference implementation),
@@ -27,6 +27,7 @@
  * content, reads file bytes, or talks to the backend.
  */
 
+import { t } from "../../../../../i18n";
 import {
 	type FileSizeUnit,
 	formatByteQuantity,
@@ -456,17 +457,34 @@ export function supplementDisposition(
 // Display copy and the paint boundary (ported from tui/supplements.py)
 // ---------------------------------------------------------------------------
 
+/*
+ * THE COPY TABLE IS READ AT CALL TIME, NOT AT MODULE LOAD (memo §2.8).
+ *
+ * These were `const` strings; a constant evaluated once at import time is
+ * frozen in whatever locale was active then (English, before backend
+ * negotiation), so a French reader saw English status lines under every
+ * answer. Functions route each read through `t()`, and the row subscribes to
+ * the locale (`useI18nLocale` in `supplement-row.tsx`) so a language switch
+ * repaints. English stays byte-identical to the old constants — the copy the
+ * TUI and the phone reader carry — which `scripts/supplement-model.test.mjs`
+ * pins.
+ */
 /** The loading line's fixed sentence (memo §2.8 copy table). */
-export const COPY_PREPARING = "Preparing highlights…";
-export const COPY_CANCELLED = "Highlights cancelled";
-export const COPY_FAILED = "Couldn't prepare highlights";
+export const copyPreparing = (): string =>
+	t("ui.chat.canonical.supplement.status.preparing");
+export const copyCancelled = (): string =>
+	t("ui.chat.canonical.supplement.status.cancelled");
+export const copyFailed = (): string =>
+	t("ui.chat.canonical.supplement.status.failed");
 /** The frame-level fallback (§2.8): shown in place of a frame that died or hung. */
-export const COPY_FRAME_FALLBACK = "Couldn't render this graphic";
+export const copyFrameFallback = (): string =>
+	t("ui.chat.canonical.supplement.frame.failed");
 /** The two control labels of the pointer-surface action pair (D10). */
-export const COPY_ADJUST = "Adjust…";
-export const COPY_CANCEL = "Cancel";
+export const copyAdjust = (): string =>
+	t("ui.chat.canonical.supplement.actions.adjust");
+export const copyCancel = (): string => t("ui.common.actions.cancel");
 /** The retry affordance the cancelled/failed/frame lines carry. */
-export const COPY_RETRY = "Retry";
+export const copyRetry = (): string => t("ui.common.actions.retry");
 
 /**
  * The longest `cause` a reader keeps. The vocabulary is short allowlisted
@@ -487,19 +505,27 @@ export const CAUSE_MAX_CHARS = 64;
  * phrase: the catch-all folds `aborted` in, and inventing a failure mode for
  * it is worse than the bare sentence (design round 1, D2).
  */
-export const CAUSE_PHRASES: Record<string, string> = {
-	provider_quota: "provider limit reached",
-	provider_auth: "provider sign-in needed",
-	provider_transient: "provider temporarily unavailable",
-	provider_timeout: "provider timed out",
-	provider_request: "provider refused the request",
-	provider_content: "provider blocked the content",
-	provider_context: "provider context limit",
-};
+/*
+ * The table maps the wire token to a catalogue KEY, not to words: the token
+ * set is the contract shared with the TUI and the phone, the words are this
+ * surface's copy and follow the reader's locale. `Object.hasOwn` keeps a
+ * hostile token such as `constructor` from reading a prototype member.
+ */
+export const CAUSE_PHRASE_KEYS = {
+	provider_quota: "ui.chat.canonical.supplement.cause.provider_quota",
+	provider_auth: "ui.chat.canonical.supplement.cause.provider_auth",
+	provider_transient: "ui.chat.canonical.supplement.cause.provider_transient",
+	provider_timeout: "ui.chat.canonical.supplement.cause.provider_timeout",
+	provider_request: "ui.chat.canonical.supplement.cause.provider_request",
+	provider_content: "ui.chat.canonical.supplement.cause.provider_content",
+	provider_context: "ui.chat.canonical.supplement.cause.provider_context",
+} as const;
 
 /** The muted phrase for a failed row's typed `cause`; `""` when absent/unknown. */
 export function causePhrase(cause: unknown): string {
-	return typeof cause === "string" && cause ? (CAUSE_PHRASES[cause] ?? "") : "";
+	if (typeof cause !== "string" || !Object.hasOwn(CAUSE_PHRASE_KEYS, cause))
+		return "";
+	return t(CAUSE_PHRASE_KEYS[cause as keyof typeof CAUSE_PHRASE_KEYS]);
 }
 
 /**
@@ -522,8 +548,9 @@ export function displayText(value: unknown): string {
 }
 /** The disclosure's words: `3 more files` (memo §2.8). */
 export function moreText(count: number): string {
-	const bounded = Math.max(0, Math.floor(count));
-	return bounded === 1 ? "1 more file" : `${bounded} more files`;
+	return t("ui.chat.canonical.supplement.more_files", {
+		count: Math.max(0, Math.floor(count)),
+	});
 }
 
 /**
@@ -572,16 +599,6 @@ export function fileRowParts(file: SupplementFile): {
 }
 
 /**
- * One count clause, singular/plural: `1 file` / `2 files`, `1 graphic` /
- * `2 graphics` (design D1's copy table). Reveal copy reuses this noun/count
- * grammar; it does not change the overflow tail's separate Show all meaning.
- */
-export function countClause(count: number, noun: "file" | "graphic"): string {
-	const bounded = Math.max(0, Math.floor(count));
-	return bounded === 1 ? `1 ${noun}` : `${bounded} ${noun}s`;
-}
-
-/**
  * Closed copy names the budgeted head precisely: "Show 1 of 3 graphics" does
  * not promise the off-budget tail. Open copy names the whole group being hidden,
  * including a tail explicitly opened inside it. Equal counts keep the singular
@@ -592,10 +609,20 @@ export function graphicRevealText(
 	open: boolean,
 	headCount = count,
 ): string {
-	if (open) return `Hide ${countClause(count, "graphic")}`;
+	/*
+	 * Whole sentences per state, not a verb glued to a count clause (the old
+	 * `countClause` helper): word order and plural agreement differ by locale,
+	 * so each reveal is one ICU message with its own plural arms.
+	 */
+	const bounded = Math.max(0, Math.floor(count));
+	if (open)
+		return t("ui.chat.canonical.supplement.graphics.hide", { count: bounded });
 	return headCount < count
-		? `Show ${Math.max(0, Math.floor(headCount))} of ${countClause(count, "graphic")}`
-		: `Show ${countClause(count, "graphic")}`;
+		? t("ui.chat.canonical.supplement.graphics.show_head", {
+				count: bounded,
+				head: Math.max(0, Math.floor(headCount)),
+			})
+		: t("ui.chat.canonical.supplement.graphics.show", { count: bounded });
 }
 
 /**
@@ -603,13 +630,16 @@ export function graphicRevealText(
  * (`Show all 1 graphic`), matching `moreText`'s singular arm (UX round 1, U7).
  */
 export function showAllText(count: number): string {
-	const bounded = Math.max(0, Math.floor(count));
-	return bounded === 1 ? "Show all 1 graphic" : `Show all ${bounded} graphics`;
+	return t("ui.chat.canonical.supplement.graphics.show_all", {
+		count: Math.max(0, Math.floor(count)),
+	});
 }
 
 /** `Source: …` — the block's one caption line (§2.10). */
 export function sourceLine(source: string): string {
-	return `Source: ${displayText(source)}`;
+	return t("ui.chat.canonical.supplement.frame.source", {
+		name: displayText(source),
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -1073,7 +1103,15 @@ export function diagnosticDisplay(line: string): string {
 	const attempt = words[1].replace(":", "");
 	const status = words[3].slice("status=".length);
 	const kind = words[4].slice("kind=".length);
-	return `Attempt ${attempt}: ${kind}${status === "None" ? "" : ` (HTTP ${status})`}`;
+	/* `kind` and `status` are wire tokens (`quota`, `503`), shown verbatim in
+	 * every locale; only the sentence around them is copy. */
+	return status === "None"
+		? t("ui.chat.canonical.supplement.details.attempt", { attempt, kind })
+		: t("ui.chat.canonical.supplement.details.attempt_http", {
+				attempt,
+				kind,
+				status,
+			});
 }
 
 export function failureExplanation(record: SupplementRecord): string {
@@ -1082,14 +1120,14 @@ export function failureExplanation(record: SupplementRecord): string {
 			? (record.detail?.at(-1) ?? "")
 			: "";
 	if (DIAGNOSTIC_ACCESS.test(typed))
-		return "The highlights model is unavailable right now. Your answer and files are unchanged.";
+		return t("ui.chat.canonical.supplement.explanation.model_unavailable");
 	if (DIAGNOSTIC_SERVICE.test(typed))
-		return "The highlights service did not respond. Your answer and files are unchanged.";
+		return t("ui.chat.canonical.supplement.explanation.service_unresponsive");
 	if (record.error === "bound:cost")
-		return "Highlights stopped at the spending limit or unavailable pricing. Your answer and files are unchanged.";
+		return t("ui.chat.canonical.supplement.explanation.cost_limit");
 	if (record.error === "bound:time")
-		return "Highlights reached the time limit. Your answer and files are unchanged.";
-	return "Your answer and files are unchanged. You can retry the highlights.";
+		return t("ui.chat.canonical.supplement.explanation.time_limit");
+	return t("ui.chat.canonical.supplement.explanation.retryable");
 }
 
 /** One `supplement_progress` event's payload -> a patch, or null if it names no anchor. */

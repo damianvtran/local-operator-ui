@@ -88,12 +88,6 @@ import {
 import { SupplementFrame } from "./supplement-frame";
 import { SupplementImageGrid } from "./supplement-image-grid";
 import {
-	COPY_ADJUST,
-	COPY_CANCEL,
-	COPY_CANCELLED,
-	COPY_FAILED,
-	COPY_PREPARING,
-	COPY_RETRY,
 	STEER_TEXT_MAX_CHARS,
 	type SupplementComponent,
 	type SupplementFile,
@@ -101,6 +95,12 @@ import {
 	type SupplementSound,
 	type SupplementWithheld,
 	causePhrase,
+	copyAdjust,
+	copyCancel,
+	copyCancelled,
+	copyFailed,
+	copyPreparing,
+	copyRetry,
 	diagnosticDisplay,
 	displayText,
 	failureExplanation,
@@ -493,7 +493,7 @@ export const SupplementRow = memo(function SupplementRow({
 	const disposition = supplementDisposition(record, record.live);
 	/*
 	 * The failed line's typed cause phrase (operator ask 2026-10-17; core #2557
-	 * licenses the variant and ONE word list — `CAUSE_PHRASES` is that list's
+	 * licenses the variant and ONE word list — `CAUSE_PHRASE_KEYS` is that list's
 	 * desktop transcription). A row without a cause, or carrying a token this
 	 * build does not know, paints the bare sentence exactly as before.
 	 */
@@ -650,17 +650,17 @@ export const SupplementRow = memo(function SupplementRow({
 								}
 							/>
 						</span>
-						<span className="text-ink-muted">{COPY_PREPARING}</span>
+						<span className="text-ink-muted">{copyPreparing()}</span>
 					</>
 				)}
 				{(disposition === "cancelled_retry" ||
 					disposition === "files_cancelled_retry") && (
-					<span className="text-ink-muted">{COPY_CANCELLED}</span>
+					<span className="text-ink-muted">{copyCancelled()}</span>
 				)}
 				{(disposition === "failed_retry" ||
 					disposition === "files_failed_retry") && (
 					<span className="text-ink-muted">
-						{COPY_FAILED}
+						{copyFailed()}
 						{failedCause ? ` — ${failedCause}` : ""}
 					</span>
 				)}
@@ -684,7 +684,7 @@ export const SupplementRow = memo(function SupplementRow({
 									data-supplement-adjust=""
 									onClick={() => setAdjusting(true)}
 								>
-									{COPY_ADJUST}
+									{copyAdjust()}
 								</button>
 							)}
 							<button
@@ -694,7 +694,7 @@ export const SupplementRow = memo(function SupplementRow({
 								disabled={busy || record.state === "cancelling"}
 								onClick={cancel}
 							>
-								{COPY_CANCEL}
+								{copyCancel()}
 							</button>
 						</>
 					)}
@@ -713,7 +713,7 @@ export const SupplementRow = memo(function SupplementRow({
 								data-supplement-retry=""
 								onClick={retry}
 							>
-								{COPY_RETRY}
+								{copyRetry()}
 							</button>
 						</>
 					)}

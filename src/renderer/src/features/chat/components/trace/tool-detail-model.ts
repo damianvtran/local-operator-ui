@@ -40,6 +40,8 @@
  * identity scalars in argument order").
  */
 
+import { t } from "@shared/i18n";
+
 /** One printed line of the pane. */
 export type DetailLine = {
 	/**
@@ -68,9 +70,6 @@ export type DetailLine = {
  * (`… earlier output not shown`, `… N more lines`).
  */
 const MAX_DEPTH = 8;
-
-/** What a cut-off subtree prints instead of its leaves. */
-const DEEPER_VALUES = "… deeper values not shown";
 
 /**
  * The app's own spelling for a section that exists and holds nothing.
@@ -101,7 +100,9 @@ const INDENT = "  ";
  * than as the one argument it came from.
  */
 export function detailOverflowLabel(hidden: number): string {
-	return `… ${hidden} more line${hidden === 1 ? "" : "s"}`;
+	/* ICU plural arms carry the singular rule per locale; English keeps the
+	 * terminal's exact bytes, `… 0 more lines` included. */
+	return t("ui.chat.canonical.tool_row.detail.more_lines", { count: hidden });
 }
 
 /**
@@ -258,7 +259,13 @@ function walk(
 	out: DetailLine[],
 ): void {
 	if (depth > MAX_DEPTH) {
-		out.push({ key, value: DEEPER_VALUES, depth });
+		/* Read per call, not hoisted to a module constant: a constant would freeze
+		 * the locale active at import time. */
+		out.push({
+			key,
+			value: t("ui.chat.canonical.tool_row.detail.deeper_values"),
+			depth,
+		});
 		return;
 	}
 	if (isContainer(value)) {

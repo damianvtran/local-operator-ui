@@ -1781,5 +1781,12 @@
 		"placeholders": {
 			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
 		}
+	},
+	"ui.canvas.files.remoteUnsupported": {
+		"role": "notice in a remote session's Files panel when this device's backend cannot open files from another device",
+		"tone": "plain statement, one full stop",
+		"length": "One short sentence.",
+		"note": "Shown for a session that runs on another device when the local backend lacks remote-file support. 'Remote' means on the other device.",
+		"placeholders": {}
 	}
 }
