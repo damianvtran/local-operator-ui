@@ -1032,6 +1032,19 @@ export type DesktopFeature =
 	 */
 	| "session_transfer"
 	/**
+	 * A move that carries the session's WORKING SET (worktrees, unpushed commits,
+	 * uncommitted files, scratch, session memory) to the destination:
+	 * `POST /v1/desktop/sessions/{id}/transfer/preflight` plus the transfer body's
+	 * `confirm_working_set` / `without_working_set` / `include_history_secrets`.
+	 *
+	 * ITS OWN KEY, not a version of `session_transfer` (the backend's
+	 * `server/features.py` rule, design move-working-set §11.1): the old move
+	 * dialog must keep working byte for byte against a backend without it, and the
+	 * core's transfer model is closed, so an ungated send of the new fields would be
+	 * a 422. Absent ⇒ no preflight, no checklist, no new body fields.
+	 */
+	| "session_transfer_working_set"
+	/**
 	 * The onboarding approval surface (`features.approvals`): the badge read
 	 * (`GET /v1/desktop/approvals`) plus the two decision posts, and nothing else.
 	 *

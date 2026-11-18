@@ -64,6 +64,7 @@ import { useMemo, useRef } from "react";
 // Sidebar and peer readers also bundle this module. The renderer barrel pulls
 // language-write/query helpers into that graph; formatting uses only the pure leaf.
 import { t } from "../../../../i18n/messages";
+import { workingSetConsent } from "./mesh-drop";
 import { type MeshGraph, meshGraph } from "./mesh-graph";
 import { type MeshMembership, meshMembership } from "./mesh-membership";
 import {
@@ -79,17 +80,21 @@ import {
 	type NetworkTopology,
 	type PeerList,
 	type TransferReceipt,
+	type WorkingSet,
 	meshRefusal,
 	networkTopology,
 	peerList,
 	sessionRows,
 	transferReceipt,
+	workingSet,
 } from "./mesh-types";
 
 export const meshKeys = {
 	peers: ["desktop", "mesh", "peers"] as const,
 	networks: ["desktop", "mesh", "networks"] as const,
 	sessions: ["desktop", "mesh", "sessions"] as const,
+	preflight: (sessionId: string, to: string) =>
+		["desktop", "mesh", "transfer-preflight", sessionId, to] as const,
 };
 
 /** The catalogue's own safety cadence. See this file's header for the arithmetic. */
@@ -458,7 +463,50 @@ export type MoveAsk = {
 	 * remedy re-issues the same move with this raised.
 	 */
 	waitS?: number;
+	/**
+	 * The `scope_digest` of the working-set manifest the user ticked for. Set only
+	 * by the move dialog, and only behind `features.session_transfer_working_set`
+	 * (the core's transfer model is closed; see the contract op's comment).
+	 */
+	confirmWorkingSet?: string;
+	/** The explicit "move without the working files" consent; same gate. */
+	withoutWorkingSet?: boolean;
 };
+
+/**
+ * What a move WOULD carry to `to`, read when the move dialog opens.
+ *
+ * `enabled` is the dialog's open state AND the capability: a closed dialog asks
+ * nothing, and a backend without `session_transfer_working_set` has no route to
+ * ask. The answer is `null` for a backend that answered with no working-set
+ * block (nothing to carry) - the dialog then renders exactly as it did before
+ * this feature. NOT CACHED BETWEEN OPENINGS (`gcTime: 0`, `staleTime: 0`): the
+ * manifest is a snapshot of trees the session may still be editing, and a
+ * consent given to last minute's list is the stale confirmation the scope
+ * digest exists to refuse.
+ */
+export function useTransferPreflight(
+	sessionId: string,
+	to: string,
+	enabled: boolean,
+) {
+	return useQuery({
+		queryKey: meshKeys.preflight(sessionId, to),
+		enabled: enabled && sessionId.length > 0 && to.length > 0,
+		queryFn: async (): Promise<WorkingSet | null> =>
+			workingSet(
+				await desktopResult<unknown>({
+					op: "sessions.transfer.preflight",
+					sessionId,
+					to,
+				}),
+			),
+		retry: false,
+		staleTime: 0,
+		gcTime: 0,
+		refetchOnWindowFocus: false,
+	});
+}
 
 /**
  * Ask for a move.
@@ -489,6 +537,7 @@ export function useMeshTransfer() {
 					keep: ask.keep,
 					waitS: ask.waitS ?? 0,
 					requestId: crypto.randomUUID(),
+					...workingSetConsent(ask),
 				});
 				const receipt = transferReceipt(raw);
 				if (receipt) return { kind: "moved", receipt };

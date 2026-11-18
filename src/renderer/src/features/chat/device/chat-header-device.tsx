@@ -46,7 +46,15 @@ import {
 	useState,
 } from "react";
 import { MoveConfirmDialog } from "../../mesh/mesh-actions";
-import type { MovePlan } from "../../mesh/mesh-drop";
+import {
+	type MovePlan,
+	type WorkingSetConsent,
+	workingSetConsent,
+} from "../../mesh/mesh-drop";
+import {
+	type MoveWorkingSetSeed,
+	workingSetReopen,
+} from "../../mesh/mesh-types";
 import {
 	type DevicePickerModel,
 	type DevicePlacement,
@@ -505,8 +513,17 @@ export const ChatHeaderDevice = ({
 	sessionId?: string;
 	/** A move this pane issued is in flight: the picker's own actions stand down. */
 	busy: boolean;
-	/** `keep` is the confirmation's own answer: false deletes the source copy. */
-	onPick: (deviceId: string | null, keep: boolean) => void;
+	/**
+	 * `keep` is the confirmation's own answer: false deletes the source copy.
+	 * `consent` is the working-set consent the same dialog produced (the scope
+	 * digest the user ticked for, or "without the working files"); absent when
+	 * there was nothing to confirm.
+	 */
+	onPick: (
+		deviceId: string | null,
+		keep: boolean,
+		consent?: WorkingSetConsent,
+	) => void;
 	onCheckAgain: () => void;
 }) => {
 	useI18nLocale();
@@ -523,7 +540,41 @@ export const ChatHeaderDevice = ({
 		plan: MovePlan;
 		alternatives: MovePlan[];
 		risky: boolean;
+		/** The destination's display name, for the working-set review. */
+		destinationName?: string;
+		/** A consent refusal's fresh manifest, shown instead of a new preflight. */
+		seed?: MoveWorkingSetSeed | null;
 	} | null>(null);
+	/*
+	 * A CONSENT REFUSAL REOPENS THE DIALOG (design move-working-set §11.4). When the
+	 * route refuses `working_set_changed` (the list moved after the tick) or
+	 * `working_set_unconfirmed` (the move reached it without a reviewed list), the
+	 * refusal carries the FRESH manifest; the honest next step is to show that list
+	 * and ask again, un-ticked, not to leave a notice the user has to decode. The
+	 * pane's refusal notice is dismissed because the dialog now says the same thing
+	 * with the remedy in hand. Keyed on the refusal OBJECT so one refusal reopens
+	 * the dialog once, and a cancel does not bring it back.
+	 */
+	const move = useChatDeviceStore((s) =>
+		sessionId ? s.moves[sessionId] : undefined,
+	);
+	const dismissMove = useChatDeviceStore((s) => s.dismissMove);
+	const reopenedRef = useRef<unknown>(null);
+	useEffect(() => {
+		if (!sessionId || move?.kind !== "refused" || !move.plan) return;
+		if (reopenedRef.current === move.refusal) return;
+		const seed = workingSetReopen(move.refusal);
+		if (!seed) return;
+		reopenedRef.current = move.refusal;
+		setAsk({
+			plan: move.plan,
+			alternatives: [],
+			risky: source !== null,
+			destinationName: move.name,
+			seed,
+		});
+		dismissMove(sessionId);
+	}, [move, sessionId, source, dismissMove]);
 	/*
 	 * THE HEADER MENU'S DOOR. The picker's open state is owned here, above the
 	 * `DevicePicker` Radix root, because the chip and the overflow item both open it:
@@ -581,6 +632,7 @@ export const ChatHeaderDevice = ({
 		});
 		setAsk({
 			...pair,
+			destinationName: row.name,
 			/*
 			 * RISK IS WHERE THE RUNTIME IS, and the dialog's own warning sentence is
 			 * written from that end: "it is open elsewhere right now" is true of a
@@ -615,10 +667,16 @@ export const ChatHeaderDevice = ({
 				alternatives={ask?.alternatives ?? []}
 				risky={ask?.risky ?? false}
 				busy={busy}
+				workingSetSeed={ask?.seed ?? null}
+				destinationName={ask?.destinationName}
 				onCancel={() => setAsk(null)}
 				onChoose={(plan) => {
 					setAsk(null);
-					onPick(plan.to === "local" ? null : plan.to, plan.keep);
+					onPick(
+						plan.to === "local" ? null : plan.to,
+						plan.keep,
+						workingSetConsent(plan),
+					);
 				}}
 			/>
 		</>

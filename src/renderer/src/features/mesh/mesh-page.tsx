@@ -77,6 +77,7 @@ import {
 	type Remedy,
 	lossSentence,
 	resolveDrop,
+	workingSetConsent,
 } from "./mesh-drop";
 import type { MeshGraph } from "./mesh-graph";
 import { meshSummary } from "./mesh-graph";
@@ -103,7 +104,9 @@ import {
 import {
 	type MeshRefusal,
 	type MeshSessionRow,
+	type MoveWorkingSetSeed,
 	deviceIdentityText,
+	workingSetReopen,
 } from "./mesh-types";
 import { useMeshPairingTray } from "./use-mesh-pairing-tray";
 
@@ -124,6 +127,10 @@ type PendingMove = {
 	plan: MovePlan;
 	alternatives: MovePlan[];
 	risky: boolean;
+	/** A consent refusal's fresh manifest, shown instead of a new preflight. */
+	seed?: MoveWorkingSetSeed | null;
+	/** The destination's label, for a review whose manifest names none. */
+	destinationName?: string;
 };
 
 /** What the last move answered, for the notice under the header. */
@@ -774,6 +781,8 @@ export const MeshSurface: FC<{
 				plan={pendingMove?.plan ?? emptyPlan}
 				alternatives={pendingMove?.alternatives ?? []}
 				risky={pendingMove?.risky ?? false}
+				workingSetSeed={pendingMove?.seed ?? null}
+				destinationName={pendingMove?.destinationName}
 				busy={moveBusy}
 				onCancel={onCancelMove}
 				onChoose={onChooseMove}
@@ -1017,6 +1026,7 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 				to: plan.to,
 				keep: plan.keep,
 				waitS: waitS ?? plan.waitS,
+				...workingSetConsent(plan),
 			};
 			transfer.mutate(ask, {
 				onSuccess: (outcome) => {
@@ -1076,6 +1086,27 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 											),
 										}
 									: null,
+						});
+						return;
+					}
+					/*
+					 * A CONSENT REFUSAL REOPENS THE DIALOG with the fresh manifest it carried
+					 * (design move-working-set §11.4): `working_set_changed` after a tick, or
+					 * `working_set_unconfirmed` from a drop that never showed the list. The
+					 * plan's own consent is dropped by the dialog on the next confirm.
+					 */
+					const seed = workingSetReopen(outcome.refusal);
+					if (seed) {
+						setPendingMove({
+							plan,
+							alternatives: [],
+							risky: false,
+							seed,
+							destinationName:
+								plan.to === "local"
+									? t("ui.mesh.mesh_drop.this_device")
+									: graph?.devices.find((device) => device.id === plan.to)
+											?.label,
 						});
 						return;
 					}

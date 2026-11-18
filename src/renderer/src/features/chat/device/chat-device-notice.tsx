@@ -22,6 +22,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { FC } from "react";
 import { MoveNotice } from "../../mesh/mesh-actions";
+import { workingSetConsent } from "../../mesh/mesh-drop";
 import {
 	useMeshNetworks,
 	useMeshPeers,
@@ -120,6 +121,8 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 								to: plan.to,
 								keep: plan.keep,
 								waitS: WAIT_CEILING_S,
+								// The consent the original pick carried, re-sent with it.
+								...workingSetConsent(plan),
 							},
 							{
 								onSuccess: (outcome) => {

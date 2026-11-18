@@ -114,7 +114,46 @@ export type MovePlan = {
 	 * confirmation names as lost. See {@link planConfirm}.
 	 */
 	lost: string | null;
+	/**
+	 * The working-set `scope_digest` the user ticked for in the move dialog, sent
+	 * as the transfer's `confirm_working_set`. Absent on every plan the dialog has
+	 * not confirmed (and always absent against a backend without
+	 * `session_transfer_working_set`), so an unconfirmed plan stays exactly the
+	 * request it was before the feature. Kept ON THE PLAN so a refusal's remedy
+	 * that re-issues the plan (`Wait for the turn to finish`) re-sends the same
+	 * consent rather than a consent-less move the route would refuse.
+	 */
+	confirmWorkingSet?: string;
+	/**
+	 * The explicit "move WITHOUT the working files" consent (`without_working_set`),
+	 * for a working set that cannot be sent (`unsupported`, or a manifest the owner
+	 * could not compute). Same rules as `confirmWorkingSet`: set only by the
+	 * dialog, carried on the plan for re-issues.
+	 */
+	withoutWorkingSet?: boolean;
 };
+
+/** The working-set consent a plan carries, and nothing else. */
+export type WorkingSetConsent = Pick<
+	MovePlan,
+	"confirmWorkingSet" | "withoutWorkingSet"
+>;
+
+/**
+ * The consent fields a plan actually SET, for spreading onto a transfer ask.
+ *
+ * Only set fields, because the core's transfer model is closed: a backend
+ * without `session_transfer_working_set` 422s on either key, and a plan the
+ * dialog never confirmed has neither.
+ */
+export function workingSetConsent(
+	plan: WorkingSetConsent | null | undefined,
+): WorkingSetConsent {
+	if (plan?.confirmWorkingSet)
+		return { confirmWorkingSet: plan.confirmWorkingSet };
+	if (plan?.withoutWorkingSet) return { withoutWorkingSet: true };
+	return {};
+}
 
 /** The action that fixes a refusal, when there is one. */
 export type Remedy =

@@ -27,6 +27,10 @@
  */
 
 import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
+import {
 	Alert,
 	Button,
 	Dialog,
@@ -52,8 +56,18 @@ import { type FC, useEffect, useId, useState } from "react";
 import { t } from "../../../../i18n/messages";
 import type { MovePlan } from "./mesh-drop";
 import { moveOptionCaption, planConfirm } from "./mesh-drop";
-import { INVITE_ROLES, type InviteRole } from "./mesh-store";
-import { type MeshRefusal, deviceIdentityText } from "./mesh-types";
+import {
+	INVITE_ROLES,
+	type InviteRole,
+	useTransferPreflight,
+} from "./mesh-store";
+import {
+	type MeshRefusal,
+	type MoveWorkingSetSeed,
+	deviceIdentityText,
+	workingSetHasFiles,
+} from "./mesh-types";
+import { WorkingSetReview, workingSetMode } from "./mesh-working-set";
 
 /**
  * The move confirmation: the operation, the loss, and the reversible alternative.
@@ -64,6 +78,24 @@ import { type MeshRefusal, deviceIdentityText } from "./mesh-types";
  * alternative is always present, because the decision is the user's - and because
  * `--keep` is what makes "undo" honest rather than a claim that a deleted copy came
  * back.
+ *
+ * THE WORKING SET (`features.session_transfer_working_set`, operator request
+ * 2026-11-18). A move now carries the conversation's worktrees and working files,
+ * so on a backend that can, the dialog asks the route what the move WOULD send
+ * when it opens and, when there is anything, requires the user's explicit
+ * confidence that the destination device should receive it: Confirm stays
+ * disabled until the checkbox is ticked, and the plan it returns carries the
+ * manifest's `scope_digest` as its consent. Four states:
+ *   - loading: today's dialog with a progress line; Confirm waits for the answer,
+ *     because confirming blind is the consent this feature exists to require;
+ *   - empty (chat-only session, or the route answered no block): today's dialog;
+ *   - error: today's dialog with the failure and a retry. Confirm stays usable -
+ *     the ROUTE still refuses a move with unconfirmed working files
+ *     (`working_set_unconfirmed`, with the manifest), and that refusal reopens this
+ *     dialog populated, so a failed read never becomes an unreviewed send;
+ *   - populated: the warning, the lists and the required checkbox.
+ * WITHOUT THE CAPABILITY nothing here runs and the dialog is byte-for-byte the
+ * one that shipped before (no read, no checkbox, no new body field).
  */
 export const MoveConfirmDialog: FC<{
 	open: boolean;
@@ -73,8 +105,68 @@ export const MoveConfirmDialog: FC<{
 	busy: boolean;
 	onCancel: () => void;
 	onChoose: (plan: MovePlan) => void;
-}> = ({ open, plan, alternatives, risky, busy, onCancel, onChoose }) => {
+	/** A refusal's fresh manifest, shown instead of a new preflight. */
+	workingSetSeed?: MoveWorkingSetSeed | null;
+	/**
+	 * The destination's display name, for the review's warning and checkbox when
+	 * the manifest does not carry one (a `working_set_unknown` refusal has none).
+	 * The manifest's own `destination.name` wins when present.
+	 */
+	destinationName?: string;
+}> = ({
+	open,
+	plan,
+	alternatives,
+	risky,
+	busy,
+	onCancel,
+	onChoose,
+	workingSetSeed = null,
+	destinationName,
+}) => {
 	useI18nLocale();
+	const capabilities = useDesktopCapabilities();
+	const workingSetGate = desktopFeatureEnabled(
+		capabilities.data,
+		"session_transfer_working_set",
+	);
+	const preflight = useTransferPreflight(
+		plan.sessionId,
+		plan.to,
+		open && workingSetGate && workingSetSeed === null,
+	);
+	const workingSet = workingSetGate
+		? (workingSetSeed?.workingSet ?? preflight.data ?? null)
+		: null;
+	/*
+	 * WHAT THE REVIEW ASKS. A manifest with something in it asks for the digest;
+	 * a refusal that says the files cannot travel (`working_set_unknown`, an
+	 * `unsupported` manifest) asks for the explicit "without the working files"
+	 * consent even when there is no list to show. Anything else is today's dialog.
+	 */
+	const withoutOnly = workingSetGate && (workingSetSeed?.withoutOnly ?? false);
+	const review = workingSetHasFiles(workingSet) ? workingSet : null;
+	const reviewing = review !== null || withoutOnly;
+	const reviewMode = workingSetMode(review, withoutOnly);
+	const reviewLoading =
+		workingSetGate && workingSetSeed === null && open && preflight.isLoading;
+	const reviewFailed =
+		workingSetGate && workingSetSeed === null && preflight.isError;
+	const [confident, setConfident] = useState(false);
+	/*
+	 * UN-TICKED FOR EVERY NEW LIST. The tick is consent to ONE scope: a reopened
+	 * dialog, or a fresh manifest from a `working_set_changed` refusal, is a
+	 * different question and must be answered again, never carried over.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the dependencies ARE the reset triggers; the body reads neither.
+	useEffect(() => {
+		setConfident(false);
+	}, [open, review?.scopeDigest, reviewMode]);
+	const reviewDevice =
+		review?.destination.name ||
+		workingSetSeed?.workingSet?.destination.name ||
+		destinationName ||
+		(plan.to === "local" ? t("ui.mesh.mesh_drop.this_device") : plan.to);
 	const confirm = planConfirm(plan, risky);
 	const [chosen, setChosen] = useState<MovePlan>(plan);
 	// The chosen plan is re-seeded when the dialog opens for a DIFFERENT drop: a
@@ -89,7 +181,7 @@ export const MoveConfirmDialog: FC<{
 	const isCopy = effective.keep;
 	return (
 		<Dialog open={open} onOpenChange={(next) => !next && onCancel()}>
-			<DialogContent className="max-w-md">
+			<DialogContent className={reviewing ? "max-w-lg" : "max-w-md"}>
 				<DialogHeader>
 					<DialogTitle>{effective.verb}</DialogTitle>
 					<DialogDescription>
@@ -163,13 +255,68 @@ export const MoveConfirmDialog: FC<{
 								)}
 					</Alert>
 				)}
+				{reviewLoading && (
+					<p
+						aria-live="polite"
+						className="flex items-center gap-2 text-meta text-ink-muted"
+					>
+						<Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+						{t("ui.mesh.mesh_actions.working_set_loading")}
+					</p>
+				)}
+				{reviewFailed && (
+					<Alert variant="danger" className="text-meta">
+						<span className="flex flex-col items-start gap-2">
+							{t("ui.mesh.mesh_actions.working_set_error")}
+							<Button
+								size="sm"
+								variant="secondary"
+								onClick={() => void preflight.refetch()}
+							>
+								{t("ui.mesh.mesh_actions.check_again")}
+							</Button>
+						</span>
+					</Alert>
+				)}
+				{reviewing && (
+					<WorkingSetReview
+						workingSet={review}
+						mode={reviewMode}
+						device={reviewDevice}
+						confident={confident}
+						onConfidentChange={setConfident}
+						changed={workingSetSeed?.changed ?? false}
+						disabled={busy}
+					/>
+				)}
 				<DialogFooter>
 					<Button variant="ghost" onClick={onCancel} disabled={busy}>
 						{t("ui.mesh.mesh_actions.cancel")}
 					</Button>
 					<Button
-						onClick={() => onChoose(effective)}
-						disabled={busy}
+						onClick={() => {
+							/*
+							 * THE CONSENT TRAVELS ON THE PLAN, and only when a review was shown
+							 * and ticked: any consent a reopened plan still carried is dropped
+							 * first, so an empty answer never sends a stale one.
+							 */
+							const {
+								confirmWorkingSet: _staleDigest,
+								withoutWorkingSet: _staleWithout,
+								...bare
+							} = effective;
+							onChoose(
+								!reviewing
+									? bare
+									: reviewMode === "without"
+										? { ...bare, withoutWorkingSet: true }
+										: {
+												...bare,
+												confirmWorkingSet: review?.scopeDigest,
+											},
+							);
+						}}
+						disabled={busy || reviewLoading || (reviewing && !confident)}
 						variant={isCopy ? "secondary" : "primary"}
 					>
 						{busy && (

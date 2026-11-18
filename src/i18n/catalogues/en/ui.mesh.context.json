@@ -1918,5 +1918,215 @@
 		"role": "inline error — another confirmation is open",
 		"tone": "Helpful",
 		"note": "Another pairing's native confirmation sheet is already open; this press opened none. Tells the person to finish (answer or cancel) that open confirmation first, then press again. {action} as in ui.mesh.pairing.error.devtools: quote each arm's label exactly as your translation of that action key."
+	},
+	"ui.mesh.mesh_actions.working_set_loading": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Shown while the move dialog asks the backend which working files the move would send. Brief progress line. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_error": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Shown when that check failed. Must keep the reassurance that nothing is sent without review. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_warning": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "The main warning of the move dialog. device = the destination device name (may repeat). Must keep: ALL working files go to that device; worktrees, unpushed commits, uncommitted changes, scratch files, session memory. Keep \"worktree\" as the git term used in the locale glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_changed": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Shown when the backend refused because the list of files changed after the user reviewed it; the checkbox is cleared. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_sent_heading": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Section heading over the list of worktrees that will be sent. count = number of worktrees (plural); size = already formatted total size, e.g. \"12 MB\". Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_detached": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Shown in place of a git branch name when the worktree is on a detached HEAD. Git term. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_worktree_counts": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Facts line for one worktree. unpushed = commits not on any remote (plural); staged/unstaged/untracked = file counts (git terms). Keep the · separators. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_dest_path": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Shown when a worktree lands at a different path on the destination. path = home-relative path, never translated. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_clone": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "The destination lacks the repository and will clone it from origin. device = destination name; url = git remote URL, never translated. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_clone_sized": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Same as clone, with size = already formatted estimated clone size. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_withheld_heading": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Section heading over files and worktrees that will NOT be sent because they look like secrets. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_withheld_secret_path": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a withheld path: its name looks like a secrets file (e.g. .env). Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_withheld_secret_content": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a withheld path: its content contains a credential-shaped value. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_withheld_history_secret_path": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line: an unpushed commit adds a secret-shaped file. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_withheld_history_secret_content": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line: an unpushed commit contains a secret-shaped value. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_left_behind_heading": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Section heading over things not copied on purpose (dependencies, build output); they stay on the device the conversation leaves. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_kind_dependency_tree": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Label: a dependency folder such as node_modules or .venv. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_kind_build_output": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Label: generated build output. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_kind_ignored": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Label: files git is told to ignore. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_kind_loose_file": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Label: a file that is not inside any worktree. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_recreate_with": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Lowercase continuation after a label and a · separator. command = shell command, never translated. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_contended": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_outside_home": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_unmerged": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_in_progress_operation": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_submodule": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_lfs": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_history_secret": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_over_cap": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_destination_conflict": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Reason line under a worktree that will not be sent, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_unknown": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "Fallback reason when the backend reports a code this app does not know. code = machine code, never translated. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_checkbox": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving that another device receives their files",
+		"note": "REQUIRED confirmation checkbox label; Confirm stays disabled until ticked. device = destination device name. First person, a statement of confidence. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_warning_leave": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Main warning when this backend gates the move but does NOT send files yet. device = destination name. Must keep: files stay on the source; the destination conversation will not have them. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_warning_without": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Main warning when the files cannot travel at all; the only choice is to move without them. device = destination name. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_unknown": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Main warning when the backend could not check the working files at all. device = destination name. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_kept_heading": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Section heading over worktrees that stay on the source because this version does not send them. count = number of worktrees (plural). Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_checkbox_leave": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "REQUIRED confirmation checkbox when files will NOT reach the destination. device = destination device name. First person. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_clone_pending": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Shown once per repository: the destination clones it from origin only if missing and only after a free-space check. url = git remote URL, never translated. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_history_unscanned": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Reason line under a worktree that will not be moved, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_destination_cannot_clone": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Reason line under a worktree that will not be moved, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
+	},
+	"ui.mesh.mesh_actions.working_set_reason_not_transferred": {
+		"role": "confirmation explanation — move dialog working-set review",
+		"tone": "Plain, precise safety language; the user is approving what another device will or will not receive",
+		"note": "Reason line under a worktree that will not be moved, with its remedy. Keep the remedy actionable; git terms per glossary. Length: may wrap inside the dialog; keep the full meaning."
 	}
 }

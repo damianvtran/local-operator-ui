@@ -709,6 +709,301 @@ const MOVE_UNCONFIRMED_CODES: ReadonlySet<string> = new Set([
 	"peer_unreachable",
 ]);
 
+/* ------------------------------------------------------------ working set */
+
+/**
+ * The four refusals that carry a FRESH manifest (`working_set` on the refusal
+ * body, design move-working-set §11.1). All are `changed:false`: nothing moved,
+ * and the manifest is what the user has to look at again before re-confirming.
+ */
+export const WORKING_SET_REFUSAL_CODES: ReadonlySet<string> = new Set([
+	"working_set_unconfirmed",
+	"working_set_changed",
+	"working_set_over_cap",
+	"working_set_unsupported",
+	// The owner could not compute the manifest at all; the only way forward is
+	// the explicit "move without working files" consent.
+	"working_set_unknown",
+]);
+
+/** One dependency tree the destination has to recreate, as the core states it. */
+export type WorkingSetRecipe = { kind: string; run: string; cwd: string };
+
+/**
+ * One worktree in the manifest, reduced to what the consent needs.
+ *
+ * WHAT IS DELIBERATELY NOT HERE: file lists, contents, secret values. The
+ * preflight carries metadata only (paths, branch, counts, sizes, withheld
+ * reasons), and this type is the boundary that keeps a future wider answer from
+ * reaching the dialog by accident.
+ */
+export type WorkingSetWorktree = {
+	/** Home-relative (`~/…`) on the source. */
+	path: string;
+	/** Home-relative on the destination; differs from `path` only on a conflict. */
+	destPath: string | null;
+	repo: string;
+	/** `null` on a detached HEAD. */
+	branch: string | null;
+	head: string;
+	unpushedCommits: number;
+	staged: number;
+	unstaged: number;
+	untracked: number;
+	/** Bundle plus snapshot: what crosses the link for this tree. */
+	bytes: number;
+	/** `planned` | `carried` | `restored` | `pending_restore` | `left_behind`. */
+	state: string;
+	/** The machine reason code when `left_behind` (`history_secret`, `contended`, …). */
+	reason: string | null;
+	recipes: WorkingSetRecipe[];
+	/**
+	 * The destination lacks the primary checkout and will CLONE it from origin
+	 * (manager decision Q1: listed, sized, and confirmed like everything else).
+	 * `null` when no clone is planned. Read defensively from either `clone:
+	 * {url, bytes|estimated_bytes}` or `clone_bytes`, because the core contract
+	 * is being written concurrently and the field's final spelling is the core's.
+	 */
+	clone: { url: string; bytes: number | null } | null;
+	/**
+	 * The core's `clone_check`: `pending_destination` means whether the
+	 * destination must (and can) clone the primary is the DESTINATION's answer,
+	 * not known at preflight; the review says so rather than promising a clone.
+	 */
+	cloneCheck: string | null;
+	remoteUrl: string | null;
+	/** This row IS the primary checkout rather than a linked worktree. */
+	primary: boolean;
+};
+
+/** A path withheld from the transfer because it looks like a secret. */
+export type WorkingSetExclusion = { path: string; why: string };
+
+/** A path the transfer leaves behind on purpose (deps, build output, …). */
+export type WorkingSetLeftBehind = {
+	path: string;
+	kind: string;
+	recipe: WorkingSetRecipe | null;
+};
+
+/** The preflight's manifest, as the move dialog renders it. */
+export type WorkingSet = {
+	/** What the transfer's `confirm_working_set` must echo. */
+	scopeDigest: string;
+	/** `preflight`, or `unsupported` (only `without_working_set` can proceed). */
+	state: string;
+	/**
+	 * Whether this backend actually SENDS the files. False on the first core
+	 * release (the move is gated on consent but the worktrees stay on the source),
+	 * true once the transfer half lands. The review's copy is opposite in the two
+	 * cases, so this is read, never assumed: absent reads as false, because
+	 * claiming files travel when they do not is the exact surprise this exists to
+	 * prevent.
+	 */
+	carriesFiles: boolean;
+	/**
+	 * The route's `confirmation_required` when it sent one (the authority), else
+	 * whether the block lists anything at all.
+	 */
+	confirmationRequired: boolean;
+	destination: { deviceId: string; name: string };
+	totals: {
+		worktrees: number;
+		unpushedCommits: number;
+		dirtyFiles: number;
+		bytes: number;
+		capBytes: number | null;
+	};
+	worktrees: WorkingSetWorktree[];
+	excluded: WorkingSetExclusion[];
+	leftBehind: WorkingSetLeftBehind[];
+};
+
+const SCOPE_DIGEST = /^sha256:[0-9a-f]{64}$/;
+
+function recipe(value: unknown): WorkingSetRecipe | null {
+	if (!isRecord(value)) return null;
+	const run = text(value.run);
+	if (!run) return null;
+	return { kind: text(value.kind) || "none", run, cwd: text(value.cwd) };
+}
+
+function cloneOf(raw: Record<string, unknown>): WorkingSetWorktree["clone"] {
+	const held = raw.clone;
+	if (isRecord(held)) {
+		return {
+			url: text(held.url) || text(held.remote_url) || text(raw.remote_url),
+			bytes: nullableCount(held.bytes) ?? nullableCount(held.estimated_bytes),
+		};
+	}
+	const bytes = nullableCount(raw.clone_bytes);
+	return bytes === null ? null : { url: text(raw.remote_url), bytes };
+}
+
+function worktree(raw: Record<string, unknown>): WorkingSetWorktree | null {
+	const path = text(raw.path);
+	if (!path) return null;
+	return {
+		path,
+		destPath: textOrNull(raw.dest_path),
+		repo: text(raw.repo),
+		branch: textOrNull(raw.branch),
+		head: text(raw.head),
+		unpushedCommits: count(raw.unpushed_commits),
+		staged: count(raw.staged),
+		unstaged: count(raw.unstaged),
+		untracked: count(raw.untracked),
+		bytes: count(raw.bundle_bytes) + count(raw.snapshot_bytes),
+		state: text(raw.state) || "planned",
+		reason: textOrNull(raw.reason),
+		recipes: (Array.isArray(raw.recipes) ? raw.recipes : [])
+			.map(recipe)
+			.filter((entry): entry is WorkingSetRecipe => entry !== null),
+		clone: cloneOf(raw),
+		cloneCheck: textOrNull(raw.clone_check),
+		remoteUrl: textOrNull(raw.remote_url),
+		primary: raw.primary === true,
+	};
+}
+
+function rows(value: unknown): Record<string, unknown>[] {
+	return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
+/**
+ * The working-set block of a preflight answer or a refusal body, or `null`.
+ *
+ * NULL MEANS "NO CONSENT CAN BE ASKED FOR", and that is why a block without a
+ * well-formed `scope_digest` is null rather than a half-parsed object: the
+ * transfer's consent IS the digest, so a manifest without one cannot be
+ * confirmed, and the dialog must not offer a checkbox whose tick sends nothing.
+ * Accepts the block itself, a `{working_set}` wrapper (preflight result, refusal
+ * detail) and a `{result: {working_set}}` envelope, because the three reach
+ * this from different layers. Never throws: the boundary owns the narrowing.
+ */
+export function workingSet(value: unknown): WorkingSet | null {
+	if (!isRecord(value)) return null;
+	if (isRecord(value.result)) return workingSet(value.result);
+	if (isRecord(value.working_set)) {
+		const inner = workingSet(value.working_set);
+		// The preflight's own verdict wins over the block's rows when it is stated.
+		if (inner && typeof value.confirmation_required === "boolean")
+			return { ...inner, confirmationRequired: value.confirmation_required };
+		return inner;
+	}
+	const scopeDigest = text(value.scope_digest);
+	if (!SCOPE_DIGEST.test(scopeDigest)) return null;
+	const destination = isRecord(value.destination) ? value.destination : {};
+	const totals = isRecord(value.totals) ? value.totals : {};
+	const worktrees = rows(value.worktrees)
+		.map(worktree)
+		.filter((entry): entry is WorkingSetWorktree => entry !== null);
+	const excluded = rows(value.excluded)
+		.map((raw) => ({ path: text(raw.path), why: text(raw.why) }))
+		.filter((entry) => entry.path.length > 0);
+	const leftBehind = rows(value.left_behind)
+		.map((raw) => ({
+			path: text(raw.path),
+			kind: text(raw.kind) || "loose_file",
+			recipe: recipe(raw.recipe),
+		}))
+		.filter((entry) => entry.path.length > 0);
+	const state = text(value.state) || "preflight";
+	return {
+		scopeDigest,
+		state,
+		carriesFiles: value.carries_files === true,
+		confirmationRequired:
+			state === "unsupported" ||
+			worktrees.length > 0 ||
+			excluded.length > 0 ||
+			leftBehind.length > 0,
+		destination: {
+			deviceId: text(destination.device_id),
+			name: text(destination.name),
+		},
+		totals: {
+			worktrees: count(totals.worktrees),
+			unpushedCommits: count(totals.unpushed_commits),
+			dirtyFiles: count(totals.dirty_files),
+			bytes: count(totals.bytes),
+			capBytes: nullableCount(totals.cap_bytes),
+		},
+		worktrees,
+		excluded,
+		leftBehind,
+	};
+}
+
+/**
+ * Whether a manifest has anything to confirm.
+ *
+ * An EMPTY working set (a chat-only session, `confirmation_required: false`)
+ * keeps today's dialog exactly: no warning, no checkbox, no consent sent.
+ * "Anything" includes a withheld or left-behind tree, because telling the user
+ * what will NOT arrive is the half of the operator's requirement that stops "I
+ * moved it and my work is gone".
+ */
+export function workingSetHasFiles(set: WorkingSet | null): boolean {
+	return set?.confirmationRequired ?? false;
+}
+
+/**
+ * A manifest the move dialog must show INSTEAD of asking the preflight: the fresh
+ * one a `working_set_unconfirmed` / `working_set_changed` refusal carried.
+ * `changed` says the user already confirmed an older list, which the review
+ * states before asking again.
+ */
+export type MoveWorkingSetSeed = {
+	/** `null` only for `working_set_unknown`: the owner could not compute one. */
+	workingSet: WorkingSet | null;
+	changed: boolean;
+	/**
+	 * The working set cannot be sent at all (`working_set_unknown`, or an
+	 * `unsupported` manifest): the dialog offers ONLY the explicit "move without
+	 * the working files" consent.
+	 */
+	withoutOnly: boolean;
+};
+
+/**
+ * Whether a move refusal should REOPEN the move dialog, and with what.
+ *
+ * The consent refusals are answered by asking again, not by a notice the user
+ * has to decode:
+ *   - `working_set_unconfirmed` (the move reached the route without a reviewed
+ *     list: a drop the dialog never saw, a failed preflight) and
+ *     `working_set_changed` (the list moved after the tick) reopen with the
+ *     FRESH manifest the refusal carried, un-ticked;
+ *   - `working_set_unsupported` (the manifest says `unsupported`) and
+ *     `working_set_unknown` (the owner could not compute one) reopen offering
+ *     ONLY the explicit "move without the working files" consent.
+ * `working_set_over_cap` is not reopened: no tick makes it succeed, so it stays
+ * an ordinary refusal notice with the route's own sentence and remedy.
+ */
+export function workingSetReopen(
+	refusal: MeshRefusal | null | undefined,
+): MoveWorkingSetSeed | null {
+	if (!refusal) return null;
+	const fresh = refusal.workingSet ?? null;
+	switch (refusal.code) {
+		case "working_set_unknown":
+			return { workingSet: fresh, changed: false, withoutOnly: true };
+		case "working_set_unsupported":
+			return { workingSet: fresh, changed: false, withoutOnly: true };
+		case "working_set_unconfirmed":
+		case "working_set_changed":
+			if (!fresh || !workingSetHasFiles(fresh)) return null;
+			return {
+				workingSet: fresh,
+				changed: refusal.code === "working_set_changed",
+				withoutOnly: fresh.state === "unsupported",
+			};
+		default:
+			return null;
+	}
+}
+
 /** A refusal as the surface must render it: the code, and the author's sentence. */
 export type MeshRefusal = {
 	/** The machine contract: a `MOVE_REFUSAL_CODES` member, or the transport's own. */
@@ -727,6 +1022,11 @@ export type MeshRefusal = {
 	status: number | null;
 	/** True when the outcome is unknown and the request must not be repeated. */
 	unconfirmed: boolean;
+	/**
+	 * The FRESH manifest a `working_set_*` refusal carries, so the dialog can
+	 * re-render what the move would now send and ask again. Absent otherwise.
+	 */
+	workingSet?: WorkingSet;
 };
 
 /**
@@ -748,6 +1048,11 @@ export function meshRefusal(error: unknown): MeshRefusal {
 	} | null;
 	const code = text(held?.code) || "move_refused";
 	const status = typeof held?.status === "number" ? held.status : null;
+	// Read ONLY for the working-set codes: the body is the transport's untyped
+	// `detail`, and no other refusal's manifest-shaped field is this one.
+	const fresh = WORKING_SET_REFUSAL_CODES.has(code)
+		? workingSet((error as { detail?: unknown } | null)?.detail)
+		: null;
 	return {
 		code,
 		sentence: text(held?.message) || t("ui.mesh.errors.move_refused"),
@@ -756,6 +1061,7 @@ export function meshRefusal(error: unknown): MeshRefusal {
 		// status is one this process synthesised (the renderer's own deadline), which is
 		// unconfirmed by definition: nothing here observed the backend.
 		unconfirmed: status === 503 || MOVE_UNCONFIRMED_CODES.has(code),
+		...(fresh ? { workingSet: fresh } : {}),
 	};
 }
 

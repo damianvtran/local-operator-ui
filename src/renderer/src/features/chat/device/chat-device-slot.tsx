@@ -41,6 +41,10 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type FC, useCallback, useMemo } from "react";
 import {
+	type WorkingSetConsent,
+	workingSetConsent,
+} from "../../mesh/mesh-drop";
+import {
 	useMeshNetworks,
 	useMeshPeers,
 	useMeshTransfer,
@@ -284,7 +288,7 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	);
 
 	const onPick = useCallback(
-		(deviceId: string | null, keep: boolean) => {
+		(deviceId: string | null, keep: boolean, consent?: WorkingSetConsent) => {
 			const row = deviceId ? findRow(model, deviceId) : null;
 			const name = row ? row.name : t("ui.mesh.mesh_drop.this_device");
 			/*
@@ -340,7 +344,13 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 				destination: { deviceId: to, name },
 				source: from,
 			});
-			const plan = keep ? (pair.alternatives[0] ?? pair.plan) : pair.plan;
+			const chosen = keep ? (pair.alternatives[0] ?? pair.plan) : pair.plan;
+			/*
+			 * THE WORKING-SET CONSENT RIDES THE RECORDED PLAN too, so the refusal's
+			 * `Wait for the turn to finish` re-issues the move WITH the consent the user
+			 * gave rather than a consent-less one the route would refuse.
+			 */
+			const plan = { ...chosen, ...workingSetConsent(consent) };
 			beginMove(key, { deviceId: to, name, from });
 			transfer.mutate(
 				/*
@@ -348,7 +358,12 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 				 * (`movePair`, `MoveConfirmDialog`): the destructive default deletes the copy,
 				 * and the copy arm is what makes the alternative real (SPEC §3.4).
 				 */
-				{ sessionId, to, keep },
+				{
+					sessionId,
+					to,
+					keep,
+					...workingSetConsent(consent),
+				},
 				{
 					onSuccess: (outcome) => {
 						if (outcome.kind === "moved") {
