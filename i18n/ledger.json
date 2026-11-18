@@ -117190,8 +117190,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge.approvals",
-			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
-			"target_sha256": "75052d23272271b39d73b0bb026969c0b6f77a28ae9ad8a05754ffd6da0197f3",
+			"source_sha256": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad",
+			"target_sha256": "49acc5f130645ff787f7ea85ddce1bcc55cb99f846e4c5fe7f5b12f37ef6ac01",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -117201,28 +117201,54 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "pr1954-r1-fr-tbapprovals-4541a0ae",
+					"instance": "pr1980-r1-fr-tbapprovals-d79060d8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1954-r1-fr-tbapprovals-4541a0ae.json",
-					"receipt_sha256": "1fb23f76838824728a0722e96a3a66563f7a2bee1037bb2ccc4d178d70f961c5",
-					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
-					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+					"receipt": "i18n/receipts/pr1980-r1-fr-tbapprovals-d79060d8.json",
+					"receipt_sha256": "8df4f5ca63f00b12271ea2369da2d5281bffc467125950fb26b923c4d1746857",
+					"scope": "PR #1980 round 1: 15 changed ui.teamBridge.approvals values (origin/main..9d9fb985); 74 keys mechanically re-verified",
+					"note": "PR #1980: translator coder (implementer session); independent audit copy-reviewer session b3a06099b675"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+					"target_sha256": "75052d23272271b39d73b0bb026969c0b6f77a28ae9ad8a05754ffd6da0197f3",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1954-r1-fr-tbapprovals-4541a0ae",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1954-r1-fr-tbapprovals-4541a0ae.json",
+							"receipt_sha256": "1fb23f76838824728a0722e96a3a66563f7a2bee1037bb2ccc4d178d70f961c5",
+							"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+							"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge.approvals",
-			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
-			"target_sha256": "76fbf37d7cb153c0adf9db5a3164b656d64b83654e0e4977cc6739e266a26850",
+			"source_sha256": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad",
+			"target_sha256": "f965e5ae2cd5dcf0d600f4841afc40ebfe8b334976c0b7389816459a756cb344",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -117232,28 +117258,54 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
-					"result": "clean",
-					"instance": "pr1954-r1-es-tbapprovals-f1b52917",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "pr1980-r1-es-tbapprovals-7636e6ba",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/pr1954-r1-es-tbapprovals-f1b52917.json",
-					"receipt_sha256": "37533fb87f2cd445f2a51a4e943305aa790787af06fc028b0b3597cbdc334a64",
-					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
-					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+					"receipt": "i18n/receipts/pr1980-r1-es-tbapprovals-7636e6ba.json",
+					"receipt_sha256": "99ed44a4d809e81ac209fe56378fb073d12fecd896bb8281022eb21d3a7c75cd",
+					"scope": "PR #1980 round 1: 15 changed ui.teamBridge.approvals values (origin/main..9d9fb985); 74 keys mechanically re-verified",
+					"note": "PR #1980: translator coder (implementer session); independent audit copy-reviewer session b3a06099b675"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+					"target_sha256": "76fbf37d7cb153c0adf9db5a3164b656d64b83654e0e4977cc6739e266a26850",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1954-r1-es-tbapprovals-f1b52917",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1954-r1-es-tbapprovals-f1b52917.json",
+							"receipt_sha256": "37533fb87f2cd445f2a51a4e943305aa790787af06fc028b0b3597cbdc334a64",
+							"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+							"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge.approvals",
-			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
-			"target_sha256": "c0aa9fab0a51db2d399f485c3e3a575af03a919264892b09cc9cfecdcdc2db8c",
+			"source_sha256": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad",
+			"target_sha256": "7baef23e9c607331bfaa65f975b54a5f5562bc96280cf2505dce9c4a6dc3885c",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -117263,28 +117315,54 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "pr1954-r1-zh-cn-tbapprovals-1549da42",
+					"instance": "pr1980-r1-zh-cn-tbapprovals-3feb01cc",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1954-r1-zh-cn-tbapprovals-1549da42.json",
-					"receipt_sha256": "9a418db6b6a0340b7d38788123d343e7870b5e95582b4078a827dbfbcb569fe0",
-					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
-					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+					"receipt": "i18n/receipts/pr1980-r1-zh-cn-tbapprovals-3feb01cc.json",
+					"receipt_sha256": "e2d21493c13b11de99f0154b42aa807bc410c880b0a98d93da4cf4e8918e68eb",
+					"scope": "PR #1980 round 1: 15 changed ui.teamBridge.approvals values (origin/main..9d9fb985); 74 keys mechanically re-verified",
+					"note": "PR #1980: translator coder (implementer session); independent audit copy-reviewer session b3a06099b675"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+					"target_sha256": "c0aa9fab0a51db2d399f485c3e3a575af03a919264892b09cc9cfecdcdc2db8c",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1954-r1-zh-cn-tbapprovals-1549da42",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1954-r1-zh-cn-tbapprovals-1549da42.json",
+							"receipt_sha256": "9a418db6b6a0340b7d38788123d343e7870b5e95582b4078a827dbfbcb569fe0",
+							"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+							"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge.approvals",
-			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
-			"target_sha256": "327258359307aeff0a6ab165689802385df3e60ba9a03a91871ea089e85b088a",
+			"source_sha256": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad",
+			"target_sha256": "53348d3229d7cfd4f516c699b377d92abaeb03ea3c1e94f22e2e59895a5a52eb",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -117294,28 +117372,54 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "pr1954-r1-ru-tbapprovals-6414c665",
+					"instance": "pr1980-r1-ru-tbapprovals-3ae1bd72",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1954-r1-ru-tbapprovals-6414c665.json",
-					"receipt_sha256": "f51e5eb07c2fa48e211709e08726d707e6163b19ca8d29440b98eb8afc53427c",
-					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
-					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+					"receipt": "i18n/receipts/pr1980-r1-ru-tbapprovals-3ae1bd72.json",
+					"receipt_sha256": "5755f613e61fb444317926295f3a9cfcb5212d4dd6f3b0f991ba003b2aad9ec4",
+					"scope": "PR #1980 round 1: 15 changed ui.teamBridge.approvals values (origin/main..9d9fb985); 74 keys mechanically re-verified",
+					"note": "PR #1980: translator coder (implementer session); independent audit copy-reviewer session b3a06099b675"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+					"target_sha256": "327258359307aeff0a6ab165689802385df3e60ba9a03a91871ea089e85b088a",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1954-r1-ru-tbapprovals-6414c665",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1954-r1-ru-tbapprovals-6414c665.json",
+							"receipt_sha256": "f51e5eb07c2fa48e211709e08726d707e6163b19ca8d29440b98eb8afc53427c",
+							"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+							"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge.approvals",
-			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
-			"target_sha256": "db92666f593af914d3d35390aa359f8b4318e3475190799fdf5405881cfba1d7",
+			"source_sha256": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad",
+			"target_sha256": "2536460f4787079e53f95cc5e6501ce2cd4e1ce0f6bf8eedd070c9cd8576127a",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -117325,28 +117429,54 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "pr1954-r1-vi-tbapprovals-f631a6db",
+					"instance": "pr1980-r1-vi-tbapprovals-4b0c04c2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1954-r1-vi-tbapprovals-f631a6db.json",
-					"receipt_sha256": "46154d31e552c2252acf8e695bce7e261b46cb5b37634582203c5a575882af93",
-					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
-					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+					"receipt": "i18n/receipts/pr1980-r1-vi-tbapprovals-4b0c04c2.json",
+					"receipt_sha256": "8061a7c28a8ced37df534befa08b92dadd4c4d9531bf14bf1c612788f38ea4af",
+					"scope": "PR #1980 round 1: 15 changed ui.teamBridge.approvals values (origin/main..9d9fb985); 74 keys mechanically re-verified",
+					"note": "PR #1980: translator coder (implementer session); independent audit copy-reviewer session b3a06099b675"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+					"target_sha256": "db92666f593af914d3d35390aa359f8b4318e3475190799fdf5405881cfba1d7",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1954-r1-vi-tbapprovals-f631a6db",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1954-r1-vi-tbapprovals-f631a6db.json",
+							"receipt_sha256": "46154d31e552c2252acf8e695bce7e261b46cb5b37634582203c5a575882af93",
+							"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+							"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge.approvals",
-			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
-			"target_sha256": "aa94aa9e75383a90b5e6439ae530f3a04963f404dbe2e6466e31eda34588c53f",
+			"source_sha256": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad",
+			"target_sha256": "21fff573303adc8f98572b9e30eefc5c9a110c564568173fe5b95bdb4a953ecc",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -117356,28 +117486,54 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "pr1954-r1-ur-tbapprovals-3b72526a",
+					"instance": "pr1980-r1-ur-tbapprovals-1faae0eb",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 0
+						"minor": 0,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/pr1954-r1-ur-tbapprovals-3b72526a.json",
-					"receipt_sha256": "f1600e18f4566ac3e16b738537638d3a6b361acbfde723dee21016f63cc98147",
-					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
-					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+					"receipt": "i18n/receipts/pr1980-r1-ur-tbapprovals-1faae0eb.json",
+					"receipt_sha256": "63a08a22a8eaa2ccc63b9f327de7a347c1586be52a209374367505b63a888a26",
+					"scope": "PR #1980 round 1: 15 changed ui.teamBridge.approvals values (origin/main..9d9fb985); 74 keys mechanically re-verified",
+					"note": "PR #1980: translator coder (implementer session); independent audit copy-reviewer session b3a06099b675"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+					"target_sha256": "aa94aa9e75383a90b5e6439ae530f3a04963f404dbe2e6466e31eda34588c53f",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "pr1954-r1-ur-tbapprovals-3b72526a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1954-r1-ur-tbapprovals-3b72526a.json",
+							"receipt_sha256": "f1600e18f4566ac3e16b738537638d3a6b361acbfde723dee21016f63cc98147",
+							"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+							"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge.approvals",
-			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
-			"target_sha256": "15298cf967a808a2aad10d1788eb725fa448a5c4461c76f19e24f9a28a7e7936",
+			"source_sha256": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad",
+			"target_sha256": "47dbe66b03ee41f207a7ad25e27cb4791485564a396728cb73c976fc185a4355",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -117387,22 +117543,48 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "pr1954-r1-hi-tbapprovals-5e87fe58",
+					"instance": "pr1980-r1-hi-tbapprovals-0025c880",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/pr1954-r1-hi-tbapprovals-5e87fe58.json",
-					"receipt_sha256": "dcfbce2fbf3849a3606a5b94fe3e154980b7bec28b75c08ae0a5ed239fd14b1e",
-					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
-					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+					"receipt": "i18n/receipts/pr1980-r1-hi-tbapprovals-0025c880.json",
+					"receipt_sha256": "00eb70574ee37737d335b57e501d70b3e15d879de848ce5a9e315fc1843767b6",
+					"scope": "PR #1980 round 1: 15 changed ui.teamBridge.approvals values (origin/main..9d9fb985); 74 keys mechanically re-verified",
+					"note": "PR #1980: translator coder (implementer session); independent audit copy-reviewer session b3a06099b675"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+					"target_sha256": "15298cf967a808a2aad10d1788eb725fa448a5c4461c76f19e24f9a28a7e7936",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "pr1954-r1-hi-tbapprovals-5e87fe58",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1954-r1-hi-tbapprovals-5e87fe58.json",
+							"receipt_sha256": "dcfbce2fbf3849a3606a5b94fe3e154980b7bec28b75c08ae0a5ed239fd14b1e",
+							"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+							"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
