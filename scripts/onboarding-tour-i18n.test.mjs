@@ -145,6 +145,30 @@ globalThis.document = dom.window.document;
 globalThis.CSS = { escape: (value) => String(value) };
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 dom.window.Element.prototype.scrollIntoView = () => {};
+/*
+ * The app's tour targets, planted once (PostHog D5). `guardTourTargets` now
+ * SKIPS a step whose target is not on screen, which is what a running app with
+ * a retired target needs - but this harness renders no app, so without stand-ins
+ * every attached step would be skipped and the mechanics below (locale repaint,
+ * the palette hop) would be measured on a different step. Each tag the tour
+ * names gets a hidden element, exactly as the app renders one; the palette
+ * anchor is left to `paletteAnchorStub`, whose presence several cases vary.
+ */
+for (const [, tag] of readFileSync(
+	"src/renderer/src/features/onboarding/tour/tour-steps.ts",
+	"utf8",
+).matchAll(/data-tour-tag="([^"$]+)"/g)) {
+	if (tag === "command-palette-dialog") continue;
+	if (document.querySelector(`[data-tour-tag="${tag}"]`)) continue;
+	const stand = document.createElement(
+		tag.endsWith("button") || tag.includes("button") ? "button" : "div",
+	);
+	stand.setAttribute("data-tour-tag", tag);
+	if (tag === "view-agent-settings-menu-item")
+		stand.setAttribute("role", "menuitem");
+	stand.hidden = true;
+	document.body.appendChild(stand);
+}
 const storage = new Map();
 Object.defineProperty(globalThis, "localStorage", {
 	configurable: true,
@@ -162,7 +186,7 @@ Object.defineProperty(globalThis, "localStorage", {
 const built = await build({
 	stdin: {
 		contents: [
-			'export { createTourSteps, applyTourLocale, tourCancelIcon, STEP_BESIDE_PALETTE_CLASS, STEP_BESIDE_PALETTE_MIN_WIDTH } from "./src/renderer/src/features/onboarding/tour/tour-steps";',
+			'export { createTourSteps, guardTourTargets, consumeTourEndedBySkipping, applyTourLocale, tourCancelIcon, STEP_BESIDE_PALETTE_CLASS, STEP_BESIDE_PALETTE_MIN_WIDTH } from "./src/renderer/src/features/onboarding/tour/tour-steps";',
 			'export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { renderTourBody, TOUR_BODIES, tourLabel } from "./src/renderer/src/features/onboarding/tour/tour-copy";',
 			'export { applyCapabilities, clearRegisteredCatalogues, registerCatalogue, setLocale, t } from "./src/i18n";',
@@ -174,6 +198,7 @@ const built = await build({
 			'export { MemoryRouter } from "react-router-dom";',
 			'export { ShepherdJourneyContext } from "react-shepherd";',
 			'export { useOnboardingTour } from "./src/renderer/src/features/onboarding/hooks/use-onboarding-tour";',
+			'export { setProductEventSink } from "./src/renderer/src/shared/analytics/product-events";',
 		].join("\n"),
 		resolveDir: repo,
 	},
@@ -620,7 +645,7 @@ test("an open tour follows locale changes without restarting or losing focus", a
 		);
 		assert.equal(
 			tour.steps[1].options.title,
-			mod.t("ui.onboarding.tour.agent_list.title"),
+			mod.t("ui.onboarding.tour.chat_input.title"),
 		);
 		assert.equal(
 			document.activeElement,
@@ -1591,4 +1616,239 @@ test("cancelling during the step 7 -> 8 wait keeps the tour closed", async () =>
 		await started.stop();
 		window.innerWidth = original;
 	}
+});
+
+/*
+ * PostHog D5: a step whose target is missing is SKIPPED in the direction of
+ * travel - no Shepherd "element ... was not found" console error, no centred
+ * panel pointing at nothing, no stuck tour - and the skip is reported.
+ */
+test("a step whose target is missing is skipped and reported, without a console error", async () => {
+	const target = document.querySelector(
+		'[data-tour-tag="chat-input-textarea"]',
+	);
+	assert.ok(target, "the harness planted the chat input target");
+	target.remove();
+	const errors = [];
+	const originalError = console.error;
+	console.error = (...args) => errors.push(args.join(" "));
+	const skipped = [];
+	try {
+		const tour = new mod.Shepherd.Tour({ useModalOverlay: true });
+		tour.addSteps(
+			mod.createTourSteps((step) => skipped.push(step), { targetWaitMs: 40 }),
+		);
+		tour.start();
+		await tick();
+		assert.equal(tour.getCurrentStep()?.id, "welcome");
+		tour.next();
+		await sleep(120);
+		assert.equal(
+			tour.getCurrentStep()?.id,
+			"attachments",
+			"moved past the missing target",
+		);
+		assert.deepEqual(skipped, ["chat-input"]);
+		tour.back();
+		await sleep(120);
+		assert.equal(
+			tour.getCurrentStep()?.id,
+			"welcome",
+			"Back skips it too, in its direction",
+		);
+		tour.cancel();
+	} finally {
+		console.error = originalError;
+		document.body.appendChild(target);
+	}
+	assert.deepEqual(
+		errors.filter((line) => line.includes("was not found")),
+		[],
+		"no Shepherd missing-element error",
+	);
+});
+
+test("the hook reports a missing target only as skipped and a late target once shown (R7)", async () => {
+	const tag = "chat-input-textarea";
+	const stepId = "chat-input";
+	const target = document.querySelector(`[data-tour-tag="${tag}"]`);
+	assert.ok(target);
+	target.remove();
+	const events = [];
+	mod.setProductEventSink((name, { step, outcome }) => {
+		if (name === "onboarding_tour_step" && step === stepId) {
+			events.push({
+				outcome,
+				open: shownStepElement()?.dataset.shepherdStepId === stepId,
+			});
+		}
+	});
+	let started;
+	try {
+		started = await startTourThroughHook(900);
+		const { tour } = started;
+		tour.show(stepId);
+		assert.ok(
+			await waitFor(() =>
+				events.some(({ outcome }) => outcome === "skipped_missing_target"),
+			),
+			"the absent target reached the skip path",
+		);
+		assert.deepEqual(events, [
+			{ outcome: "skipped_missing_target", open: false },
+		]);
+
+		tour.show(stepId);
+		assert.equal(
+			tour.getCurrentStep()?.id,
+			stepId,
+			"Shepherd selected the step before its target arrived",
+		);
+		assert.equal(
+			events.length,
+			1,
+			"the early Tour.show event did not emit shown",
+		);
+		document.body.appendChild(target);
+		assert.ok(
+			await waitFor(
+				() => shownStepElement()?.dataset.shepherdStepId === stepId,
+			),
+		);
+		assert.deepEqual(events, [
+			{ outcome: "skipped_missing_target", open: false },
+			{ outcome: "shown", open: true },
+		]);
+	} finally {
+		mod.setProductEventSink("default");
+		if (!target.isConnected) document.body.appendChild(target);
+		await started?.stop();
+	}
+});
+
+/*
+ * UX round 1, U7: a target that paints AFTER the hop's fixed 500 ms wait is
+ * waited for (up to TOUR_TARGET_WAIT_MS), not skipped for good.
+ */
+test("a target that appears during the wait is shown, not skipped", async () => {
+	const target = document.querySelector(
+		'[data-tour-tag="chat-input-textarea"]',
+	);
+	target.remove();
+	const skipped = [];
+	const tour = new mod.Shepherd.Tour({ useModalOverlay: true });
+	tour.addSteps(
+		mod.createTourSteps((step) => skipped.push(step), { targetWaitMs: 1000 }),
+	);
+	try {
+		tour.start();
+		await tick();
+		tour.next();
+		await sleep(250);
+		assert.equal(
+			document.querySelectorAll(".shepherd-element").length > 0 &&
+				document
+					.querySelector(".shepherd-element")
+					?.getAttribute("data-shepherd-step-id"),
+			"welcome",
+			"while waiting, nothing new is drawn",
+		);
+		document.body.appendChild(target);
+		await sleep(250);
+		assert.equal(tour.getCurrentStep()?.id, "chat-input");
+		assert.equal(
+			document
+				.querySelector(".shepherd-element:not([hidden])")
+				?.getAttribute("data-shepherd-step-id"),
+			"chat-input",
+			"the late target's step is drawn",
+		);
+		assert.deepEqual(skipped, [], "nothing was skipped");
+	} finally {
+		tour.cancel();
+		if (!target.isConnected) document.body.appendChild(target);
+	}
+});
+
+/*
+ * QA round 1, Q5: a missing navigation target skips its whole group, so the
+ * group's narration (`schedules-overview` has no target of its own) is never
+ * read over the wrong page.
+ */
+test("a missing navigation target skips the rest of its group", async () => {
+	// The schedules page is not rendered: its nav item and dialog are absent.
+	const targets = ["nav-item-schedules", "create-schedule-dialog"].map((tag) =>
+		document.querySelector(`[data-tour-tag="${tag}"]`),
+	);
+	for (const target of targets) target.remove();
+	const skipped = [];
+	const tour = new mod.Shepherd.Tour({ useModalOverlay: true });
+	tour.addSteps(
+		mod.createTourSteps((step) => skipped.push(step), { targetWaitMs: 40 }),
+	);
+	try {
+		tour.start();
+		await tick();
+		tour.show("upload-agent-hub-dialog");
+		await sleep(60);
+		tour.next();
+		await sleep(150);
+		assert.equal(
+			tour.getCurrentStep()?.id,
+			"navigate-settings",
+			"schedules-overview and the schedule steps went with their navigation",
+		);
+		assert.deepEqual(skipped, ["navigate-schedules"]);
+		tour.back();
+		await sleep(150);
+		assert.equal(
+			tour.getCurrentStep()?.id,
+			"upload-agent-hub-dialog",
+			"Back skips the same group as a whole, from its other end",
+		);
+		assert.deepEqual(skipped, ["navigate-schedules", "create-schedule-dialog"]);
+	} finally {
+		tour.cancel();
+		for (const target of targets) document.body.appendChild(target);
+	}
+});
+
+/*
+ * Review round 1, R3: skips that run past the last step CANCEL the tour and
+ * flag it, so the hook does not mark a tour the user never saw as done.
+ */
+test("skipping past the last step cancels, flagged as ended by skipping", async () => {
+	const events = [];
+	const tour = new mod.Shepherd.Tour({ useModalOverlay: true });
+	tour.on("complete", () => events.push("complete"));
+	tour.on("cancel", () => events.push("cancel"));
+	tour.addSteps(
+		mod.guardTourTargets(
+			[
+				{ id: "first", text: "first" },
+				{
+					id: "gone",
+					text: "gone",
+					attachTo: {
+						element: '[data-tour-tag="never-rendered"]',
+						on: "bottom",
+					},
+				},
+			],
+			undefined,
+			undefined,
+			{ waitMs: 40 },
+		),
+	);
+	tour.start();
+	await tick();
+	tour.next();
+	await sleep(150);
+	assert.deepEqual(events, ["cancel"], "cancelled, never completed");
+	assert.equal(mod.consumeTourEndedBySkipping(tour), true);
+	assert.equal(
+		mod.consumeTourEndedBySkipping(tour),
+		false,
+		"the flag is consumed, so a later run is judged on its own end",
+	);
 });

@@ -1,0 +1,81 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"locale": "ur",
+	"namespace": "ui.common.backend_startup",
+	"date": "2026-11-17",
+	"head": "2844a58df3a19751f7eea4703a045ad2973732f9",
+	"base": "8e64b0ccd0",
+	"auditor": "task (lopdev independent locale auditor)",
+	"instance": "pr1963-r2-ur-backendstartup-b22ce71917f9",
+	"session": "b22ce71917f9",
+	"model": "openai/gpt-6.2-sol",
+	"independence": "No authorship of any audited catalogue or renderer code; this audit produces receipts only.",
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"audited_keys": [
+		"ui.common.backend_startup.title_stopped",
+		"ui.common.backend_startup.reason.stopped",
+		"ui.common.backend_startup.repeated_failures",
+		"ui.common.backend_startup.detail_starting",
+		"ui.common.backend_startup.reason.timed_out",
+		"ui.common.backend_startup.reason.crashed",
+		"ui.common.backend_startup.reason.exited",
+		"ui.common.backend_startup.reason.unknown"
+	],
+	"retained_round1_unchanged_keys": [
+		"ui.common.backend_startup.details.hide",
+		"ui.common.backend_startup.details.show",
+		"ui.common.backend_startup.progress_label",
+		"ui.common.backend_startup.title_failed",
+		"ui.common.backend_startup.title_starting"
+	],
+	"changed_keys_outside_requested_scope": [
+		"ui.common.backend_startup.action.copied",
+		"ui.common.backend_startup.action.copy_diagnostics",
+		"ui.common.backend_startup.action.copy_failed",
+		"ui.common.backend_startup.action.restart",
+		"ui.common.backend_startup.action.restarting",
+		"ui.common.backend_startup.reason.executable_blocked",
+		"ui.common.backend_startup.reason.executable_missing",
+		"ui.common.backend_startup.reason.port_forbidden",
+		"ui.common.backend_startup.reason.port_in_use"
+	],
+	"source": {
+		"path": "src/i18n/catalogues/en/ui.common.backend_startup.json",
+		"sha256": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6"
+	},
+	"target": {
+		"path": "src/i18n/catalogues/ur/ui.common.backend_startup.json",
+		"sha256": "8305f2d90fc7630cba29d9afd34628f39108aeef31af0703f0e4f6cc6e2981ed"
+	},
+	"context": {
+		"path": "src/i18n/catalogues/en/ui.common.backend_startup.context.json",
+		"sha256": "25b5c0de21c1ce77ff6269755963be802c66136b63e23bde6885f20d7c91a1b4"
+	},
+	"sha256": {
+		"en": "7a8c2c45af51d11c6e32edb4999c727dc363e87d795f9818b9bf3ef3caf37fb6",
+		"ur": "8305f2d90fc7630cba29d9afd34628f39108aeef31af0703f0e4f6cc6e2981ed"
+	},
+	"notes": [
+		"Respectful imperatives match the controls; کوشش/کوششوں uses the oblique before کے بعد, and سیکنڈ is invariant in the time expressions. No manual direction controls; RTL geometry was not exercised.",
+		"Stopped after ready is distinguished from startup failure; each first failure points to the server restart control, and recurring problems point to the clipboard copy control and sharing when seeking help. Startup wait is not restricted to first launch.",
+		"Restart and copy directions compared with the actual panel controls and handlers; no native or visual sign-off.",
+		"Only the enumerated eight keys received fresh linguistic review. Namespace hashes bind file identity but do not extend that scope."
+	],
+	"execution": {
+		"command": "node i18n/audits/evidence/en/ui.common.backend_startup/pr1963-r2-b22ce71917f9/check-backend-copy.mjs <PR-worktree-root>",
+		"stdout": "Retained verbatim excerpts and final count, not the full log.",
+		"artifacts": [
+			{
+				"path": "i18n/audits/evidence/en/ui.common.backend_startup/pr1963-r2-b22ce71917f9/check-backend-copy.mjs",
+				"sha256": "4cceb2231b8f78f7ae3ac9948ce7c928a1e48d7c300f7bede6bfb21bd74bbae0"
+			},
+			{
+				"path": "i18n/audits/evidence/en/ui.common.backend_startup/pr1963-r2-b22ce71917f9/formatter-output.txt",
+				"sha256": "70685de0a0e37b2c196259ced30c7631d4204fd83c9f5e78b7be33aeeef6dd5f"
+			}
+		]
+	}
+}

@@ -25,6 +25,11 @@
  * field, and nothing was stored (UX U3).
  */
 
+import {
+	categorizeProviderFailure,
+	categorizeSendFailure,
+} from "@shared/analytics/first-run-reasons";
+import { trackProductEvent } from "@shared/analytics/product-events";
 import { pollAuthOperation } from "@shared/api/local-operator/auth-operation";
 import {
 	DesktopControlError,
@@ -138,13 +143,28 @@ const LocalProviderReachability: FC<{ provider: DesktopProvider }> = ({
 	const test = useCallback(async () => {
 		setTesting(true);
 		try {
-			setResult(
-				await desktopResult<{ reachable: boolean; detail: string }>({
+			const probe = await desktopResult<{ reachable: boolean; detail: string }>(
+				{
 					op: "auth.probe",
 					provider: provider.id,
-				}),
+				},
 			);
+			setResult(probe);
+			trackProductEvent("local_model_check", {
+				provider: provider.id,
+				result: probe.reachable ? "reachable" : "unreachable",
+				reason: probe.reachable ? "none" : "not_answering",
+			});
 		} catch (error) {
+			const category = categorizeSendFailure(error);
+			trackProductEvent("local_model_check", {
+				provider: provider.id,
+				result: "error",
+				reason:
+					category === "transport" || category === "backend_unreachable"
+						? category
+						: "unknown",
+			});
 			setResult({
 				reachable: false,
 				detail:
@@ -943,6 +963,10 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		setKeySaving(true);
 		rememberKey({ error: null });
 		try {
+			trackProductEvent("provider_setup_started", {
+				provider: method.id,
+				method: "api_key",
+			});
 			const result =
 				(await desktopResult<SaveKeyResult | null>({
 					op: "auth.key",
@@ -951,6 +975,10 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				})) ?? {};
 			setKeyValue("");
 			rememberKey({ saved: result });
+			trackProductEvent("provider_connected", {
+				provider: method.id,
+				method: "api_key",
+			});
 			refreshProviders();
 			void adoptDefaultRef.current(
 				provider.id,
@@ -958,6 +986,11 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				provider.suggested_model?.id,
 			);
 		} catch (error) {
+			trackProductEvent("provider_setup_failed", {
+				provider: method.id,
+				method: "api_key",
+				reason: categorizeProviderFailure(error, "key"),
+			});
 			// A 422 is the backend refusing THIS key (validation, or a provider
 			// with no key route), and its sentence belongs under the field.
 			// Anything else is also shown there: the field is what the user

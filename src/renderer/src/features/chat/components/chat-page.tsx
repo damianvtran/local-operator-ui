@@ -4,6 +4,11 @@ import {
 } from "@features/aida/use-aida-target";
 import { sessionPictureEditable } from "@shared/agent-avatar/agent-avatar-meta";
 import { useAgentSlotMark } from "@shared/agent-avatar/agent-avatar-slot";
+import { categorizeSendFailure } from "@shared/analytics/first-run-reasons";
+import {
+	trackFirstMessageSent,
+	trackProductEvent,
+} from "@shared/analytics/product-events";
 import {
 	backendPaneSentence,
 	compatibilityBannerShown,
@@ -2708,8 +2713,14 @@ function SessionPanel({
 			)
 				navigate(`/chat/${id}`, { replace: true });
 			void store.fetchSessions();
+			// Activation funnel: once per install; no content (product-events.ts).
+			trackFirstMessageSent();
 			return true;
 		} catch (error) {
+			// The category only - status class or transport - never the text.
+			trackProductEvent("message_send_failed", {
+				reason_category: categorizeSendFailure(error),
+			});
 			/*
 			 * THE BOUNDARY RULE, ON THE SURFACE THAT HAS TO OBEY IT: "a failure raised
 			 * after the optimistic row was painted belongs to the row; before it, the

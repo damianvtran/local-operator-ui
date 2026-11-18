@@ -1,0 +1,59 @@
+Node v24.22.1, ICU 78.3, intl-messageformat 12.1.3
+es repeated_failures 2 other → El servidor sigue sin iniciarse tras 2 intentos. Copia el diagnóstico para compartirlo cuando pidas ayuda.
+es repeated_failures 30 other → El servidor sigue sin iniciarse tras 30 intentos. Copia el diagnóstico para compartirlo cuando pidas ayuda.
+es repeated_failures 1000000 many → El servidor sigue sin iniciarse tras 1.000.000 de intentos. Copia el diagnóstico para compartirlo cuando pidas ayuda.
+es detail_starting 2 other → El inicio puede tardar hasta 2 segundos.
+es detail_starting 30 other → El inicio puede tardar hasta 30 segundos.
+es detail_starting 1000000 many → El inicio puede tardar hasta 1.000.000 de segundos.
+es reason.timed_out 2 other → El servidor no respondió en 2 segundos. Es posible que el equipo esté ocupado; reinicia el servidor para volver a intentarlo.
+es reason.timed_out 30 other → El servidor no respondió en 30 segundos. Es posible que el equipo esté ocupado; reinicia el servidor para volver a intentarlo.
+es reason.timed_out 1000000 many → El servidor no respondió en 1.000.000 de segundos. Es posible que el equipo esté ocupado; reinicia el servidor para volver a intentarlo.
+fr repeated_failures 2 other → Le serveur ne démarre toujours pas après 2 tentatives. Copiez les diagnostics pour les transmettre quand vous demandez de l’aide.
+fr repeated_failures 30 other → Le serveur ne démarre toujours pas après 30 tentatives. Copiez les diagnostics pour les transmettre quand vous demandez de l’aide.
+fr repeated_failures 1000000 many → Le serveur ne démarre toujours pas après 1 000 000 de tentatives. Copiez les diagnostics pour les transmettre quand vous demandez de l’aide.
+fr detail_starting 2 other → Le démarrage peut prendre jusqu’à 2 secondes.
+fr detail_starting 30 other → Le démarrage peut prendre jusqu’à 30 secondes.
+fr detail_starting 1000000 many → Le démarrage peut prendre jusqu’à 1 000 000 de secondes.
+fr reason.timed_out 2 other → Le serveur n’a pas répondu dans un délai de 2 secondes. L’ordinateur est peut-être occupé ; redémarrez le serveur pour réessayer.
+fr reason.timed_out 30 other → Le serveur n’a pas répondu dans un délai de 30 secondes. L’ordinateur est peut-être occupé ; redémarrez le serveur pour réessayer.
+fr reason.timed_out 1000000 many → Le serveur n’a pas répondu dans un délai de 1 000 000 de secondes. L’ordinateur est peut-être occupé ; redémarrez le serveur pour réessayer.
+hi repeated_failures 2 other → 2 कोशिशों के बाद भी सर्वर शुरू नहीं हो रहा। मदद माँगते समय देने के लिए डायग्नॉस्टिक्स कॉपी करें।
+hi repeated_failures 30 other → 30 कोशिशों के बाद भी सर्वर शुरू नहीं हो रहा। मदद माँगते समय देने के लिए डायग्नॉस्टिक्स कॉपी करें।
+hi detail_starting 2 other → शुरू होने में 2 सेकंड तक लग सकते हैं।
+hi detail_starting 30 other → शुरू होने में 30 सेकंड तक लग सकते हैं।
+hi reason.timed_out 2 other → सर्वर ने 2 सेकंड के भीतर जवाब नहीं दिया। हो सकता है आपका कंप्यूटर व्यस्त हो; फिर से कोशिश करने के लिए सर्वर दोबारा शुरू करें।
+hi reason.timed_out 30 other → सर्वर ने 30 सेकंड के भीतर जवाब नहीं दिया। हो सकता है आपका कंप्यूटर व्यस्त हो; फिर से कोशिश करने के लिए सर्वर दोबारा शुरू करें।
+ru repeated_failures 2 few → Сервер так и не запустился после 2 попыток. Скопируйте диагностику, чтобы передать её, когда обратитесь за помощью.
+ru repeated_failures 21 one → Сервер так и не запустился после 21 попытки. Скопируйте диагностику, чтобы передать её, когда обратитесь за помощью.
+ru repeated_failures 22 few → Сервер так и не запустился после 22 попыток. Скопируйте диагностику, чтобы передать её, когда обратитесь за помощью.
+ru repeated_failures 25 many → Сервер так и не запустился после 25 попыток. Скопируйте диагностику, чтобы передать её, когда обратитесь за помощью.
+ru repeated_failures 30 many → Сервер так и не запустился после 30 попыток. Скопируйте диагностику, чтобы передать её, когда обратитесь за помощью.
+ru detail_starting 2 few → Запуск может занять до 2 секунд.
+ru detail_starting 21 one → Запуск может занять до 21 секунды.
+ru detail_starting 22 few → Запуск может занять до 22 секунд.
+ru detail_starting 25 many → Запуск может занять до 25 секунд.
+ru detail_starting 30 many → Запуск может занять до 30 секунд.
+ru reason.timed_out 2 few → Сервер не ответил за 2 секунды. Возможно, компьютер занят; перезапустите сервер, чтобы попробовать снова.
+ru reason.timed_out 21 one → Сервер не ответил за 21 секунду. Возможно, компьютер занят; перезапустите сервер, чтобы попробовать снова.
+ru reason.timed_out 22 few → Сервер не ответил за 22 секунды. Возможно, компьютер занят; перезапустите сервер, чтобы попробовать снова.
+ru reason.timed_out 25 many → Сервер не ответил за 25 секунд. Возможно, компьютер занят; перезапустите сервер, чтобы попробовать снова.
+ru reason.timed_out 30 many → Сервер не ответил за 30 секунд. Возможно, компьютер занят; перезапустите сервер, чтобы попробовать снова.
+ur repeated_failures 2 other → 2 کوششوں کے بعد بھی سرور شروع نہیں ہو رہا۔ مدد مانگتے وقت دینے کے لیے تشخیصی معلومات نقل کریں۔
+ur repeated_failures 30 other → 30 کوششوں کے بعد بھی سرور شروع نہیں ہو رہا۔ مدد مانگتے وقت دینے کے لیے تشخیصی معلومات نقل کریں۔
+ur detail_starting 2 other → شروع ہونے میں 2 سیکنڈ تک لگ سکتے ہیں۔
+ur detail_starting 30 other → شروع ہونے میں 30 سیکنڈ تک لگ سکتے ہیں۔
+ur reason.timed_out 2 other → سرور نے 2 سیکنڈ میں جواب نہیں دیا۔ ہو سکتا ہے آپ کا کمپیوٹر مصروف ہو؛ دوبارہ کوشش کے لیے سرور دوبارہ شروع کریں۔
+ur reason.timed_out 30 other → سرور نے 30 سیکنڈ میں جواب نہیں دیا۔ ہو سکتا ہے آپ کا کمپیوٹر مصروف ہو؛ دوبارہ کوشش کے لیے سرور دوبارہ شروع کریں۔
+vi repeated_failures 2 other → Máy chủ vẫn chưa khởi động được sau 2 lần thử. Hãy sao chép thông tin chẩn đoán để cung cấp khi bạn nhờ trợ giúp.
+vi repeated_failures 30 other → Máy chủ vẫn chưa khởi động được sau 30 lần thử. Hãy sao chép thông tin chẩn đoán để cung cấp khi bạn nhờ trợ giúp.
+vi detail_starting 2 other → Quá trình khởi động có thể mất đến 2 giây.
+vi detail_starting 30 other → Quá trình khởi động có thể mất đến 30 giây.
+vi reason.timed_out 2 other → Máy chủ không phản hồi trong 2 giây. Có thể máy tính đang bận; hãy khởi động lại máy chủ để thử lại.
+vi reason.timed_out 30 other → Máy chủ không phản hồi trong 30 giây. Có thể máy tính đang bận; hãy khởi động lại máy chủ để thử lại.
+zh-CN repeated_failures 2 other → 已尝试2次，服务器仍无法启动。请复制诊断信息，在寻求帮助时提供。
+zh-CN repeated_failures 30 other → 已尝试30次，服务器仍无法启动。请复制诊断信息，在寻求帮助时提供。
+zh-CN detail_starting 2 other → 启动最多可能需要2秒。
+zh-CN detail_starting 30 other → 启动最多可能需要30秒。
+zh-CN reason.timed_out 2 other → 服务器在2秒内没有响应。电脑可能正忙，请重启服务器再试一次。
+zh-CN reason.timed_out 30 other → 服务器在30秒内没有响应。电脑可能正忙，请重启服务器再试一次。
+PASS: 56 target messages parsed; 189 plural renders verified

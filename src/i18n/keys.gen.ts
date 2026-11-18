@@ -113,6 +113,7 @@ import enUiCodeReview from "./catalogues/en/ui.code_review.json";
 import enUiCommandPalette from "./catalogues/en/ui.command_palette.json";
 import enUiCommonAccount from "./catalogues/en/ui.common.account.json";
 import enUiCommonActions from "./catalogues/en/ui.common.actions.json";
+import enUiCommonBackendStartup from "./catalogues/en/ui.common.backend_startup.json";
 import enUiCommonConnection from "./catalogues/en/ui.common.connection.json";
 import enUiCommonEditing from "./catalogues/en/ui.common.editing.json";
 import enUiCommonErrors from "./catalogues/en/ui.common.errors.json";
@@ -284,6 +285,7 @@ import esUiCodeReview from "./catalogues/es/ui.code_review.json";
 import esUiCommandPalette from "./catalogues/es/ui.command_palette.json";
 import esUiCommonAccount from "./catalogues/es/ui.common.account.json";
 import esUiCommonActions from "./catalogues/es/ui.common.actions.json";
+import esUiCommonBackendStartup from "./catalogues/es/ui.common.backend_startup.json";
 import esUiCommonConnection from "./catalogues/es/ui.common.connection.json";
 import esUiCommonEditing from "./catalogues/es/ui.common.editing.json";
 import esUiCommonErrors from "./catalogues/es/ui.common.errors.json";
@@ -455,6 +457,7 @@ import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
 import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
 import frUiCommonAccount from "./catalogues/fr/ui.common.account.json";
 import frUiCommonActions from "./catalogues/fr/ui.common.actions.json";
+import frUiCommonBackendStartup from "./catalogues/fr/ui.common.backend_startup.json";
 import frUiCommonConnection from "./catalogues/fr/ui.common.connection.json";
 import frUiCommonEditing from "./catalogues/fr/ui.common.editing.json";
 import frUiCommonErrors from "./catalogues/fr/ui.common.errors.json";
@@ -626,6 +629,7 @@ import hiUiCodeReview from "./catalogues/hi/ui.code_review.json";
 import hiUiCommandPalette from "./catalogues/hi/ui.command_palette.json";
 import hiUiCommonAccount from "./catalogues/hi/ui.common.account.json";
 import hiUiCommonActions from "./catalogues/hi/ui.common.actions.json";
+import hiUiCommonBackendStartup from "./catalogues/hi/ui.common.backend_startup.json";
 import hiUiCommonConnection from "./catalogues/hi/ui.common.connection.json";
 import hiUiCommonEditing from "./catalogues/hi/ui.common.editing.json";
 import hiUiCommonErrors from "./catalogues/hi/ui.common.errors.json";
@@ -797,6 +801,7 @@ import ruUiCodeReview from "./catalogues/ru/ui.code_review.json";
 import ruUiCommandPalette from "./catalogues/ru/ui.command_palette.json";
 import ruUiCommonAccount from "./catalogues/ru/ui.common.account.json";
 import ruUiCommonActions from "./catalogues/ru/ui.common.actions.json";
+import ruUiCommonBackendStartup from "./catalogues/ru/ui.common.backend_startup.json";
 import ruUiCommonConnection from "./catalogues/ru/ui.common.connection.json";
 import ruUiCommonEditing from "./catalogues/ru/ui.common.editing.json";
 import ruUiCommonErrors from "./catalogues/ru/ui.common.errors.json";
@@ -968,6 +973,7 @@ import urUiCodeReview from "./catalogues/ur/ui.code_review.json";
 import urUiCommandPalette from "./catalogues/ur/ui.command_palette.json";
 import urUiCommonAccount from "./catalogues/ur/ui.common.account.json";
 import urUiCommonActions from "./catalogues/ur/ui.common.actions.json";
+import urUiCommonBackendStartup from "./catalogues/ur/ui.common.backend_startup.json";
 import urUiCommonConnection from "./catalogues/ur/ui.common.connection.json";
 import urUiCommonEditing from "./catalogues/ur/ui.common.editing.json";
 import urUiCommonErrors from "./catalogues/ur/ui.common.errors.json";
@@ -1139,6 +1145,7 @@ import viUiCodeReview from "./catalogues/vi/ui.code_review.json";
 import viUiCommandPalette from "./catalogues/vi/ui.command_palette.json";
 import viUiCommonAccount from "./catalogues/vi/ui.common.account.json";
 import viUiCommonActions from "./catalogues/vi/ui.common.actions.json";
+import viUiCommonBackendStartup from "./catalogues/vi/ui.common.backend_startup.json";
 import viUiCommonConnection from "./catalogues/vi/ui.common.connection.json";
 import viUiCommonEditing from "./catalogues/vi/ui.common.editing.json";
 import viUiCommonErrors from "./catalogues/vi/ui.common.errors.json";
@@ -1310,6 +1317,7 @@ import zhCNUiCodeReview from "./catalogues/zh-CN/ui.code_review.json";
 import zhCNUiCommandPalette from "./catalogues/zh-CN/ui.command_palette.json";
 import zhCNUiCommonAccount from "./catalogues/zh-CN/ui.common.account.json";
 import zhCNUiCommonActions from "./catalogues/zh-CN/ui.common.actions.json";
+import zhCNUiCommonBackendStartup from "./catalogues/zh-CN/ui.common.backend_startup.json";
 import zhCNUiCommonConnection from "./catalogues/zh-CN/ui.common.connection.json";
 import zhCNUiCommonEditing from "./catalogues/zh-CN/ui.common.editing.json";
 import zhCNUiCommonErrors from "./catalogues/zh-CN/ui.common.errors.json";
@@ -1484,6 +1492,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiCommandPalette,
 	...enUiCommonAccount,
 	...enUiCommonActions,
+	...enUiCommonBackendStartup,
 	...enUiCommonConnection,
 	...enUiCommonEditing,
 	...enUiCommonErrors,
@@ -1663,6 +1672,7 @@ export const bundledCatalogues: Readonly<
 		...esUiCommandPalette,
 		...esUiCommonAccount,
 		...esUiCommonActions,
+		...esUiCommonBackendStartup,
 		...esUiCommonConnection,
 		...esUiCommonEditing,
 		...esUiCommonErrors,
@@ -1836,6 +1846,7 @@ export const bundledCatalogues: Readonly<
 		...frUiCommandPalette,
 		...frUiCommonAccount,
 		...frUiCommonActions,
+		...frUiCommonBackendStartup,
 		...frUiCommonConnection,
 		...frUiCommonEditing,
 		...frUiCommonErrors,
@@ -2009,6 +2020,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiCommandPalette,
 		...hiUiCommonAccount,
 		...hiUiCommonActions,
+		...hiUiCommonBackendStartup,
 		...hiUiCommonConnection,
 		...hiUiCommonEditing,
 		...hiUiCommonErrors,
@@ -2182,6 +2194,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiCommandPalette,
 		...ruUiCommonAccount,
 		...ruUiCommonActions,
+		...ruUiCommonBackendStartup,
 		...ruUiCommonConnection,
 		...ruUiCommonEditing,
 		...ruUiCommonErrors,
@@ -2355,6 +2368,7 @@ export const bundledCatalogues: Readonly<
 		...urUiCommandPalette,
 		...urUiCommonAccount,
 		...urUiCommonActions,
+		...urUiCommonBackendStartup,
 		...urUiCommonConnection,
 		...urUiCommonEditing,
 		...urUiCommonErrors,
@@ -2528,6 +2542,7 @@ export const bundledCatalogues: Readonly<
 		...viUiCommandPalette,
 		...viUiCommonAccount,
 		...viUiCommonActions,
+		...viUiCommonBackendStartup,
 		...viUiCommonConnection,
 		...viUiCommonEditing,
 		...viUiCommonErrors,
@@ -2701,6 +2716,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiCommandPalette,
 		...zhCNUiCommonAccount,
 		...zhCNUiCommonActions,
+		...zhCNUiCommonBackendStartup,
 		...zhCNUiCommonConnection,
 		...zhCNUiCommonEditing,
 		...zhCNUiCommonErrors,
@@ -8220,6 +8236,28 @@ export type MessageParams = {
 	"ui.common.actions.variable_created": undefined;
 	"ui.common.actions.variable_deleted": undefined;
 	"ui.common.actions.variable_updated": undefined;
+	"ui.common.backend_startup.action.copied": undefined;
+	"ui.common.backend_startup.action.copy_diagnostics": undefined;
+	"ui.common.backend_startup.action.copy_failed": undefined;
+	"ui.common.backend_startup.action.restart": undefined;
+	"ui.common.backend_startup.action.restarting": undefined;
+	"ui.common.backend_startup.detail_starting": { seconds: number };
+	"ui.common.backend_startup.details.hide": undefined;
+	"ui.common.backend_startup.details.show": undefined;
+	"ui.common.backend_startup.progress_label": undefined;
+	"ui.common.backend_startup.reason.crashed": undefined;
+	"ui.common.backend_startup.reason.executable_blocked": undefined;
+	"ui.common.backend_startup.reason.executable_missing": undefined;
+	"ui.common.backend_startup.reason.exited": undefined;
+	"ui.common.backend_startup.reason.port_forbidden": undefined;
+	"ui.common.backend_startup.reason.port_in_use": undefined;
+	"ui.common.backend_startup.reason.stopped": undefined;
+	"ui.common.backend_startup.reason.timed_out": { seconds: number };
+	"ui.common.backend_startup.reason.unknown": undefined;
+	"ui.common.backend_startup.repeated_failures": { count: number };
+	"ui.common.backend_startup.title_failed": undefined;
+	"ui.common.backend_startup.title_starting": undefined;
+	"ui.common.backend_startup.title_stopped": undefined;
 	"ui.common.connection.backend.card_credential_refused": undefined;
 	"ui.common.connection.backend.card_governed": undefined;
 	"ui.common.connection.backend.card_pre_handshake": undefined;

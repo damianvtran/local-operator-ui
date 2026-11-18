@@ -19,6 +19,7 @@ import { t } from "../../../../../i18n/messages";
 import {
 	type InstallSummary,
 	installBuiltins,
+	installProgressReading,
 	summaryExceptionSentence,
 	summarySentence,
 } from "../install-builtin-batch";
@@ -85,6 +86,9 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 	const [done, setDone] = useState(0);
 	const [current, setCurrent] = useState<string | null>(null);
 	const [summary, setSummary] = useState<InstallSummary | null>(null);
+	/* The number of names THIS run installs, fixed at its start: the live
+	   `builtins` list shrinks as installs land (see `installProgressReading`). */
+	const [runTotal, setRunTotal] = useState(0);
 	const dismissRef = useRef<HTMLButtonElement>(null);
 	/* The action that starts the batch: where focus returns after the summary is
 	 * dismissed, because it is the section's own next control and it is what the
@@ -160,8 +164,10 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 		setRunning(true);
 		setSummary(null);
 		setDone(0);
+		const names = builtins.map((builtin) => builtin.name);
+		setRunTotal(names.length);
 		const result = await installBuiltins(
-			builtins.map((builtin) => builtin.name),
+			names,
 			(name) =>
 				desktopResult<ReusableProfile>({
 					op: "profiles.install",
@@ -184,9 +190,15 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 		await queryClient.invalidateQueries({ queryKey: ["desktop", "profiles"] });
 	}, [builtins, queryClient, running]);
 
-	if (builtins.length === 0 && !summary) return null;
+	// `!running`: the missing list can empty WHILE the run is still reporting
+	// (each install lands a profile), and the progress must not unmount mid-run.
+	if (builtins.length === 0 && !summary && !running) return null;
 
-	const total = builtins.length;
+	const { step, total } = installProgressReading(
+		done,
+		current,
+		running ? runTotal : builtins.length,
+	);
 	/*
 	 * The step the bar and the sentence BOTH report: completed installs plus the
 	 * one in flight. They used to disagree by one for the whole run — the bar
@@ -194,7 +206,6 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 	 * "Installing 1 of 6" sat over a bar at 0% and the run reached "6 of 6" with
 	 * the bar still at 83% (design round 1, D2). One quantity, one reading.
 	 */
-	const step = done + (current ? 1 : 0);
 	const exceptionLine = summary ? summaryExceptionSentence(summary) : null;
 	/*
 	 * The row presentation sits among list rows that pad themselves; the primary

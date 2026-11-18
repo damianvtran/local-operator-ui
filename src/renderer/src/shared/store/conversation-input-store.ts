@@ -7,6 +7,7 @@
 
 import { create } from "zustand";
 import { type PersistStorage, persist } from "zustand/middleware";
+import { writeWithQuotaFallback } from "./quota-safe-storage";
 
 /**
  * Represents a reply to a message
@@ -817,6 +818,22 @@ type PersistedDraftRows = {
 
 const DRAFT_PERSIST_KEY = "conversation-input-store";
 
+/**
+ * Step 3 of the quota fallback for drafts: keep only rows that still hold
+ * typed text. An empty row persists nothing a reload needs.
+ */
+const keepRowsWithText = (value: PersistedDraftValue): PersistedDraftValue => ({
+	...value,
+	state: {
+		...value.state,
+		inputByConversation: Object.fromEntries(
+			Object.entries(value.state.inputByConversation).filter(
+				([, row]) => (row.currentInput ?? "").trim().length > 0,
+			),
+		),
+	},
+});
+
 /** The `{ state, version }` envelope `persist` hands to storage, and reads back. */
 type PersistedDraftValue = { state: PersistedDraftRows; version?: number };
 
@@ -876,7 +893,21 @@ const writePendingDraft = (): void => {
 	const storage = resolveLocalStorage();
 	if (!storage) return;
 	try {
-		storage.setItem(key, JSON.stringify(value));
+		/*
+		 * A refused write degrades rather than stops (`quota-safe-storage.ts`):
+		 * inline images are dropped from the DISK copy, then rows with no text,
+		 * so the typed draft keeps surviving a reload; the store in memory is
+		 * never touched. Before this, one over-quota row stopped every later
+		 * write of every draft for the session.
+		 */
+		const outcome = writeWithQuotaFallback(
+			storage,
+			key,
+			value,
+			keepRowsWithText,
+		);
+		if (outcome === "skipped")
+			throw new DOMException("quota", "QuotaExceededError");
 	} catch (error) {
 		/*
 		 * THE FLAG IS THE STREAK, NOT THE PROCESS (agent review round 1, R1-4). It is

@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1963",
+  "locale": "ur",
+  "namespace": "ui.common.backend_startup",
+  "pr": 1963,
+  "date": "2026-11-17",
+  "head": "8e64b0ccd0",
+  "instance": "pr1963-r1-ur-backendstartup-65a7f97cab63",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent i18n auditor: lopdev team `task` subagent job 65a7f97cab63 (manager session f52727670001, 'UI-2 i18n audit r1'); not the translator (lopdev coder job aceade24b830, 'UI-2 robustness + instrumentation', anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "A separate subagent instance from the translator job; same served model anthropic/claude-opus-5-5 (disclosed; per this session's harness system prompt, no fallback). Judged from the English, its context sidecar, the core glossary and the locale style guide, and shipped catalogue precedent; no MT used. Auditor-authored fixes are listed as findings with before/after.",
+    "instance": "pr1963-r1-ur-backendstartup-65a7f97cab63"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes (auditor script, intl ICU parser from the worktree's node_modules): key set and order equal English (19); ICU parse OK; argument names/types equal English per key ({seconds} in detail_starting and reason.timed_out only); no bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C); no ASCII '...'; Local Operator and Windows kept Latin wherever English has them."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Terms checked: پورٹ (54 shipped), ترتیبات (137 shipped), کمپیوٹر, سپورٹ; RTL strings beginning with Latin 'Local Operator'/'Windows' rely on the render layer's FSI/PDI isolation per ur guide; no manual controls."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.common.backend_startup.detail_starting, ui.common.backend_startup.reason.timed_out",
+      "note": "T10 (English source/context, not these target bytes): {seconds} is a plain string argument with no plural arm and the context sidecar does not say its value. Today it is always 30 (READINESS_BUDGET_MS = 30_000 in src/main/backend/backend-service.ts), for which every locale's noun form is correct; a future budget like 21/22 s would need a plural select in ru (and en). Recorded as an English-side NIT on the PR; not counted against this locale."
+    },
+    {
+      "id": "T5",
+      "severity": "MINOR",
+      "key": "ui.common.backend_startup.reason.port_in_use, port_forbidden, executable_blocked, executable_missing, timed_out, action.restart, action.restarting",
+      "status": "fixed",
+      "before": "ری اسٹارٹ کریں / ری اسٹارٹ ہو رہا ہے…",
+      "after": "دوبارہ شروع کریں / دوبارہ شروع ہو رہا ہے…",
+      "note": "The shipped key ui.common.updates.update_notification.restart_the_server already renders 'Restart the server' as سرور دوبارہ شروع کریں; دوبارہ شروع appears in 54 shipped ur strings and the transliteration ری اسٹارٹ in none (ur style guide: respectful imperative, e.g. دوبارہ کوشش کریں). Two names for one action on the same server. Fixed by the auditor."
+    },
+    {
+      "id": "T6",
+      "severity": "NIT",
+      "key": "ui.common.backend_startup.reason.crashed, action.copy_diagnostics, action.copied, action.copy_failed",
+      "status": "fixed",
+      "before": "تشخیصی معلومات کاپی کریں / کاپی ہو گئیں / کاپی نہیں ہو سکیں",
+      "after": "تشخیصی معلومات نقل کریں / نقل ہو گئیں / نقل نہیں ہو سکیں",
+      "note": "The shipped ui.providers.phone.action.copy_diagnostics / diagnostics_failed say تشخیصی معلومات نقل کریں / نقل نہیں ہو سکیں; نقل کریں is the dominant ur copy verb (54 strings). Aligned for one rendering of the same label. Fixed by the auditor."
+    }
+  ],
+  "scope": "PR #1963 round 1: all 19 ui.common.backend_startup keys, ccc99372ac..8e64b0ccd0 plus this audit's locale-only fixes",
+  "binding": "Target src/i18n/catalogues/ur/ui.common.backend_startup.json sha256 39c5a0726f9ef7d561fb2cba779c65833d1454bb87e6283366f658eba479ce46 (8e64b0ccd0 plus auditor fixes); English sha256 90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db; context sha256 6fa8dac08e7514327fee70f1011da04555f0056455779fb88e62289c42516687.",
+  "en_sha256": "90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db",
+  "context_sha256": "6fa8dac08e7514327fee70f1011da04555f0056455779fb88e62289c42516687",
+  "target_sha256": "39c5a0726f9ef7d561fb2cba779c65833d1454bb87e6283366f658eba479ce46",
+  "sha256": {
+    "ur": "39c5a0726f9ef7d561fb2cba779c65833d1454bb87e6283366f658eba479ce46",
+    "en": "90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db"
+  },
+  "glossary": {
+    "revision": "local-operator i18n/ (glossary.md + style-guides) at core commit 2008053b5d6a",
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "i18n/style-guides/ur.md",
+    "style_guide_sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+  }
+}
