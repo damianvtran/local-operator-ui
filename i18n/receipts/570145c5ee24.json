@@ -1,0 +1,124 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Served model per this session's system header (anthropic/claude-opus-5-5); no fallback occurred.",
+  "fallback": "none",
+  "independence": "Fresh lopdev i18n-auditor instance (task if-au-es); not the translator of these es keys nor the PR coder. No MT service used. LLM audit, not a native-speaker review.",
+  "instance": "570145c5ee24",
+  "session": "94c7db032077",
+  "locale": "es",
+  "branch": "feat/i18n-identity-footer",
+  "head": "fdf96a7e2e986f4ccef207fa28ee7da7a98ee1f6",
+  "head_note": "es catalogue bytes are UNCOMMITTED working-tree changes on top of head (git diff numstat: ui.chat 15/0, ui.chat.canonical 1/0, ui.chat.slash 2/0 = 18 added lines, 0 removed).",
+  "date": "2026-11-17",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "scope": "Delta audit of the 18 keys English added in feat/i18n-identity-footer across ui.chat, ui.chat.canonical, ui.chat.slash. Other keys not in scope.",
+  "inputs_sha256": {
+    "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style guide (local-operator/i18n/style-guides/es.md)": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+  },
+  "verified": [
+    "All 18 parse with @formatjs/icu-messageformat-parser; argument names/types identical to en (count/matches/total number ::group-off; label, team, duration strings)",
+    "Intl.PluralRules('es') categories one,many,other; all 6 plural messages carry exactly one/many/other, footer_partial_* selects on total as en does",
+    "Rendered counts 0..1000000 and 9 (matches,total) pairs: agreement correct (1 agente coincide / N agentes coinciden / 1000000 de agentes), Latin digits ungrouped",
+    "No English left; {label}/{team} are user data, unquoted as in en; spaced em dash per es guide; tú register; equipo/agente per glossary; puesto/responsable/perfil consistent with neighbours; rol/especialista agree with ui.hub.teams.kind.*",
+    "Width: its_manager_label 'su responsable' = 14 chars (hint ~14); needs_delegating_profile 31 chars (limit ~43)"
+  ],
+  "namespaces": {
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "delta_keys_audited": [
+        "ui.chat.header_identity.footer_all_agents",
+        "ui.chat.header_identity.footer_all_teams",
+        "ui.chat.header_identity.footer_match_agents",
+        "ui.chat.header_identity.footer_match_teams",
+        "ui.chat.header_identity.footer_partial_agents",
+        "ui.chat.header_identity.footer_partial_teams",
+        "ui.chat.header_identity.no_settable_typed",
+        "ui.chat.header_identity.no_settable",
+        "ui.chat.header_identity.cannot_take_seat",
+        "ui.chat.header_identity.needs_delegating_profile",
+        "ui.chat.header_identity.team_led_by_manager",
+        "ui.chat.header_identity.agent_seat_closed_title",
+        "ui.chat.header_identity.its_manager_label",
+        "ui.chat.header_identity.switch_team_failed",
+        "ui.chat.header_identity.switch_agent_failed"
+      ],
+      "sha256": {
+        "es": "09a7be6fe882c2271acd1f571960b4e5eaa4694ea181e6df1b86cd5da1eeee9e",
+        "en": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.json",
+        "target": "src/i18n/catalogues/es/ui.chat.json",
+        "context": "src/i18n/catalogues/en/ui.chat.context.json"
+      },
+      "context_sha256": "6d5689ad63e462ba13be05fc16e9d45d2e60aa2d592b9cba0feb8ab456753d33",
+      "findings": [
+        {
+          "id": "ES-ID-1",
+          "severity": "minor",
+          "key": "ui.chat.header_identity.footer_all_agents",
+          "summary": "Width: renders 48-52 chars for real counts ('Hay 150 agentes — desplázate o escribe para filtrar', 51; 58 at the many arm) vs English 45-47; likely wraps to 2 lines in the ~300px footer (allowed: wraps, not clips). Optional tighter: '{n} agentes — desplázate o escribe para filtrar' (46). Same for footer_all_teams."
+        },
+        {
+          "id": "ES-ID-2",
+          "severity": "nit",
+          "key": "ui.chat.header_identity.team_led_by_manager",
+          "summary": "'…solo él y los perfiles que pueden delegar pueden ocupar este puesto.' repeats 'pueden' and uses a gendered pronoun for the manager. Suggest '…solo el responsable y los perfiles capaces de delegar pueden ocupar este puesto.'"
+        }
+      ]
+    },
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "delta_keys_audited": [
+        "ui.chat.canonical.transcript.took_duration"
+      ],
+      "sha256": {
+        "es": "7a3c22c63bb295cb869bfb1062c94840094c2fe2bd91ac03588e25f3bdc0116a",
+        "en": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "target": "src/i18n/catalogues/es/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "context_sha256": "883ff56261f5b79b63322d3a34f914ce2459a5ff4280336089c183ae7e4273ec",
+      "findings": [
+        {
+          "id": "ES-ID-3",
+          "severity": "minor",
+          "key": "ui.chat.canonical.transcript.took_duration",
+          "summary": "'tardó 2m 4s' is grammatical and fits the spoken list, but the painted sibling ui.chat.canonical.turn_summary.took renders English 'took' as 'Duró {duration}'. For one verb per concept prefer 'duró {duration}'."
+        }
+      ]
+    },
+    "ui.chat.slash": {
+      "namespace": "ui.chat.slash",
+      "status": "passed",
+      "result": "clean",
+      "delta_keys_audited": [
+        "ui.chat.slash.arg.kind_role",
+        "ui.chat.slash.arg.kind_specialist"
+      ],
+      "sha256": {
+        "es": "4c69d06a415b46ea44f0dfc3d08dcb5b9f03e7b7375b82e3333b1f97ef93bcda",
+        "en": "07ce26b0ac3f051f1fe3704f4d13f0e6cfd9bd1d4482fed6615a39ff1daf8710"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.slash.json",
+        "target": "src/i18n/catalogues/es/ui.chat.slash.json",
+        "context": "src/i18n/catalogues/en/ui.chat.slash.context.json"
+      },
+      "context_sha256": "9806ae2b7ebeb26b021e654ebd651ba44d54cb5a92e69f018fae92ae79581ae7",
+      "findings": []
+    }
+  }
+}

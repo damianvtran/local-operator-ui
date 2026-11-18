@@ -27,6 +27,9 @@ const bundle = await build({
 			/* The menu model's predicate and constraint ride the same bundle: the
 			 * strict-rule matrix below is about the two modules AGREEING. */
 			'export { identityAgentClosedCaption, identityAgentConstraint, identityAgentSettable } from "./src/renderer/src/features/chat/components/chat-header-identity-menu-model";',
+			/* The i18n door from the SAME bundle as the model, so a catalogue registered
+			 * here is the one the model's `t()` reads. */
+			'export { registerCatalogue, setLocale } from "./src/renderer/src/shared/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -47,6 +50,9 @@ const {
 	headerIdentityAgentFlagged,
 	headerIdentityControlsShown,
 	createHostPublishRecord,
+	registerCatalogue,
+	setLocale,
+	itsManagerLabel,
 	headerHostKey,
 	identityAgentClosedCaption,
 	identityAgentConstraint,
@@ -1096,4 +1102,50 @@ test("the closure sentence is the runtime's refusal, pinned byte for byte", () =
 		identityAgentClosedCaption("lopdev", "manager"),
 		REPLACED_NOTICE,
 	);
+});
+
+/*
+ * THE CHIP'S WORDS ARE KEYED; THE CONTRACT SENTENCE IS NOT. `its manager` as the
+ * chip label follows the language (`ui.chat.header_identity.its_manager_label`),
+ * while `identityAgentClosedCaption` mirrors core's
+ * `team_owns_the_agent_slot_message` byte for byte and must stay English whatever
+ * the interface language is: core's docstring names this UI as keying on the
+ * exact words. One bundle, one locale switch, both halves asserted - so a future
+ * edit that routes the sentence through `t()` (or hard-codes the chip again)
+ * fails here.
+ */
+test("the chip label follows the language; the core-mirroring sentence never does", () => {
+	const CORE_SENTENCE =
+		"team lopdev owns this session: its manager is the speaker, so /agent is closed. Run /team clear to detach the team first.";
+	const coldSeat = () =>
+		resolveHeaderIdentity({
+			activeTeam: "lopdev",
+			teams: [],
+			effectiveIdentity: {
+				speaker: "",
+				team: "lopdev",
+				role_of_speaker: "manager",
+			},
+		});
+	// Control: in English, no catalogue row and no speaker -> the chip says
+	// `its manager` and the sentence carries core's words.
+	assert.equal(itsManagerLabel(), "its manager");
+	assert.equal(identityAgentClosedCaption("lopdev", null), CORE_SENTENCE);
+	registerCatalogue("fr", {
+		"ui.chat.header_identity.its_manager_label": "FR son responsable",
+	});
+	try {
+		setLocale("fr");
+		assert.equal(itsManagerLabel(), "FR son responsable");
+		assert.equal(identityAgentClosedCaption("lopdev", null), CORE_SENTENCE);
+		const seat = coldSeat().seat;
+		assert.notEqual(seat, null, "the cold strict frame closes the seat");
+		assert.equal(seat.speakerKnown, false);
+		assert.equal(seat.speaker, "FR son responsable");
+		assert.equal(coldSeat().agentValue, "FR son responsable");
+		assert.equal(seat.sentence, CORE_SENTENCE);
+	} finally {
+		setLocale("en");
+	}
+	assert.equal(itsManagerLabel(), "its manager");
 });

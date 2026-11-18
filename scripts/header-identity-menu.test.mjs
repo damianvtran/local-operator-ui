@@ -73,20 +73,20 @@ const bundle = await build({
 });
 
 const {
-	IDENTITY_AGENT_NOT_SETTABLE_REASON,
 	IDENTITY_MENU_MAX_HEIGHT,
 	IDENTITY_MENU_MAX_HEIGHT_CLASS,
-	IDENTITY_MENU_NO_SETTABLE,
-	IDENTITY_MENU_NO_SETTABLE_TYPED,
 	PROFILE_RECENTS_LIMIT,
 	identityAgentClosedCaption,
 	identityAgentClosedTitle,
 	identityAgentConstraint,
 	identityAgentConstraintCaption,
+	identityAgentNotSettableReason,
 	identityAgentSettable,
 	identityMenuBands,
 	identityMenuFooter,
 	identityMenuHeadings,
+	identityMenuNoSettable,
+	identityMenuNoSettableTyped,
 	identityMenuRefusalAnnouncement,
 	identityMenuSeedActive,
 	identityMenuShowsList,
@@ -388,7 +388,7 @@ test("a view with no settable row trades its count for the way out (D1)", () => 
 			overflowing: true,
 			hasSettable: false,
 		}),
-		IDENTITY_MENU_NO_SETTABLE_TYPED,
+		identityMenuNoSettableTyped(),
 	);
 	// One settable row in view brings the count back - the resolution is about
 	// `view.matches`, not about the roster (the recents frame's case).
@@ -412,7 +412,7 @@ test("a view with no settable row trades its count for the way out (D1)", () => 
 			overflowing: true,
 			hasSettable: false,
 		}),
-		IDENTITY_MENU_NO_SETTABLE,
+		identityMenuNoSettable(),
 	);
 	// The no-match state keeps its own sentence: the footer stays silent.
 	assert.equal(
@@ -778,7 +778,7 @@ test("the rule's copy is pinned as the design round's candidate", () => {
 		"lopdev is led by its manager; only the manager and profiles that can delegate may take this seat.",
 	);
 	assert.equal(
-		IDENTITY_AGENT_NOT_SETTABLE_REASON,
+		identityAgentNotSettableReason(),
 		"Needs a delegating profile here.",
 	);
 });
@@ -849,5 +849,172 @@ test("the closed note's lead line names the team as the chip does (design D2/D3)
 	assert.equal(
 		identityAgentClosedTitle("Local Operator Dev"),
 		"Agent seat closed by Local Operator Dev",
+	);
+});
+
+/*
+ * THE FOOTER AND SEAT WORDING ARE KEYED NOW (feat/i18n-identity-footer). Three
+ * claims, each pinned against the thing it could regress:
+ *
+ *  1. ENGLISH IS BYTE-IDENTICAL to the template strings these sentences used to
+ *     be, for every count that is not 1 - proved by evaluating the OLD
+ *     expression beside the new key over a matrix (including counts of 1,000
+ *     and up, where an ICU `#` would have inserted a thousands separator).
+ *  2. The singular arms are the one deliberate change: `1 agents` is now
+ *     `1 agent`.
+ *  3. A language switch reaches every sentence: the SAME functions answer in the
+ *     registered catalogue after `setLocale`, so nothing was frozen at load.
+ */
+const oldFooterAll = (total, noun) =>
+	`${total} ${noun} in all \u2014 scroll, or type to filter`;
+const oldFooterMatch = (matches, total, noun) =>
+	matches === total
+		? `${total} ${noun} match`
+		: `${matches} of ${total} ${noun} match`;
+
+test("English footer is byte-identical to the old template for every non-singular count", () => {
+	const roster = [2, 3, 5, 6, 11, 150, 999, 1000, 1234, 12345];
+	let compared = 0;
+	for (const kind of ["agent", "team"]) {
+		const noun = kind === "team" ? "teams" : "agents";
+		for (const total of roster) {
+			const base = {
+				bands: [{ heading: null, rows: ROWS }],
+				matches: total,
+				total,
+				noMatches: false,
+			};
+			const call = (view, query, overflowing) =>
+				identityMenuFooter({
+					view,
+					kind,
+					query,
+					overflowing,
+					hasSettable: true,
+				});
+			assert.equal(call(base, "", true), oldFooterAll(total, noun));
+			assert.equal(call(base, "x", false), oldFooterMatch(total, total, noun));
+			compared += 2;
+			for (const matches of [1, 2, total - 1].filter(
+				(n) => n >= 1 && n < total,
+			)) {
+				assert.equal(
+					call({ ...base, matches }, "x", false),
+					oldFooterMatch(matches, total, noun),
+					`${matches} of ${total} ${noun}`,
+				);
+				compared += 1;
+			}
+		}
+	}
+	assert.ok(compared >= 90, `matrix compared ${compared} cases`);
+});
+
+test("singular arms read as English: 1 agent, 1 team (the deliberate grammar fix)", () => {
+	const one = (kind, query, overflowing) =>
+		identityMenuFooter({
+			view: {
+				bands: [{ heading: null, rows: ROWS.slice(0, 1) }],
+				matches: 1,
+				total: 1,
+				noMatches: false,
+			},
+			kind,
+			query,
+			overflowing,
+			hasSettable: true,
+		});
+	assert.equal(
+		one("agent", "", true),
+		"1 agent in all \u2014 scroll, or type to filter",
+	);
+	assert.equal(
+		one("team", "", true),
+		"1 team in all \u2014 scroll, or type to filter",
+	);
+	assert.equal(one("agent", "x", false), "1 agent matches");
+	assert.equal(one("team", "x", false), "1 team matches");
+	// The old expression said `1 agents match` - the thing this fixes.
+	assert.equal(oldFooterMatch(1, 1, "agents"), "1 agents match");
+});
+
+test("a language switch reaches the footer, the refusal, the caption, the reason and the closed title", () => {
+	const view = {
+		bands: [{ heading: null, rows: ROWS }],
+		matches: 4,
+		total: 150,
+		noMatches: false,
+	};
+	const footer = (kind, query, overflowing, hasSettable, v = view) =>
+		identityMenuFooter({ view: v, kind, query, overflowing, hasSettable });
+	/* SENTINEL CATALOGUE, NOT A TRANSLATION: marker text proves which source each
+	 * sentence came from, and each message keeps its own plural arms and slots,
+	 * with the noun BEFORE the count in the stub so a fixed `count noun` order in
+	 * the code would fail here. `en` is not registered, so the closing assertions
+	 * prove the store returns to the shipped English. */
+	const H = "ui.chat.header_identity.";
+	registerCatalogue("fr", {
+		[`${H}footer_all_agents`]:
+			"{count, plural, one {FR all {count} agent} other {FR all {count} agents}}",
+		[`${H}footer_all_teams`]: "FR all teams {count}",
+		[`${H}footer_match_agents`]:
+			"{count, plural, one {FR match agent {count}} other {FR match agents {count}}}",
+		[`${H}footer_match_teams`]: "FR match teams {count}",
+		[`${H}footer_partial_agents`]:
+			"{total, plural, one {FR partial agent {total} / {matches}} other {FR partial agents {total} / {matches}}}",
+		[`${H}footer_partial_teams`]: "FR partial teams {total} / {matches}",
+		[`${H}no_settable_typed`]: "FR no settable typed",
+		[`${H}no_settable`]: "FR no settable",
+		[`${H}cannot_take_seat`]: "FR {label} cannot",
+		[`${H}needs_delegating_profile`]: "FR needs delegate",
+		[`${H}team_led_by_manager`]: "FR {team} led",
+		[`${H}agent_seat_closed_title`]: "FR closed by {team}",
+	});
+	try {
+		setLocale("fr");
+		assert.equal(footer("agent", "", true, true), "FR all 150 agents");
+		assert.equal(footer("team", "", true, true), "FR all teams 150");
+		assert.equal(
+			footer("agent", "x", false, true, { ...view, matches: 150 }),
+			"FR match agents 150",
+		);
+		assert.equal(
+			footer("team", "x", false, true, { ...view, matches: 150 }),
+			"FR match teams 150",
+		);
+		assert.equal(
+			footer("agent", "x", false, true),
+			"FR partial agents 150 / 4",
+		);
+		assert.equal(footer("team", "x", false, true), "FR partial teams 150 / 4");
+		assert.equal(footer("agent", "x", false, false), "FR no settable typed");
+		assert.equal(footer("agent", "", true, false), "FR no settable");
+		assert.equal(identityMenuNoSettable(), "FR no settable");
+		assert.equal(
+			identityMenuRefusalAnnouncement("reviewer"),
+			"FR reviewer cannot",
+		);
+		assert.equal(identityAgentNotSettableReason(), "FR needs delegate");
+		assert.equal(identityAgentConstraintCaption("lopdev"), "FR lopdev led");
+		assert.equal(identityAgentClosedTitle("lopdev"), "FR closed by lopdev");
+		// The plural arm of the SAME key moves with the count.
+		assert.equal(
+			footer("agent", "", true, true, { ...view, matches: 1, total: 1 }),
+			"FR all 1 agent",
+		);
+	} finally {
+		setLocale("en");
+	}
+	assert.equal(
+		footer("agent", "", true, true),
+		"150 agents in all \u2014 scroll, or type to filter",
+	);
+	assert.equal(
+		identityMenuRefusalAnnouncement("reviewer"),
+		"reviewer cannot take the seat.",
+	);
+	assert.equal(
+		identityAgentNotSettableReason(),
+		"Needs a delegating profile here.",
 	);
 });

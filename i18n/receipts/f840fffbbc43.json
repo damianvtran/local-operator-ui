@@ -1,0 +1,116 @@
+{
+ "instance": "f840fffbbc43",
+ "locale": "hi",
+ "scope": [
+  "ui.chat",
+  "ui.chat.canonical",
+  "ui.chat.slash"
+ ],
+ "audit_date": "2026-11-17",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "12caa8c00d39",
+  "model": "anthropic/claude-opus-5-5",
+  "actual_model_source": "Session model header: anthropic/claude-opus-5-5; no fallback observed. No MT/translation service used.",
+  "independent_from_translator_session": true,
+  "independence_note": "Fresh auditor instance; authored/edited none of these 18 values. LLM audit, not a native-speaker review."
+ },
+ "status": "passed",
+ "model": "anthropic/claude-opus-5-5",
+ "worktree": "~/local-operator-ui/.worktrees/i18n-identity-footer",
+ "head": "fdf96a7e2e986f4ccef207fa28ee7da7a98ee1f6",
+ "target_state": "uncommitted (18 added lines, 0 removed)",
+ "namespaces": {
+  "ui.chat": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 15,
+   "sha256": {
+    "en": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
+    "hi": "eaadb0c7742e61c0ec07dfbabadc7d7880b2743d41d07a5c77b1a20d742e8562",
+    "source": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
+    "target": "eaadb0c7742e61c0ec07dfbabadc7d7880b2743d41d07a5c77b1a20d742e8562"
+   },
+   "source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
+   "target_sha256": "eaadb0c7742e61c0ec07dfbabadc7d7880b2743d41d07a5c77b1a20d742e8562",
+   "en_path": "src/i18n/catalogues/en/ui.chat.json",
+   "hi_path": "src/i18n/catalogues/hi/ui.chat.json",
+   "context": {
+    "path": "src/i18n/catalogues/en/ui.chat.context.json",
+    "sha256": "6d5689ad63e462ba13be05fc16e9d45d2e60aa2d592b9cba0feb8ab456753d33"
+   }
+  },
+  "ui.chat.canonical": {
+   "status": "passed",
+   "result": "clean",
+   "keys_audited": 1,
+   "sha256": {
+    "en": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49",
+    "hi": "5b96f9cf9fcb7fcbf5e9a2fe1f7ed47d84a1e1dd78ad3ac839ffe33ef86b4160",
+    "source": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49",
+    "target": "5b96f9cf9fcb7fcbf5e9a2fe1f7ed47d84a1e1dd78ad3ac839ffe33ef86b4160"
+   },
+   "source_sha256": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49",
+   "target_sha256": "5b96f9cf9fcb7fcbf5e9a2fe1f7ed47d84a1e1dd78ad3ac839ffe33ef86b4160",
+   "en_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "hi_path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+   "context": {
+    "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+    "sha256": "883ff56261f5b79b63322d3a34f914ce2459a5ff4280336089c183ae7e4273ec"
+   }
+  },
+  "ui.chat.slash": {
+   "status": "passed",
+   "result": "clean",
+   "keys_audited": 2,
+   "sha256": {
+    "en": "07ce26b0ac3f051f1fe3704f4d13f0e6cfd9bd1d4482fed6615a39ff1daf8710",
+    "hi": "3b87a4065f2be35e7f26ebede12a05ed54273000b316b9498fa5910e79a83e38",
+    "source": "07ce26b0ac3f051f1fe3704f4d13f0e6cfd9bd1d4482fed6615a39ff1daf8710",
+    "target": "3b87a4065f2be35e7f26ebede12a05ed54273000b316b9498fa5910e79a83e38"
+   },
+   "source_sha256": "07ce26b0ac3f051f1fe3704f4d13f0e6cfd9bd1d4482fed6615a39ff1daf8710",
+   "target_sha256": "3b87a4065f2be35e7f26ebede12a05ed54273000b316b9498fa5910e79a83e38",
+   "en_path": "src/i18n/catalogues/en/ui.chat.slash.json",
+   "hi_path": "src/i18n/catalogues/hi/ui.chat.slash.json",
+   "context": {
+    "path": "src/i18n/catalogues/en/ui.chat.slash.context.json",
+    "sha256": "9806ae2b7ebeb26b021e654ebd651ba44d54cb5a92e69f018fae92ae79581ae7"
+   }
+  }
+ },
+ "findings": [
+  {
+   "id": "H1",
+   "severity": "MINOR",
+   "key": "ui.chat.header_identity.footer_all_agents",
+   "note": "'कुल 25 एजेंट हैं — स्क्रॉल करें या लिखकर छाँटें': 'लिखकर छाँटें' is not the app's filter wording (catalogue uses फ़िल्टर / 'टाइप करके'); छाँटें also reads as 'sort'. Suggest '… — स्क्रॉल करें या टाइप करके फ़िल्टर करें'."
+  },
+  {
+   "id": "H2",
+   "severity": "MINOR",
+   "key": "ui.chat.header_identity.footer_all_teams",
+   "note": "Twin of H1: 'कुल 25 टीमें हैं — स्क्रॉल करें या लिखकर छाँटें'. Suggest '… — स्क्रॉल करें या टाइप करके फ़िल्टर करें' to stay parallel."
+  },
+  {
+   "id": "H3",
+   "severity": "NIT",
+   "key": "ui.chat.header_identity.footer_partial_agents",
+   "note": "'150 एजेंटों में से 4 का मिलान हुआ' is grammatical (oblique plural correct, avoids agreement with matches) but stiffer than sibling '25 एजेंट मिले'; optional. Same applies to footer_partial_teams."
+  },
+  {
+   "id": "H4",
+   "severity": "NIT",
+   "key": "ui.chat.header_identity.team_led_by_manager",
+   "note": "'lopdev का नेतृत्व इसका मैनेजर करता है; …' — anaphoric 'उसका' reads slightly more naturally than proximal 'इसका' for a named team; optional."
+  }
+ ],
+ "counts": {
+  "BLOCKER": 0,
+  "MAJOR": 0,
+  "MINOR": 2,
+  "NIT": 2
+ },
+ "verdict": "pass",
+ "verdict_reason": "18/18 keys: ICU parses, placeholder/type parity with en, CLDR hi {one,other} present on all 6 plurals; renders grammatical incl. oblique एजेंटों/टीमों after में से; 0-count arms unreachable per chat-header-identity-menu-model.ts. role/specialist match ui.hub.teams.kind.*. No English leak."
+}

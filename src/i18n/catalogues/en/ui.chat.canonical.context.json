@@ -1750,6 +1750,15 @@
 			"duration": "already formatted elapsed duration from formatDuration, e.g. 2m 4s; preserve as supplied"
 		}
 	},
+	"ui.chat.canonical.transcript.took_duration": {
+		"role": "clause of the turn bar's spoken summary and its copied text, stating how long the turn took",
+		"tone": "lowercase past-tense clause, no trailing punctuation",
+		"length": "Short clause inside a comma-separated list.",
+		"note": "Never painted on screen: it is read aloud when a turn condenses and is the text the turn bar's context menu copies. It sits in a list with an action count (`Turn condensed: took 2m 4s, 5 actions.`), so it must read as one clause and carry no full stop. Pair with worked_for, which is the painted footer form.",
+		"placeholders": {
+			"duration": "already formatted elapsed duration from formatDuration, e.g. 2m 4s; preserve as supplied"
+		}
+	},
 	"ui.chat.canonical.transcript.job_suffix": {
 		"role": "job identifier suffix after a hub receipt identity",
 		"tone": "compact noun label, sentence case, no trailing punctuation",

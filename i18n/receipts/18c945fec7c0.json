@@ -1,0 +1,87 @@
+{
+ "auditor": {
+  "agent": "i18n-auditor",
+  "team": "lopdev",
+  "harness": "Local Operator",
+  "session": "7197f651b2af",
+  "model": "anthropic/claude-opus-5-5",
+  "actual_model": "anthropic/claude-opus-5-5",
+  "actual_model_source": "Session system header 'Model: anthropic/claude-opus-5-5'; no fallback selected or observed.",
+  "fallback": null,
+  "independent_from_translator": true,
+  "independence_basis": "Fresh auditor session 7197f651b2af (task if-au-vi); wrote no catalogue value, edited no repo file."
+ },
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "18c945fec7c0",
+ "session": "7197f651b2af",
+ "date": "2026-11-17",
+ "locale": "vi",
+ "branch": "feat/i18n-identity-footer",
+ "head": "fdf96a7e2e986f4ccef207fa28ee7da7a98ee1f6",
+ "round": 1,
+ "scope": "18 keys added by the English commit (ui.chat.header_identity x15, ui.chat.canonical.transcript.took_duration, ui.chat.slash.arg.kind_role/kind_specialist) in the uncommitted vi catalogue diff (18 added lines, 0 removed). LLM audit, not a native-speaker review.",
+ "evidence": "intl-messageformat/@formatjs parse + argument parity for 18/18; Intl.PluralRules('vi') categories [other]; 6 plural messages rendered at 17 counts and 10 (matches,total) pairs; check-duplicates ok, context-parity ok; ledger-check stale for vi (expected, pending this audit).",
+ "status": "passed",
+ "namespaces": {
+  "ui.chat": {
+   "namespace": "ui.chat",
+   "status": "passed",
+   "en_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
+   "vi_sha256": "fcc4e95f8ed967a46e614a5103518b28498d71d5a3b97951eee7fb8c1ea73b2b",
+   "source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
+   "target_sha256": "fcc4e95f8ed967a46e614a5103518b28498d71d5a3b97951eee7fb8c1ea73b2b",
+   "keys_audited": 15,
+   "findings": [
+    {
+     "id": "vi-if-1",
+     "severity": "MINOR",
+     "key": "ui.chat.header_identity.its_manager_label",
+     "current": "quản lý nhóm",
+     "note": "Chip text reads equally as the verb phrase 'manage team' (cf. this app's 'Quản lý tác nhân' = Manage agents) on a clickable chip beside the team chip. Suggest 'người quản lý' (13 chars, <=14): unambiguous noun."
+    },
+    {
+     "id": "vi-if-2",
+     "severity": "NIT",
+     "key": "ui.chat.header_identity.footer_partial_agents",
+     "current": "4 trong 150 tác nhân khớp",
+     "note": "'trong số' is the idiomatic N-of-M partitive: '4 trong số 150 tác nhân khớp'; same for footer_partial_teams ('4 trong số 150 nhóm khớp'). Current form is understandable."
+    },
+    {
+     "id": "vi-if-3",
+     "severity": "NIT",
+     "key": "ui.chat.header_identity.no_settable",
+     "current": "Không hồ sơ nào đảm nhiệm được vị trí này — hãy đổi nhóm.",
+     "note": "Neighbours use 'Không có … nào' ('Không có kỹ năng nào khớp…'); suggest 'Không có hồ sơ nào…' here and in no_settable_typed for consistency. Grammatical as is."
+    }
+   ]
+  },
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "passed",
+   "en_sha256": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49",
+   "vi_sha256": "3855f6b03ceacf7bf9b2c06c7a8545532f7fa49dd3ecdeef0b6ebdb57652215b",
+   "source_sha256": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49",
+   "target_sha256": "3855f6b03ceacf7bf9b2c06c7a8545532f7fa49dd3ecdeef0b6ebdb57652215b",
+   "keys_audited": 1,
+   "findings": [
+    {
+     "id": "vi-if-4",
+     "severity": "INFO",
+     "key": "ui.chat.canonical.transcript.took_duration",
+     "current": "mất {duration}",
+     "note": "Out of scope, not this key: rendered spoken/copied sentence is 'Turn condensed: mất 2m 4s, …' — lead is a hard-coded English literal (canonical-transcript.tsx:546) and formatDuration units are English."
+    }
+   ]
+  },
+  "ui.chat.slash": {
+   "namespace": "ui.chat.slash",
+   "status": "passed",
+   "en_sha256": "07ce26b0ac3f051f1fe3704f4d13f0e6cfd9bd1d4482fed6615a39ff1daf8710",
+   "vi_sha256": "79a0a4153a305878878c13b8a443b535ecbc5d013eb9343264c4e60723dc21aa",
+   "source_sha256": "07ce26b0ac3f051f1fe3704f4d13f0e6cfd9bd1d4482fed6615a39ff1daf8710",
+   "target_sha256": "79a0a4153a305878878c13b8a443b535ecbc5d013eb9343264c4e60723dc21aa",
+   "keys_audited": 2,
+   "findings": []
+  }
+ }
+}

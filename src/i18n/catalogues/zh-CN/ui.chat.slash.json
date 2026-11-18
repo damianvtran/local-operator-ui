@@ -1,5 +1,7 @@
 {
 	"ui.chat.slash.arg.credential_api_key": "API密钥",
+	"ui.chat.slash.arg.kind_role": "角色",
+	"ui.chat.slash.arg.kind_specialist": "专家",
 	"ui.chat.slash.arg.mcp_detail.reauthorize": "已连接——将重新授权",
 	"ui.chat.slash.arg.mcp_detail.reuse": "已连接——将沿用现有授权",
 	"ui.chat.slash.arg.mcp_detail.stored": "已存储凭据",

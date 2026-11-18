@@ -242,6 +242,7 @@
 	"ui.chat.canonical.transcript.answer_may_be_missing": "Puede que falte parte de esta respuesta",
 	"ui.chat.canonical.transcript.worked": "Trabajó",
 	"ui.chat.canonical.transcript.worked_for": "Trabajó durante {duration}",
+	"ui.chat.canonical.transcript.took_duration": "tardó {duration}",
 	"ui.chat.canonical.transcript.job_suffix": "· Trabajo {id}",
 	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, one {{count, number, ::group-off}+ acciones} many {{count, number, ::group-off}+ de acciones} other {{count, number, ::group-off}+ acciones}}",
 	"ui.chat.canonical.tool_row.diff.full.back": "Volver a la vista previa",

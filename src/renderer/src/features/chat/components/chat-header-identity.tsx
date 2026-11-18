@@ -67,6 +67,7 @@ import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { Spinner } from "@shared/components/common/spinner";
 import { Popover, PopoverTrigger } from "@shared/components/ui/popover";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast, showWarningToast } from "@shared/utils/toast-manager";
@@ -87,9 +88,9 @@ import type { PickerOption } from "../pickers/picker-host";
 import { errorText, useSessionCommand } from "../pickers/use-picker-backend";
 import { IdentityMenu } from "./chat-header-identity-menu";
 import {
-	IDENTITY_AGENT_NOT_SETTABLE_REASON,
 	type IdentityAgentConstraint,
 	identityAgentConstraint,
+	identityAgentNotSettableReason,
 	identityAgentSettable,
 	identityMenuShowsList,
 } from "./chat-header-identity-menu-model";
@@ -272,6 +273,11 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	markSwap,
 }) => {
 	/*
+	 * Read as a VALUE: the blocked rows' reason resolves through `t()` inside the
+	 * `options` memo, whose other inputs do not change with the language.
+	 */
+	const locale = useI18nLocale();
+	/*
 	 * A CLOSED SEAT LISTS NOTHING (the runtime's strict rule): no row can be
 	 * picked, so the roster is not fetched for a panel that will not show it.
 	 */
@@ -378,6 +384,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	 * reason: the roster is the same roster, and the reader who needs one needs it
 	 * on both surfaces.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is an input the callback reads indirectly - the blocked rows' reason resolves through `t()` at call time, so a language change must recompute the options or the reason keeps the previous language
 	const options = useMemo<PickerOption[]>(
 		() =>
 			items.map((row) => {
@@ -422,7 +429,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					 * than discovered after the composer fills.
 					 */
 					description: blocked
-						? IDENTITY_AGENT_NOT_SETTABLE_REASON
+						? identityAgentNotSettableReason()
 						: shown !== row.value
 							? row.description
 								? `${row.value} · ${row.description}`
@@ -444,7 +451,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					blocked,
 				};
 			}),
-		[items, current, busy, constraint],
+		[items, current, busy, constraint, locale],
 	);
 
 	/*
@@ -764,6 +771,9 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 	hostKey = null,
 	frameEpoch,
 }) => {
+	/* Read as a VALUE for the `constraint` memo below: its caption resolves
+	 * through `t()` and nothing else in its inputs changes with the language. */
+	const locale = useI18nLocale();
 	const rawTeam = activeTeam || boundTeam || null;
 	/*
 	 * THE CAPABILITY RECORD (cold frames). A frame that carries the field proves
@@ -867,6 +877,7 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 	 * landing) rebuilt all 150 options and re-rendered every mounted row, the
 	 * stability the panel was built around lost to one object identity.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is an input the callback reads indirectly - the caption resolves through `t()` at call time, and in the non-strict case (`view.seat` null) no other input changes with the language
 	const constraint = useMemo(
 		() =>
 			identityAgentConstraint({
@@ -874,7 +885,7 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 				manager: view.teamManager,
 				closure: view.seat,
 			}),
-		[view.teamLabel, view.teamManager, view.seat],
+		[view.teamLabel, view.teamManager, view.seat, locale],
 	);
 	/*
 	 * One open menu at a time, by hand: two independent Radix roots cannot see
@@ -947,8 +958,8 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 				kind,
 				name,
 				kind === "team"
-					? "Could not switch the team"
-					: "Could not switch the agent",
+					? t("ui.chat.header_identity.switch_team_failed")
+					: t("ui.chat.header_identity.switch_agent_failed"),
 			);
 			/*
 			 * The stream is the success path: the label repaints from the new
