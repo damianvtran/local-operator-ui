@@ -53,14 +53,19 @@ export function useMeshPairingTray(
 	useEffect(() => {
 		const next = read.data;
 		if (!next) return;
+		// Captured NOW: the updater runs at the next render, after the ref below
+		// has already moved on to `next` (which would fold nothing).
+		const prior = previous.current;
+		const joined = joinedRef.current;
+		const answered = answers.current;
 		setOutcomes((current) =>
 			foldPairingOutcomes({
-				previous: previous.current,
+				previous: prior,
 				rows: next,
 				outcomes: current,
-				answers: answers.current,
+				answers: answered,
 				nowMs: Date.now(),
-				joinedNetworks: joinedRef.current,
+				joinedNetworks: joined,
 			}),
 		);
 		previous.current = next;

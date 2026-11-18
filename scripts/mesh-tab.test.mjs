@@ -2802,7 +2802,9 @@ test("the Mesh rail row is gated on MEMBERSHIP, and the route on the capability"
 	);
 	assert.match(
 		nav,
-		/if \(meshMembership === "member"\) \{\s*destinationItems\.set\("mesh", \{\s*icon: Network,\s*label: t\("ui\.shell\.sidebar_navigation\.mesh"\),\s*path: "\/mesh",/,
+		// `|| pairingOpen` (features.mesh_pairing): a device joining its FIRST network
+		// is in no mesh yet, and its open pairing card is what the row leads to.
+		/if \(meshMembership === "member" \|\| pairingOpen\) \{\s*destinationItems\.set\("mesh", \{\s*icon: Network,\s*label: t\("ui\.shell\.sidebar_navigation\.mesh"\),\s*path: "\/mesh",/,
 		"a row appears only for a device KNOWN to be in a mesh - not for an unknown or empty answer",
 	);
 	assert.doesNotMatch(
@@ -3257,7 +3259,9 @@ test("the Mesh rail badge rides an approvals read that dials nothing, and only w
 	);
 	assert.match(
 		nav,
-		/const meshWaiting = waitingApprovalCount\(meshApprovals\.data \?\? \[\]\);/,
+		// Plus the open mesh pairing cards (features.mesh_pairing), which the tray's
+		// header counts too - so the two surfaces still cannot disagree.
+		/const meshWaiting =\s*waitingApprovalCount\(meshApprovals\.data \?\? \[\]\) \+ pairingCount;/,
 		"the badge wears the WAITING count (operator round, 2026-10-03) - the same function the tray's header calls, so the two surfaces cannot disagree",
 	);
 	assert.match(nav, /attention: meshWaiting,/);
@@ -3366,7 +3370,9 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	);
 	assert.match(
 		tray,
-		/t\("ui\.mesh\.mesh_approvals_tray\.waiting_count",\s*\{\s*count: waitingCount,?\s*\}\)/,
+		// `+ pairingCount`: open mesh pairing cards wait on the operator too, and the
+		// rail badge adds the same number (features.mesh_pairing).
+		/t\("ui\.mesh\.mesh_approvals_tray\.waiting_count",\s*\{\s*count: waitingCount \+ pairingCount,?\s*\}\)/,
 		"the header counts the waiting set - the same number the rail badge wears",
 	);
 	/*
@@ -6367,6 +6373,7 @@ test(
 									contents: `
 					import {useState} from "react";
 					export function Button({variant,size,children,...props}){return <button {...props}>{children}</button>}
+					export function Skeleton(props){return <div {...props} />}
 					export function Disclosure({summary,children,open,onOpenChange}){
 						const [local,setLocal]=useState(false);const expanded=open??local;
 						return <section><button onClick={()=>{setLocal(!expanded);onOpenChange?.(!expanded)}}>{summary}</button>{expanded&&children}</section>
