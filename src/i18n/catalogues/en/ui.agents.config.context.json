@@ -315,5 +315,260 @@
 		"length": "Two sentences",
 		"note": "'Ask for a change' is the feature's name (the button label ui.agents.detail.action.ask_change); use the same translation. 'Local Operator' is the product name, never translated.",
 		"placeholders": {}
+	},
+	"ui.agents.config.summary.step.creating_named": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)",
+			"name": "the definition's identifier, never translated"
+		}
+	},
+	"ui.agents.config.summary.step.creating": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)"
+		}
+	},
+	"ui.agents.config.summary.step.updating_named": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)",
+			"name": "the definition's identifier, never translated"
+		}
+	},
+	"ui.agents.config.summary.step.updating": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)"
+		}
+	},
+	"ui.agents.config.summary.step.editing_named": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)",
+			"name": "the definition's identifier, never translated"
+		}
+	},
+	"ui.agents.config.summary.step.editing": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)"
+		}
+	},
+	"ui.agents.config.summary.step.installing_named": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form.",
+		"placeholders": {
+			"name": "the definition's identifier, never translated"
+		}
+	},
+	"ui.agents.config.summary.step.installing": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. Shown when an install call has not named the agent yet.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.step.reading_named": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form.",
+		"placeholders": {
+			"name": "the definition's identifier, never translated"
+		}
+	},
+	"ui.agents.config.summary.step.reading": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)"
+		}
+	},
+	"ui.agents.config.summary.step.working": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence. Shown while a call the app cannot classify is still running.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)"
+		}
+	},
+	"ui.agents.config.summary.step.checked": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence. Past tense: shown once a call the app cannot classify has finished.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)"
+		}
+	},
+	"ui.agents.config.summary.change.description": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.kind": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.effort": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. 'Effort tier' is the agent's model tier setting.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.manager": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.instructions": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.field": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {
+			"field": "the setting's internal identifier, shown only for a setting the app has no word for; never translated"
+		}
+	},
+	"ui.agents.config.summary.change.tools": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. A bare noun: the tools setting (which tools the agent may use).",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.tools_widened": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.tools_narrowed": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.tool_added": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {
+			"tool": "the tool's identifier (e.g. bash), never translated"
+		}
+	},
+	"ui.agents.config.summary.change.tool_removed": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {
+			"tool": "the tool's identifier (e.g. bash), never translated"
+		}
+	},
+	"ui.agents.config.summary.change.tools_added": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. Plural over {count}; use the language's own plural categories.",
+		"placeholders": {
+			"count": "how many tools, always 2 or more here"
+		}
+	},
+	"ui.agents.config.summary.change.tools_removed": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. Plural over {count}; use the language's own plural categories.",
+		"placeholders": {
+			"count": "how many tools, always 2 or more here"
+		}
+	},
+	"ui.agents.config.summary.change.tools_changed": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.delegation_on": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. Delegation is whether the agent may launch subagents.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.delegation_off": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. Delegation is whether the agent may launch subagents.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.class_proactive": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. 'Proactive' agents may message the operator unprompted. Use the same word as the class setting.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.class_reactive": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. 'Proactive' agents may message the operator unprompted; 'reactive' ones only answer. Use the same words as the class setting.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.members": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {
+			"before": "number of member entries before the run",
+			"after": "number of member entries after the run"
+		}
 	}
 }

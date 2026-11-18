@@ -55,6 +55,7 @@ import {
 } from "@shared/hooks/use-canonical-session";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { ChatFile } from "@shared/store/canonical-sessions-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
@@ -62,6 +63,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	type RunResult,
 	type RunTarget,
+	type SummaryText,
 	useConfigRunStore,
 } from "./config-run-store";
 import { configSeedPrompt } from "./seed-prompt";
@@ -74,6 +76,7 @@ import {
 	projectRunToolRow,
 	snapshotCatalogue,
 	snapshotSkills,
+	summaryText,
 } from "./summary";
 
 /**
@@ -351,7 +354,8 @@ export type ConfigRunHandle = {
 	elapsed: string;
 	/** Live activity, for the Watch panel (the run's own tool rows). */
 	activity: {
-		verb: string;
+		/** Catalogue copy; paint with `summaryText` so it follows the locale. */
+		verb: SummaryText;
 		target: RunTarget | null;
 		/** Whether this call writes the registry rather than reading it. */
 		writes: boolean;
@@ -406,6 +410,9 @@ export type ConfigRunHandle = {
 };
 
 export function useConfigRun(): ConfigRunHandle {
+	// The hook paints `step` (summaryText) itself, and its host (agents-page) is
+	// not otherwise subscribed to the locale.
+	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const enabled = configRunEnabled(capabilities.data);
 	const skillsEnabled = configSkillRunEnabled(capabilities.data);
@@ -519,8 +526,13 @@ export function useConfigRun(): ConfigRunHandle {
 		}
 	}, [activity, live, store]);
 
+	// Painted here, every render, rather than inside the memoised `activity`, so
+	// the live step line follows a language switch mid-run (`useI18nLocale` above
+	// is what re-renders this hook's host when the locale moves).
 	const step =
-		live && activity.length > 0 ? activity[activity.length - 1].verb : null;
+		live && activity.length > 0
+			? summaryText(activity[activity.length - 1].verb)
+			: null;
 	const elapsed = formatElapsed(useElapsed(store.startedAt, live));
 
 	/**

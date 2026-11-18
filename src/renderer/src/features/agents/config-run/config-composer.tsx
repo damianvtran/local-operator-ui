@@ -64,6 +64,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { isolateClock } from "../../../../../i18n/bidi";
 import type { RunTarget } from "./config-run-store";
 import { configSeedPrompt } from "./seed-prompt";
+import { summaryText } from "./summary";
 import type { ConfigRunHandle } from "./use-config-run";
 
 // Re-exported so the page and the tests keep importing it from the composer;
@@ -161,7 +162,7 @@ function RunActivity({ run }: { run: ConfigRunHandle }) {
 				<li
 					// The row's own instant is its identity: a run may call the same tool
 					// on the same target twice, and an index-only key would mis-reconcile.
-					key={`${row.ts}:${row.verb}:${index}`}
+					key={`${row.ts}:${row.verb.key}:${index}`}
 					className="flex items-baseline gap-2 text-body-sm"
 				>
 					<span className="text-ink-dim tabular-nums">
@@ -172,7 +173,7 @@ function RunActivity({ run }: { run: ConfigRunHandle }) {
 							}),
 						)}
 					</span>
-					<span className="text-ink">{row.verb}</span>
+					<span className="text-ink">{summaryText(row.verb)}</span>
 				</li>
 			))}
 		</ul>
@@ -910,7 +911,9 @@ function RunSummary({
 						{result.changes.length > 0 ? (
 							<span className="text-ink-muted">
 								{": "}
-								{result.changes.map((change) => change.label).join(", ")}
+								{result.changes
+									.map((change) => summaryText(change.label))
+									.join(", ")}
 							</span>
 						) : result.created ? null : (
 							<span className="text-ink-muted">
