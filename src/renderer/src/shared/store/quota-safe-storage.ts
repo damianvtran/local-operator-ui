@@ -65,8 +65,18 @@ export function withoutInlineData<T>(value: T): T {
 			const out: Record<string, unknown> = {};
 			for (const [key, child] of Object.entries(node)) {
 				const next = walk(child);
-				// A data string on a non-payload key is the user's text: keep it.
-				out[key] = next === DROP ? child : next;
+				if (next !== DROP) {
+					out[key] = next;
+					continue;
+				}
+				/*
+				 * A data string on a non-payload key is the user's text: keep it.
+				 * An attachment OBJECT under a record key is dropped, as the doc
+				 * above says (review round 1, R5): putting the original child back
+				 * restored its payload, so step 2 shrank nothing for a record-keyed
+				 * image.
+				 */
+				if (typeof child === "string") out[key] = child;
 			}
 			return out;
 		}

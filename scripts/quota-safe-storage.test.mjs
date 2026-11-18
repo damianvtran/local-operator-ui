@@ -152,3 +152,35 @@ test("the zustand storage never throws a quota error out of persist, and warns o
 	assert.equal(mod.isQuotaExceeded({ code: 1014 }), true);
 	assert.equal(mod.isQuotaExceeded(new Error("x")), false);
 });
+
+/*
+ * Review round 1, R5: an attachment object under a RECORD key (not an array
+ * element) is dropped too. The walk used to put the original child back, so
+ * the image payload survived step 2 untouched.
+ */
+test("an attachment object under a record key is dropped; a data string typed as text is kept", () => {
+	const image = `data:image/png;base64,${"A".repeat(64)}`;
+	const value = {
+		draft: { text: "see data:text/plain,hello", note: image },
+		byId: {
+			a1: { name: "shot.png", dataUrl: image },
+			a2: { name: "notes.txt", path: "/tmp/notes.txt" },
+		},
+		list: [{ src: image }, "keep"],
+	};
+	const lean = mod.withoutInlineData(value);
+	assert.equal(
+		JSON.stringify(lean).includes("base64"),
+		true,
+		"the bare data string on a non-payload key is the user's text and stays",
+	);
+	assert.equal(lean.draft.note, image);
+	assert.equal(lean.draft.text, "see data:text/plain,hello");
+	assert.deepEqual(
+		Object.keys(lean.byId),
+		["a2"],
+		"the record-keyed image object is gone",
+	);
+	assert.deepEqual(lean.list, ["keep"]);
+	assert.ok(value.byId.a1, "the input is not mutated");
+});
