@@ -13748,9 +13748,17 @@ export type MessageParams = {
 	"ui.teamBridge.schedule.when": undefined;
 	"ui.teamBridge.schedule.window": undefined;
 	"ui.teamBridge.scope.all": undefined;
+	"ui.teamBridge.scope.community.browse": undefined;
+	"ui.teamBridge.scope.community.no_match": undefined;
+	"ui.teamBridge.scope.community.public": undefined;
+	"ui.teamBridge.scope.community.search": undefined;
 	"ui.teamBridge.scope.create_needs_org": undefined;
 	"ui.teamBridge.scope.empty": undefined;
 	"ui.teamBridge.scope.error": undefined;
+	"ui.teamBridge.scope.group.communities": undefined;
+	"ui.teamBridge.scope.group.communities_joined": { count: number };
+	"ui.teamBridge.scope.group.organizations": undefined;
+	"ui.teamBridge.scope.invited": undefined;
 	"ui.teamBridge.scope.label": undefined;
 	"ui.teamBridge.scope.loading": undefined;
 	"ui.teamBridge.scope.thread_unknown": undefined;

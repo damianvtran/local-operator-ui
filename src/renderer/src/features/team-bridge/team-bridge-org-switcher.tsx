@@ -1,4 +1,5 @@
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
+import { Badge } from "@shared/components/ui/badge";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -12,14 +13,18 @@ import {
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Building2, ChevronDown } from "lucide-react";
-import type { FC } from "react";
+import { Building2, ChevronDown, Compass, Globe, Search } from "lucide-react";
+import { type FC, useState } from "react";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
+	type TeamBridgeCommunity,
+	type TeamBridgeCommunityId,
 	type TeamBridgeOrganization,
 	type TeamBridgeScope,
+	asTeamBridgeCommunityId,
 	organizationForScope,
 	teamBridgeScopeFromValue,
+	teamBridgeSwitcherGroups,
 } from "./team-bridge-model";
 
 /**
@@ -43,6 +48,18 @@ import {
  * NO FAN-OUT. Per-org counts arrive in the same account aggregate the badge
  * already reads; this component renders what `organizationOptions` joined and
  * never fetches. `loading` is only the memberships read's first paint.
+ *
+ * TWO GROUPS (RFC v2.4 Amendment A, frames D21/D22). "Organizations" holds the
+ * private Team orgs and "All organizations", which merges only those; joined
+ * communities are a separate "Communities" group below it - each its own
+ * scope, marked Public by label and icon (never colour alone), with its own
+ * count - then "Browse communities…". They are two radio groups because they
+ * are two kinds of scope: a community can never be the value of the private
+ * group, so it can never be the merged view. With no community joined and the
+ * community feature off, the second group is absent and the menu is exactly
+ * the pre-Amendment one (same "Organization" label), which is what lets this
+ * ship dark. Past six joined communities the group gains a search field and
+ * scrolls, so the menu stays short.
  */
 export const TeamBridgeOrgSwitcher: FC<{
 	organizations: TeamBridgeOrganization[];
@@ -62,6 +79,17 @@ export const TeamBridgeOrgSwitcher: FC<{
 	defaultOpen?: boolean;
 	/** Refetch the memberships after a failed read; shown as a menu action. */
 	onRetry?: () => void;
+	/** Joined communities (empty until the community client lands). */
+	communities?: readonly TeamBridgeCommunity[];
+	/** The community feature flag; with none joined, off hides the group. */
+	communitiesEnabled?: boolean;
+	/** The community being viewed, when the scope is a community. */
+	selectedCommunityId?: TeamBridgeCommunityId | null;
+	onCommunityChange?: (communityId: TeamBridgeCommunityId) => void;
+	/** Omitted -> no Browse row (nothing to open it with yet). */
+	onBrowseCommunities?: () => void;
+	/** Story/capture seed only: the community search field's text. */
+	defaultCommunityQuery?: string;
 }> = ({
 	organizations,
 	scope,
@@ -72,11 +100,32 @@ export const TeamBridgeOrgSwitcher: FC<{
 	unreadRefreshing = false,
 	defaultOpen = false,
 	onRetry,
+	communities = [],
+	communitiesEnabled = false,
+	selectedCommunityId = null,
+	onCommunityChange,
+	onBrowseCommunities,
+	defaultCommunityQuery = "",
 }) => {
 	useI18nLocale();
-	const current = organizationForScope(organizations, scope);
-	const title =
-		scope === TEAM_BRIDGE_ALL_SCOPE
+	const [communityQuery, setCommunityQuery] = useState(defaultCommunityQuery);
+	const groups = teamBridgeSwitcherGroups({
+		organizations,
+		communities,
+		communitiesEnabled,
+		query: communityQuery,
+	});
+	const selectedCommunity = selectedCommunityId
+		? (communities.find(
+				(community) => community.communityId === selectedCommunityId,
+			) ?? null)
+		: null;
+	const current = selectedCommunity
+		? null
+		: organizationForScope(groups.organizations, scope);
+	const title = selectedCommunity
+		? selectedCommunity.name
+		: scope === TEAM_BRIDGE_ALL_SCOPE
 			? t("ui.teamBridge.scope.all")
 			: (current?.name ?? t("ui.teamBridge.scope.unknown"));
 
@@ -109,7 +158,9 @@ export const TeamBridgeOrgSwitcher: FC<{
 						data-org-tile=""
 						className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-accent-alt-wash font-semibold text-[13px] text-accent-alt"
 					>
-						{scope !== TEAM_BRIDGE_ALL_SCOPE && current?.name.trim() ? (
+						{selectedCommunity ? (
+							<Globe size={16} />
+						) : scope !== TEAM_BRIDGE_ALL_SCOPE && current?.name.trim() ? (
 							current.name.trim().charAt(0).toUpperCase()
 						) : (
 							<Building2 size={16} />
@@ -125,10 +176,18 @@ export const TeamBridgeOrgSwitcher: FC<{
 					/>
 				</button>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="start" className="w-64">
-				<DropdownMenuLabel>{t("ui.teamBridge.scope.label")}</DropdownMenuLabel>
+			<DropdownMenuContent
+				align="start"
+				className={groups.showCommunities ? "w-80" : "w-64"}
+			>
+				<DropdownMenuLabel>
+					{groups.showCommunities
+						? t("ui.teamBridge.scope.group.organizations")
+						: t("ui.teamBridge.scope.label")}
+				</DropdownMenuLabel>
 				<DropdownMenuRadioGroup
-					value={scope}
+					// A community in view leaves no private row checked.
+					value={selectedCommunity ? "" : scope}
 					onValueChange={(next) =>
 						onScopeChange(teamBridgeScopeFromValue(next))
 					}
@@ -151,8 +210,8 @@ export const TeamBridgeOrgSwitcher: FC<{
 							/>
 						)}
 					</DropdownMenuRadioItem>
-					{organizations.length > 0 && <DropdownMenuSeparator />}
-					{organizations.map((organization) => (
+					{groups.organizations.length > 0 && <DropdownMenuSeparator />}
+					{groups.organizations.map((organization) => (
 						<DropdownMenuRadioItem
 							key={organization.tenantId}
 							value={organization.tenantId}
@@ -162,10 +221,16 @@ export const TeamBridgeOrgSwitcher: FC<{
 							</span>
 							{/* A hub tenant with no membership has no role; an empty
 							    span would still take a flex slot before the badge. */}
-							{organization.role && (
-								<span className="shrink-0 text-meta-sm text-ink-dim capitalize">
-									{organization.role}
-								</span>
+							{organization.invited ? (
+								<Badge variant="info" className="shrink-0">
+									{t("ui.teamBridge.scope.invited")}
+								</Badge>
+							) : (
+								organization.role && (
+									<span className="shrink-0 text-meta-sm text-ink-dim capitalize">
+										{organization.role}
+									</span>
+								)
 							)}
 							{organization.unread > 0 && (
 								<AttentionBadge
@@ -200,11 +265,112 @@ export const TeamBridgeOrgSwitcher: FC<{
 				)}
 				{!membershipsLoading &&
 					!organizationsFailed &&
-					organizations.length === 0 && (
+					groups.organizations.length === 0 && (
 						<DropdownMenuLabel>
 							{t("ui.teamBridge.scope.empty")}
 						</DropdownMenuLabel>
 					)}
+				{groups.showCommunities && (
+					<>
+						<DropdownMenuSeparator />
+						<DropdownMenuLabel>
+							{groups.searchCommunities
+								? t("ui.teamBridge.scope.group.communities_joined", {
+										count: communities.length,
+									})
+								: t("ui.teamBridge.scope.group.communities")}
+						</DropdownMenuLabel>
+						{groups.searchCommunities && (
+							<div className="px-2 pb-1">
+								<label className="flex h-8 items-center gap-2 rounded-sm border border-hairline bg-sunken px-2 text-ink-dim focus-within:border-accent">
+									<Search size={14} aria-hidden="true" />
+									<input
+										type="search"
+										value={communityQuery}
+										onChange={(event) => setCommunityQuery(event.target.value)}
+										// Radix menus run typeahead on every printable key and
+										// move focus to the matching row; stopping the event here
+										// keeps the field the one receiving the text. Arrow keys
+										// and Escape still reach the menu.
+										onKeyDown={(event) => {
+											if (
+												!["ArrowDown", "ArrowUp", "Escape", "Tab"].includes(
+													event.key,
+												)
+											)
+												event.stopPropagation();
+										}}
+										placeholder={t("ui.teamBridge.scope.community.search")}
+										aria-label={t("ui.teamBridge.scope.community.search")}
+										className="min-w-0 flex-1 bg-transparent text-body-sm text-ink outline-none placeholder:text-ink-dim"
+									/>
+								</label>
+							</div>
+						)}
+						{/* Six 32px rows, then scroll (frame D21's inset). */}
+						<div
+							className={cn(
+								groups.searchCommunities && "max-h-48 overflow-y-auto",
+							)}
+						>
+							<DropdownMenuRadioGroup
+								value={selectedCommunity?.communityId ?? ""}
+								onValueChange={(next) =>
+									onCommunityChange?.(asTeamBridgeCommunityId(next))
+								}
+							>
+								{groups.communities.map((community) => (
+									<DropdownMenuRadioItem
+										key={community.communityId}
+										value={community.communityId}
+									>
+										<Globe
+											size={14}
+											aria-hidden="true"
+											className="shrink-0 text-ink-dim"
+										/>
+										<span className="min-w-0 flex-1 truncate">
+											{community.name}
+										</span>
+										<Badge variant="neutral" className="shrink-0 gap-1">
+											<Globe size={10} aria-hidden="true" />
+											{t("ui.teamBridge.scope.community.public")}
+										</Badge>
+										{community.unread > 0 && (
+											<AttentionBadge
+												count={community.unread}
+												aria-label={t("ui.teamBridge.unread.count", {
+													count: community.unread,
+												})}
+												title={t("ui.teamBridge.unread.count", {
+													count: community.unread,
+												})}
+											/>
+										)}
+									</DropdownMenuRadioItem>
+								))}
+							</DropdownMenuRadioGroup>
+							{groups.searchCommunities && groups.communities.length === 0 && (
+								<DropdownMenuLabel>
+									{t("ui.teamBridge.scope.community.no_match")}
+								</DropdownMenuLabel>
+							)}
+						</div>
+						{onBrowseCommunities && (
+							<>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem onSelect={() => onBrowseCommunities()}>
+									<Compass
+										size={14}
+										aria-hidden="true"
+										className="shrink-0 text-ink-dim"
+									/>
+									{t("ui.teamBridge.scope.community.browse")}
+								</DropdownMenuItem>
+							</>
+						)}
+					</>
+				)}
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

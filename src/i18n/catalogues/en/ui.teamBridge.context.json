@@ -394,6 +394,64 @@
 		"placeholders": {},
 		"note": "Explains why New conversation is disabled while the account-wide scope is selected: a conversation must belong to exactly one organization."
 	},
+	"ui.teamBridge.scope.group.organizations": {
+		"role": "dropdown menu group label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Heads the group of the person's private Team organizations in the organization switcher, shown only when a Communities group is also shown. Plural: the group lists several organizations."
+	},
+	"ui.teamBridge.scope.group.communities": {
+		"role": "dropdown menu group label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Heads the separate group of public communities the person has joined. A community is a public space, not one of their organizations; keep the two words clearly distinct."
+	},
+	"ui.teamBridge.scope.group.communities_joined": {
+		"role": "dropdown menu group label with a count",
+		"tone": "neutral",
+		"length": "Under 4 words plus the number.",
+		"placeholders": {
+			"count": "how many communities the person has joined (more than six when shown)"
+		},
+		"note": "Shown instead of the plain Communities label once the person has joined more than six communities and a search field appears. Keep the separator dot."
+	},
+	"ui.teamBridge.scope.invited": {
+		"role": "status badge on an organization row",
+		"tone": "neutral",
+		"length": "1 word, badge-sized.",
+		"placeholders": {},
+		"note": "The person has a pending invitation to this private organization and has not accepted it yet. Describes the row's state, not an action."
+	},
+	"ui.teamBridge.scope.community.public": {
+		"role": "status badge on a community row",
+		"tone": "neutral",
+		"length": "1 word, badge-sized.",
+		"placeholders": {},
+		"note": "Marks a community as public (visible to every signed-in member), so it is never mistaken for a private organization. Adjective, not a verb."
+	},
+	"ui.teamBridge.scope.community.search": {
+		"role": "search field placeholder and accessible name",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {},
+		"note": "Filters the person's joined communities in the switcher by name."
+	},
+	"ui.teamBridge.scope.community.no_match": {
+		"role": "empty search result in a menu",
+		"tone": "neutral",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "Shown when the community search text matches none of the joined communities."
+	},
+	"ui.teamBridge.scope.community.browse": {
+		"role": "menu item that opens the community directory",
+		"tone": "imperative",
+		"length": "2-3 words; keep the trailing ellipsis",
+		"placeholders": {},
+		"note": "Opens a directory where the person can find and join communities. The ellipsis signals that another view opens next."
+	},
 	"ui.teamBridge.preview.chip": {
 		"role": "conversation row chip",
 		"tone": "neutral, quiet",
