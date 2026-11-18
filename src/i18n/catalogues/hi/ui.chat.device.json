@@ -15,7 +15,7 @@
 	"ui.chat.device.sentence.remote_did_not_answer": "यह बातचीत {name} पर चलती है, जिसने पिछली बार पढ़ने पर जवाब नहीं दिया।",
 	"ui.chat.device.sentence.remote_did_not_answer_reason": "यह बातचीत {name} पर चलती है, जिसने पिछली बार पढ़ने पर जवाब नहीं दिया ({reason})।",
 	"ui.chat.device.fact.this_device": "यह डिवाइस",
-	"ui.chat.device.footer.move_deletes_copy": "ले जाने पर, पूरा होते ही इस डिवाइस की प्रति हट जाती है।",
+	"ui.chat.device.footer.move_deletes_copy": "ले जाना पूरा होते ही इस डिवाइस की प्रति हट जाती है।",
 	"ui.chat.device.label.this_device": "यह डिवाइस",
 	"ui.chat.device.notice.move_hold_detail": "सौंपा जा रहा है · बातचीत वहाँ चलती रहेगी; इसे यहाँ से रोका नहीं जा सकता",
 	"ui.chat.device.picker.heading.move": "इस बातचीत को ले जाने के लिए डिवाइस चुनें",

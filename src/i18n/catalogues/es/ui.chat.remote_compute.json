@@ -70,7 +70,7 @@
 	"ui.chat.remote_compute.sheet.submitting": "Iniciando…",
 	"ui.chat.remote_compute.sheet.tier.capacity_why": "capacidad no disponible",
 	"ui.chat.remote_compute.sheet.tier.cloud_run.note": "bajo demanda · una ejecución, una respuesta y desaparece",
-	"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "Esta ejecución usará Ejecución en la nube.",
+	"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "Esta ejecución usará el modo Ejecución en la nube.",
 	"ui.chat.remote_compute.sheet.tier.cloud_run.title": "Ejecución en la nube",
 	"ui.chat.remote_compute.sheet.tier.dedicated.note": "espacio de trabajo duradero · conserva sus archivos",
 	"ui.chat.remote_compute.sheet.tier.dedicated.spot.note": "interrumpible · más barato · puede recuperarse",

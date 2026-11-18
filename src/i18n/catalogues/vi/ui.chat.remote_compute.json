@@ -70,7 +70,7 @@
 	"ui.chat.remote_compute.sheet.submitting": "Đang bắt đầu…",
 	"ui.chat.remote_compute.sheet.tier.capacity_why": "không có tài nguyên",
 	"ui.chat.remote_compute.sheet.tier.cloud_run.note": "theo yêu cầu · một lần chạy, một câu trả lời, rồi biến mất",
-	"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "Lần chạy này sẽ dùng Chạy trên đám mây.",
+	"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "Lần chạy này sẽ dùng chế độ Chạy trên đám mây.",
 	"ui.chat.remote_compute.sheet.tier.cloud_run.title": "Chạy trên đám mây",
 	"ui.chat.remote_compute.sheet.tier.dedicated.note": "không gian làm việc lâu dài · giữ lại tệp",
 	"ui.chat.remote_compute.sheet.tier.dedicated.spot.note": "có thể bị ngắt · rẻ hơn · có thể bị thu hồi",

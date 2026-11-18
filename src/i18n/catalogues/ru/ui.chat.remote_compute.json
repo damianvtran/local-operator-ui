@@ -70,7 +70,7 @@
 	"ui.chat.remote_compute.sheet.submitting": "Запуск…",
 	"ui.chat.remote_compute.sheet.tier.capacity_why": "ресурсы недоступны",
 	"ui.chat.remote_compute.sheet.tier.cloud_run.note": "по требованию · один запуск, один ответ, затем исчезает",
-	"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "Этот запуск будет использовать Запуск в облаке.",
+	"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "Этот запуск будет использовать режим «Запуск в облаке».",
 	"ui.chat.remote_compute.sheet.tier.cloud_run.title": "Запуск в облаке",
 	"ui.chat.remote_compute.sheet.tier.dedicated.note": "долгоживущее рабочее пространство · сохраняет файлы",
 	"ui.chat.remote_compute.sheet.tier.dedicated.spot.note": "прерываемый · дешевле · может быть отозван",
