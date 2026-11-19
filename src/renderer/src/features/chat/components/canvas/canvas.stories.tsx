@@ -25,7 +25,14 @@ import { PaneSlot } from "@shared/components/common/pane-slot";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { Meta, StoryObj } from "@storybook/react";
-import { fireEvent, screen, userEvent, waitFor, within } from "@storybook/test";
+import {
+	expect,
+	fireEvent,
+	screen,
+	userEvent,
+	waitFor,
+	within,
+} from "@storybook/test";
 import { Mic, Paperclip, Send } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useMemo } from "react";
 import { toast } from "sonner";
@@ -38,6 +45,7 @@ import { resetToastDedup } from "@shared/utils/toast-manager";
 import type { CanonicalGoalHistoryEntry } from "../../../../../../shared/desktop-session-contract";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import type { CanvasDocument } from "../../types/canvas";
+import { canvasDocumentForArtifact } from "../../utils/canvas-document";
 import { Canvas } from "./index";
 import { InlineEdit } from "./inline-edit";
 import {
@@ -980,6 +988,53 @@ const CanvasFrame = ({
 			</PaneSlot>
 		</SplitFrame>
 	);
+};
+
+/**
+ * Build after the preview's locale selection, not at module import: the real
+ * factory resolves the fallback title through t(). Omitting name (rather than
+ * supplying an English title or an empty filename) exercises that actual path.
+ * Files rows need no playable media to expose all four fallback labels.
+ */
+const NamelessArtifactFiles = () => {
+	useI18nLocale();
+	const documents = (["image", "video", "audio", "file"] as const).map(
+		(kind, index) =>
+			canvasDocumentForArtifact({
+				kind,
+				digest: `${index + 1}`.repeat(32),
+				sessionId: STORY_SESSION_ID,
+			}),
+	);
+	return (
+		<CanvasFrame
+			view="files"
+			activeId={null}
+			documents={documents}
+			mentionedFiles={documents}
+		/>
+	);
+};
+
+export const NamelessGeneratedArtifacts: Story = {
+	render: () => <NamelessArtifactFiles />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		// Assert the seeded route AND its rendered output before a capture.
+		await waitFor(async () => {
+			const files =
+				useCanvasStore.getState().conversations[CONVERSATION_ID]
+					?.mentionedFiles;
+			expect(files).toHaveLength(4);
+			for (const file of files ?? []) {
+				expect(file.artifact).not.toHaveProperty("name");
+				expect(file.artifact?.digest).toMatch(/^[0-9a-f]{32}$/);
+				expect(
+					(await canvas.findAllByText(file.title, { exact: true }))[0],
+				).toBeVisible();
+			}
+		});
+	},
 };
 
 /*

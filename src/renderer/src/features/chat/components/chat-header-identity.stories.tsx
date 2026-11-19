@@ -48,6 +48,7 @@
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect, userEvent, waitFor, within } from "@storybook/test";
 import { useLayoutEffect, useState } from "react";
 import type { ReactNode } from "react";
 import "../../../styles/index.css";
@@ -585,7 +586,37 @@ const STRICT_TEAM_IDENTITY = {
 	role_of_speaker: "manager",
 };
 
+/** Open the agent's closed-seat caption, never the adjacent team chooser.
+ * Structural hooks survive locale selection; shortcut tokens are deliberately
+ * invariant product syntax and must remain visible in the translated reason.
+ */
+const openStrictAgentCaption: NonNullable<Story["play"]> = async ({
+	canvasElement,
+}) => {
+	const agent = canvasElement.querySelector<HTMLElement>(
+		'[data-header-identity="agent"]',
+	);
+	expect(agent).not.toBeNull();
+	if (!agent) throw new Error("Strict-team story is missing its agent chip");
+	await userEvent.click(agent);
+	await waitFor(() => {
+		const caption = canvasElement.ownerDocument.querySelector<HTMLElement>(
+			'[data-header-identity-menu="agent"][data-header-identity-closed]',
+		);
+		expect(caption).toBeVisible();
+		if (!caption) throw new Error("Agent closed-seat caption did not open");
+		expect(
+			caption?.querySelector("[data-header-identity-constraint]"),
+		).toBeVisible();
+		expect(within(caption).getByText("/agent", { exact: true })).toBeVisible();
+		expect(
+			within(caption).getByText("/team clear", { exact: true }),
+		).toBeVisible();
+	});
+};
+
 export const StrictTeam: Story = {
+	play: openStrictAgentCaption,
 	render: () => {
 		installBridge();
 		return (
@@ -660,6 +691,7 @@ export const StrictTeamStaleAgent: Story = {
  * and the sentence reads `its manager`.
  */
 export const StrictTeamNoSpeaker: Story = {
+	play: openStrictAgentCaption,
 	render: () => {
 		/* `field-ops` is in no catalogue row, so nothing names its manager: the
 		 * unnamed-manager rung. A team WITH a row would read that row's manager. */
@@ -763,6 +795,7 @@ const PromotedWhileOpen = () => {
 
 /** A 47-character speaker at the 560 band: the chip's cap and the lock's slot (design round 1). */
 export const StrictTeamLongSpeaker: Story = {
+	play: openStrictAgentCaption,
 	render: () => {
 		installBridge();
 		return (
@@ -775,6 +808,34 @@ export const StrictTeamLongSpeaker: Story = {
 						effectiveIdentity: {
 							speaker: "regulatory-and-sanctions-review-coordinator-02",
 							team: "lopdev",
+							role_of_speaker: "manager",
+						},
+					})}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/** Both interpolated identities are long: the existing long-speaker fixture
+ * alone cannot expose wrapping of the team's name in the closed caption. */
+export const StrictTeamLongTeamAndSpeaker: Story = {
+	play: openStrictAgentCaption,
+	render: () => {
+		installBridge();
+		const team = "regulatory-and-sanctions-review-operations-team";
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description={team}
+					identity={identity({
+						activeTeam: team,
+						effectiveIdentity: {
+							speaker: "regulatory-and-sanctions-review-coordinator-02",
+							team,
 							role_of_speaker: "manager",
 						},
 					})}
