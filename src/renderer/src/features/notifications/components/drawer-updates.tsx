@@ -48,6 +48,7 @@ import { useDrawerBackToTop, useNotificationReveal } from "../drawer-tab-store";
 import {
 	notificationKeys,
 	readSessionUnreadCount,
+	recordNotificationDiagnostic,
 	tokensOf,
 	useNotificationDetail,
 	useNotificationsWrite,
@@ -384,6 +385,27 @@ export const DrawerUpdates: FC<{
 				.sort((a, b) => b.updated_at - a.updated_at),
 		[list.data],
 	);
+	// Include an absent observer target: absence must not silently erase the evidence.
+	try {
+		const targetId = (
+			globalThis as typeof globalThis & {
+				__notificationDiagnostic?: { targetId: string };
+			}
+		).__notificationDiagnostic?.targetId;
+		if (targetId) {
+			const item = list.data?.items.find((row) => row.id === targetId);
+			recordNotificationDiagnostic("drawer.projection", targetId, {
+				present: Boolean(item),
+				read: item?.read,
+				dismissed: item?.dismissed,
+				visible: rows.some((row) => row.id === targetId),
+				view,
+				listError: list.isError,
+			});
+		}
+	} catch {
+		/* Broken optional diagnostics never interrupt render. */
+	}
 	const unread = rows.filter((item) => !item.read);
 	const read = rows.filter((item) => item.read);
 	/*
@@ -657,6 +679,15 @@ export const DrawerUpdates: FC<{
 		item: DesktopNotificationItem,
 		verb: "read" | "unread" | "dismiss",
 	) => {
+		recordNotificationDiagnostic("applyWrite.entry", item.id, {
+			verb,
+			revision: item.revision,
+			session: item.session.id,
+			listError: list.isError,
+			view,
+			read: item.read,
+			dismissed: item.dismissed,
+		});
 		/* The handoff control in the next row is the one this press used (U5). */
 		handoffAction.current = verb === "dismiss" ? "dismiss" : "read";
 		const inverse =

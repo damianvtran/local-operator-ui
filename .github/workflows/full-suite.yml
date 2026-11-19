@@ -926,6 +926,7 @@ jobs:
         timeout-minutes: 12
         env:
           LOCAL_OPERATOR_UI_NATIVE_SCENE: notifications
+          LOCAL_OPERATOR_UI_NOTIFICATION_DIAGNOSTIC: '1988-single-step-v1'
           LOCAL_OPERATOR_CORE_REF: 1df606c6caf73a4087e1c2ef562f88ee8d9fa000
           VITE_DISABLE_BACKEND_MANAGER: 'true'
           LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
