@@ -129,6 +129,8 @@
 	"ui.chat.checkpoint.jump_user": "Перейти к вашему сообщению — ход {turn, number} из {total, number}, {clock}",
 	"ui.chat.checkpoint.jump_user_no_clock": "Перейти к вашему сообщению — ход {turn, number} из {total, number}",
 	"ui.chat.checkpoint.turn": "Ход {turn, number} из {total, number}",
+	"ui.chat.header_identity.agent_seat_closed_caption_known_speaker": "Этой сессией владеет команда «{team}»: в ней отвечает {speaker}, поэтому {agentCommand} не работает. Чтобы отсоединить команду, сначала выполните {detachCommand}.",
+	"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker": "Этой сессией владеет команда «{team}»: в ней отвечает менеджер команды, поэтому {agentCommand} не работает. Чтобы отсоединить команду, сначала выполните {detachCommand}.",
 	"ui.chat.header_identity.agent_seat_closed_title": "Команда «{team}» закрыла место агента",
 	"ui.chat.header_identity.aria_agent_assign": "Агент: {label}. Назначить агента",
 	"ui.chat.header_identity.aria_agent_closed": "Агент: {label}. {reason}",

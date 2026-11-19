@@ -129,6 +129,8 @@
 	"ui.chat.checkpoint.jump_user": "Đi tới tin nhắn của bạn ở lượt {turn, number} trên {total, number}, {clock}",
 	"ui.chat.checkpoint.jump_user_no_clock": "Đi tới tin nhắn của bạn ở lượt {turn, number} trên {total, number}",
 	"ui.chat.checkpoint.turn": "Lượt {turn, number} trên {total, number}",
+	"ui.chat.header_identity.agent_seat_closed_caption_known_speaker": "nhóm {team} sở hữu phiên này: {speaker} là người phát ngôn nên {agentCommand} bị khóa. Hãy chạy {detachCommand} để tách nhóm trước.",
+	"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker": "nhóm {team} sở hữu phiên này: người quản lý của nhóm là người phát ngôn nên {agentCommand} bị khóa. Hãy chạy {detachCommand} để tách nhóm trước.",
 	"ui.chat.header_identity.agent_seat_closed_title": "{team} đã khóa vị trí tác nhân",
 	"ui.chat.header_identity.aria_agent_assign": "Tác nhân: {label}. Gán tác nhân",
 	"ui.chat.header_identity.aria_agent_closed": "Tác nhân: {label}. {reason}",

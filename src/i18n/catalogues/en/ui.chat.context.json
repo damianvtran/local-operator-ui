@@ -713,11 +713,11 @@
 	"ui.chat.header_identity.aria_agent_closed": {
 		"role": "accessible name of the header agent chip while the runtime has closed the seat",
 		"tone": "role and state, then the reason, separated by periods",
-		"length": "Up to a sentence; the reason is backend prose.",
-		"note": "{reason} is a sentence this UI composes itself (`identityAgentClosedCaption` in `chat-header-identity-menu-model.ts`) to mirror core's `team_owns_the_agent_slot_message` byte for byte — core's docstring names this UI as keying on the exact words, so it is a cross-repo contract, NOT backend text: never translate or paraphrase it.",
+		"length": "Short role and label, followed by the full reason.",
+		"note": "{reason} is already localized UI copy, not received from the runtime.",
 		"placeholders": {
 			"label": "the attached agent's own display name",
-			"reason": "the runtime-served closure sentence"
+			"reason": "the header’s localized reason the agent seat is closed"
 		}
 	},
 	"ui.chat.header_identity.aria_team_assign": {
@@ -741,11 +741,11 @@
 	"ui.chat.header_identity.aria_team_closed": {
 		"role": "accessible name of the header team chip while the runtime has closed the seat",
 		"tone": "role and state, then the reason, separated by periods",
-		"length": "Up to a sentence; the reason is backend prose.",
-		"note": "{reason} is a sentence this UI composes itself (`identityAgentClosedCaption` in `chat-header-identity-menu-model.ts`) to mirror core's `team_owns_the_agent_slot_message` byte for byte — a cross-repo contract, not backend text: passed through unchanged, never translated.",
+		"length": "Short role and label, followed by the full reason.",
+		"note": "{reason} is already localized UI copy, not received from the runtime.",
 		"placeholders": {
 			"label": "the attached team's own display name",
-			"reason": "the runtime-served closure sentence"
+			"reason": "the header’s localized reason the agent seat is closed"
 		}
 	},
 	"ui.chat.header_identity.footer_all_agents": {
@@ -843,11 +843,34 @@
 			"team": "the team's own display name (its label when it has one, otherwise its slug); never translate it"
 		}
 	},
+	"ui.chat.header_identity.agent_seat_closed_caption_known_speaker": {
+		"role": "body of the closed agent-seat note; also used in both identity chips’ tooltips and accessible names; the speaker is known",
+		"tone": "matter-of-fact explanation, then a direct instruction",
+		"length": "Keep both sentences brief: they wrap in a narrow header popover.",
+		"note": "This is UI copy. English matches the typed refusal, but target locales translate the full message. The user types the detach command in the composer; there is no detach button here.",
+		"placeholders": {
+			"team": "the team’s slug, not its display name; never translate it",
+			"speaker": "the named speaker’s identifier; never translate it",
+			"agentCommand": "the literal /agent command; keep the placeholder intact",
+			"detachCommand": "the literal /team clear command including its space; keep the placeholder intact"
+		}
+	},
+	"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker": {
+		"role": "body of the closed agent-seat note; also used in both identity chips’ tooltips and accessible names; the speaker is unknown",
+		"tone": "matter-of-fact explanation, then a direct instruction",
+		"length": "Keep both sentences brief: they wrap in a narrow header popover.",
+		"note": "This is UI copy. English matches the typed refusal, but target locales translate the full message. The user types the detach command in the composer; there is no detach button here. Describe the unnamed manager without reusing the chip label.",
+		"placeholders": {
+			"team": "the team’s slug, not its display name; never translate it",
+			"agentCommand": "the literal /agent command; keep the placeholder intact",
+			"detachCommand": "the literal /team clear command including its space; keep the placeholder intact"
+		}
+	},
 	"ui.chat.header_identity.agent_seat_closed_title": {
 		"role": "lead line of the note shown when a team has closed the agent seat, and the name of that dialog for screen readers",
 		"tone": "short statement, sentence case, no trailing punctuation",
 		"length": "One short line.",
-		"note": "Sits above the runtime's own refusal sentence (which is not translated: it is a fixed cross-repo contract) and names the team the way the team chip does. {team} is the team's display name.",
+		"note": "Sits above the localized reason and names the team the way the team chip does. {team} is the team's display name.",
 		"placeholders": {
 			"team": "the team's own display name (its label when it has one, otherwise its slug); never translate it"
 		}
@@ -856,7 +879,7 @@
 		"role": "text of the agent chip while a team owns the seat and the manager's name is unknown",
 		"tone": "lowercase noun phrase, no trailing punctuation",
 		"length": "WIDTH-CRITICAL: a compact chip label, a few characters to about 14.",
-		"note": "The chip stands for the team's manager when neither the host nor the roster has named them, and the lowercase phrase tells it apart from the team chip beside it. It is only the chip's text: the runtime's closure sentence next to it keeps its own fixed English wording.",
+		"note": "The chip stands for the team's manager when neither the host nor the roster has named them, and the lowercase phrase tells it apart from the team chip beside it. It is only the chip's text: the caption next to it is translated as a whole sentence.",
 		"placeholders": {}
 	},
 	"ui.chat.header_identity.switch_team_failed": {
