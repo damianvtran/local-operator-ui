@@ -319,6 +319,25 @@ test("every ignore reason in the settings surface is in the ratchet table", () =
 	);
 });
 
+test("settings no longer offers the removed agent-reasoning row", () => {
+	/*
+	 * General Settings' "show agent reasoning" switch was removed: the canonical
+	 * transcript has no reasoning record kind, so it changed nothing in the
+	 * shipped app. The page cannot be mounted in this harness (see the header),
+	 * so the search's page half is pinned at its source: no row named
+	 * `appearance.reasoning` and none of the switch's copy, which is what the
+	 * rendered index would otherwise have matched "reasoning" against.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/settings/components/settings-page.tsx",
+		"utf8",
+	);
+	assert.equal(source.includes('"appearance.reasoning"'), false);
+	assert.equal(source.includes("show_agent_reasoning"), false);
+	assert.equal(source.includes("adds_the_agent_s_reasoning"), false);
+	assert.equal(source.includes("showAgentReasoning"), false);
+});
+
 test("the search row contract is the one the index reads", () => {
 	// The DOM contract, asserted against the module that consumes it: a rename
 	// on one side without the other is the drift this file exists to stop.

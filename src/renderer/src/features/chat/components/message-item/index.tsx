@@ -11,8 +11,9 @@
  *     the line itself, closed by default. No avatar, no card.
  *  4. security   — `execution_type === "security_check"`: retrospective
  *     warning notice, never a prompt.
- *  5. reasoning  — `plan` / `reflection` turns: hidden unless the
- *     `showAgentReasoning` preference is on (default off).
+ *  5. reasoning  — `plan` / `reflection` turns: behind `AgentReasoning`'s
+ *     closed disclosure. (Once gated by a `showAgentReasoning` preference,
+ *     removed with its inert Settings switch; this component is Storybook-only.)
  *
  * The suppressed record keeps its old suppression: `ASK`/`DONE` with
  * `execution_type === "action"` and `task_classification === "conversation"`
@@ -33,7 +34,6 @@ import {
 } from "@shared/hooks/use-file-blob-url";
 import { isolateLtr, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { type FC, memo, useCallback } from "react";
 import type { Message } from "../../types/message";
@@ -289,9 +289,6 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		isSmallView,
 	}) => {
 		useI18nLocale();
-		const showAgentReasoning = useUiPreferencesStore(
-			(state) => state.showAgentReasoning,
-		);
 
 		/*
 		 * There used to be an effect here that mapped `message.files` into
@@ -354,7 +351,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 		// The suppression rules live with the grouping pass, because the two
 		// have to agree exactly: a record that renders nothing here must not
 		// consume the turn's avatar or leave its gap behind in the list.
-		if (isMessageHidden(message, showAgentReasoning)) {
+		if (isMessageHidden(message)) {
 			return null;
 		}
 

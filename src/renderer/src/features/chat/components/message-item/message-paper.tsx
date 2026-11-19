@@ -31,8 +31,8 @@
  * The type size is separate and unchanged: `text-body` on the § 4 ramp, not
  * the hardcoded `1.05rem` this once used.
  *
- * The `thinking` field renders through `AgentReasoning`, which honours the
- * `showAgentReasoning` preference (default false, § 7).
+ * The `thinking` field renders through `AgentReasoning`, behind its closed
+ * disclosure (§ 7).
  */
 
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
