@@ -43,6 +43,7 @@
 	"ui.teamBridge.holds.from_agent_unnamed": "From {person}’s agent",
 	"ui.teamBridge.holds.key_file_only": "On this device, decisions are recorded with a key stored as a file, so other apps running as you could record one too.",
 	"ui.teamBridge.holds.cannot_verify": "This message couldn’t be verified against what was screened, so it can’t be delivered or discarded here.",
+	"ui.teamBridge.holds.hidden_characters": "This message contains hidden characters that aren’t shown here, so it can’t be delivered. You can still discard it.",
 	"ui.teamBridge.holds.body_withheld": "The message text isn’t available here, so it can’t be delivered. You can still discard it.",
 	"ui.teamBridge.holds.read_first": "Show the full message to deliver it.",
 	"ui.teamBridge.holds.show_full": "Show full message",

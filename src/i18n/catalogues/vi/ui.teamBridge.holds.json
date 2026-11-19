@@ -43,6 +43,7 @@
 	"ui.teamBridge.holds.from_agent_unnamed": "Từ tác nhân của {person}",
 	"ui.teamBridge.holds.key_file_only": "Trên thiết bị này, quyết định được ghi bằng một khóa lưu dưới dạng tệp, nên các ứng dụng khác chạy dưới tài khoản của bạn cũng có thể ghi một quyết định.",
 	"ui.teamBridge.holds.cannot_verify": "Không thể đối chiếu tin nhắn này với nội dung đã được lọc, nên không thể chuyển hoặc loại bỏ ở đây.",
+	"ui.teamBridge.holds.hidden_characters": "Tin nhắn này chứa ký tự ẩn không hiển thị ở đây, nên không thể chuyển. Bạn vẫn có thể loại bỏ tin nhắn này.",
 	"ui.teamBridge.holds.body_withheld": "Không xem được nội dung tin nhắn ở đây, nên không thể chuyển. Bạn vẫn có thể loại bỏ tin nhắn này.",
 	"ui.teamBridge.holds.read_first": "Hiện toàn bộ tin nhắn để chuyển.",
 	"ui.teamBridge.holds.show_full": "Hiện toàn bộ tin nhắn",

@@ -43,6 +43,7 @@
 	"ui.teamBridge.holds.from_agent_unnamed": "De l’agent de {person}",
 	"ui.teamBridge.holds.key_file_only": "Sur cet appareil, les décisions sont enregistrées avec une clé stockée dans un fichier ; d’autres applications exécutées sous votre compte pourraient donc en enregistrer une aussi.",
 	"ui.teamBridge.holds.cannot_verify": "Ce message n’a pas pu être vérifié par rapport à ce qui a été filtré ; il ne peut donc être ni transmis ni écarté ici.",
+	"ui.teamBridge.holds.hidden_characters": "Ce message contient des caractères masqués qui ne s’affichent pas ici ; il ne peut donc pas être transmis. Vous pouvez toujours l’écarter.",
 	"ui.teamBridge.holds.body_withheld": "Le texte du message n’est pas disponible ici, il ne peut donc pas être transmis. Vous pouvez toujours l’écarter.",
 	"ui.teamBridge.holds.read_first": "Affichez le message complet pour le transmettre.",
 	"ui.teamBridge.holds.show_full": "Afficher le message complet",
@@ -54,5 +55,5 @@
 	"ui.teamBridge.holds.confirm.discard_action": "Écarter le message",
 	"ui.teamBridge.holds.confirm.cancel": "Annuler",
 	"ui.teamBridge.holds.delivering": "Transmission…",
-	"ui.teamBridge.holds.discarding": "Écartement…"
+	"ui.teamBridge.holds.discarding": "Mise à l’écart…"
 }

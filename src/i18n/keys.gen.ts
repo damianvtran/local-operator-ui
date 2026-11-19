@@ -13549,6 +13549,7 @@ export type MessageParams = {
 	"ui.teamBridge.holds.from_agent_unnamed": { person: string };
 	"ui.teamBridge.holds.from_person": { person: string };
 	"ui.teamBridge.holds.held_at": { time: string };
+	"ui.teamBridge.holds.hidden_characters": undefined;
 	"ui.teamBridge.holds.intro": undefined;
 	"ui.teamBridge.holds.key_file_only": undefined;
 	"ui.teamBridge.holds.load_failed": undefined;

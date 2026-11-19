@@ -43,6 +43,7 @@
 	"ui.teamBridge.holds.from_agent_unnamed": "来自 {person} 的智能体",
 	"ui.teamBridge.holds.key_file_only": "在此设备上，决定是用以文件形式保存的密钥记录的，因此以你的身份运行的其他应用也可能记录决定。",
 	"ui.teamBridge.holds.cannot_verify": "无法将这条消息与筛选时的内容核对一致，因此不能在此送达或丢弃。",
+	"ui.teamBridge.holds.hidden_characters": "这条消息含有此处不显示的隐藏字符，因此无法送达。你仍可以丢弃它。",
 	"ui.teamBridge.holds.body_withheld": "此处无法查看消息正文，因此不能送达。你仍可以丢弃它。",
 	"ui.teamBridge.holds.read_first": "显示完整消息后才能送达。",
 	"ui.teamBridge.holds.show_full": "显示完整消息",

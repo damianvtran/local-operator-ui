@@ -324,6 +324,13 @@
 		"placeholders": {},
 		"note": "Team Bridge Approvals, Held messages section. The shown text differs from what screening checked, so no buttons are offered."
 	},
+	"ui.teamBridge.holds.hidden_characters": {
+		"role": "status line",
+		"tone": "calm, factual",
+		"length": "two short sentences",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. The message body carries invisible characters (for example Unicode tag or direction-control characters) that a person cannot see but an AI agent would read, so only Discard is offered. Deliver and Discard match the button names. Do not imply the sender is malicious."
+	},
 	"ui.teamBridge.holds.body_withheld": {
 		"role": "status line",
 		"tone": "calm",

@@ -34,6 +34,7 @@ import {
 	type HoldWord,
 	armedWords,
 	decisionNotApplied,
+	hasHiddenCharacters,
 	holdAffordance,
 	holdReason,
 	holdReasonLabel,
@@ -235,9 +236,15 @@ function HeldRow({
 	const attachments = attachmentCount(message);
 	const clampable = needsExpand(message?.body, attachments);
 	const seenInFull = !clampable || seen;
+	const hidden = hasHiddenCharacters(message?.body);
 	const armed = binding
-		? armedWords(affordance, binding, seenInFull)
+		? armedWords(affordance, binding, seenInFull, hidden)
 		: { deliver: false, discard: false };
+	/* S-7: the confirm step is for ONE word and stays only while that word is
+	   still armed. A background refresh that disarms it (body now withheld,
+	   affordance changed) closes the step, so the stale word cannot be sent. */
+	const confirming = confirm !== null && armed[confirm] ? confirm : null;
+	const confirmRef = useRef<HTMLButtonElement>(null);
 	const offers =
 		affordance.state === "open" || affordance.state === "deliver_expired";
 	const mine = busy?.id === item.message_id;
@@ -258,8 +265,16 @@ function HeldRow({
 		wasMine.current = mine;
 	}, [mine]);
 
+	useEffect(() => {
+		if (confirm !== null && confirming === null) setConfirm(null);
+	}, [confirm, confirming]);
+	/* U10: the confirm step takes focus when it opens. */
+	useEffect(() => {
+		if (confirming) confirmRef.current?.focus({ preventScroll: true });
+	}, [confirming]);
+
 	const press = (word: HoldWord) => {
-		if (hash) onDecide(item, word, hash);
+		if (hash && armed[word]) onDecide(item, word, hash);
 	};
 	const attachmentScope =
 		message && detail.state === "ready" && accountId
@@ -278,10 +293,10 @@ function HeldRow({
 				{detail.state === "loading" ? (
 					<Spinner size="sm" label={t("ui.teamBridge.holds.loading")} />
 				) : (
-					/* D4: a teammate's name has its own direction, not the page's. */
-					<span dir="auto" className="truncate font-medium">
-						{sender}
-					</span>
+					/* D6: no `dir="auto"` here: the line is translated copy around
+					   the name ("From {person}"), so it takes the page direction;
+					   only the teammate's own words (the body) carry `dir="auto"`. */
+					<span className="truncate font-medium">{sender}</span>
 				)}
 				{item.unscreened === true && (
 					<Badge variant="warning">{t("ui.teamBridge.holds.unscreened")}</Badge>
@@ -291,15 +306,13 @@ function HeldRow({
 						{t("ui.teamBridge.holds.held_at", { time: held })}
 					</span>
 				)}
-				{/* D5/Q2: a deadline only beside a Deliver the owner can press. */}
-				{affordance.state === "open" &&
-					affordance.deliver &&
-					binding?.state === "shown" &&
-					until && (
-						<span className="shrink-0 text-meta text-ink-dim">
-							{t("ui.teamBridge.holds.deliver_until", { time: until })}
-						</span>
-					)}
+				{/* D5/Q2/N4/Q4: a deadline only beside a Deliver that can be
+				    pressed now (seen in full, nothing hidden). */}
+				{armed.deliver && until && (
+					<span className="shrink-0 text-meta text-ink-dim">
+						{t("ui.teamBridge.holds.deliver_until", { time: until })}
+					</span>
+				)}
 			</p>
 			{/* N1: a decided row says what was decided, not why it was held. */}
 			{affordance.state !== "decided" && (
@@ -393,16 +406,28 @@ function HeldRow({
 						{t("ui.teamBridge.holds.cannot_verify")}
 					</p>
 				)}
-				{offers &&
-					affordance.deliver &&
-					(binding?.state === "withheld" || binding?.state === "none") && (
-						<p className="text-meta text-ink-dim">
-							{t("ui.teamBridge.holds.body_withheld")}
-						</p>
-					)}
+				{/* C11/Q3: "you can still discard it" only where Discard IS armed
+				    (withheld); with no usable hash at all, nothing is. */}
+				{offers && affordance.deliver && binding?.state === "withheld" && (
+					<p className="text-meta text-ink-dim">
+						{t("ui.teamBridge.holds.body_withheld")}
+					</p>
+				)}
+				{offers && binding?.state === "none" && (
+					<p className="text-meta text-ink-dim">
+						{t("ui.teamBridge.holds.details_unavailable")}
+					</p>
+				)}
+				{offers && affordance.deliver && hidden && (
+					/* S-6: Discard only, and the owner is told why. */
+					<p className="text-meta text-ink-dim">
+						{t("ui.teamBridge.holds.hidden_characters")}
+					</p>
+				)}
 				{offers &&
 					affordance.deliver &&
 					binding?.state === "shown" &&
+					!hidden &&
 					!seenInFull && (
 						<p className="text-meta text-ink-dim">
 							{t("ui.teamBridge.holds.read_first")}
@@ -414,27 +439,37 @@ function HeldRow({
 					</p>
 				)}
 			</div>
-			{confirm && (armed.deliver || armed.discard) ? (
+			{confirming ? (
 				/* UX U2: the in-app second step. It names the consequence before
-				   an irreversible write; no OS or biometric prompt (a-856f). */
-				<div className="flex flex-col gap-2 pt-1">
+				   an irreversible write; no OS or biometric prompt (a-856f).
+				   U10: Escape cancels it. */
+				<div
+					className="flex flex-col gap-2 pt-1"
+					onKeyDown={(event) => {
+						if (event.key === "Escape" && !mine) {
+							event.stopPropagation();
+							setConfirm(null);
+						}
+					}}
+				>
 					<p className="text-sm text-ink">
-						{confirm === "deliver"
+						{confirming === "deliver"
 							? t("ui.teamBridge.holds.confirm.deliver")
 							: t("ui.teamBridge.holds.confirm.discard")}
 					</p>
 					<div className="flex gap-2">
 						<Button
+							ref={confirmRef}
 							size="sm"
-							variant={confirm === "deliver" ? "primary" : "secondary"}
+							variant={confirming === "deliver" ? "primary" : "secondary"}
 							disabled={disabled}
-							onClick={() => press(confirm)}
+							onClick={() => press(confirming)}
 						>
 							{mine
 								? busy?.word === "deliver"
 									? t("ui.teamBridge.holds.delivering")
 									: t("ui.teamBridge.holds.discarding")
-								: confirm === "deliver"
+								: confirming === "deliver"
 									? t("ui.teamBridge.holds.confirm.deliver_action")
 									: t("ui.teamBridge.holds.confirm.discard_action")}
 						</Button>

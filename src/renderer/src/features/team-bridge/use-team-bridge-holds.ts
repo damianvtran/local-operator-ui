@@ -10,14 +10,15 @@ import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import { useDesktopCapabilities } from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeHoldsApi } from "@shared/api/local-operator/team-bridge-holds-api";
 import { TeamBridgeOwnerAuditApi } from "@shared/api/local-operator/team-bridge-owner-audit-api";
-import {
-	type QueryClient,
-	useQueries,
-	useQuery,
-	useQueryClient,
-} from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import type { OwnerAuditMessage } from "../../../../shared/team-bridge-owner-audit-contract";
+import {
+	holdBindingKey,
+	holdDetailKey,
+	holdsKey,
+	invalidateAfterDecision,
+} from "./team-bridge-holds-keys";
 import {
 	type HoldItem,
 	type HoldWord,
@@ -33,9 +34,6 @@ import {
 	TEAM_BRIDGE_BADGE_POLL_VISIBLE_MS,
 	useTeamBridgeStatus,
 } from "./use-team-bridge";
-
-const holdsKey = (accountId?: string) =>
-	[...teamBridgeKeys.all, "holds", accountId ?? "unresolved-owner"] as const;
 
 /**
  * THE SECTION EXISTS ONLY WHEN CORE ADVERTISES THE ROUTES. `features
@@ -95,15 +93,21 @@ export type HeldMessageDetail = JoinedDetail<OwnerAuditMessage>;
 
 /*
  * Owner-audit refusals that mean "not in THIS organization" for one lookup:
- * the conversation is absent (404), or this org refuses the read (403, a 409
- * read refusal such as an ineligible org). The walk moves on to the next org
- * instead of stranding the hold (security S-5). Anything else - an authority
- * change, a transport failure - still throws.
+ * the conversation is absent there (404), the hub refuses this org's read
+ * (403), or core says the read named another org (`invalid_tenant`). The walk
+ * moves on to the next org instead of stranding the hold (security S-5).
+ *
+ * NOT a 409 (security r2 S-8): core's 409 read family is authority and state
+ * (`account_mismatch`, `owner_changed`, `credential_changed`,
+ * `consent_revoked`, `stale_generation`, `state_unreadable`, ...), so it must
+ * surface, not be skipped and cached as "not here".
  */
 function notInThisOrg(error: unknown): boolean {
 	return (
 		error instanceof DesktopControlError &&
-		(error.status === 403 || error.status === 404 || error.status === 409)
+		(error.status === 403 ||
+			error.status === 404 ||
+			error.code === "invalid_tenant")
 	);
 }
 
@@ -139,14 +143,7 @@ export function useHeldMessageDetails(
 	const joinable = items.filter((item) => Boolean(item.conversation_id));
 	const lookups = useQueries({
 		queries: joinable.map((item) => ({
-			queryKey: [
-				...holdsKey(accountId),
-				"detail",
-				item.conversation_id,
-				item.message_id,
-				item.seq,
-				tenantIds.join(","),
-			] as const,
+			queryKey: holdDetailKey(accountId, item, tenantIds),
 			enabled: auditSupported && Boolean(accountId) && tenantIds.length > 0,
 			gcTime: 0,
 			staleTime: 30_000,
@@ -184,13 +181,12 @@ export function useHeldMessageDetails(
 		queries: joinable.map((item) => {
 			const found = lookupById.get(item.message_id)?.data?.message;
 			return {
-				queryKey: [
-					...holdsKey(accountId),
-					"binding",
+				queryKey: holdBindingKey(
+					accountId,
 					item.message_id,
 					found?.body_hash ?? null,
 					found?.body ?? null,
-				] as const,
+				),
 				enabled: Boolean(found),
 				gcTime: 0,
 				queryFn: () => bindShownBody(found?.body, found?.body_hash),
@@ -210,7 +206,10 @@ export function useHeldMessageDetails(
 				   answered with no organizations, so there is nowhere to look. */
 				pending:
 					lookup.isPending && !(status.isFetched && tenantIds.length === 0),
-				found: lookup.isError ? null : lookup.data,
+				/* A failed REFRESH keeps what already loaded (review r2 M2): a
+				   429 on one row must not blank every other row's sender and body.
+				   Only a lookup that never loaded reads as unavailable. */
+				found: lookup.data ?? null,
 			},
 			binding: binding && {
 				pending: binding.isPending,
@@ -230,12 +229,6 @@ export function useRetryHeldDetails() {
 			}),
 		[client],
 	);
-}
-
-function invalidateHolds(client: QueryClient) {
-	return client.invalidateQueries({
-		queryKey: [...teamBridgeKeys.all, "holds"],
-	});
 }
 
 /** One Deliver / Discard at a time; the refusal is fixed copy by code. */
@@ -261,7 +254,7 @@ export function useHoldDecide() {
 				}));
 			} finally {
 				setBusy(null);
-				void invalidateHolds(client);
+				void invalidateAfterDecision(client, accountId, item.message_id);
 			}
 		},
 		[accountId, busy, client],

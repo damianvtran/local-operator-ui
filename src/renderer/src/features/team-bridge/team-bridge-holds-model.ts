@@ -354,20 +354,73 @@ export function needsExpand(
 	);
 }
 
+/*
+ * HIDDEN CHARACTERS (security S-6). Unicode tag characters (U+E0000-E007F),
+ * bidi controls and other format / default-ignorable code points take no
+ * visible space, but a model reads them: the "ASCII smuggling" carrier. The
+ * hash covers them, so a body that LOOKS like one benign line can bind a
+ * payload nobody saw, and no expand step can reveal it. Core already treats
+ * the class as hostile: `hold_release.strict_release_reason` refuses any
+ * `unicodedata.category == "Cf"` character. This mirrors that set (`\p{Cf}`)
+ * plus `\p{Default_Ignorable_Code_Point}`, which adds the invisible non-Cf
+ * fillers (e.g. U+034F, U+115F, U+3164).
+ *
+ * The one exception is what ordinary emoji need: U+200D ZERO WIDTH JOINER
+ * between two pictographs (family, profession sequences) and the variation
+ * selectors U+FE0E/U+FE0F after a character. Everything else, tag runs
+ * included, makes the body Discard-only.
+ */
+const INVISIBLE = /[\p{Cf}\p{Default_Ignorable_Code_Point}]/u;
+const PICTOGRAPH = /\p{Extended_Pictographic}/u;
+const VARIATION_SELECTOR = /^[\uFE0E\uFE0F]$/u;
+const EMOJI_MODIFIER = /^\p{Emoji_Modifier}$/u;
+
+export function hasHiddenCharacters(body: string | null | undefined): boolean {
+	if (typeof body !== "string" || !INVISIBLE.test(body)) return false;
+	const chars = Array.from(body);
+	for (let index = 0; index < chars.length; index += 1) {
+		const char = chars[index];
+		if (!INVISIBLE.test(char)) continue;
+		if (VARIATION_SELECTOR.test(char) && index > 0) continue;
+		if (char === "\u200D") {
+			// Walk back over selectors and skin-tone modifiers to the base.
+			let back = index - 1;
+			while (
+				back >= 0 &&
+				(VARIATION_SELECTOR.test(chars[back]) ||
+					EMOJI_MODIFIER.test(chars[back]))
+			)
+				back -= 1;
+			const next = chars[index + 1];
+			if (
+				back >= 0 &&
+				PICTOGRAPH.test(chars[back]) &&
+				next !== undefined &&
+				PICTOGRAPH.test(next)
+			)
+				continue;
+		}
+		return true;
+	}
+	return false;
+}
+
 /**
  * Which buttons may be pressed now: the daemon's affordance, narrowed by what
- * the person has actually seen. Deliver needs a `shown` body seen in full;
- * Discard needs any bindable hash.
+ * the person has actually seen. Deliver needs a `shown` body seen in full
+ * with nothing hidden in it (S-6); Discard needs any bindable hash.
  */
 export function armedWords(
 	affordance: HoldAffordance,
 	binding: BodyBinding,
 	seenInFull: boolean,
+	hidden = false,
 ): { deliver: boolean; discard: boolean } {
 	if (affordance.state !== "open" && affordance.state !== "deliver_expired")
 		return { deliver: false, discard: false };
 	return {
-		deliver: affordance.deliver && binding.state === "shown" && seenInFull,
+		deliver:
+			affordance.deliver && binding.state === "shown" && seenInFull && !hidden,
 		discard:
 			affordance.discard &&
 			(binding.state === "shown" || binding.state === "withheld"),
