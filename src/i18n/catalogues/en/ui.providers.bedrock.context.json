@@ -1,0 +1,438 @@
+{
+	"ui.providers.bedrock.access_key_id_label": {
+		"role": "field label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.ambient_body": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.ambient_none": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.ambient_sources": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {
+			"sources": "Locale-formatted list of credential sources, machine tokens such as env:AWS_PROFILE"
+		}
+	},
+	"ui.providers.bedrock.api_key_label": {
+		"role": "field label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.check": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.check_failed": {
+		"role": "badge",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.check_ok": {
+		"role": "badge",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.check_unverified": {
+		"role": "badge",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.checking": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {
+			"region": "AWS Region id, e.g. us-east-1 (never translated)"
+		}
+	},
+	"ui.providers.bedrock.connect": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.connected_models": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {
+			"count": "Number of models",
+			"label": "Connection label, e.g. dev · us-east-1 (never translated)"
+		}
+	},
+	"ui.providers.bedrock.context_failed": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.copy_code": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.copy_command": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.error_credentials_rejected": {
+		"role": "alert title",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.error_generic": {
+		"role": "alert title",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.error_no_credentials": {
+		"role": "alert title",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.error_profile_not_found": {
+		"role": "alert title",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.error_region_invalid": {
+		"role": "alert title",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.how_to_connect": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.kind_assume_role": {
+		"role": "badge",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.kind_login": {
+		"role": "badge",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.kind_other": {
+		"role": "badge",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.kind_process": {
+		"role": "badge",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.kind_sso": {
+		"role": "badge",
+		"tone": "plain",
+		"note": "Badge naming the profile type; SSO stays as the acronym.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.kind_static": {
+		"role": "badge",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.kind_web_identity": {
+		"role": "badge",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.loading_context": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.method_aws": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.method_aws_blurb": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.no_profiles_body": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.no_profiles_title": {
+		"role": "alert title",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.no_sso_profiles_body": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {
+			"command": "A shell command, e.g. aws configure sso (never translated)"
+		}
+	},
+	"ui.providers.bedrock.no_sso_profiles_title": {
+		"role": "alert title",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.profile_label": {
+		"role": "field label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.profile_no_match": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.profile_placeholder": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.region_custom": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {
+			"region": "AWS Region id, e.g. us-east-1 (never translated)"
+		}
+	},
+	"ui.providers.bedrock.region_help": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {
+			"region": "AWS Region id, e.g. us-east-1 (never translated)",
+			"source": "Where the default Region came from: a translated phrase or an env var name like AWS_REGION"
+		}
+	},
+	"ui.providers.bedrock.region_label": {
+		"role": "field label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.region_no_match": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.region_placeholder": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.region_source_config": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.region_source_fallback": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.region_source_profile": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.retry": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.saved_connections": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.secret_access_key_label": {
+		"role": "field label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.secrets_help": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.session_expired": {
+		"role": "badge",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.session_missing": {
+		"role": "badge",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.session_refreshes": {
+		"role": "badge",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.session_token_label": {
+		"role": "field label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.session_valid": {
+		"role": "badge",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.session_valid_until": {
+		"role": "badge",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {
+			"time": "Locale-formatted clock time"
+		}
+	},
+	"ui.providers.bedrock.sso_cancel": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.sso_code_label": {
+		"role": "field label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.sso_expired_body": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.sso_expired_title": {
+		"role": "alert title",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.sso_failed": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.sso_needs_cli": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.sso_open_page": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.sso_sign_in": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.sso_waiting": {
+		"role": "body text",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.tab_access_key": {
+		"role": "tab label",
+		"tone": "plain",
+		"note": "Tab: IAM access key ID plus secret.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.tab_ambient": {
+		"role": "tab label",
+		"tone": "plain",
+		"note": "Amazon Bedrock AWS connect panel in provider settings. Keep AWS product names (Amazon Bedrock, AWS CLI, IAM, SSO) and Region ids untranslated.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.tab_api_key": {
+		"role": "tab label",
+		"tone": "plain",
+		"note": "Tab: an Amazon Bedrock API key (bearer token).",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.tab_profile": {
+		"role": "tab label",
+		"tone": "plain",
+		"note": "Segmented-control tab: connect with a named AWS CLI profile.",
+		"placeholders": {}
+	},
+	"ui.providers.bedrock.tab_sso": {
+		"role": "tab label",
+		"tone": "plain",
+		"note": "Segmented-control tab: AWS IAM Identity Center (SSO) profiles. 'AWS SSO' is the AWS product term; keep it.",
+		"placeholders": {}
+	}
+}

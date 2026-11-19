@@ -43,6 +43,7 @@ const catalog = await import(
 );
 const {
 	brandOf,
+	methodBlurb,
 	methodName,
 	monogramOf,
 	providerGroup,
@@ -356,4 +357,37 @@ test("U7: a suggested onboarding row is titled by the account the reader pays fo
 			id,
 		);
 	}
+});
+
+/*
+ * Amazon Bedrock's `aws` method (bedrock design §7): its tab is named for the
+ * account, not a mechanism, and the row stays in the key group beside the
+ * other per-use billings rather than among the subscriptions.
+ */
+test("bedrock's aws method is named for the account and keeps the key group", () => {
+	const bedrock = {
+		id: "bedrock",
+		name: "Amazon Bedrock",
+		local: false,
+		auth_methods: [
+			{
+				id: "bedrock",
+				method_id: "bedrock",
+				label: "AWS account",
+				kind: "aws",
+			},
+			{
+				id: "bedrock",
+				method_id: "bedrock:api-key",
+				label: "API key",
+				kind: "api_key",
+			},
+		],
+	};
+	assert.deepEqual(bedrock.auth_methods.map(methodName), [
+		"AWS account",
+		"API key",
+	]);
+	assert.match(methodBlurb(bedrock.auth_methods[0], bedrock), /AWS profile/);
+	assert.equal(providerGroup(bedrock), "key");
 });

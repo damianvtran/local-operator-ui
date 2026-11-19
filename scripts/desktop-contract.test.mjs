@@ -4388,3 +4388,126 @@ test("a usage reset names an account and carries a client-minted UUID", () => {
 		false,
 	);
 });
+
+/*
+ * Amazon Bedrock's AWS panel ops (bedrock design §7 routes 3-6): each reaches
+ * exactly its route with the backend's snake_case body, and the bounds that
+ * keep a Region out of a hostname and a profile name inside its `[profile …]`
+ * line refuse before any HTTP happens.
+ */
+test("bedrock AWS panel ops reach their routes and refuse malformed connections", async () => {
+	const accessKeyId = ["AKIA", "SYNTHETIC", "0000000"].join("");
+	for (const [request, path, method, body] of [
+		[{ op: "auth.bedrock.context" }, "/v1/auth/providers/bedrock/aws", "GET"],
+		[
+			{
+				op: "auth.bedrock.connect",
+				connection: {
+					method: "profile",
+					profile: "acme.dev",
+					region: "us-west-2",
+				},
+			},
+			"/v1/auth/providers/bedrock/connection",
+			"PUT",
+			{ method: "profile", profile: "acme.dev", region: "us-west-2" },
+		],
+		[
+			{
+				op: "auth.bedrock.connect",
+				connection: {
+					method: "access_key",
+					region: "eu-central-1",
+					access_key_id: accessKeyId,
+					secret_access_key: "synthetic-secret",
+					session_token: null,
+				},
+			},
+			"/v1/auth/providers/bedrock/connection",
+			"PUT",
+			{
+				method: "access_key",
+				region: "eu-central-1",
+				access_key_id: accessKeyId,
+				secret_access_key: "synthetic-secret",
+				session_token: null,
+			},
+		],
+		[
+			{
+				op: "auth.bedrock.connect",
+				connection: { method: "ambient", region: null },
+			},
+			"/v1/auth/providers/bedrock/connection",
+			"PUT",
+			{ method: "ambient", region: null },
+		],
+		[
+			{ op: "auth.bedrock.ssoLogin", profile: "acme-dev-sso" },
+			"/v1/auth/providers/bedrock/sso-login",
+			"POST",
+			{ profile: "acme-dev-sso" },
+		],
+		[
+			{ op: "auth.bedrock.check", credentialId: 12 },
+			"/v1/auth/providers/bedrock/check",
+			"POST",
+			{ credential_id: 12 },
+		],
+	]) {
+		const response = await requestDesktop(request, url, token);
+		assert.equal(response.status, 200, request.op);
+		const last = seen.at(-1);
+		assert.equal(last.path, path);
+		assert.equal(last.method, method);
+		if (body) assert.deepEqual(JSON.parse(last.body), body);
+	}
+
+	const count = seen.length;
+	for (const request of [
+		// A Region that would rewrite the hostname.
+		{
+			op: "auth.bedrock.connect",
+			connection: {
+				method: "api_key",
+				region: "evil.example/",
+				api_key: "secret",
+			},
+		},
+		// A profile name escaping its config section.
+		{
+			op: "auth.bedrock.connect",
+			connection: {
+				method: "profile",
+				profile: "dev]\n[x",
+				region: "us-east-1",
+			},
+		},
+		// Unknown method, and an extra key on a strict arm.
+		{
+			op: "auth.bedrock.connect",
+			connection: { method: "imds", region: "us-east-1" },
+		},
+		{
+			op: "auth.bedrock.connect",
+			connection: { method: "ambient", region: null, api_key: "secret" },
+		},
+		// Access key pair missing its secret.
+		{
+			op: "auth.bedrock.connect",
+			connection: {
+				method: "access_key",
+				region: "us-east-1",
+				access_key_id: accessKeyId,
+				session_token: null,
+			},
+		},
+		{ op: "auth.bedrock.ssoLogin", profile: "" },
+		{ op: "auth.bedrock.check", credentialId: 0 },
+	]) {
+		const response = await requestDesktop(request, url, token);
+		assert.equal(response.status, 422, JSON.stringify(request));
+		assert.ok(!JSON.stringify(response).includes("secret"));
+	}
+	assert.equal(seen.length, count);
+});

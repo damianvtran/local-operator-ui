@@ -232,6 +232,9 @@ const methodNames = (): Record<string, string> => ({
 export function methodName(method: ProviderMethod): string {
 	if (method.kind === "api_key")
 		return t("ui.providers.provider_catalog.api_key");
+	// Amazon Bedrock's structured method: profiles, SSO, access keys or the
+	// default chain, all behind one tab (bedrock design §10 Slice B).
+	if (method.kind === "aws") return t("ui.providers.bedrock.method_aws");
 	const named = methodNames()[method.method_id];
 	if (named) return named;
 	const qualifier = qualifierOf(method.label);
@@ -270,6 +273,7 @@ export function methodBlurb(
 ): string {
 	const blurb = methodBlurbs()[method.method_id];
 	if (blurb) return blurb;
+	if (method.kind === "aws") return t("ui.providers.bedrock.method_aws_blurb");
 	if (method.kind === "device")
 		return t("ui.providers.provider_catalog.sign_in_to_your_account_with_a", {
 			brand: brandOf(provider),
