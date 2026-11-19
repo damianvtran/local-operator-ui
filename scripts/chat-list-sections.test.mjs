@@ -90,8 +90,14 @@ const CREATED = "created";
 /** A row the reader must act on, whatever its last write was. */
 const BUSY = { status: { code: "busy", label: "Working" } };
 
-test("the sections are the four §C1 names, in the order they are drawn", () => {
-	assert.deepEqual(CHAT_LIST_SECTIONS, ["running", "today", "week", "older"]);
+test("the sections are the five names, in the order they are drawn", () => {
+	assert.deepEqual(CHAT_LIST_SECTIONS, [
+		"running",
+		"today",
+		"yesterday",
+		"week",
+		"older",
+	]);
 	/*
 	 * THE TABLE HOLDS MESSAGE KEYS, not the four English words it used to. A
 	 * module-scope sentence table cannot follow a language switch, so the
@@ -104,6 +110,7 @@ test("the sections are the four §C1 names, in the order they are drawn", () => 
 		[
 			"ui.chat.sidebar_view.section.running",
 			"ui.chat.sidebar_view.section.today",
+			"ui.chat.sidebar_view.section.yesterday",
 			"ui.chat.sidebar_view.section.week",
 			"ui.chat.sidebar_view.section.older",
 		],
@@ -139,12 +146,41 @@ test("a running row is RUNNING wherever its last write sorted it", () => {
 test("TODAY is the local calendar day, not a rolling 24 hours", () => {
 	// 11pm yesterday is not today at 9am, whatever the arithmetic says.
 	const yesterdayLate = new Date(2026, 8, 23, 23, 0, 0).getTime();
-	assert.equal(sectionOf(row(at(yesterdayLate)), NOW, ACTIVE), "week");
+	assert.equal(sectionOf(row(at(yesterdayLate)), NOW, ACTIVE), "yesterday");
 	assert.equal(sectionOf(row(at(NOW - HOUR)), NOW, ACTIVE), "today");
 	// The boundary itself belongs to the day that has started.
 	const midnight = new Date(2026, 8, 24, 0, 0, 0).getTime();
 	assert.equal(sectionOf(row(at(midnight)), NOW, ACTIVE), "today");
-	assert.equal(sectionOf(row(at(midnight - 1)), NOW, ACTIVE), "week");
+	assert.equal(sectionOf(row(at(midnight - 1)), NOW, ACTIVE), "yesterday");
+});
+
+test("YESTERDAY is the calendar day before today, and WEEK starts at its midnight", () => {
+	const todayStart = new Date(2026, 8, 24, 0, 0, 0).getTime();
+	const yesterdayStart = new Date(2026, 8, 23, 0, 0, 0).getTime();
+	// Both ends of yesterday: the first millisecond and the last.
+	assert.equal(sectionOf(row(at(yesterdayStart)), NOW, ACTIVE), "yesterday");
+	assert.equal(
+		sectionOf(
+			row(at(new Date(2026, 8, 23, 23, 59, 59, 999).getTime())),
+			NOW,
+			ACTIVE,
+		),
+		"yesterday",
+	);
+	// One millisecond earlier is the day before, which is the WEEK's outer edge.
+	assert.equal(sectionOf(row(at(yesterdayStart - 1)), NOW, ACTIVE), "week");
+	// The weekday names the same wall clock as the bins do: both midnights are
+	// local calendar starts, so neither depends on the ambient zone's UTC offset.
+	assert.equal(new Date(todayStart).getHours(), 0);
+	assert.equal(new Date(yesterdayStart).getHours(), 0);
+	// The bins keep their order, and `sectionRows` draws every one of them.
+	assert.deepEqual(Object.keys(sectionRows([], NOW, ACTIVE)), [
+		"running",
+		"today",
+		"yesterday",
+		"week",
+		"older",
+	]);
 });
 
 test("THIS WEEK reaches back six more days, and no further", () => {
@@ -162,7 +198,15 @@ test("the Created basis keeps every boundary rule, read at birth", () => {
 	 */
 	const midnight = new Date(2026, 8, 24, 0, 0, 0).getTime();
 	assert.equal(sectionOf(row(born(NOW - HOUR)), NOW, CREATED), "today");
-	assert.equal(sectionOf(row(born(midnight - 1)), NOW, CREATED), "week");
+	assert.equal(sectionOf(row(born(midnight - 1)), NOW, CREATED), "yesterday");
+	assert.equal(
+		sectionOf(
+			row(born(new Date(2026, 8, 23, 0, 0, 0).getTime() - 1)),
+			NOW,
+			CREATED,
+		),
+		"week",
+	);
 	assert.equal(sectionOf(row(born(NOW - 6 * DAY)), NOW, CREATED), "week");
 	assert.equal(sectionOf(row(born(NOW - 7 * DAY)), NOW, CREATED), "older");
 	// And RUNNING is a status partition, not the basis's to move.
@@ -170,6 +214,136 @@ test("the Created basis keeps every boundary rule, read at birth", () => {
 		sectionOf(row({ ...BUSY, ...born(NOW - 400 * DAY) }), NOW, CREATED),
 		"running",
 	);
+});
+
+test("the sections keep their order and the running rule still wins over yesterday", () => {
+	const yesterdayMidday = new Date(2026, 8, 23, 12, 0, 0).getTime();
+	// A running conversation does not file under the day it last moved.
+	assert.equal(
+		sectionOf(row({ ...BUSY, ...at(yesterdayMidday) }), NOW, ACTIVE),
+		"running",
+	);
+	// One row per bin, so the record's own shape states the order.
+	const rows = [
+		row({ session_id: "run", ...BUSY, ...at(NOW) }),
+		row({ session_id: "today", ...at(NOW - HOUR) }),
+		row({ session_id: "yesterday", ...at(yesterdayMidday) }),
+		row({ session_id: "week", ...at(yesterdayMidday - 3 * DAY) }),
+		row({ session_id: "older", ...at(yesterdayMidday - 30 * DAY) }),
+	];
+	const sectioned = sectionRows(rows, NOW, ACTIVE);
+	assert.deepEqual(
+		CHAT_LIST_SECTIONS.map((key) => [
+			key,
+			sectioned[key].map((entry) => entry.session_id),
+		]),
+		[
+			["running", ["run"]],
+			["today", ["today"]],
+			["yesterday", ["yesterday"]],
+			["week", ["week"]],
+			["older", ["older"]],
+		],
+	);
+});
+
+/*
+ * THE TRANSITION TEST, and why it has to set the zone itself. The boundaries are
+ * LOCAL midnights, so a fixed instant proves nothing about them unless the zone
+ * around it is known. Each block moves `process.env.TZ` to a zone whose clock
+ * jumps on a specific date, puts "now" on the day after it, and reads rows on
+ * both sides of the jump - including one 30 minutes after midnight on the outer
+ * boundary's day, which the 6 x 24h arithmetic this replaced filed an hour (or
+ * half an hour) into OLDER.
+ */
+test("the week boundary is a local midnight across a daylight-saving change", () => {
+	const original = process.env.TZ;
+	const atLocal = (year, month, day, hour, minute) =>
+		new Date(year, month - 1, day, hour, minute, 0, 0).getTime();
+	const bin = (instant, now) => sectionOf(row(at(instant)), now, ACTIVE);
+	try {
+		/* New York, 2026-03-08 02:00: that day is 23 hours long, so the clock the
+		 * test reads is a spring-forward one. now = 2026-03-09 10:00 local, and the
+		 * old `today - 6 x 24h` cut landed at 2026-03-02 23:00 (an hour EARLY in
+		 * wall-clock terms), which is the half hour this test pins. */
+		process.env.TZ = "America/New_York";
+		const spring = atLocal(2026, 3, 9, 10, 0);
+		assert.equal(bin(atLocal(2026, 3, 8, 0, 1), spring), "yesterday");
+		assert.equal(bin(atLocal(2026, 3, 8, 23, 59), spring), "yesterday");
+		assert.equal(bin(atLocal(2026, 3, 7, 23, 59), spring), "week");
+		assert.equal(bin(atLocal(2026, 3, 3, 0, 0), spring), "week");
+		assert.equal(
+			bin(atLocal(2026, 3, 2, 23, 30), spring),
+			"older",
+			"the 6x24h cut landed at 23:00 the evening before, so this half hour was drawn as WEEK",
+		);
+
+		/* New York, 2026-11-01 02:00: the day repeats an hour (25 hours long).
+		 * now = 2026-11-02 10:00 local, and the old `today - 6 x 24h` cut landed at
+		 * 2026-10-27 01:00 - an hour LATE - which swallowed the half hour below. */
+		const fall = atLocal(2026, 11, 2, 10, 0);
+		assert.equal(bin(atLocal(2026, 11, 1, 0, 1), fall), "yesterday");
+		assert.equal(bin(atLocal(2026, 11, 1, 23, 59), fall), "yesterday");
+		assert.equal(bin(atLocal(2026, 10, 31, 23, 59), fall), "week");
+		assert.equal(
+			bin(atLocal(2026, 10, 27, 0, 30), fall),
+			"week",
+			"the 6x24h cut landed at 01:00, so this half hour filed as OLDER",
+		);
+		assert.equal(bin(atLocal(2026, 10, 26, 23, 59), fall), "older");
+
+		/* Lord Howe Island, 2026-10-04 02:00: a THIRTY minute jump, the shape a
+		 * whole-hour fix would still get wrong. now = 2026-10-05 10:00 local, and
+		 * the old `today - 6 x 24h` cut landed at 2026-09-28 23:30. */
+		process.env.TZ = "Australia/Lord_Howe";
+		const lordHowe = atLocal(2026, 10, 5, 10, 0);
+		assert.equal(bin(atLocal(2026, 10, 4, 0, 1), lordHowe), "yesterday");
+		assert.equal(bin(atLocal(2026, 10, 3, 23, 59), lordHowe), "week");
+		assert.equal(bin(atLocal(2026, 9, 29, 0, 0), lordHowe), "week");
+		assert.equal(
+			bin(atLocal(2026, 9, 28, 23, 45), lordHowe),
+			"older",
+			"the 6x24h cut landed at 23:30 in a half-hour zone, so a quarter hour of the week was drawn as WEEK",
+		);
+	} finally {
+		process.env.TZ = original;
+	}
+});
+
+test("WEEK's outer edge is the sixth midnight back, not six 24-hour steps", () => {
+	/*
+	 * THE DEFECT ON ITS OWN, without the Yesterday bin in the picture: the cut this
+	 * replaced was `startOfDay(now) - 6 * 24h`, so a row one half hour either side
+	 * of the true boundary filed under the wrong heading for one hour a year. Both
+	 * cases below FAIL against that arithmetic - the week was an hour long on the
+	 * spring side and an hour short on the autumn one - and pass on calendar days.
+	 */
+	const original = process.env.TZ;
+	const atLocal = (year, month, day, hour, minute) =>
+		new Date(year, month - 1, day, hour, minute, 0, 0).getTime();
+	try {
+		process.env.TZ = "America/New_York";
+		// 2026-03-08 springs forward: six 24h steps start at 2026-03-02 23:00.
+		assert.equal(
+			sectionOf(
+				row(at(atLocal(2026, 3, 2, 23, 30))),
+				atLocal(2026, 3, 9, 10, 0),
+				ACTIVE,
+			),
+			"older",
+		);
+		// 2026-11-01 falls back: six 24h steps start at 2026-10-27 01:00.
+		assert.equal(
+			sectionOf(
+				row(at(atLocal(2026, 10, 27, 0, 30))),
+				atLocal(2026, 11, 2, 10, 0),
+				ACTIVE,
+			),
+			"week",
+		);
+	} finally {
+		process.env.TZ = original;
+	}
 });
 
 test("the two bases can file one row differently, and the label follows the basis", () => {

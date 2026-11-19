@@ -18,7 +18,10 @@
  *   RUNNING    a turn is live or waiting on the reader. Never collapsed, no time
  *              (a running row's time is "now", which says nothing).
  *   TODAY      last moved on this local calendar day.
- *   THIS WEEK  within the last seven days, and not today.
+ *   YESTERDAY  the local calendar day before today.
+ *   THIS WEEK  the five local calendar days before yesterday - today, yesterday
+ *              and this section are the same seven-day window the four-bin list
+ *              drew, split at midnight rather than at a rolling 24h.
  *   OLDER      everything else, including a row with no time at all.
  *
  * THE TIME BASIS (2026-09-28, the operator's report). The sections and the row
@@ -52,7 +55,12 @@ import { type WithoutParams, t } from "@shared/i18n";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import { hasBackgroundWork } from "./chat-session-subagents";
 
-export type ChatListSection = "running" | "today" | "week" | "older";
+export type ChatListSection =
+	| "running"
+	| "today"
+	| "yesterday"
+	| "week"
+	| "older";
 
 /**
  * Which clock the sections and the row labels read.
@@ -71,6 +79,7 @@ export const SIDEBAR_BASES: readonly SidebarBasis[] = ["active", "created"];
 export const CHAT_LIST_SECTIONS: readonly ChatListSection[] = [
 	"running",
 	"today",
+	"yesterday",
 	"week",
 	"older",
 ];
@@ -82,13 +91,14 @@ export const CHAT_LIST_SECTIONS: readonly ChatListSection[] = [
  * load - once, in whatever locale the renderer started in - so every section
  * heading would stay English after a language switch. Keys are resolved by `t()`
  * at the render that draws the heading, which is the only place the active
- * locale is known. The four keys are the ones the view popover already prints
+ * locale is known. The five keys are the ones the view popover already prints
  * for these sections, so the popover and the heading cannot name one section two
  * ways.
  */
 export const CHAT_LIST_SECTION_LABEL: Record<ChatListSection, WithoutParams> = {
 	running: "ui.chat.sidebar_view.section.running",
 	today: "ui.chat.sidebar_view.section.today",
+	yesterday: "ui.chat.sidebar_view.section.yesterday",
 	week: "ui.chat.sidebar_view.section.week",
 	older: "ui.chat.sidebar_view.section.older",
 };
@@ -153,16 +163,22 @@ export function isStoppedOnReader(row: CanonicalSessionRow): boolean {
 	return STOPPED_ON_READER_CODES.has(row.status?.code ?? "");
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 /**
- * Local midnight for `now`. Calendar days rather than a rolling 24h, because
- * "today" is the word on screen and a conversation from 11pm yesterday is not
- * from today at 9am, whatever the arithmetic says.
+ * Local midnight `days` calendar days before `now`.
+ *
+ * CALENDAR DAYS, NOT 24-HOUR STEPS (2026-11-19). This replaced
+ * `startOfDay(now) - N * 24h`, which is a local midnight only on a day the
+ * zone's UTC offset did not move: either side of a daylight-saving transition
+ * it lands at 23:00 or 01:00 of the wrong day, so the week's outer boundary
+ * filed a conversation under OLDER for an hour after the reader's own midnight
+ * (and took an extra hour in autumn). `setDate` moves the calendar field and
+ * keeps the local time of day, so every boundary this module draws is a
+ * midnight the reader's clock agrees with.
  */
-const startOfDay = (now: number): number => {
+const startOfDayOffset = (now: number, days: number): number => {
 	const d = new Date(now);
 	d.setHours(0, 0, 0, 0);
+	d.setDate(d.getDate() - days);
 	return d.getTime();
 };
 
@@ -255,9 +271,10 @@ export function sectionOf(
 	if (isRunningRow(row)) return "running";
 	const at = rowTimeMs(row, basis);
 	if (at === null) return "older";
-	const today = startOfDay(now);
+	const today = startOfDayOffset(now, 0);
 	if (at >= today) return "today";
-	if (at >= today - 6 * DAY_MS) return "week";
+	if (at >= startOfDayOffset(now, 1)) return "yesterday";
+	if (at >= startOfDayOffset(now, 6)) return "week";
 	return "older";
 }
 
@@ -278,6 +295,7 @@ export function sectionRows(
 	const out: Record<ChatListSection, CanonicalSessionRow[]> = {
 		running: [],
 		today: [],
+		yesterday: [],
 		week: [],
 		older: [],
 	};

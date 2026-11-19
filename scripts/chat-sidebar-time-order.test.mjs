@@ -419,15 +419,27 @@ function audit(lists, orderBy, basis) {
 				found.zeroLabels += 1;
 			if (list.section !== null && list.section !== "running") {
 				const at = clockOf(row, basis);
-				const today = new Date(NOW).setHours(0, 0, 0, 0);
+				/*
+				 * The bins restated INDEPENDENTLY of `sectionOf`: local calendar
+				 * midnights, never 24-hour subtractions (a DST day is 23 or 25 hours
+				 * long, and this oracle exists to disagree when the module is wrong).
+				 */
+				const midnight = (days) => {
+					const d = new Date(NOW);
+					d.setHours(0, 0, 0, 0);
+					d.setDate(d.getDate() - days);
+					return d.getTime();
+				};
 				const bin =
 					at === null
 						? "older"
-						: at >= today
+						: at >= midnight(0)
 							? "today"
-							: at >= today - 6 * DAY
-								? "week"
-								: "older";
+							: at >= midnight(1)
+								? "yesterday"
+								: at >= midnight(6)
+									? "week"
+									: "older";
 				if (bin !== list.section || sectionOf(row, NOW, basis) !== bin)
 					found.misfiled += 1;
 			}

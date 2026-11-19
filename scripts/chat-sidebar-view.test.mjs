@@ -1277,8 +1277,8 @@ test("reordering moves the section the reader can see, past a hidden one", () =>
 	const moved = moveSection(view, "older", -1);
 	assert.deepEqual(
 		shownSections(moved),
-		["pinned", "running", "older", "today", "agents", "teams"],
-		"older rose past today, because this week's section is not on screen",
+		["pinned", "running", "today", "older", "yesterday", "agents", "teams"],
+		"older moves past the neighbour it can see, not past the hidden section",
 	);
 	assert.equal(
 		new Set(moved.order).size,
@@ -1318,6 +1318,47 @@ test("a stored view is normalised, never trusted", () => {
 	assert.equal(parsed.groupBy, "agent");
 	assert.equal(parsed.orderBy, "recent");
 	assert.equal(parsed.loads, 3);
+});
+
+/*
+ * THE MIGRATION, and the one thing a stored order cannot say for itself. Every
+ * order written before 2026-11-19 predates `yesterday`, so the canonical append
+ * would draw the section at the BOTTOM of the column - under `older`, which is
+ * the one place a reader looking for yesterday's conversations does not look.
+ * Its place is BETWEEN two sections the reader did put somewhere, which is why
+ * this is the single exception to the append.
+ */
+test("a stored order from before YESTERDAY inserts it after Today", () => {
+	const stored = parseSidebarView({
+		order: ["pinned", "running", "today", "week", "older", "agents", "teams"],
+		hidden: ["today"],
+	});
+	assert.deepEqual(
+		stored.order.slice(0, 5),
+		["pinned", "running", "today", "yesterday", "week"],
+		"the new section joins its neighbour rather than the end of the column",
+	);
+	assert.deepEqual(
+		stored.hidden,
+		["today"],
+		"hiding Today is not a statement about a section that did not exist yet",
+	);
+	assert.equal(isSectionShown(stored, "yesterday"), true);
+	/*
+	 * A tampered order that lost `today` too: `yesterday` lands after `running`,
+	 * the nearest section that did survive, rather than nowhere.
+	 */
+	const lost = parseSidebarView({ order: ["running", "week"] });
+	assert.deepEqual(lost.order.slice(0, 3), ["running", "yesterday", "week"]);
+	// An order that never existed gets the canonical order, migration included.
+	assert.deepEqual(parseSidebarView({}).order, DEFAULT_SIDEBAR_VIEW.order);
+	assert.deepEqual(DEFAULT_SIDEBAR_VIEW.order.slice(0, 5), [
+		"pinned",
+		"running",
+		"today",
+		"yesterday",
+		"week",
+	]);
 });
 
 test("an unreadable or tampered view draws the column nobody has configured", () => {
@@ -1458,14 +1499,14 @@ test("an empty section cannot move, and nothing moves against one (round 1's m1/
 			draws(["running", "today"]),
 		),
 		false,
-		"today cannot move against an empty week",
+		"today cannot move against an empty yesterday",
 	);
 	assert.equal(
 		canMoveSection(
 			DEFAULT_SIDEBAR_VIEW,
 			"running",
 			1,
-			draws(["today", "week"]),
+			draws(["today", "yesterday"]),
 		),
 		false,
 		"an empty section cannot move at all",
@@ -1475,7 +1516,7 @@ test("an empty section cannot move, and nothing moves against one (round 1's m1/
 			DEFAULT_SIDEBAR_VIEW,
 			"today",
 			1,
-			draws(["running", "today", "week"]),
+			draws(["running", "today", "yesterday"]),
 		),
 		true,
 		"both ends drawn: the press is real",

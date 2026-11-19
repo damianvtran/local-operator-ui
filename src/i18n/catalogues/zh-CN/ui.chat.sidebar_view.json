@@ -18,6 +18,7 @@
 	"ui.chat.sidebar_view.section.pinned": "已置顶",
 	"ui.chat.sidebar_view.section.running": "运行中",
 	"ui.chat.sidebar_view.section.today": "今天",
+	"ui.chat.sidebar_view.section.yesterday": "昨天",
 	"ui.chat.sidebar_view.section.week": "本周",
 	"ui.chat.sidebar_view.section.older": "更早",
 	"ui.chat.sidebar_view.section.agents": "智能体",
