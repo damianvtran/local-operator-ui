@@ -232,14 +232,61 @@ test("the collapse cut prefers a reader's boundary and never splits a surrogate 
 	const words = `${"word ".repeat(200)}`;
 	const cut = api.bridgeBodyPreview(words);
 	assert.equal(cut.truncated, true);
-	assert.ok(cut.text.length <= 600 && cut.text.endsWith("word"));
+	// A cut inside a line ends in "…" so it reads as a cut (#1977 D3).
+	assert.ok(cut.text.length <= 601 && cut.text.endsWith("word…"));
 	// One unbroken token: hard cut, and an emoji straddling the limit is not split.
 	const emoji = `${"x".repeat(599)}😀${"y".repeat(50)}`;
 	const hard = api.bridgeBodyPreview(emoji);
-	assert.equal(hard.text, "x".repeat(599));
+	assert.equal(hard.text, `${"x".repeat(599)}…`);
 	// A boundary in the first half is ignored (it would hide most of the message).
 	const early = `ab ${"z".repeat(700)}`;
-	assert.equal(api.bridgeBodyPreview(early).text.length, 600);
+	assert.equal(api.bridgeBodyPreview(early).text, `ab ${"z".repeat(597)}…`);
+	// A cut at a line break needs no ellipsis: the author ended the line there.
+	const lineBreak = `${"c".repeat(400)}\n${"d".repeat(400)}`;
+	assert.equal(api.bridgeBodyPreview(lineBreak).text, "c".repeat(400));
+});
+
+test("short lines fold by line count even under the character limit (#1977 D3)", () => {
+	assert.equal(api.BRIDGE_CARD_BODY_COLLAPSE_LINES, 7);
+	const lines = (n) =>
+		Array.from({ length: n }, (_, index) => `- step ${index + 1}`).join("\n");
+	// 20 short lines, ~200 characters: folded to the first 7, no ellipsis.
+	const list = lines(20);
+	assert.ok(list.length < 600);
+	assert.deepEqual(api.bridgeBodyPreview(list), {
+		text: lines(7),
+		truncated: true,
+	});
+	// Exactly 7 lines, or 7 plus trailing blank lines, is whole.
+	assert.equal(api.bridgeBodyPreview(lines(7)).truncated, false);
+	assert.equal(api.bridgeBodyPreview(`${lines(7)}\n\n  \n`).truncated, false);
+	assert.equal(api.bridgeBodyPreview(lines(8)).text, lines(7));
+	// Long lines past the character limit before line 7: the character cut wins.
+	const wide = Array.from({ length: 10 }, () => "w ".repeat(60).trim()).join(
+		"\n",
+	);
+	const cut = api.bridgeBodyPreview(wide);
+	assert.equal(cut.truncated, true);
+	assert.ok(cut.text.length <= 600);
+	assert.ok(!cut.text.endsWith("…"), "cut at a line break, not mid-line");
+});
+
+test("a coalesced card folds past three items only when it hides two or more (#1977 D2)", () => {
+	const items = (n) => Array.from({ length: n }, (_, index) => index);
+	assert.deepEqual(api.bridgeCardFold(items(3)), {
+		shown: items(3),
+		hidden: 0,
+	});
+	// Hiding one row behind a toggle row of the same height saves nothing.
+	assert.deepEqual(api.bridgeCardFold(items(4)), {
+		shown: items(4),
+		hidden: 0,
+	});
+	assert.deepEqual(api.bridgeCardFold(items(5)), {
+		shown: items(3),
+		hidden: 2,
+	});
+	assert.deepEqual(api.bridgeCardFold(items(20)).hidden, 17);
 });
 
 // --------------------------------------------------------------- component
@@ -479,6 +526,65 @@ test("a coalesced card lists each message and counts the overflow", async () => 
 		view.host.querySelector("[data-bridge-body-more]").textContent,
 		"And 7 more messages",
 	);
+	await view.unmount();
+});
+
+test("a many-message card folds behind one Show more and keeps the overflow count for the full list (#1977 D2)", async () => {
+	const items = Array.from({ length: 20 }, (_, index) =>
+		item({
+			message_id: `bcmsg_${index}`,
+			state: "admitted",
+			body: `body ${index}`,
+		}),
+	);
+	const view = await mount(
+		{ sessionId: SESSION, entryId: "coalescedmany", enabled: true },
+		ok({ v: 1, items, more: 3 }),
+	);
+	const ids = () =>
+		[...view.host.querySelectorAll("[data-bridge-message-id]")].map((row) =>
+			row.getAttribute("data-bridge-message-id"),
+		);
+	assert.deepEqual(ids(), ["bcmsg_0", "bcmsg_1", "bcmsg_2"]);
+	const toggle = view.host.querySelector("[data-bridge-card-toggle]");
+	assert.equal(toggle.textContent, "Show more");
+	assert.equal(toggle.getAttribute("aria-expanded"), "false");
+	// Folded, "And 3 more" would undercount what is hidden, so it waits.
+	assert.equal(view.host.querySelector("[data-bridge-body-more]"), null);
+	await act(async () => {
+		toggle.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+	});
+	assert.equal(ids().length, 20);
+	assert.equal(toggle.textContent, "Show less");
+	assert.equal(toggle.getAttribute("aria-expanded"), "true");
+	assert.equal(
+		view.host.querySelector("[data-bridge-body-more]").textContent,
+		"And 3 more messages",
+	);
+	await act(async () => {
+		toggle.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+	});
+	assert.equal(ids().length, 3);
+	await view.unmount();
+});
+
+test("a short-line body folds by lines in the rendered card (#1977 D3)", async () => {
+	const body = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`).join(
+		"\n\n",
+	);
+	const view = await mount(
+		{ sessionId: SESSION, entryId: "shortlines", enabled: true },
+		ok({ v: 1, items: [item({ state: "admitted", body })], more: 0 }),
+	);
+	const text = () =>
+		view.host.querySelector('[data-detail-section="bridge-body"]').textContent;
+	assert.ok(text().includes("line 4") && !text().includes("line 5"));
+	const toggle = view.host.querySelector("[data-bridge-body-toggle]");
+	assert.ok(toggle, "a short-line body under 600 characters still folds");
+	await act(async () => {
+		toggle.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+	});
+	assert.ok(text().includes("line 20"));
 	await view.unmount();
 });
 
