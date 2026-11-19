@@ -30,5 +30,17 @@
 	"ui.chat.trace.send.delivery.unconfirmed.label": "entrega sin confirmar — puede que aún llegue, así que comprueba antes de volver a enviar",
 	"ui.chat.trace.send.delivery.unconfirmed.note": "Sin confirmar: no hubo respuesta y el mensaje no está en su transcripción. Puede que aún llegue, así que comprueba antes de volver a enviarlo.",
 	"ui.chat.trace.send.delivery.unconfirmed.title": "Sin respuesta al despertar y todavía no está en su transcripción — puede que aún llegue. Comprueba antes de volver a enviarlo.",
-	"ui.chat.trace.send.delivery.unconfirmed.word": "entrega sin confirmar"
+	"ui.chat.trace.send.delivery.unconfirmed.word": "entrega sin confirmar",
+	"ui.chat.trace.send.mode.now": "ahora",
+	"ui.chat.trace.send.mode.quiet": "en silencio",
+	"ui.chat.trace.send.mode.wake": "despertar",
+	"ui.chat.trace.address.pid": "pid {pid}",
+	"ui.chat.trace.address.session": "sesión {session}",
+	"ui.chat.trace.sessions.peek.search": "búsqueda {query}",
+	"ui.chat.trace.sessions.peek.search_around": "búsqueda {query} · {count, number, ::group-off} alrededor",
+	"ui.chat.trace.sessions.peek.last": "{count, plural, one {último {count, number, ::group-off}} many {últimos {count, number, ::group-off}} other {últimos {count, number, ::group-off}}}",
+	"ui.chat.trace.sessions.peek.first": "{count, plural, one {primero {count, number, ::group-off}} many {primeros {count, number, ::group-off}} other {primeros {count, number, ::group-off}}}",
+	"ui.chat.trace.sessions.peek.digest": "resumen",
+	"ui.chat.trace.sessions.peek.before": "antes de {id}",
+	"ui.chat.trace.sessions.peek.around": "alrededor de {id}"
 }

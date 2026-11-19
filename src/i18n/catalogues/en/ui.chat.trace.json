@@ -30,5 +30,17 @@
 	"ui.chat.trace.send.delivery.unconfirmed.label": "delivery unconfirmed — it may still arrive, so check before resending",
 	"ui.chat.trace.send.delivery.unconfirmed.note": "Not confirmed: there was no answer and the message is not in their transcript. It may still arrive, so check before resending.",
 	"ui.chat.trace.send.delivery.unconfirmed.title": "No wake answer and not yet in their transcript — it may still arrive. Check before resending.",
-	"ui.chat.trace.send.delivery.unconfirmed.word": "delivery unconfirmed"
+	"ui.chat.trace.send.delivery.unconfirmed.word": "delivery unconfirmed",
+	"ui.chat.trace.send.mode.now": "now",
+	"ui.chat.trace.send.mode.quiet": "quiet",
+	"ui.chat.trace.send.mode.wake": "wake",
+	"ui.chat.trace.address.pid": "pid {pid}",
+	"ui.chat.trace.address.session": "session {session}",
+	"ui.chat.trace.sessions.peek.search": "search {query}",
+	"ui.chat.trace.sessions.peek.search_around": "search {query} · {count, number, ::group-off} around",
+	"ui.chat.trace.sessions.peek.last": "last {count, number, ::group-off}",
+	"ui.chat.trace.sessions.peek.first": "first {count, number, ::group-off}",
+	"ui.chat.trace.sessions.peek.digest": "digest",
+	"ui.chat.trace.sessions.peek.before": "before {id}",
+	"ui.chat.trace.sessions.peek.around": "around {id}"
 }

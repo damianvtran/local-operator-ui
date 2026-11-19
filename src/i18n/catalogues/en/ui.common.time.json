@@ -3,5 +3,7 @@
 	"ui.common.time.today_at": "Today {time}",
 	"ui.common.time.yesterday": "Yesterday",
 	"ui.common.time.weekday_at": "{weekday} {time}",
-	"ui.common.time.date_at": "{date}, {time}"
+	"ui.common.time.date_at": "{date}, {time}",
+	"ui.common.time.duration.under_minimum": "<{duration}",
+	"ui.common.time.duration.over_cap": "{duration}+"
 }

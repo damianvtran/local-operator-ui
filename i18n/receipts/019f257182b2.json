@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit of the convergence-rebase union (PR #1978 working-set strings + origin/main PR #1984 pairing strings)",
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "019f257182b2",
+  "status": "passed",
+  "result": "clean",
+  "namespace": "ui.mesh",
+  "locale": "hi",
+  "pr": 1978,
+  "date": "2026-11-19",
+  "head": "3329581351599b39960521516c60d42cbc443f4f",
+  "scope": "PR #1978 convergence rebase at 3329581351 (local, unpushed): the 84 keys added versus origin/main 9dbbd06e78 audited semantically against en + context; the 384 origin/main keys verified byte-identical (retained from PR #1984 round 4); union parity re-run.",
+  "sha256": {
+    "hi": "72a5227a75811e93feb6ed950ddf0bf4c618a14ff1347fc21d82a4a72abe5b64",
+    "en": "bf8017459de43d752e01d1bd54d1c79505bfc63a2b203ade4956daf5182985e3"
+  },
+  "context_sha256": "f29fb115d2c94f2b7b0ba354376deb655fb47e3f0b84ad2006d69e42315ea664",
+  "independence": "Auditor session a5d188384d6b, lopdev team translation-auditor role (manager 35c4f00e8d73, lane move-working-set). Authored no ui.mesh value and performed no earlier audit: translators and prior auditors were other runs (#1978: b973c86b28e4, d11d211390f8, f4f5a50c8316; #1984 round 4: aead7d1dac3d). Served model anthropic/claude-opus-5-5 per this session's harness system prompt, same model family as translators and prior auditors, different run; no fallback, no MT. Edited no catalogue, ledger or code; wrote only this receipt.",
+  "references": {
+    "context": "src/i18n/catalogues/en/ui.mesh.context.json @ 3329581351 (sha256 above)",
+    "pre_rebase_head": "1d0db78803d7d5d73293df17abed8d850807e68e",
+    "base": "9dbbd06e7879ac42148ea461312cc913601936cd",
+    "prior_audits": [
+      "i18n/receipts/d11d211390f8-pr1978-r4-hi.json",
+      "i18n/receipts/f4f5a50c8316-pr1978-second-r2-hi.json"
+    ],
+    "style_guide": "damianvtran/local-operator i18n/style-guides/hi.md @ origin/main"
+  },
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Union check: the merged file at 3329581351 has 468 keys = en key set; origin/main 9dbbd06e78 (sha256 9dc778fe5d77, audited under PR #1984 round 4) has 384; the 84 added keys are exactly the 84 ui.mesh.mesh_actions.working_set_* + ui.mesh.mesh_page.move_receipt_resumed keys of the pre-rebase PR head 1d0db78803 (sha256 425070c62f06, audited clean in d11d211390f8-pr1978-r4-hi and f4f5a50c8316-pr1978-second-r2-hi). All 384 origin/main values are byte-equal in the merge; all 84 added values are byte-equal to 1d0db78803; the #1984 delta (74 added ui.mesh.pairing.* keys) and the #1978 delta are disjoint, so no key was resolved by either side. Re-run here: scripts/i18n/catalogue-union-parity.mjs --head HEAD --old-head 1d0db78803 over all 8 ui.mesh.json files + en context: PASS, exit 0."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass over all 468 keys (@formatjs/icu-messageformat-parser): every value parses; argument/number/plural signature equals English for every key; plural arms are valid CLDR categories for hi (one/other) and include other, with the count rendered in every arm; no bidi control characters; NFC. The only whitespace anomalies are leading/trailing-space fragments on 8-9 pre-existing main keys that mirror English; none in the added keys."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Safety meaning (consent copy): the warning and the required checkbox name {device}, the DESTINATION, as the receiver of ALL working files (worktrees with unpushed commits and uncommitted changes, scratch files, session memory); the _leave/_without/_unknown variants and checkbox_leave say the files stay and the conversation on {device} will not have them; working_set_error keeps 'review before anything is sent'. working_set_warning: «सभी कार्य फ़ाइलें {device} पर भेज दी जाती हैं»; working_set_checkbox: «मुझे भरोसा है कि {device} को ये फ़ाइलें मिलनी चाहिए»."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Glossary consistency across the two sides: move = ले जाना / स्थानांतरण (main uses ले जाएँ and ले जाने का अनुरोध; the noun स्थानांतरण appears only in the #1978 keys and reads naturally beside them); device = डिवाइस (masculine agreement, same as #1984 pairing keys); share = साझा (= #1984); repository = रिपॉज़िटरी; worktree = वर्कट्री."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Overflow: source-only. The two button labels (working_set_move_without / working_set_copy_without) are the only width-budgeted strings among the added keys; prior #1978 audits recorded that they wrap rather than truncate. Rendered fit was not measured by this auditor."
+    }
+  ]
+}

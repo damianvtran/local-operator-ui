@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, remediation round, PR #1987",
+  "locale": "fr",
+  "namespace": "ui.providers.bedrock",
+  "pr": 1987,
+  "date": "2026-11-19",
+  "head": "44037e7acc12",
+  "instance": "350ecfa493e1-pr1987-bedrock-fr",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "model": "anthropic/claude-opus-5-5",
+    "instance": "350ecfa493e1-pr1987-bedrock-fr",
+    "independence": "lopdev task subagent, session 350ecfa493e1, anthropic/claude-opus-5-5, no fallback observed; distinct from the English author (coder job 4de55f98f6fe) and the translator (task job 48f1eebcc45e, commit 44037e7acc12, anthropic/claude-opus-5-5 per manager). Judged from English, its context sidecar, the core glossary and locale style guide (local-operator i18n/), and catalogue precedent in both repos; no MT used. Findings were corrected by the auditor in place; hashes below are of the corrected bytes."
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes: key set and order equal English (83, ambient_body removed in every locale); placeholder names equal English per key; plural arms per locale CLDR set; leading/trailing whitespace parity; no bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C); NFC."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Delta read in full against English + context sidecar (18 keys: access_key_id_invalid, connection_saved_row, kind_login, method_access_key_desc, method_ambient_desc, method_api_key_desc, method_profile_desc, method_sso_desc, no_plain_profiles_body, no_plain_profiles_title, nothing_saved, region_invalid, sso_expired_body, sso_missing_body, sso_missing_title, tab_ambient, tab_api_key, tab_profile). Carry-forward: the 65 English-unchanged keys are value-identical in en and in the context sidecar vs fb47f2a831 (round-1 audit commit), and in this locale except the auditor edits listed below. Semantic: vous address; U+202F before ; and : verified on the delta; identifiants; 'Rôle assumé' badge already identical to TUI."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Cross-surface: the 5 tab_* method names and 7 kind_* badges are byte-identical to local-operator PR #4270 wire.login.bedrock method_*/kind_* in this locale after this audit (core head with the matching corrections pushed as 8fedf4fcff10)."
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "scope": "PR #1987 remediation: ui.providers.bedrock 13 added + 5 changed keys, ambient_body removal, and cross-surface label parity with core PR #4270 (fb47f2a831..44037e7acc12 plus auditor corrections)",
+  "en_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+  "context_sha256": "d743aa952059f9372998145d5dfaa93667340753c2201eb36529d04a78ec3ceb",
+  "sha256": {
+    "fr": "fc7548876124d2cb7c5d6a009ef1ba2d2960dbf9cd212a04db41d8491a9daf24",
+    "en": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1"
+  }
+}

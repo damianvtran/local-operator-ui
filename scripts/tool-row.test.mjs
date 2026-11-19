@@ -31,6 +31,9 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/components/trace/tool-glyphs";',
 			'export * from "./src/renderer/src/features/chat/components/trace/bridge-row-model";',
 			'export { requestDesktopMedia } from "./src/main/desktop-media";',
+			// The i18n store from inside the bundle, so a registered catalogue
+			// reaches the summaries' own translation calls (i18n slice C3).
+			'export * as i18n from "./src/renderer/src/shared/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -46,6 +49,7 @@ const bundle = await build({
 	alias: { "@shared": "./src/renderer/src/shared" },
 });
 const {
+	i18n,
 	bridgeRow,
 	bridgeRowView,
 	bridgeLabelFromDetails,
@@ -6950,5 +6954,53 @@ test("a pure locale switch repaints a collapsed fold's live clause: the row grou
 		source,
 		/\}, \[visible, paneIsLive, paneGap, recordIndex, locale\]\);/,
 		"rowGroups is keyed on the locale",
+	);
+});
+
+test("C3: painted argument-summary words are keyed, and stay bidi-free for the copy path", () => {
+	i18n.registerCatalogue("ur", {
+		"ui.chat.trace.send.mode.now": "ابھی",
+		"ui.chat.trace.address.pid": "پی آئی ڈی {pid}",
+		"ui.chat.trace.sessions.peek.last": "آخری {count, number, ::group-off}",
+	});
+	i18n.setLocale("ur");
+	try {
+		const send = summaryFromArgs("send", {
+			pid: 48213,
+			now: true,
+			message: "x",
+		});
+		assert.equal(send, "ابھی · پی آئی ڈی 48213 · x");
+		// `translateRaw`: the same text is the copied transcript's, so no
+		// U+2066-2069 isolate may ride into the clipboard.
+		assert.doesNotMatch(send, /[\u2066-\u2069]/);
+		assert.equal(
+			summaryFromArgs("sessions", { op: "peek", pid: 7, steps: 12 }),
+			"پی آئی ڈی 7 · آخری 12",
+		);
+	} finally {
+		i18n.setLocale("en");
+		i18n.clearRegisteredCatalogues();
+	}
+	assert.equal(
+		summaryFromArgs("sessions", {
+			op: "peek",
+			session: "abc",
+			query: "err",
+			steps: 6,
+		}),
+		"abc · search err · 6 around",
+	);
+	assert.equal(
+		summaryFromArgs("sessions", {
+			op: "peek",
+			session: "abc",
+			before_id: "s9",
+		}),
+		"abc · before s9",
+	);
+	assert.equal(
+		summaryFromArgs("sessions", { op: "peek", session: "abc", digest: true }),
+		"abc · digest",
 	);
 });

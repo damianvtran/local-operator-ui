@@ -48,6 +48,10 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { type FC, useCallback, useMemo, useState } from "react";
 import {
+	type WorkingSetConsent,
+	workingSetConsent,
+} from "../../mesh/mesh-drop";
+import {
 	useMeshNetworks,
 	useMeshPeers,
 	useMeshTransfer,
@@ -356,7 +360,7 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	);
 
 	const onPick = useCallback(
-		(deviceId: string | null, keep: boolean) => {
+		(deviceId: string | null, keep: boolean, consent?: WorkingSetConsent) => {
 			const row = deviceId ? findRow(model, deviceId) : null;
 			const name = row ? row.name : t("ui.mesh.mesh_drop.this_device");
 			/*
@@ -412,7 +416,13 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 				destination: { deviceId: to, name },
 				source: from,
 			});
-			const plan = keep ? (pair.alternatives[0] ?? pair.plan) : pair.plan;
+			const chosen = keep ? (pair.alternatives[0] ?? pair.plan) : pair.plan;
+			/*
+			 * THE WORKING-SET CONSENT RIDES THE RECORDED PLAN too, so the refusal's
+			 * `Wait for the turn to finish` re-issues the move WITH the consent the user
+			 * gave rather than a consent-less one the route would refuse.
+			 */
+			const plan = { ...chosen, ...workingSetConsent(consent) };
 			beginMove(key, { deviceId: to, name, from });
 			transfer.mutate(
 				/*
@@ -420,7 +430,12 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 				 * (`movePair`, `MoveConfirmDialog`): the destructive default deletes the copy,
 				 * and the copy arm is what makes the alternative real (SPEC §3.4).
 				 */
-				{ sessionId, to, keep },
+				{
+					sessionId,
+					to,
+					keep,
+					...workingSetConsent(consent),
+				},
 				{
 					onSuccess: (outcome) => {
 						if (outcome.kind === "moved") {
@@ -438,17 +453,14 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 								from,
 								receipt: outcome.receipt,
 								/*
-								 * `engaged: null` IS THE HONEST VALUE TODAY, and this is the one line that
-								 * changes when the wire publishes the fact: the receipt the desktop route
-								 * returns (`TransferReceipt`) carries phases, locality, owner_device,
-								 * source_retired, session_id, new_session_id, mode and replayed - and no
-								 * field that says whether the destination STARTED the conversation. So
-								 * every arrival renders the cold sentence, which is what every peer that
-								 * predates `engage_on_arrival` actually does - and neither the client
-								 * nor this comment invents a guess from the peer's build (per-peer
-								 * feature version is not on the wire).
+								 * `engaged` IS THE RECEIPT'S OWN FACT or `null`. The core's receipt now
+								 * carries an `engagement` block when the destination started (or did
+								 * not start) the conversation - a move made mid-turn resumes there - and
+								 * a receipt without one (an older core) keeps `null`, which renders the
+								 * cold sentence: true of every peer that predates the block, and no
+								 * guess from the peer's build (per-peer version is not on the wire).
 								 */
-								engaged: null,
+								engaged: outcome.receipt.engagement?.engaged ?? null,
 							});
 							return;
 						}

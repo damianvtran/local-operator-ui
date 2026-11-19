@@ -559,6 +559,29 @@ const IDENTICAL_OK = new Map([
 		"ui.providers.provider_grid.row_action",
 		"Language-neutral: {action} and {brand} with a colon.",
 	],
+	/*
+	 * AWS product names in the bedrock connect panel (PR #1987), GLOBAL on
+	 * purpose: the English context sidecars require each of these keys to keep
+	 * AWS's own term verbatim in EVERY language ("Keep AWS product names ...
+	 * untranslated"; "SSO stays as the acronym"; "'AWS SSO' is the AWS product
+	 * term; keep it"), and the remediation-round audit confirmed the 5 tab_* and
+	 * 7 kind_* labels are byte-identical to local-operator PR #4270's TUI
+	 * wire.login.bedrock in all seven locales. A locale-scoped row would leave
+	 * the other six free to ship an untranslated badge, which is the stub this
+	 * guard exists to catch; the brand claim is the same in every locale.
+	 */
+	[
+		"ui.providers.bedrock.kind_login",
+		"AWS brand label, not UI copy: the kind badge names AWS's own sign-in method ('AWS login'), which the key's context sidecar requires untranslated in every locale. Kept verbatim for cross-surface parity with the TUI's bedrock method badge; audited in PR #1987 remediation round (receipts 350ecfa493e1-pr1987-bedrock-*, 0 blocker/major in all seven locales).",
+	],
+	[
+		"ui.providers.bedrock.kind_sso",
+		"AWS acronym, not UI copy: the kind badge names the profile type by AWS's own initialism ('SSO'), which the key's context sidecar requires kept as the acronym in every locale. Kept verbatim for cross-surface parity with the TUI's bedrock method badge; audited in PR #1987 remediation round (receipts 350ecfa493e1-pr1987-bedrock-*, 0 blocker/major in all seven locales).",
+	],
+	[
+		"ui.providers.bedrock.tab_sso",
+		"AWS product term, not UI copy: the segmented-control tab is labelled with AWS's own name for the IAM Identity Center sign-in ('AWS SSO'), which the key's context sidecar requires kept in every locale. Kept verbatim for cross-surface parity with the TUI's bedrock method name; audited in PR #1987 remediation round (receipts 350ecfa493e1-pr1987-bedrock-*, 0 blocker/major in all seven locales).",
+	],
 	[
 		"ui.schedules.scheduled_task_dialog.value1_message",
 		"Language-neutral: {value1} and {message} with a colon.",
@@ -1952,6 +1975,126 @@ const IDENTICAL_OK = new Map([
 	[
 		"vi:ui.chat.remote_compute.sheet.tier.dedicated.spot.title",
 		"The cheaper interruptible option's own name, Spot, kept as the product's term: no vi guide entry settles a rendering, and a per-locale invention would split one product concept across the tier list. Scoped to Vietnamese only.",
+	],
+	[
+		"es:ui.chat.run_details.tally.unrecognised",
+		"Pure ICU joiner `{count, number} {word}` for a run state the UI does not recognise: the word is the raw state passed through and the number is locale-formatted, so there is no lexical English; independently audited in W2 C3 (a9ee8572dff0). Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.run_details.chip.busiest",
+		"Pure joiner `, {clause}` appending the busiest-run clause to the chip; the clause is itself a translated message and this locale uses the same comma separator as English; independently audited in W2 C3 (a9ee8572dff0). Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.trace.address.pid",
+		"technical identifier: « pid » is a token (as ui.chat.pickers.info_model.pid); only the number is formatted; independently audited in W2 C3 (a9ee8572dff0). Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.common.time.duration.under_minimum",
+		"Pure symbol wrapper `<{duration}`: the duration is formatted by Intl in this locale and « < » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (a9ee8572dff0). Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.common.time.duration.over_cap",
+		"Pure symbol wrapper `{duration}+`: the duration is formatted by Intl in this locale and « + » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (a9ee8572dff0). Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.run_details.tally.unrecognised",
+		"Pure ICU joiner `{count, number} {word}` for a run state the UI does not recognise: the word is the raw state passed through and the number is locale-formatted, so there is no lexical English; independently audited in W2 C3 (16655c1d1913). Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.run_details.chip.busiest",
+		"Pure joiner `, {clause}` appending the busiest-run clause to the chip; the clause is itself a translated message and this locale uses the same comma separator as English; independently audited in W2 C3 (16655c1d1913). Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.trace.address.pid",
+		"technical identifier: « pid » is a token (as ui.chat.pickers.info_model.pid); only the number is formatted; independently audited in W2 C3 (16655c1d1913). Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.trace.address.session",
+		"French « session » has the same spelling as English (a common noun, cf. « ouvrir une session »), not skipped copy; independently audited in W2 C3 round 2 (16655c1d1913). Scoped to French only.",
+	],
+	[
+		"fr:ui.common.time.duration.over_cap",
+		"Pure symbol wrapper `{duration}+`: the duration is formatted by Intl in this locale and « + » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (16655c1d1913). Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.run_details.tally.unrecognised",
+		"Pure ICU joiner `{count, number} {word}` for a run state the UI does not recognise: the word is the raw state passed through and the number is locale-formatted, so there is no lexical English; independently audited in W2 C3 (6c6609d4af4d). Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.run_details.chip.busiest",
+		"Pure joiner `, {clause}` appending the busiest-run clause to the chip; the clause is itself a translated message and this locale uses the same comma separator as English; independently audited in W2 C3 (6c6609d4af4d). Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.trace.address.pid",
+		"technical identifier: « pid » is a token (as ui.chat.pickers.info_model.pid); only the number is formatted; independently audited in W2 C3 (6c6609d4af4d). Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.common.time.duration.under_minimum",
+		"Pure symbol wrapper `<{duration}`: the duration is formatted by Intl in this locale and « < » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (6c6609d4af4d). Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.common.time.duration.over_cap",
+		"Pure symbol wrapper `{duration}+`: the duration is formatted by Intl in this locale and « + » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (6c6609d4af4d). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.run_details.tally.unrecognised",
+		"Pure ICU joiner `{count, number} {word}` for a run state the UI does not recognise: the word is the raw state passed through and the number is locale-formatted, so there is no lexical English; independently audited in W2 C3 (2c6807f03acd). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.run_details.chip.busiest",
+		"Pure joiner `, {clause}` appending the busiest-run clause to the chip; the clause is itself a translated message and this locale uses the same comma separator as English; independently audited in W2 C3 (2c6807f03acd). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.trace.address.pid",
+		"technical identifier: « pid » is a token (as ui.chat.pickers.info_model.pid); only the number is formatted; independently audited in W2 C3 (2c6807f03acd). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.common.time.duration.under_minimum",
+		"Pure symbol wrapper `<{duration}`: the duration is formatted by Intl in this locale and « < » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (2c6807f03acd). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.common.time.duration.over_cap",
+		"Pure symbol wrapper `{duration}+`: the duration is formatted by Intl in this locale and « + » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (2c6807f03acd). Scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.run_details.tally.unrecognised",
+		"Pure ICU joiner `{count, number} {word}` for a run state the UI does not recognise: the word is the raw state passed through and the number is locale-formatted, so there is no lexical English; independently audited in W2 C3 (13b8374041bd). Scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.trace.address.pid",
+		"technical identifier: « pid » is a token (as ui.chat.pickers.info_model.pid); only the number is formatted; independently audited in W2 C3 (13b8374041bd). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.run_details.tally.unrecognised",
+		"Pure ICU joiner `{count, number} {word}` for a run state the UI does not recognise: the word is the raw state passed through and the number is locale-formatted, so there is no lexical English; independently audited in W2 C3 (38831ad85d10). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.run_details.chip.busiest",
+		"Pure joiner `, {clause}` appending the busiest-run clause to the chip; the clause is itself a translated message and this locale uses the same comma separator as English; independently audited in W2 C3 (38831ad85d10). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.trace.address.pid",
+		"technical identifier: « pid » is a token (as ui.chat.pickers.info_model.pid); only the number is formatted; independently audited in W2 C3 (38831ad85d10). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.common.time.duration.under_minimum",
+		"Pure symbol wrapper `<{duration}`: the duration is formatted by Intl in this locale and « < » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (38831ad85d10). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.common.time.duration.over_cap",
+		"Pure symbol wrapper `{duration}+`: the duration is formatted by Intl in this locale and « + » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (38831ad85d10). Scoped to this locale/key only.",
+	],
+	[
+		"zh-CN:ui.chat.trace.address.pid",
+		"technical identifier: « pid » is a token (as ui.chat.pickers.info_model.pid); only the number is formatted; independently audited in W2 C3 (70198a03162c). Scoped to this locale/key only.",
+	],
+	[
+		"zh-CN:ui.common.time.duration.under_minimum",
+		"Pure symbol wrapper `<{duration}`: the duration is formatted by Intl in this locale and « < » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (70198a03162c). Scoped to this locale/key only.",
+	],
+	[
+		"zh-CN:ui.common.time.duration.over_cap",
+		"Pure symbol wrapper `{duration}+`: the duration is formatted by Intl in this locale and « + » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (70198a03162c). Scoped to this locale/key only.",
 	],
 ]);
 

@@ -238,10 +238,15 @@ test("the plan's destination is the row's device ID, and the address is what get
 	const header = code(
 		"src/renderer/src/features/chat/device/chat-header-device.tsx",
 	);
-	const pick = header.slice(
-		header.indexOf("const pair = movePair({"),
-		header.indexOf("setAsk({"),
+	// The end marker is searched FROM the pick's start: the working-set reopen path
+	// has its own earlier `setAsk({`, and a whole-file search sliced '' silently.
+	const pickStart = header.indexOf("const pair = movePair({");
+	const pickEnd = header.indexOf("setAsk({", pickStart);
+	assert.ok(
+		pickStart !== -1 && pickEnd > pickStart,
+		`the move pick's source moved: movePair at ${pickStart}, its setAsk at ${pickEnd}`,
 	);
+	const pick = header.slice(pickStart, pickEnd);
 	assert.match(
 		pick,
 		/destination:\s*\{\s*deviceId:\s*row\.deviceId,\s*name:\s*row\.name\s*\}/,
@@ -256,9 +261,11 @@ test("the plan's destination is the row's device ID, and the address is what get
 		header.indexOf("onChoose={(plan) => {"),
 		header.indexOf("</>", header.indexOf("onChoose={(plan) => {")),
 	);
+	// Whitespace-tolerant and open after `plan.keep`: the working-set path appends the
+	// consent argument; what this pins is only the address in first position.
 	assert.match(
 		choose,
-		/onPick\(plan\.to === "local" \? null : plan\.to, plan\.keep\)/,
+		/onPick\(\s*plan\.to === "local" \? null : plan\.to,\s*plan\.keep\s*[,)]/,
 	);
 	/*
 	 * AND THE RECEIVER RESOLVES BY THE SAME KEY: the slot looks the id up in a model
@@ -279,7 +286,8 @@ test("the plan's destination is the row's device ID, and the address is what get
 	);
 	assert.match(slot, /const to = deviceId \?\? "local";/);
 	/* The address on the wire is that same value, and the draft keeps the id, not the name. */
-	assert.match(slot, /\{ sessionId, to, keep \}/);
+	// Open after `keep` for the same reason: the working-set consent is spread in after it.
+	assert.match(slot, /\{\s*sessionId,\s*to,\s*keep\s*[,}]/);
 	assert.match(slot, /setDraftPeer\(draftKey, row \? row\.deviceId : null\)/);
 });
 

@@ -161,6 +161,7 @@ import enUiOwnerAudit from "./catalogues/en/ui.ownerAudit.json";
 import enUiPhonePairing from "./catalogues/en/ui.phone_pairing.json";
 import enUiPresence from "./catalogues/en/ui.presence.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
+import enUiProvidersBedrock from "./catalogues/en/ui.providers.bedrock.json";
 import enUiProviders from "./catalogues/en/ui.providers.json";
 import enUiRecovery from "./catalogues/en/ui.recovery.json";
 import enUiSchedulesErrors from "./catalogues/en/ui.schedules.errors.json";
@@ -337,6 +338,7 @@ import esUiOwnerAudit from "./catalogues/es/ui.ownerAudit.json";
 import esUiPhonePairing from "./catalogues/es/ui.phone_pairing.json";
 import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
+import esUiProvidersBedrock from "./catalogues/es/ui.providers.bedrock.json";
 import esUiProviders from "./catalogues/es/ui.providers.json";
 import esUiRecovery from "./catalogues/es/ui.recovery.json";
 import esUiSchedulesErrors from "./catalogues/es/ui.schedules.errors.json";
@@ -513,6 +515,7 @@ import frUiOwnerAudit from "./catalogues/fr/ui.ownerAudit.json";
 import frUiPhonePairing from "./catalogues/fr/ui.phone_pairing.json";
 import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
+import frUiProvidersBedrock from "./catalogues/fr/ui.providers.bedrock.json";
 import frUiProviders from "./catalogues/fr/ui.providers.json";
 import frUiRecovery from "./catalogues/fr/ui.recovery.json";
 import frUiSchedulesErrors from "./catalogues/fr/ui.schedules.errors.json";
@@ -689,6 +692,7 @@ import hiUiOwnerAudit from "./catalogues/hi/ui.ownerAudit.json";
 import hiUiPhonePairing from "./catalogues/hi/ui.phone_pairing.json";
 import hiUiPresence from "./catalogues/hi/ui.presence.json";
 import hiUiProjects from "./catalogues/hi/ui.projects.json";
+import hiUiProvidersBedrock from "./catalogues/hi/ui.providers.bedrock.json";
 import hiUiProviders from "./catalogues/hi/ui.providers.json";
 import hiUiRecovery from "./catalogues/hi/ui.recovery.json";
 import hiUiSchedulesErrors from "./catalogues/hi/ui.schedules.errors.json";
@@ -865,6 +869,7 @@ import ruUiOwnerAudit from "./catalogues/ru/ui.ownerAudit.json";
 import ruUiPhonePairing from "./catalogues/ru/ui.phone_pairing.json";
 import ruUiPresence from "./catalogues/ru/ui.presence.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
+import ruUiProvidersBedrock from "./catalogues/ru/ui.providers.bedrock.json";
 import ruUiProviders from "./catalogues/ru/ui.providers.json";
 import ruUiRecovery from "./catalogues/ru/ui.recovery.json";
 import ruUiSchedulesErrors from "./catalogues/ru/ui.schedules.errors.json";
@@ -1041,6 +1046,7 @@ import urUiOwnerAudit from "./catalogues/ur/ui.ownerAudit.json";
 import urUiPhonePairing from "./catalogues/ur/ui.phone_pairing.json";
 import urUiPresence from "./catalogues/ur/ui.presence.json";
 import urUiProjects from "./catalogues/ur/ui.projects.json";
+import urUiProvidersBedrock from "./catalogues/ur/ui.providers.bedrock.json";
 import urUiProviders from "./catalogues/ur/ui.providers.json";
 import urUiRecovery from "./catalogues/ur/ui.recovery.json";
 import urUiSchedulesErrors from "./catalogues/ur/ui.schedules.errors.json";
@@ -1217,6 +1223,7 @@ import viUiOwnerAudit from "./catalogues/vi/ui.ownerAudit.json";
 import viUiPhonePairing from "./catalogues/vi/ui.phone_pairing.json";
 import viUiPresence from "./catalogues/vi/ui.presence.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
+import viUiProvidersBedrock from "./catalogues/vi/ui.providers.bedrock.json";
 import viUiProviders from "./catalogues/vi/ui.providers.json";
 import viUiRecovery from "./catalogues/vi/ui.recovery.json";
 import viUiSchedulesErrors from "./catalogues/vi/ui.schedules.errors.json";
@@ -1393,6 +1400,7 @@ import zhCNUiOwnerAudit from "./catalogues/zh-CN/ui.ownerAudit.json";
 import zhCNUiPhonePairing from "./catalogues/zh-CN/ui.phone_pairing.json";
 import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
 import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
+import zhCNUiProvidersBedrock from "./catalogues/zh-CN/ui.providers.bedrock.json";
 import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
 import zhCNUiRecovery from "./catalogues/zh-CN/ui.recovery.json";
 import zhCNUiSchedulesErrors from "./catalogues/zh-CN/ui.schedules.errors.json";
@@ -1572,6 +1580,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiPhonePairing,
 	...enUiPresence,
 	...enUiProjects,
+	...enUiProvidersBedrock,
 	...enUiProviders,
 	...enUiRecovery,
 	...enUiSchedulesErrors,
@@ -1756,6 +1765,7 @@ export const bundledCatalogues: Readonly<
 		...esUiPhonePairing,
 		...esUiPresence,
 		...esUiProjects,
+		...esUiProvidersBedrock,
 		...esUiProviders,
 		...esUiRecovery,
 		...esUiSchedulesErrors,
@@ -1934,6 +1944,7 @@ export const bundledCatalogues: Readonly<
 		...frUiPhonePairing,
 		...frUiPresence,
 		...frUiProjects,
+		...frUiProvidersBedrock,
 		...frUiProviders,
 		...frUiRecovery,
 		...frUiSchedulesErrors,
@@ -2112,6 +2123,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiPhonePairing,
 		...hiUiPresence,
 		...hiUiProjects,
+		...hiUiProvidersBedrock,
 		...hiUiProviders,
 		...hiUiRecovery,
 		...hiUiSchedulesErrors,
@@ -2290,6 +2302,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiPhonePairing,
 		...ruUiPresence,
 		...ruUiProjects,
+		...ruUiProvidersBedrock,
 		...ruUiProviders,
 		...ruUiRecovery,
 		...ruUiSchedulesErrors,
@@ -2468,6 +2481,7 @@ export const bundledCatalogues: Readonly<
 		...urUiPhonePairing,
 		...urUiPresence,
 		...urUiProjects,
+		...urUiProvidersBedrock,
 		...urUiProviders,
 		...urUiRecovery,
 		...urUiSchedulesErrors,
@@ -2646,6 +2660,7 @@ export const bundledCatalogues: Readonly<
 		...viUiPhonePairing,
 		...viUiPresence,
 		...viUiProjects,
+		...viUiProvidersBedrock,
 		...viUiProviders,
 		...viUiRecovery,
 		...viUiSchedulesErrors,
@@ -2824,6 +2839,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiPhonePairing,
 		...zhCNUiPresence,
 		...zhCNUiProjects,
+		...zhCNUiProvidersBedrock,
 		...zhCNUiProviders,
 		...zhCNUiRecovery,
 		...zhCNUiSchedulesErrors,
@@ -7408,10 +7424,20 @@ export type MessageParams = {
 	"ui.chat.run_details.child.result.title": undefined;
 	"ui.chat.run_details.child.result.unavailable": undefined;
 	"ui.chat.run_details.child.result.unavailable_clipped": undefined;
+	"ui.chat.run_details.children.count": { count: number };
 	"ui.chat.run_details.children_unopenable": undefined;
 	"ui.chat.run_details.chip.attention": { count: number };
+	"ui.chat.run_details.chip.busiest": { clause: string };
+	"ui.chat.run_details.chip.jobs_open": { count: number };
+	"ui.chat.run_details.chip.jobs_paused": { count: number };
+	"ui.chat.run_details.chip.jobs_queued": { count: number };
+	"ui.chat.run_details.chip.jobs_running": { count: number };
 	"ui.chat.run_details.chip.mcp_attention": { count: number };
 	"ui.chat.run_details.chip.subagents_failed": { count: number };
+	"ui.chat.run_details.chip.subagents_open": { count: number };
+	"ui.chat.run_details.chip.subagents_paused": { count: number };
+	"ui.chat.run_details.chip.subagents_queued": { count: number };
+	"ui.chat.run_details.chip.subagents_running": { count: number };
 	"ui.chat.run_details.chip.todos_closed": undefined;
 	"ui.chat.run_details.chip.todos_open": { count: number };
 	"ui.chat.run_details.chip.todos_resolved": undefined;
@@ -7534,17 +7560,41 @@ export type MessageParams = {
 	"ui.chat.run_details.reader.no_transcript": undefined;
 	"ui.chat.run_details.reader.read_only_footer": undefined;
 	"ui.chat.run_details.retry": undefined;
+	"ui.chat.run_details.state.cancelled": { kind: string };
+	"ui.chat.run_details.state.cancelled_before_start": { kind: string };
+	"ui.chat.run_details.state.done": { kind: string };
+	"ui.chat.run_details.state.failed": { kind: string };
+	"ui.chat.run_details.state.gone": { kind: string };
+	"ui.chat.run_details.state.interrupted": { kind: string };
+	"ui.chat.run_details.state.paused": { kind: string };
+	"ui.chat.run_details.state.queued": { kind: string };
+	"ui.chat.run_details.state.running": { kind: string };
 	"ui.chat.run_details.subagent_path_label": undefined;
 	"ui.chat.run_details.subagents.show_more": { count: number };
 	"ui.chat.run_details.subagents.title": undefined;
 	"ui.chat.run_details.subagents_of": undefined;
 	"ui.chat.run_details.subagents_of_aria": { owner: string };
+	"ui.chat.run_details.tally.cancelled": { kind: string; count: number };
+	"ui.chat.run_details.tally.cancelled_before_start": {
+		kind: string;
+		count: number;
+	};
+	"ui.chat.run_details.tally.done": { kind: string; count: number };
+	"ui.chat.run_details.tally.failed": { kind: string; count: number };
+	"ui.chat.run_details.tally.gone": { kind: string; count: number };
+	"ui.chat.run_details.tally.interrupted": { kind: string; count: number };
+	"ui.chat.run_details.tally.paused": { kind: string; count: number };
+	"ui.chat.run_details.tally.queued": { kind: string; count: number };
+	"ui.chat.run_details.tally.running": { kind: string; count: number };
+	"ui.chat.run_details.tally.unrecognised": { count: number; word: string };
 	"ui.chat.run_details.title": undefined;
 	"ui.chat.run_details.todos.blocked": undefined;
 	"ui.chat.run_details.todos.blocked_reason": { reason: string };
 	"ui.chat.run_details.todos.dropped": undefined;
 	"ui.chat.run_details.todos.hidden": { count: string };
 	"ui.chat.run_details.todos.hidden_summary": { count: number };
+	"ui.chat.run_details.todos.tally_closed": { closed: number; total: number };
+	"ui.chat.run_details.todos.tally_dropped": { count: number };
 	"ui.chat.run_details.todos.title": undefined;
 	"ui.chat.run_details.unopenable": undefined;
 	"ui.chat.run_details.update_backend": undefined;
@@ -8098,6 +8148,8 @@ export type MessageParams = {
 	"ui.chat.trace.action.read.settled": undefined;
 	"ui.chat.trace.action.write.running": undefined;
 	"ui.chat.trace.action.write.settled": undefined;
+	"ui.chat.trace.address.pid": { pid: string };
+	"ui.chat.trace.address.session": { session: string };
 	"ui.chat.trace.object.file_count": { count: number };
 	"ui.chat.trace.reasoning.label": undefined;
 	"ui.chat.trace.reasoning.with_duration": { label: string; duration: string };
@@ -8112,6 +8164,16 @@ export type MessageParams = {
 	"ui.chat.trace.send.delivery.unconfirmed.note": undefined;
 	"ui.chat.trace.send.delivery.unconfirmed.title": undefined;
 	"ui.chat.trace.send.delivery.unconfirmed.word": undefined;
+	"ui.chat.trace.send.mode.now": undefined;
+	"ui.chat.trace.send.mode.quiet": undefined;
+	"ui.chat.trace.send.mode.wake": undefined;
+	"ui.chat.trace.sessions.peek.around": { id: string };
+	"ui.chat.trace.sessions.peek.before": { id: string };
+	"ui.chat.trace.sessions.peek.digest": undefined;
+	"ui.chat.trace.sessions.peek.first": { count: number };
+	"ui.chat.trace.sessions.peek.last": { count: number };
+	"ui.chat.trace.sessions.peek.search": { query: string };
+	"ui.chat.trace.sessions.peek.search_around": { query: string; count: number };
 	"ui.chat.transcript_copy.block.logs": undefined;
 	"ui.chat.transcript_copy.block.output": undefined;
 	"ui.chat.transcript_copy.menu.copy_markdown": undefined;
@@ -8744,6 +8806,8 @@ export type MessageParams = {
 	"ui.common.speech.speak_control.speak_aloud": undefined;
 	"ui.common.speech.speak_control.stop": undefined;
 	"ui.common.time.date_at": { date: string; time: string };
+	"ui.common.time.duration.over_cap": { duration: string };
+	"ui.common.time.duration.under_minimum": { duration: string };
 	"ui.common.time.today_at": { time: string };
 	"ui.common.time.weekday_at": { weekday: string; time: string };
 	"ui.common.time.yesterday": undefined;
@@ -10110,6 +10174,128 @@ export type MessageParams = {
 	"ui.mesh.mesh_actions.type_the_network_s_name_to_confirm": undefined;
 	"ui.mesh.mesh_actions.wait_for_the_turn_to_finish": undefined;
 	"ui.mesh.mesh_actions.which_operation": undefined;
+	"ui.mesh.mesh_actions.working_set_changed": undefined;
+	"ui.mesh.mesh_actions.working_set_checkbox": { device: string };
+	"ui.mesh.mesh_actions.working_set_checkbox_leave": { device: string };
+	"ui.mesh.mesh_actions.working_set_clone": { device: string; url: string };
+	"ui.mesh.mesh_actions.working_set_clone_pending": {
+		device: string;
+		url: string;
+	};
+	"ui.mesh.mesh_actions.working_set_clone_sized": {
+		device: string;
+		url: string;
+		size: string;
+	};
+	"ui.mesh.mesh_actions.working_set_copy_without": undefined;
+	"ui.mesh.mesh_actions.working_set_count_staged": { count: number };
+	"ui.mesh.mesh_actions.working_set_count_unpushed": { count: number };
+	"ui.mesh.mesh_actions.working_set_count_unstaged": { count: number };
+	"ui.mesh.mesh_actions.working_set_count_untracked": { count: number };
+	"ui.mesh.mesh_actions.working_set_dest_path": { path: string };
+	"ui.mesh.mesh_actions.working_set_detached": undefined;
+	"ui.mesh.mesh_actions.working_set_error": undefined;
+	"ui.mesh.mesh_actions.working_set_kept_heading": { count: number };
+	"ui.mesh.mesh_actions.working_set_kept_heading_on": {
+		count: number;
+		source: string;
+	};
+	"ui.mesh.mesh_actions.working_set_kind_build_output": undefined;
+	"ui.mesh.mesh_actions.working_set_kind_dependency_tree": undefined;
+	"ui.mesh.mesh_actions.working_set_kind_ignored": undefined;
+	"ui.mesh.mesh_actions.working_set_kind_loose_file": undefined;
+	"ui.mesh.mesh_actions.working_set_left_behind_heading": undefined;
+	"ui.mesh.mesh_actions.working_set_loading": undefined;
+	"ui.mesh.mesh_actions.working_set_missing_tools": { device: string };
+	"ui.mesh.mesh_actions.working_set_move_without": undefined;
+	"ui.mesh.mesh_actions.working_set_probe_cannot_clone": {
+		device: string;
+		remote: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_cannot_fetch": {
+		device: string;
+		remote: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_cannot_push": {
+		device: string;
+		remote: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_copy": undefined;
+	"ui.mesh.mesh_actions.working_set_probe_detail_auth_denied": {
+		device: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_detail_error": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_detail_git_missing": {
+		device: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_detail_host_key": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_detail_host_refused": undefined;
+	"ui.mesh.mesh_actions.working_set_probe_detail_not_found": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_detail_probe_error": {
+		device: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_detail_timeout": undefined;
+	"ui.mesh.mesh_actions.working_set_probe_detail_tls": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_detail_unknown": {
+		device: string;
+		code: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_detail_unreachable": {
+		device: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_detail_url_refused": undefined;
+	"ui.mesh.mesh_actions.working_set_probe_https_rewrite": {
+		device: string;
+		url: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_no_remote": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_ok": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_remedy_include": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_remedy_on": { lender: string };
+	"ui.mesh.mesh_actions.working_set_probe_remedy_share": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_unknown": { device: string };
+	"ui.mesh.mesh_actions.working_set_reason_contended": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_destination_cannot_clone": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_destination_cannot_clone_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_destination_conflict": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_history_secret": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_history_secret_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_history_unscanned": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_history_unscanned_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_in_progress_operation": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_in_progress_operation_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_lfs": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_not_transferred": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_outside_home": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_over_cap": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_over_cap_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_submodule": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_unknown": { code: string };
+	"ui.mesh.mesh_actions.working_set_reason_unmerged": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_unmerged_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_recreate_with": { command: string };
+	"ui.mesh.mesh_actions.working_set_row_missing_tools": {
+		device: string;
+		tools: string;
+	};
+	"ui.mesh.mesh_actions.working_set_sent_heading": {
+		count: number;
+		size: string;
+	};
+	"ui.mesh.mesh_actions.working_set_team_bridge": { device: string };
+	"ui.mesh.mesh_actions.working_set_unconfirmed": undefined;
+	"ui.mesh.mesh_actions.working_set_unknown": { device: string };
+	"ui.mesh.mesh_actions.working_set_warning": { device: string };
+	"ui.mesh.mesh_actions.working_set_warning_leave": { device: string };
+	"ui.mesh.mesh_actions.working_set_warning_without": { device: string };
+	"ui.mesh.mesh_actions.working_set_withheld_heading": undefined;
+	"ui.mesh.mesh_actions.working_set_withheld_heading_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_withheld_history_secret_content": undefined;
+	"ui.mesh.mesh_actions.working_set_withheld_history_secret_path": undefined;
+	"ui.mesh.mesh_actions.working_set_withheld_secret_content": undefined;
+	"ui.mesh.mesh_actions.working_set_withheld_secret_path": undefined;
 	"ui.mesh.mesh_approvals.answer_approval_prompts_there": undefined;
 	"ui.mesh.mesh_approvals.approval_title": { head: string };
 	"ui.mesh.mesh_approvals.approval_title_with_clauses": {
@@ -10325,6 +10511,10 @@ export type MessageParams = {
 	"ui.mesh.mesh_page.list": undefined;
 	"ui.mesh.mesh_page.mesh": undefined;
 	"ui.mesh.mesh_page.move_receipt": { destination: string; retirement: string };
+	"ui.mesh.mesh_page.move_receipt_resumed": {
+		destination: string;
+		retirement: string;
+	};
 	"ui.mesh.mesh_page.moved": undefined;
 	"ui.mesh.mesh_page.no_network_on_this_device": undefined;
 	"ui.mesh.mesh_page.presentation": undefined;
@@ -11636,6 +11826,89 @@ export type MessageParams = {
 		endedSentence_message: string;
 	};
 	"ui.projects.use_request_update.the_request_could_not_be_confirmed": undefined;
+	"ui.providers.bedrock.access_key_id_invalid": undefined;
+	"ui.providers.bedrock.access_key_id_label": undefined;
+	"ui.providers.bedrock.ambient_none": undefined;
+	"ui.providers.bedrock.ambient_sources": { sources: string };
+	"ui.providers.bedrock.api_key_label": undefined;
+	"ui.providers.bedrock.check": undefined;
+	"ui.providers.bedrock.check_failed": undefined;
+	"ui.providers.bedrock.check_ok": undefined;
+	"ui.providers.bedrock.check_unverified": undefined;
+	"ui.providers.bedrock.checking": { region: string };
+	"ui.providers.bedrock.connect": undefined;
+	"ui.providers.bedrock.connected_models": { label: string; count: number };
+	"ui.providers.bedrock.connection_saved": { label: string };
+	"ui.providers.bedrock.connection_saved_row": undefined;
+	"ui.providers.bedrock.context_failed": undefined;
+	"ui.providers.bedrock.copy_code": undefined;
+	"ui.providers.bedrock.copy_command": undefined;
+	"ui.providers.bedrock.error_credentials_rejected": undefined;
+	"ui.providers.bedrock.error_generic": undefined;
+	"ui.providers.bedrock.error_no_credentials": undefined;
+	"ui.providers.bedrock.error_profile_not_found": undefined;
+	"ui.providers.bedrock.error_region_invalid": undefined;
+	"ui.providers.bedrock.how_to_connect": undefined;
+	"ui.providers.bedrock.kind_assume_role": undefined;
+	"ui.providers.bedrock.kind_login": undefined;
+	"ui.providers.bedrock.kind_other": undefined;
+	"ui.providers.bedrock.kind_process": undefined;
+	"ui.providers.bedrock.kind_sso": undefined;
+	"ui.providers.bedrock.kind_static": undefined;
+	"ui.providers.bedrock.kind_web_identity": undefined;
+	"ui.providers.bedrock.loading_context": undefined;
+	"ui.providers.bedrock.method_access_key_desc": undefined;
+	"ui.providers.bedrock.method_ambient_desc": undefined;
+	"ui.providers.bedrock.method_api_key_desc": undefined;
+	"ui.providers.bedrock.method_aws": undefined;
+	"ui.providers.bedrock.method_aws_blurb": undefined;
+	"ui.providers.bedrock.method_profile_desc": { count: number };
+	"ui.providers.bedrock.method_sso_desc": { count: number };
+	"ui.providers.bedrock.no_plain_profiles_body": undefined;
+	"ui.providers.bedrock.no_plain_profiles_title": undefined;
+	"ui.providers.bedrock.no_profiles_body": undefined;
+	"ui.providers.bedrock.no_profiles_title": undefined;
+	"ui.providers.bedrock.no_sso_profiles_body": { command: string };
+	"ui.providers.bedrock.no_sso_profiles_title": undefined;
+	"ui.providers.bedrock.nothing_saved": undefined;
+	"ui.providers.bedrock.profile_label": undefined;
+	"ui.providers.bedrock.profile_no_match": undefined;
+	"ui.providers.bedrock.profile_placeholder": undefined;
+	"ui.providers.bedrock.region_custom": { region: string };
+	"ui.providers.bedrock.region_help": { region: string; source: string };
+	"ui.providers.bedrock.region_invalid": { region: string };
+	"ui.providers.bedrock.region_label": undefined;
+	"ui.providers.bedrock.region_no_match": undefined;
+	"ui.providers.bedrock.region_placeholder": undefined;
+	"ui.providers.bedrock.region_source_config": undefined;
+	"ui.providers.bedrock.region_source_fallback": undefined;
+	"ui.providers.bedrock.region_source_profile": undefined;
+	"ui.providers.bedrock.retry": undefined;
+	"ui.providers.bedrock.saved_connections": undefined;
+	"ui.providers.bedrock.secret_access_key_label": undefined;
+	"ui.providers.bedrock.secrets_help": undefined;
+	"ui.providers.bedrock.session_expired": undefined;
+	"ui.providers.bedrock.session_missing": undefined;
+	"ui.providers.bedrock.session_refreshes": undefined;
+	"ui.providers.bedrock.session_token_label": undefined;
+	"ui.providers.bedrock.session_valid": undefined;
+	"ui.providers.bedrock.session_valid_until": { time: string };
+	"ui.providers.bedrock.sso_cancel": undefined;
+	"ui.providers.bedrock.sso_code_label": undefined;
+	"ui.providers.bedrock.sso_expired_body": undefined;
+	"ui.providers.bedrock.sso_expired_title": undefined;
+	"ui.providers.bedrock.sso_failed": undefined;
+	"ui.providers.bedrock.sso_missing_body": undefined;
+	"ui.providers.bedrock.sso_missing_title": undefined;
+	"ui.providers.bedrock.sso_needs_cli": undefined;
+	"ui.providers.bedrock.sso_open_page": undefined;
+	"ui.providers.bedrock.sso_sign_in": undefined;
+	"ui.providers.bedrock.sso_waiting": undefined;
+	"ui.providers.bedrock.tab_access_key": undefined;
+	"ui.providers.bedrock.tab_ambient": undefined;
+	"ui.providers.bedrock.tab_api_key": undefined;
+	"ui.providers.bedrock.tab_profile": undefined;
+	"ui.providers.bedrock.tab_sso": undefined;
 	"ui.providers.connect_provider_card.connect": undefined;
 	"ui.providers.connect_provider_card.connect_a_model_provider_to_start": undefined;
 	"ui.providers.connect_provider_card.connect_a_provider": undefined;

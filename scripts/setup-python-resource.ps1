@@ -147,16 +147,33 @@ function Set-UpUvArch {
 		Write-Output "Verified uv $Arch sha256: $actual"
 
 		$extractDir = Join-Path $scratch 'extract'
-		# `Expand-Archive` STAYS - a measured decision made beside `Get-Sha256`
-		# above, not an oversight: in the release chain's child it resolves and
-		# extracts (the CI probes print `Expand-Archive found: True` for the cmd
-		# and pnpm hops where `Get-FileHash` prints False, run 36278672247, and
-		# the fix run stages both architectures through this call, run
-		# 36279454391). If a runner image ever moves it into the same broken
-		# class, the stager step of `windows-uv-stager-check` goes red here, and
-		# `Get-Sha256` above is the shape of the replacement: a .NET API rather
-		# than a module-provided cmdlet.
-		Expand-Archive -Path $archivePath -DestinationPath $extractDir
+		# WHY NOT `Expand-Archive`, and the history behind it. It was kept
+		# deliberately at first, beside `Get-Sha256` above: in the release
+		# chain's child it resolved and extracted (the CI probes printed
+		# `Expand-Archive found: True` for the cmd and pnpm hops where
+		# `Get-FileHash` printed False, run 36278672247, and the fix run staged
+		# both architectures through it, run 36279454391). The comment here
+		# predicted that a runner image might move it into the same broken class,
+		# and one did: on `windows-2025-vs2026` image 20261116.315 (the v0.58.4
+		# release had passed on 20261103.298, with no code change in between) the
+		# v0.59.0 publish run 44488970816 failed here in Windows PowerShell 5.1
+		# with `Cannot find an overload for "ExtractToDirectory" and the argument
+		# count: "3"` (MethodCountCouldNotFindBest): the cmdlet resolved, but the
+		# Archive module the image now hands this 5.1 child calls a 3-argument
+		# ExtractToDirectory overload the 5.1 runtime cannot bind.
+		#
+		# So extraction calls the .NET API directly, the same shape as
+		# `Get-Sha256`: nothing module-provided is left to resolve.
+		# - `Add-Type` is required under Windows PowerShell 5.1, which does not
+		#   load System.IO.Compression.FileSystem by default; under pwsh it is
+		#   a harmless no-op.
+		# - The 2-argument overload is the one that exists on both .NET
+		#   Framework 4.5+ and .NET Core. It throws if any entry already exists
+		#   at the destination, which cannot happen here: `$scratch` is a fresh
+		#   GUID-named directory created above, so `$extractDir` is new and
+		#   ExtractToDirectory creates it.
+		Add-Type -AssemblyName System.IO.Compression.FileSystem
+		[System.IO.Compression.ZipFile]::ExtractToDirectory($archivePath, $extractDir)
 		$memberPath = Join-Path $extractDir $member
 		if (-not (Test-Path $memberPath -PathType Leaf)) {
 			throw "Expected $member in $asset for $Arch; the layout's archiveMember says that is where the release puts it."

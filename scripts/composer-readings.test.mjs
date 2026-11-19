@@ -38,6 +38,12 @@ const bundle = await build({
 			import { SessionStatusStrip } from "./src/renderer/src/features/chat/session-status/session-status-strip";
 			export { LAST_READING_NOTE, readingsDroppedNote, fastModeOnNote } from "./src/renderer/src/features/chat/session-status/session-status-strip";
 			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
+			// Bundled, not imported natively: the port now spells its units through
+			// the shared i18n layer, whose \`@shared\` alias Node cannot resolve.
+			export {
+				durationReading,
+				formatDuration as formatSessionDuration,
+			} from "./src/renderer/src/features/chat/session-status/session-duration";
 
 			export const renderStrip = (props) =>
 				renderToStaticMarkup(createElement(SessionStatusStrip, props));
@@ -82,6 +88,8 @@ const {
 	fastModeOnNote,
 	desktopEndpoint,
 	desktopRequestSchema,
+	durationReading,
+	formatSessionDuration,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -1094,9 +1102,7 @@ test("the duration port spells what the band spells, bounded at six cells", asyn
 	// ones `format_duration`'s own docstring names, plus the boundaries that
 	// decide a branch. A number this app prints in two places has to be the same
 	// number in both, which is the whole reason it is a port.
-	const { formatDuration } = await import(
-		"../src/renderer/src/features/chat/session-status/session-duration.ts"
-	);
+	const formatDuration = formatSessionDuration;
 
 	const cases = [
 		[0, "0s"],
@@ -1136,10 +1142,6 @@ test("the duration port spells what the band spells, bounded at six cells", asyn
 });
 
 test("a session that has done nothing renders no duration, and a running one always does", async () => {
-	const { durationReading } = await import(
-		"../src/renderer/src/features/chat/session-status/session-duration.ts"
-	);
-
 	// Nothing banked and nothing running: no reading. `0s` would claim a turn
 	// completed in under a second, which is the claim `$0.00` makes about a
 	// session that has spent nothing (R19, D21). This is also exactly a DRAFT's

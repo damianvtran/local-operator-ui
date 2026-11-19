@@ -91,7 +91,7 @@ const JobRow = ({
 			className={cn("flex items-start gap-2 px-3 py-1.5")}
 		>
 			<div className={cn("flex min-w-0 flex-1 flex-col")}>
-				<SubagentRowBody row={row} />
+				<SubagentRowBody row={row} kind="job" />
 				{row.jobType === "music" && (
 					<MusicJobMotif
 						active={row.music?.stage === "polling"}
@@ -202,7 +202,7 @@ export const RunDetailJobs = ({
 					 * above a row whose mark says the same thing.
 					 */}
 					{tallyFitsInline(paneWidth)
-						? subagentTally(rows, tallyBudget(paneWidth))
+						? subagentTally(rows, tallyBudget(paneWidth), "job")
 						: null}
 				</span>
 			</div>
