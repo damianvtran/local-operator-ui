@@ -80,16 +80,29 @@ export function profilesFor(
 }
 
 /**
- * The first method a person most likely wants: an SSO profile if the machine
- * has one (the common corporate setup), a self-signing profile next, else the
- * Bedrock API key - the one method that needs nothing on this computer.
+ * The tab the panel opens on: the first method, in the canonical tab order,
+ * that has something usable on this machine (design D2-2, code R2-1).
+ *
+ * This mirrors core's terminal chooser `_choose_method`
+ * (`local_operator/providers/bedrock/login.py`) EXACTLY, so the desktop and the
+ * TUI open on the same method for the same machine:
+ *   1. AWS profile - any self-signing (non-SSO) profile; it works right away,
+ *      while an SSO profile often has to sign in first.
+ *   2. AWS SSO - any sso/login profile.
+ *   3. Default credentials - when the env tier enables Bedrock
+ *      (`ambient.enabled`, core's `ambient_on`; NOT merely `ambient.sources`,
+ *      because core's D6 says `AWS_PROFILE`/`AWS_ACCESS_KEY_ID` alone never
+ *      enable it).
+ *   4. Bedrock API key - the one method that needs nothing on this computer.
+ * Change this together with `_choose_method`, or not at all.
  */
 export function defaultMethod(
 	profiles: readonly BedrockProfile[],
+	ambientEnabled = false,
 ): BedrockMethod {
-	if (profilesFor("sso", profiles).length > 0) return "sso";
 	if (profilesFor("profile", profiles).length > 0) return "profile";
-	return "api_key";
+	if (profilesFor("sso", profiles).length > 0) return "sso";
+	return ambientEnabled ? "ambient" : "api_key";
 }
 
 export const methodLabel = (method: BedrockMethod): string => {
@@ -222,6 +235,16 @@ export function signInCopy(
 	};
 }
 
+/**
+ * The sign-in button's words. An `aws login` profile is not IAM Identity
+ * Center, so "Sign in with AWS SSO" names the wrong flow (QA Q6); it reuses the
+ * catalogue's plain "Sign in" (already translated) rather than a new key.
+ */
+export const signInLabel = (profile: BedrockProfile): string =>
+	profile.kind === "login"
+		? t("ui.providers.provider_catalog.sign_in")
+		: t("ui.providers.bedrock.sso_sign_in");
+
 /** The heading for a refused connect, by the backend's `bedrock_*` code. */
 export function refusalTitle(code: string | null | undefined): string {
 	switch (code) {
@@ -281,11 +304,36 @@ export function regionHelp(
 }
 
 /** The sentence for a typed Region the backend would refuse, or null when it is fine. */
+/**
+ * A typed Region as core reads it: `choose_region` takes
+ * `typed.strip().lower()` before validating, so `US-EAST-1` is accepted there
+ * and must be here too (code R2-2). Region ids are lowercase by definition.
+ */
+export const normalizeRegion = (text: string): string =>
+	text.trim().toLowerCase();
+
 export function customRegionError(text: string): string | null {
-	const typed = text.trim();
+	const typed = normalizeRegion(text);
 	if (typed.length <= AWS_REGION_MAX && AWS_REGION.test(typed)) return null;
-	return t("ui.providers.bedrock.region_invalid", { region: typed });
+	// The refusal quotes what the user typed, not our normalized form.
+	return t("ui.providers.bedrock.region_invalid", { region: text.trim() });
 }
+
+/**
+ * Whether Connect is pressable. `regionError` blocks it because a refused typed
+ * Region leaves the previous choice in the field: connecting would silently
+ * save a Region the user just tried to replace (QA Q4).
+ */
+export const canConnect = (state: {
+	pending: boolean;
+	submitting: boolean;
+	blocked: boolean;
+	regionError: string | null;
+}): boolean =>
+	state.pending &&
+	!state.submitting &&
+	!state.blocked &&
+	state.regionError === null;
 
 /** The sentence for an access key ID the contract would refuse, or null (empty is "not yet"). */
 export function accessKeyIdError(value: string): string | null {

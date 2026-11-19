@@ -79,6 +79,7 @@ import {
 	BEDROCK_METHODS,
 	type BedrockMethod,
 	accessKeyIdError,
+	canConnect,
 	checkResultFromError,
 	checkVerdict,
 	connectionInput,
@@ -90,6 +91,7 @@ import {
 	methodDescription,
 	methodLabel,
 	needsSignIn,
+	normalizeRegion,
 	outcomeUnknown,
 	profilesFor,
 	refusalTitle,
@@ -97,6 +99,7 @@ import {
 	sessionBadge,
 	signInCommand,
 	signInCopy,
+	signInLabel,
 	ssoSessionKey,
 } from "./bedrock-connect-model";
 import { deviceCodeOf } from "./provider-catalog";
@@ -164,7 +167,8 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 	);
 
 	const profiles = data?.profiles ?? [];
-	const method: BedrockMethod = chosenMethod ?? defaultMethod(profiles);
+	const method: BedrockMethod =
+		chosenMethod ?? defaultMethod(profiles, data?.ambient.enabled ?? false);
 	const usesProfile = method === "profile" || method === "sso";
 	const listed = profilesFor(method, profiles);
 	const profile =
@@ -531,7 +535,20 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 		<div className="flex flex-col gap-4" data-sign-in-state="bedrock">
 			<div className="flex flex-col gap-2">
 				<Tabs value={method} onValueChange={chooseMethod}>
-					<TabsList aria-label={t("ui.providers.bedrock.how_to_connect")}>
+					{/*
+					 * Five method labels do not fit one row in every locale: es/ru/vi
+					 * measure 644-730 px against the connect/onboarding dialogs' ~560 px
+					 * content box, whose RowList is overflow-hidden (design D2-1). The
+					 * track therefore wraps onto a second row instead of clipping or
+					 * scrolling with no affordance; `h-auto` lets it grow and `max-w-full`
+					 * binds it to the column. Radix Tabs keeps roving focus and arrow
+					 * keys in DOM order, so wrapping changes no keyboard behaviour.
+					 */}
+					<TabsList
+						aria-label={t("ui.providers.bedrock.how_to_connect")}
+						className="h-auto max-w-full flex-wrap"
+						data-sign-in-state="bedrock-methods"
+					>
 						{BEDROCK_METHODS.map((candidate) => (
 							<TabsTrigger key={candidate} value={candidate}>
 								{methodLabel(candidate)}
@@ -565,10 +582,12 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 						// The same bound the backend holds; a refusal says why (R3).
 						const problem = customRegionError(text);
 						setRegionError(problem);
-						if (problem === null) setRegionChoice(text.trim());
+						if (problem === null) setRegionChoice(normalizeRegion(text));
 					}}
 					customRowLabel={(text) =>
-						t("ui.providers.bedrock.region_custom", { region: text.trim() })
+						t("ui.providers.bedrock.region_custom", {
+							region: normalizeRegion(text),
+						})
 					}
 					helperText={regionHelp(data, profile, usesProfile)}
 				/>
@@ -596,7 +615,17 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 				<Button
 					variant="primary"
 					size="sm"
-					disabled={!pending || submitting || blocked}
+					// A refused typed Region keeps the previous choice in the field, so
+					// connecting now would silently save a Region the user just replaced
+					// (QA Q4); it re-enables once a listed or valid Region is chosen.
+					disabled={
+						!canConnect({
+							pending: pending !== null,
+							submitting,
+							blocked,
+							regionError,
+						})
+					}
 					onClick={() => void connect()}
 				>
 					{submitting ? <Spinner size="sm" /> : null}
@@ -703,7 +732,7 @@ const SsoSignIn: FC<{
 					</div>
 				) : (
 					<Button variant="secondary" size="sm" onClick={onStart}>
-						{t("ui.providers.bedrock.sso_sign_in")}
+						{signInLabel(profile)}
 					</Button>
 				)}
 				{failure ? (

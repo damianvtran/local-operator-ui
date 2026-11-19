@@ -41,6 +41,7 @@ const {
 	checkResultFromError,
 	checkVerdict,
 	connectionInput,
+	canConnect,
 	customRegionError,
 	defaultMethod,
 	kindLabel,
@@ -52,6 +53,8 @@ const {
 	profilesFor,
 	regionHelp,
 	signInCommand,
+	signInLabel,
+	normalizeRegion,
 	signInCopy,
 	ssoSessionKey,
 } = model;
@@ -127,10 +130,49 @@ test("D1: AWS profile lists self-signing profiles, AWS SSO the sso/login ones", 
 	);
 });
 
-test("the first tab follows the machine: SSO, then a profile, then the API key", () => {
-	assert.equal(defaultMethod(PROFILES), "sso");
+// Mirrors core `_choose_method` (login.py): profile → sso → (ambient when the
+// env tier enables it, else api_key). D2-2 / R2-1.
+test("the first tab is the TUI's: profile, then SSO, then default credentials, then the API key", () => {
+	assert.equal(defaultMethod(PROFILES), "profile", "both kinds: profile wins");
+	assert.equal(defaultMethod(PROFILES, true), "profile");
 	assert.equal(defaultMethod(PROFILES.slice(2)), "profile");
+	assert.equal(defaultMethod(PROFILES.slice(0, 2)), "sso", "SSO/login only");
+	assert.equal(defaultMethod(PROFILES.slice(0, 2), true), "sso");
+	assert.equal(defaultMethod([], true), "ambient");
+	assert.equal(defaultMethod([], false), "api_key");
 	assert.equal(defaultMethod([]), "api_key");
+});
+
+test("R2-2: a typed Region is trimmed and lowercased before validation, as core does", () => {
+	assert.equal(normalizeRegion("  US-EAST-1 "), "us-east-1");
+	assert.equal(customRegionError("US-EAST-1"), null);
+	assert.equal(customRegionError(" Eu-Central-1"), null);
+	assert.notEqual(customRegionError("US-EAST-1X"), null);
+});
+
+test("Q4: Connect is disabled while a typed Region is refused", () => {
+	const ready = {
+		pending: true,
+		submitting: false,
+		blocked: false,
+		regionError: null,
+	};
+	assert.equal(canConnect(ready), true);
+	assert.equal(
+		canConnect({ ...ready, regionError: customRegionError("us-east-1x") }),
+		false,
+	);
+	assert.equal(canConnect({ ...ready, pending: false }), false);
+	assert.equal(canConnect({ ...ready, submitting: true }), false);
+	assert.equal(canConnect({ ...ready, blocked: true }), false);
+});
+
+test("Q6: an aws login profile's button does not say SSO", () => {
+	assert.equal(signInLabel(profile("console", "login", "missing")), "Sign in");
+	assert.equal(
+		signInLabel(profile("acme", "sso", "expired")),
+		"Sign in with AWS SSO",
+	);
 });
 
 test("D4/Q2: a never-signed-in profile is not told it expired; 'Nothing was saved' only after a refusal", () => {

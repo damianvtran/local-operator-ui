@@ -425,18 +425,39 @@ const rowFor = (scenario: Scenario): DesktopProvider =>
 		: BEDROCK;
 
 /** Installed as the story RENDERS, so the first read never meets "no bridge". */
-const Frame: FC<{ scenario: Scenario }> = ({ scenario }) => {
+const Frame: FC<{ scenario: Scenario; dialogColumn?: boolean }> = ({
+	scenario,
+	dialogColumn = false,
+}) => {
 	installBridge(scenario);
+	const detail = <ProviderDetail provider={rowFor(scenario)} />;
 	return (
 		<div className="min-h-screen bg-canvas p-8">
-			<div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
-				<SettingsSection
-					title="Amazon Bedrock"
-					description="Fixture frame: every profile, account and key on this page is stub data."
+			{dialogColumn ? (
+				/*
+				 * The connect/onboarding dialogs' geometry (design D2-1): the
+				 * dialog caps at 640 px with `p-6` (dialog.tsx), leaving a 592 px
+				 * `overflow-hidden` RowList (provider-grid.tsx) whose expanded row
+				 * adds `px-4` - a 560 px content box that CLIPS anything wider.
+				 * Reproduced here so locale widths are judged against the column
+				 * people first connect in, not the wider settings page.
+				 */
+				<div
+					className="mx-auto w-[592px] overflow-hidden rounded-md border border-line bg-surface px-4 py-4"
+					data-story-frame="dialog-column"
 				>
-					<ProviderDetail provider={rowFor(scenario)} />
-				</SettingsSection>
-			</div>
+					{detail}
+				</div>
+			) : (
+				<div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
+					<SettingsSection
+						title="Amazon Bedrock"
+						description="Fixture frame: every profile, account and key on this page is stub data."
+					>
+						{detail}
+					</SettingsSection>
+				</div>
+			)}
 		</div>
 	);
 };
@@ -455,12 +476,32 @@ const ACCESS_KEY_TAB = /Access key/;
 const PROFILE_TAB = /^AWS profile$/;
 const CHECK = /^Check$/;
 
-const story = (scenario: Scenario, play?: Story["play"]) =>
+const story = (
+	scenario: Scenario,
+	play?: Story["play"],
+	dialogColumn = false,
+) =>
 	({
 		args: { scenario },
-		render: () => <Frame scenario={scenario} />,
+		render: () => <Frame scenario={scenario} dialogColumn={dialogColumn} />,
 		...(play ? { play } : {}),
 	}) satisfies Story;
+
+/*
+ * The panel now opens on the TUI's default (AWS profile when any self-signing
+ * profile exists, D2-2), so the SSO frames pick the AWS SSO tab first. By
+ * position, not name, so the same play drives every locale.
+ */
+const ssoTab = async () => {
+	const tabs = await screen.findAllByRole("tab");
+	await userEvent.click(tabs[1]);
+};
+const onSsoTab =
+	(play?: Story["play"]): Story["play"] =>
+	async (context) => {
+		await ssoTab();
+		if (play) await play(context);
+	};
 
 const pressConnect = async () => {
 	await userEvent.click(await screen.findByRole("button", { name: CONNECT }));
@@ -471,21 +512,29 @@ export const Loading: Story = story("loading");
 /** No AWS configuration on this computer; the API-key tab is offered first. */
 export const EmptyNoAwsConfig: Story = story("empty");
 /** SSO tab with a valid session, its Region, and one saved connection. */
-export const SsoSignedIn: Story = story("profiles");
-/** Every profile kind with its badge (Profile tab). */
+export const SsoSignedIn: Story = story("profiles", onSsoTab());
+/** Every profile kind with its badge (Profile tab, the default when one exists). */
 export const ProfilePicker: Story = story("profiles", async () => {
 	await userEvent.click(await screen.findByRole("tab", { name: PROFILE_TAB }));
 });
+/**
+ * The method tabs inside the connect dialog's 560 px column (D2-1): long
+ * locales (es, ru, vi) wrap onto a second row instead of being clipped.
+ */
+export const DialogColumn: Story = story("profiles", undefined, true);
 /** The chosen SSO session has expired; Connect waits on the sign-in. */
-export const SsoExpired: Story = story("sso-expired");
+export const SsoExpired: Story = story("sso-expired", onSsoTab());
 /** No AWS CLI: the command to run by hand replaces the button. */
-export const SsoExpiredNoCli: Story = story("sso-no-cli");
+export const SsoExpiredNoCli: Story = story("sso-no-cli", onSsoTab());
 /** The SSO sign-in is running: device code, open-page and Cancel. */
-export const SsoWaiting: Story = story("sso-waiting", async () => {
-	await userEvent.click(
-		await screen.findByRole("button", { name: SIGN_IN_SSO }),
-	);
-});
+export const SsoWaiting: Story = story(
+	"sso-waiting",
+	onSsoTab(async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: SIGN_IN_SSO }),
+		);
+	}),
+);
 /** Access-key tab (masked secret and optional session token). */
 export const AccessKeyForm: Story = story("profiles", async () => {
 	await userEvent.click(
@@ -512,24 +561,27 @@ export const Connected: Story = story("connected", pressConnect);
 /** A backend without `features.bedrock_auth`: the plain API-key panel only. */
 export const NoCapabilityFallback: Story = story("no-capability");
 /** An aws login profile never signed in: "not signed in yet", no "Nothing was saved." */
-export const SsoNeverSignedIn: Story = story("sso-missing");
+export const SsoNeverSignedIn: Story = story("sso-missing", onSsoTab());
 /**
  * Per-profile sign-in (R2): the run started for acme-dev-sso stays with it;
  * picking acme-prod-sso shows that profile's own Sign in button, and the
  * key tabs' Connect is not held by the other profile's run.
  */
-export const SsoPerProfile: Story = story("sso-two-profiles", async () => {
-	await userEvent.click(
-		await screen.findByRole("button", { name: SIGN_IN_SSO }),
-	);
-	await screen.findByText(/WDKX-QPLM/);
-	await userEvent.click(
-		await screen.findByRole("combobox", { name: /AWS profile/ }),
-	);
-	await userEvent.click(
-		await screen.findByRole("option", { name: /acme-prod-sso/ }),
-	);
-});
+export const SsoPerProfile: Story = story(
+	"sso-two-profiles",
+	onSsoTab(async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: SIGN_IN_SSO }),
+		);
+		await screen.findByText(/WDKX-QPLM/);
+		await userEvent.click(
+			await screen.findByRole("combobox", { name: /AWS profile/ }),
+		);
+		await userEvent.click(
+			await screen.findByRole("option", { name: /acme-prod-sso/ }),
+		);
+	}),
+);
 /** A saved connection's Check that AWS refused: the reason is a visible line. */
 export const CheckFailed: Story = story("check-failed", async () => {
 	await userEvent.click(await screen.findByRole("button", { name: CHECK }));
@@ -547,7 +599,7 @@ export const CheckUnverified: Story = story("check-unverified", async () => {
  * reaching React's onChange in this harness, the same reason `Rejected` avoids
  * typing into fields.
  */
-export const InvalidInput: Story = story("invalid-input", async () => {
+const invalidInputPlay: Story["play"] = async () => {
 	// Located by position and id, not by English names, so the same play
 	// drives the frame in every locale (the es capture checks the widths).
 	const tabs = await screen.findAllByRole("tab");
@@ -560,4 +612,34 @@ export const InvalidInput: Story = story("invalid-input", async () => {
 	fireEvent.click(region);
 	fireEvent.change(region, { target: { value: "moon-base-1" } });
 	fireEvent.keyDown(region, { key: "Enter" });
-});
+};
+export const InvalidInput: Story = story("invalid-input", invalidInputPlay);
+
+/**
+ * QA Q4: a well-formed access key with a refused typed Region. Connect stays
+ * disabled while the Region error shows, because the field still holds the
+ * previous Region and connecting would save that one. Synthetic values only.
+ */
+export const InvalidRegionHoldsConnect: Story = story(
+	"invalid-input",
+	async () => {
+		const tabs = await screen.findAllByRole("tab");
+		await userEvent.click(tabs[2]);
+		const set = (elementId: string, value: string) => {
+			const field = document.getElementById(elementId);
+			if (field) fireEvent.change(field, { target: { value } });
+		};
+		set("bedrock-access-key-id", "STUBKEYID0000000000");
+		set(
+			"bedrock-secret-access-key",
+			"stub-secret-not-a-real-key-0000000000000",
+		);
+		const boxes = await screen.findAllByRole("combobox");
+		const region = boxes[boxes.length - 1];
+		fireEvent.focus(region);
+		fireEvent.click(region);
+		fireEvent.change(region, { target: { value: "us-east-1x" } });
+		fireEvent.keyDown(region, { key: "Enter" });
+	},
+	true,
+);
