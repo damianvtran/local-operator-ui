@@ -83,8 +83,16 @@ export type QwenVoiceStatus = {
 	 * `unexpected_exit`: a rig process died while the rig was ready.
 	 * `provider_unset` / `provider_not_ready`: no speech provider is chosen, or the
 	 * chosen one cannot hear and speak yet, so nothing listens.
+	 * `page_failed` / `no_window`: the app's own voice page stopped, or no window
+	 * can host it; the strip words these itself (see the contract).
 	 */
-	cause?: "unexpected_exit" | "provider_unset" | "provider_not_ready" | null;
+	cause?:
+		| "unexpected_exit"
+		| "provider_unset"
+		| "provider_not_ready"
+		| "page_failed"
+		| "no_window"
+		| null;
 	/**
 	 * The macOS microphone verdict for this app's identity (plan §2/§4, review
 	 * M3). Additive to the frozen status: `denied` is "Microphone blocked - Open
@@ -220,8 +228,6 @@ type Relayed = {
 /** The strip's sentence when no speech provider is chosen. */
 export const PROVIDER_UNSET =
 	"Choose a speech provider in Settings to use voice.";
-/** A chosen provider that is not ready and whose backend sentence was empty. */
-export const PROVIDER_NOT_READY = "The speech provider you chose is not ready.";
 
 /** The slot's session id from a `{active}` payload, or null. */
 function slotOf(payload: unknown): string | null {
@@ -546,6 +552,7 @@ export class QwenVoice {
 				rig: "error",
 				webui_url: null,
 				reason: QWEN_NO_VOICE_WINDOW,
+				cause: "no_window",
 			});
 			return Promise.resolve(this.getStatus());
 		}
@@ -1150,8 +1157,9 @@ export class QwenVoice {
 				this.setStatus({
 					rig: "error",
 					webui_url: null,
-					// The backend's own sentence, as written.
-					reason: gap?.reason ?? PROVIDER_NOT_READY,
+					// The backend's own sentence, as written; none when it sent none (the
+					// strip then says its own, translated, line - main invents no English).
+					...(gap?.reason ? { reason: gap.reason } : {}),
 					cause: "provider_not_ready",
 					provider: gap?.provider ?? null,
 				});
@@ -1169,6 +1177,7 @@ export class QwenVoice {
 					rig: "error",
 					webui_url: null,
 					reason: "The voice page stopped",
+					cause: "page_failed",
 				});
 				return;
 			case "no_window":
@@ -1176,6 +1185,7 @@ export class QwenVoice {
 					rig: "error",
 					webui_url: null,
 					reason: QWEN_NO_VOICE_WINDOW,
+					cause: "no_window",
 				});
 				return;
 		}

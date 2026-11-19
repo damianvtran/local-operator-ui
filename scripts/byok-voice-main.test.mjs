@@ -1378,6 +1378,11 @@ test("STATUS: each page state is the strip's own vocabulary - listening, checkin
 	c.voice.byokReport("page_failed");
 	s = c.voice.getStatus();
 	assert.deepEqual([s.rig, s.reason], ["error", "The voice page stopped"]);
+	assert.equal(
+		s.cause,
+		"page_failed",
+		"the strip keys it; the reason is a log line",
+	);
 	c.voice.byokReport("idle");
 	assert.deepEqual(
 		[c.voice.getStatus().rig, c.voice.getStatus().mic],
@@ -1395,8 +1400,20 @@ test("STATUS: a not-ready provider with no sentence of its own still says so, wi
 	const s = c.voice.getStatus();
 	assert.equal(s.rig, "error");
 	assert.equal(s.provider, "radient");
-	assert.equal(typeof s.reason, "string");
-	assert.ok(s.reason.length > 0);
+	assert.equal(s.cause, "provider_not_ready");
+	assert.equal(
+		s.reason ?? null,
+		null,
+		"main writes no English of its own here",
+	);
+});
+
+test("STATUS: no window is a keyed cause too, not only a sentence", async () => {
+	const c = coordinator();
+	c.voice.observeFrame(frame(SESSION));
+	c.voice.byokReport("no_window");
+	const s = c.voice.getStatus();
+	assert.deepEqual([s.rig, s.cause], ["error", "no_window"]);
 });
 
 test("STATUS: a report with the rig in use is ignored", async () => {

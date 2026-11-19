@@ -9393,9 +9393,19 @@ export type QwenVoiceStatus = {
 	 * Why the rig is in `error` when it was not a start failure.
 	 * `provider_unset`: no speech provider is chosen, so nothing listens.
 	 * `provider_not_ready`: the chosen provider cannot hear and speak yet; `reason`
-	 * is the backend's own sentence and `provider` names it.
+	 * is the backend's own sentence (absent when it sent none) and `provider`
+	 * names it.
+	 * `page_failed` / `no_window`: the app's own voice page stopped, or this run
+	 * has no window to hear with. Main's `reason` for these is a log line in
+	 * English; the strip shows its own translated words for the cause.
 	 */
-	cause?: "unexpected_exit" | "provider_unset" | "provider_not_ready" | null;
+	cause?:
+		| "unexpected_exit"
+		| "provider_unset"
+		| "provider_not_ready"
+		| "page_failed"
+		| "no_window"
+		| null;
 	/**
 	 * The macOS microphone verdict for this app's identity. `prompting` is the
 	 * bounded wait: the OS dialog is up and unanswered.

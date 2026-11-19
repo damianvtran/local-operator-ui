@@ -639,6 +639,56 @@ test("a Radient credit failure shows Radient's own sentence and links to Radient
 	}
 });
 
+/*
+ * MAIN'S OWN CAUSES ARE KEYED, NOT SHOWN AS ENGLISH (review round 1, finding 3):
+ * `reason` is shown as written only when the backend wrote it. What main itself
+ * generates (the page stopped, no window, a provider with no sentence) carries a
+ * `cause` the strip maps onto a translated key, whatever `reason` says.
+ */
+test("main's own causes read as translated strings, never as main's English reason", async () => {
+	for (const [rig, expected, leak] of [
+		[
+			{ cause: "page_failed", reason: "The voice page stopped" },
+			"Voice stopped unexpectedly.",
+			/voice page stopped/i,
+		],
+		[
+			{
+				cause: "no_window",
+				reason: "Voice needs a normal app window to hear you.",
+			},
+			"Voice could not start.",
+			/normal app window/i,
+		],
+		[
+			{ cause: "provider_not_ready", provider: "radient" },
+			"Voice could not start.",
+			/provider you chose/i,
+		],
+	]) {
+		await mountStrip();
+		await act(async () => {
+			const store = useVoiceStore.getState();
+			store.setActive(slot(AT));
+			store.setRig(providerRig(rig));
+		});
+		await flush();
+		assert.equal(caption().textContent.trim(), expected, JSON.stringify(rig));
+		assert.doesNotMatch(caption().textContent, leak);
+	}
+});
+
+test("a reason with no cause (a rig's own sentence) is still shown as written", async () => {
+	await mountStrip();
+	await act(async () => {
+		const store = useVoiceStore.getState();
+		store.setActive(slot(AT));
+		store.setRig(providerRig({ reason: "port 8765 is in use" }));
+	});
+	await flush();
+	assert.match(caption().textContent, /Port 8765 is in use/);
+});
+
 test("checking the provider is the neutral 'starting' word, not an error", async () => {
 	await mountStrip();
 	await act(async () => {

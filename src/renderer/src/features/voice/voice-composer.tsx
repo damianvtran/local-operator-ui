@@ -176,9 +176,12 @@ export type VoiceComposerView =
 	  };
 
 /**
- * The reason an error shows as visible text. A RIG error wins, and shows the
- * rig's own sentence ("Port 8765 is in use; ...") because the cause is what the
- * reader can act on; the generic line is only the fallback.
+ * The reason an error shows as visible text. A RIG error wins. What main
+ * generates itself (the page stopped, no window, a provider with no sentence)
+ * arrives as a `cause` and reads through a translated key; `reason` is shown as
+ * written only when the BACKEND wrote it (`provider_not_ready`) or for a rig's
+ * own sentence ("Port 8765 is in use; ...") because that is what the reader can
+ * act on. The generic line is only the fallback.
  */
 function errorReason(
 	rig: QwenVoiceStatus | undefined,
@@ -188,6 +191,8 @@ function errorReason(
 		if (rig.cause === "unexpected_exit") return t("ui.chat.voice.error_exited");
 		if (rig.cause === "provider_unset")
 			return t("ui.chat.voice.error_provider_unset");
+		if (rig.cause === "page_failed") return t("ui.chat.voice.error_exited");
+		if (rig.cause === "no_window") return t("ui.chat.voice.error_start_failed");
 		const reason = rig.reason?.trim();
 		return reason
 			? reason.charAt(0).toUpperCase() + reason.slice(1)
