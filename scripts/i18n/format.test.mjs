@@ -228,7 +228,9 @@ test("C3: French and Urdu durations take their own units through the helper", ()
 	assert.equal(format.formatCompactDuration(5400, "fr"), "1h 30min");
 	assert.equal(format.formatSettledDuration(1.5, "fr"), "1,5s");
 	assert.equal(format.formatCompactDuration(100 * 86_400, "fr"), "100j+");
-	assert.equal(format.formatSettledDuration(0, "fr"), "<0,1s");
+	// The audited French catalogue sets the less-than mark with a narrow no-break
+	// space (U+202F), as French typography does before a number; audited in round 2 (16655c1d1913).
+	assert.equal(format.formatSettledDuration(0, "fr"), "<\u202f0,1s");
 
 	assert.equal(format.formatCompactDuration(5, "ur"), "5 سیکنڈ");
 	assert.equal(format.formatCompactDuration(65, "ur"), "1 منٹ اور 5 سیکنڈ");
@@ -238,11 +240,13 @@ test("C3: French and Urdu durations take their own units through the helper", ()
 	);
 	assert.equal(
 		stripIsolates(format.formatCompactDuration(100 * 86_400, "ur")),
-		"100 دن+",
+		"100 دن سے زیادہ",
 	);
+	// Urdu reads the bounds as words after the duration ("سے کم" less than,
+	// "سے زیادہ" more than) rather than English's < and + marks, as audited in 13b8374041bd.
 	assert.equal(
 		stripIsolates(format.formatSettledDuration(0.01, "ur")),
-		"<0.1 سیکنڈ",
+		"0.1 سیکنڈ سے کم",
 	);
 	// No ASCII unit letter survives in either locale's compound shape.
 	assert.doesNotMatch(format.formatCompactDuration(3725, "ur"), /[a-z]/);

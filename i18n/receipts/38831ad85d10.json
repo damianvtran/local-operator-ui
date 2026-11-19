@@ -1,0 +1,141 @@
+{
+  "schema": 1,
+  "kind": "independent_i18n_audit",
+  "agent": "i18n-auditor",
+  "session": "38831ad85d10",
+  "instance": "38831ad85d10",
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "fallback_reason": null,
+  "independence": "Independent auditor (lopdev team task child, session 38831ad85d10); did not author or modify any translation. The translator was a separate LLM task agent (anthropic/claude-opus-5-5), job e33cd1ae2a52.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "38831ad85d10",
+    "instance": "38831ad85d10",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5",
+    "fallback": false,
+    "fallback_reason": null,
+    "independence": "Independent auditor (lopdev team task child, session 38831ad85d10); did not author or modify any translation. The translator was a separate LLM task agent (anthropic/claude-opus-5-5), job e33cd1ae2a52."
+  },
+  "locale": "vi",
+  "date": "2026-11-19",
+  "branch": "fix/i18n-duration-units-state-words",
+  "base": "32c2b19f841d2f6e6f075a9dc418f436a8066781",
+  "head": "40831919ca959cf23c9b08e777cee2e7c4d70055",
+  "round": 1,
+  "scope": "Round-1 independent audit of the 45 new vi keys in ui.chat.run_details (31), ui.chat.trace (12) and ui.common.time (2) at head 40831919ca (includes the kind-select source fix). The vi working-tree delta is additions plus 3 trailing-comma rewrites only. The 18 state.*/tally.* kind keys carry identical subagent/job/other arms: correct, because Vietnamese status words (đang chạy, trong hàng đợi, đã tạm dừng, bị gián đoạn, đã xong, đã hủy, không còn tồn tại, thất bại) do not inflect and existing vi copy puts them bare after « tác nhân con » / « tác vụ » with no classifier (ui.chat.sidebar.row.bg.subagents_queued, ui.chat.run_details.chip.subagents_failed). Plurals use only `other` with `#` kept; rendered at 0/1/2/5/21/1000000. Durations insert the Intl-formatted {duration} unchanged with the < and + marks kept. ICU parsed: placeholder sets and select arms equal English, braces balanced; all values NFC.",
+  "status": "passed",
+  "result": "clean",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "namespaces": {
+    "ui.chat.run_details": {
+      "namespace": "ui.chat.run_details",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "sha256": {
+        "en": "94df786b4138564c4a8d0d9fc904a541ffbf702288d5dc4e928c20fb3fd2bf0e",
+        "vi": "0d0db4cacbe47be99aad445f5f2f83a53a3f74b4c5ac5a2468c7aab27dbcc327"
+      },
+      "context_sha256": "bae1bf611940a5f677fad29ce2ddbead8d9df7305195781058c2cb5048e1f96a",
+      "keys_read": 31,
+      "reviewed_keys": [
+        "ui.chat.run_details.state.running",
+        "ui.chat.run_details.tally.running",
+        "ui.chat.run_details.state.queued",
+        "ui.chat.run_details.tally.queued",
+        "ui.chat.run_details.state.paused",
+        "ui.chat.run_details.tally.paused",
+        "ui.chat.run_details.state.interrupted",
+        "ui.chat.run_details.tally.interrupted",
+        "ui.chat.run_details.state.done",
+        "ui.chat.run_details.tally.done",
+        "ui.chat.run_details.state.cancelled",
+        "ui.chat.run_details.tally.cancelled",
+        "ui.chat.run_details.state.gone",
+        "ui.chat.run_details.tally.gone",
+        "ui.chat.run_details.state.failed",
+        "ui.chat.run_details.tally.failed",
+        "ui.chat.run_details.state.cancelled_before_start",
+        "ui.chat.run_details.tally.cancelled_before_start",
+        "ui.chat.run_details.tally.unrecognised",
+        "ui.chat.run_details.todos.tally_closed",
+        "ui.chat.run_details.todos.tally_dropped",
+        "ui.chat.run_details.chip.subagents_running",
+        "ui.chat.run_details.chip.subagents_queued",
+        "ui.chat.run_details.chip.subagents_paused",
+        "ui.chat.run_details.chip.subagents_open",
+        "ui.chat.run_details.chip.jobs_running",
+        "ui.chat.run_details.chip.jobs_queued",
+        "ui.chat.run_details.chip.jobs_paused",
+        "ui.chat.run_details.chip.jobs_open",
+        "ui.chat.run_details.chip.busiest",
+        "ui.chat.run_details.children.count"
+      ]
+    },
+    "ui.chat.trace": {
+      "namespace": "ui.chat.trace",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "sha256": {
+        "en": "ac2ac11314335ce13e6d82d57cedbefd29728ae7a875a4fe160c70808b0d0501",
+        "vi": "eeafa0a96c3459a6462546ffc99ab060db1665ed74f19e6608608ee8aa9072f8"
+      },
+      "context_sha256": "8b6ec8d879078befa314d1d57fc6987e67b4033c3b179dbca044ae6ef9711603",
+      "keys_read": 12,
+      "reviewed_keys": [
+        "ui.chat.trace.send.mode.now",
+        "ui.chat.trace.send.mode.quiet",
+        "ui.chat.trace.send.mode.wake",
+        "ui.chat.trace.address.pid",
+        "ui.chat.trace.address.session",
+        "ui.chat.trace.sessions.peek.search",
+        "ui.chat.trace.sessions.peek.search_around",
+        "ui.chat.trace.sessions.peek.last",
+        "ui.chat.trace.sessions.peek.first",
+        "ui.chat.trace.sessions.peek.digest",
+        "ui.chat.trace.sessions.peek.before",
+        "ui.chat.trace.sessions.peek.around"
+      ]
+    },
+    "ui.common.time": {
+      "namespace": "ui.common.time",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "sha256": {
+        "en": "953888ccca37b9962f231cbf49e0aa6d82309d10b7301f18b8f115f2c99bf409",
+        "vi": "ff4a7396dde6b0418197a6b61baf0f6d0da31f5b3acd7e423827aa80430d4b06"
+      },
+      "context_sha256": "4e727be0dffc231800579e971ddaf8577fddd0d3e37ab582c1f42ea062b7cb9f",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.common.time.duration.under_minimum",
+        "ui.common.time.duration.over_cap"
+      ]
+    }
+  }
+}

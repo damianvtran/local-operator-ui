@@ -1,0 +1,141 @@
+{
+	"schema": 1,
+	"kind": "independent_i18n_audit",
+	"agent": "i18n-auditor",
+	"session": "16655c1d1913",
+	"instance": "16655c1d1913",
+	"model": "anthropic/claude-opus-5-5",
+	"requested_model": "anthropic/claude-opus-5-5",
+	"fallback": false,
+	"fallback_reason": null,
+	"independence": "Independent auditor (lopdev team task child w2-audit-fr-r2, session 16655c1d1913); did not author or modify any translation. Round-1 auditor was session 00b03b6792a8; round-1 translator job d470fdaf8bde; round-2 remediation translator job 8568e64c560b (session 1be908df9fd1, anthropic/claude-opus-5-5).",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "16655c1d1913",
+		"instance": "16655c1d1913",
+		"model": "anthropic/claude-opus-5-5",
+		"requested_model": "anthropic/claude-opus-5-5",
+		"fallback": false,
+		"fallback_reason": null,
+		"independence": "Independent auditor (lopdev team task child w2-audit-fr-r2, session 16655c1d1913); did not author or modify any translation. Round-1 auditor was session 00b03b6792a8; round-1 translator job d470fdaf8bde; round-2 remediation translator job 8568e64c560b (session 1be908df9fd1, anthropic/claude-opus-5-5)."
+	},
+	"locale": "fr",
+	"date": "2026-11-19",
+	"branch": "fix/i18n-duration-units-state-words",
+	"base": "c092a74b45cdc847bc65434f6bede5ea20b0e750",
+	"head": "40831919ca959cf23c9b08e777cee2e7c4d70055",
+	"round": 2,
+	"scope": "Round-2 independent re-audit of the fr remediation of round-1 findings FR-W2-1 (major), FR-W2-3 (nit), FR-W2-4 (nit) on ui.chat.run_details: the 18 state.*/tally.* keys that gained {kind, select, subagent/job/other} in English at 40831919ca, plus todos.tally_closed. Re-audited 19 keys: placeholders identical to English; select arms subagent/job/other complete; nested count plurals one/many/other with #; rendered at count 0,1,2,5,21,1000000 for every arm: masculine for subagent/other (« 2 terminés », « 1 annulé avant de démarrer »), feminine for job agreeing with « Tâches » (« 2 terminées », « 1 000 000 annulées »), invariable en cours/en attente/en pause/en échec. Source passes kind='job' for the Jobs pane, jobs composer chip and job rows, 'subagent' elsewhere. FR-W2-1 resolved. FR-W2-3 resolved (« fermée(s) sur {total} », matches chip.todos_closed « fermées »). FR-W2-4 resolved (job rows now read « annulée », agreeing with job_cancel.body « Annulée »; case mirrors English). Other 12 run_details keys unchanged since round 1 and retained. ui.chat.trace and ui.common.time unchanged (en/fr/context sha256 identical to round 1) and carried with their round-1 result clean, no findings. Change-set proof: reverting ONLY the listed keys in the current fr file to the pre-remediation values (as logged by the remediation translator's apply() in session 1be908df9fd1) reproduces the round-1 receipt's fr sha256 byte-for-byte, so no other fr key changed since round 1. Round-1 receipt: i18n/receipts/fr-w2-c3-00b03b6792a8.json (round-1 results of the carried namespaces are cited from it).",
+	"status": "passed",
+	"result": "clean",
+	"findings": {
+		"blocker": [],
+		"major": [],
+		"minor": [],
+		"nit": []
+	},
+	"namespaces": {
+		"ui.chat.run_details": {
+			"namespace": "ui.chat.run_details",
+			"status": "passed",
+			"result": "clean",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": []
+			},
+			"sha256": {
+				"en": "94df786b4138564c4a8d0d9fc904a541ffbf702288d5dc4e928c20fb3fd2bf0e",
+				"fr": "18aa5e7095b7795bcb849837b5f79cc9cac1f337fcc822f2cd6c9f56ff4792ad"
+			},
+			"context_sha256": "bae1bf611940a5f677fad29ce2ddbead8d9df7305195781058c2cb5048e1f96a",
+			"keys_read": 31,
+			"reviewed_keys": [
+				"ui.chat.run_details.state.running",
+				"ui.chat.run_details.tally.running",
+				"ui.chat.run_details.state.queued",
+				"ui.chat.run_details.tally.queued",
+				"ui.chat.run_details.state.paused",
+				"ui.chat.run_details.tally.paused",
+				"ui.chat.run_details.state.interrupted",
+				"ui.chat.run_details.tally.interrupted",
+				"ui.chat.run_details.state.done",
+				"ui.chat.run_details.tally.done",
+				"ui.chat.run_details.state.cancelled",
+				"ui.chat.run_details.tally.cancelled",
+				"ui.chat.run_details.state.gone",
+				"ui.chat.run_details.tally.gone",
+				"ui.chat.run_details.state.failed",
+				"ui.chat.run_details.tally.failed",
+				"ui.chat.run_details.state.cancelled_before_start",
+				"ui.chat.run_details.tally.cancelled_before_start",
+				"ui.chat.run_details.tally.unrecognised",
+				"ui.chat.run_details.todos.tally_closed",
+				"ui.chat.run_details.todos.tally_dropped",
+				"ui.chat.run_details.chip.subagents_running",
+				"ui.chat.run_details.chip.subagents_queued",
+				"ui.chat.run_details.chip.subagents_paused",
+				"ui.chat.run_details.chip.subagents_open",
+				"ui.chat.run_details.chip.jobs_running",
+				"ui.chat.run_details.chip.jobs_queued",
+				"ui.chat.run_details.chip.jobs_paused",
+				"ui.chat.run_details.chip.jobs_open",
+				"ui.chat.run_details.chip.busiest",
+				"ui.chat.run_details.children.count"
+			]
+		},
+		"ui.chat.trace": {
+			"namespace": "ui.chat.trace",
+			"status": "passed",
+			"result": "clean",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": []
+			},
+			"sha256": {
+				"en": "ac2ac11314335ce13e6d82d57cedbefd29728ae7a875a4fe160c70808b0d0501",
+				"fr": "cded1d86543fc4394cc5b869e722a55c371cfcffc580a3fb0fc23a75a3200cb5"
+			},
+			"context_sha256": "8b6ec8d879078befa314d1d57fc6987e67b4033c3b179dbca044ae6ef9711603",
+			"keys_read": 12,
+			"reviewed_keys": [
+				"ui.chat.trace.send.mode.now",
+				"ui.chat.trace.send.mode.quiet",
+				"ui.chat.trace.send.mode.wake",
+				"ui.chat.trace.address.pid",
+				"ui.chat.trace.address.session",
+				"ui.chat.trace.sessions.peek.search",
+				"ui.chat.trace.sessions.peek.search_around",
+				"ui.chat.trace.sessions.peek.last",
+				"ui.chat.trace.sessions.peek.first",
+				"ui.chat.trace.sessions.peek.digest",
+				"ui.chat.trace.sessions.peek.before",
+				"ui.chat.trace.sessions.peek.around"
+			]
+		},
+		"ui.common.time": {
+			"namespace": "ui.common.time",
+			"status": "passed",
+			"result": "clean",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": []
+			},
+			"sha256": {
+				"en": "953888ccca37b9962f231cbf49e0aa6d82309d10b7301f18b8f115f2c99bf409",
+				"fr": "fc4e0763d28c6d6e98265506fd5544a2c415eeb1622f4970ea08905b85413c21"
+			},
+			"context_sha256": "4e727be0dffc231800579e971ddaf8577fddd0d3e37ab582c1f42ea062b7cb9f",
+			"keys_read": 2,
+			"reviewed_keys": [
+				"ui.common.time.duration.under_minimum",
+				"ui.common.time.duration.over_cap"
+			]
+		}
+	}
+}

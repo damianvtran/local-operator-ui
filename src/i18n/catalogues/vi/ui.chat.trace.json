@@ -30,5 +30,17 @@
 	"ui.chat.trace.send.delivery.unconfirmed.label": "chưa xác nhận đã gửi — tin nhắn vẫn có thể tới nơi, hãy kiểm tra trước khi gửi lại",
 	"ui.chat.trace.send.delivery.unconfirmed.note": "Chưa xác nhận: không có phản hồi và tin nhắn chưa có trong bản ghi của họ. Tin nhắn vẫn có thể tới nơi, nên hãy kiểm tra trước khi gửi lại.",
 	"ui.chat.trace.send.delivery.unconfirmed.title": "Không có phản hồi cho tín hiệu thức dậy và tin nhắn chưa có trong bản ghi của họ — vẫn có thể tới nơi. Hãy kiểm tra trước khi gửi lại.",
-	"ui.chat.trace.send.delivery.unconfirmed.word": "chưa xác nhận đã gửi"
+	"ui.chat.trace.send.delivery.unconfirmed.word": "chưa xác nhận đã gửi",
+	"ui.chat.trace.send.mode.now": "ngay",
+	"ui.chat.trace.send.mode.quiet": "im lặng",
+	"ui.chat.trace.send.mode.wake": "đánh thức",
+	"ui.chat.trace.address.pid": "pid {pid}",
+	"ui.chat.trace.address.session": "phiên {session}",
+	"ui.chat.trace.sessions.peek.search": "tìm {query}",
+	"ui.chat.trace.sessions.peek.search_around": "tìm {query} · {count, number, ::group-off} bước xung quanh",
+	"ui.chat.trace.sessions.peek.last": "{count, number, ::group-off} bước cuối",
+	"ui.chat.trace.sessions.peek.first": "{count, number, ::group-off} bước đầu",
+	"ui.chat.trace.sessions.peek.digest": "tóm tắt",
+	"ui.chat.trace.sessions.peek.before": "trước {id}",
+	"ui.chat.trace.sessions.peek.around": "quanh {id}"
 }

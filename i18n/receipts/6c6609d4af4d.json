@@ -1,0 +1,155 @@
+{
+	"schema": 1,
+	"kind": "independent_i18n_audit",
+	"agent": "i18n-auditor",
+	"session": "6c6609d4af4d",
+	"instance": "6c6609d4af4d",
+	"model": "anthropic/claude-opus-5-5",
+	"requested_model": "anthropic/claude-opus-5-5",
+	"fallback": false,
+	"fallback_reason": null,
+	"independence": "Independent auditor (lopdev team task child, session 6c6609d4af4d); did not author or modify any translation. The translator was a separate LLM task agent (anthropic/claude-opus-5-5), job 1b710d2567d8.",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "6c6609d4af4d",
+		"instance": "6c6609d4af4d",
+		"model": "anthropic/claude-opus-5-5",
+		"requested_model": "anthropic/claude-opus-5-5",
+		"fallback": false,
+		"fallback_reason": null,
+		"independence": "Independent auditor (lopdev team task child, session 6c6609d4af4d); did not author or modify any translation. The translator was a separate LLM task agent (anthropic/claude-opus-5-5), job 1b710d2567d8."
+	},
+	"locale": "hi",
+	"date": "2026-11-19",
+	"branch": "fix/i18n-duration-units-state-words",
+	"base": "32c2b19f841d2f6e6f075a9dc418f436a8066781",
+	"head": "40831919ca959cf23c9b08e777cee2e7c4d70055",
+	"round": 1,
+	"scope": "Round-1 independent audit of the 45 new hi keys added by origin/main...HEAD in ui.chat.run_details (31, including the 18 state.*/tally.* keys with the {kind, select} wrapper added at 40831919ca), ui.chat.trace (12) and ui.common.time (2); existing hi keys verified unchanged (JSON-equal; diff is additions plus trailing-comma rewrites). Explicit judgments: both section nouns are masculine in existing hi copy ('# बैकग्राउंड जॉब अब भी चल रहा है', 'जॉब रद्द किया गया', 'पिछला उप-एजेंट'), so identical masculine arms are correct; nested count plurals vary the participle correctly (चल रहा/चल रहे, रुका हुआ/रुके हुए, पूरा/पूरे, रद्द किया गया/रद्द किए गए) and invariant words (कतार में, बाधित, विफल, अब मौजूद नहीं) correctly use {count, number}; the existing job_cancel.body quote 'रद्द किया गया' equals the job arm of state.cancelled; CLDR hi one/other (0 in one) rendered at 0/1/2/5/21/1000000; ICU parsed and placeholder/select-arm sets match English for every key.",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"findings": {
+		"blocker": [],
+		"major": [],
+		"minor": [],
+		"nit": [
+			{
+				"id": "HI-W2-1",
+				"severity": "nit",
+				"key": "ui.chat.run_details.state.interrupted",
+				"finding": "Meaning correct, but glossary drift: the new state word 'बाधित' (also used in ui.chat.run_details.tally.interrupted) differs from the existing hi rendering of 'interrupted' in the transcript (ui.chat.canonical.transcript.interrupted / tool_row.outcome.interrupted = 'रोका गया', notice.interrupted = 'बीच में रोका गया'), so the same child can read 'बाधित' in run details and 'रोका गया' in the transcript. 'बाधित' is clear and distinct from paused 'रुका हुआ', so this does not gate. Suggestion if harmonising later: 'बीच में रोका गया' / tally one {# बीच में रोका गया} other {# बीच में रोके गए}. Disposition: non-gating; deferrable."
+			}
+		]
+	},
+	"namespaces": {
+		"ui.chat.run_details": {
+			"namespace": "ui.chat.run_details",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": [
+					{
+						"id": "HI-W2-1",
+						"severity": "nit",
+						"key": "ui.chat.run_details.state.interrupted",
+						"finding": "Meaning correct, but glossary drift: the new state word 'बाधित' (also used in ui.chat.run_details.tally.interrupted) differs from the existing hi rendering of 'interrupted' in the transcript (ui.chat.canonical.transcript.interrupted / tool_row.outcome.interrupted = 'रोका गया', notice.interrupted = 'बीच में रोका गया'), so the same child can read 'बाधित' in run details and 'रोका गया' in the transcript. 'बाधित' is clear and distinct from paused 'रुका हुआ', so this does not gate. Suggestion if harmonising later: 'बीच में रोका गया' / tally one {# बीच में रोका गया} other {# बीच में रोके गए}. Disposition: non-gating; deferrable."
+					}
+				]
+			},
+			"sha256": {
+				"en": "94df786b4138564c4a8d0d9fc904a541ffbf702288d5dc4e928c20fb3fd2bf0e",
+				"hi": "6d88718f44cb5846d2a2531065fda9729513f175a4dd203e63ab80e7fac8b31c"
+			},
+			"context_sha256": "bae1bf611940a5f677fad29ce2ddbead8d9df7305195781058c2cb5048e1f96a",
+			"keys_read": 31,
+			"reviewed_keys": [
+				"ui.chat.run_details.state.running",
+				"ui.chat.run_details.tally.running",
+				"ui.chat.run_details.state.queued",
+				"ui.chat.run_details.tally.queued",
+				"ui.chat.run_details.state.paused",
+				"ui.chat.run_details.tally.paused",
+				"ui.chat.run_details.state.interrupted",
+				"ui.chat.run_details.tally.interrupted",
+				"ui.chat.run_details.state.done",
+				"ui.chat.run_details.tally.done",
+				"ui.chat.run_details.state.cancelled",
+				"ui.chat.run_details.tally.cancelled",
+				"ui.chat.run_details.state.gone",
+				"ui.chat.run_details.tally.gone",
+				"ui.chat.run_details.state.failed",
+				"ui.chat.run_details.tally.failed",
+				"ui.chat.run_details.state.cancelled_before_start",
+				"ui.chat.run_details.tally.cancelled_before_start",
+				"ui.chat.run_details.tally.unrecognised",
+				"ui.chat.run_details.todos.tally_closed",
+				"ui.chat.run_details.todos.tally_dropped",
+				"ui.chat.run_details.chip.subagents_running",
+				"ui.chat.run_details.chip.subagents_queued",
+				"ui.chat.run_details.chip.subagents_paused",
+				"ui.chat.run_details.chip.subagents_open",
+				"ui.chat.run_details.chip.jobs_running",
+				"ui.chat.run_details.chip.jobs_queued",
+				"ui.chat.run_details.chip.jobs_paused",
+				"ui.chat.run_details.chip.jobs_open",
+				"ui.chat.run_details.chip.busiest",
+				"ui.chat.run_details.children.count"
+			]
+		},
+		"ui.chat.trace": {
+			"namespace": "ui.chat.trace",
+			"status": "passed",
+			"result": "clean",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": []
+			},
+			"sha256": {
+				"en": "ac2ac11314335ce13e6d82d57cedbefd29728ae7a875a4fe160c70808b0d0501",
+				"hi": "fc5c3bb99e46a492befa49b4f1eae2dc777a163a60ca8ce328995838db02eacc"
+			},
+			"context_sha256": "8b6ec8d879078befa314d1d57fc6987e67b4033c3b179dbca044ae6ef9711603",
+			"keys_read": 12,
+			"reviewed_keys": [
+				"ui.chat.trace.send.mode.now",
+				"ui.chat.trace.send.mode.quiet",
+				"ui.chat.trace.send.mode.wake",
+				"ui.chat.trace.address.pid",
+				"ui.chat.trace.address.session",
+				"ui.chat.trace.sessions.peek.search",
+				"ui.chat.trace.sessions.peek.search_around",
+				"ui.chat.trace.sessions.peek.last",
+				"ui.chat.trace.sessions.peek.first",
+				"ui.chat.trace.sessions.peek.digest",
+				"ui.chat.trace.sessions.peek.before",
+				"ui.chat.trace.sessions.peek.around"
+			]
+		},
+		"ui.common.time": {
+			"namespace": "ui.common.time",
+			"status": "passed",
+			"result": "clean",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": []
+			},
+			"sha256": {
+				"en": "953888ccca37b9962f231cbf49e0aa6d82309d10b7301f18b8f115f2c99bf409",
+				"hi": "5757b2decd47cccb686c8cc10b4167f11d104ead4545f33819524561a1a652d2"
+			},
+			"context_sha256": "4e727be0dffc231800579e971ddaf8577fddd0d3e37ab582c1f42ea062b7cb9f",
+			"keys_read": 2,
+			"reviewed_keys": [
+				"ui.common.time.duration.under_minimum",
+				"ui.common.time.duration.over_cap"
+			]
+		}
+	}
+}

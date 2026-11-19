@@ -1,0 +1,172 @@
+{
+  "schema": 1,
+  "kind": "independent_i18n_audit",
+  "agent": "i18n-auditor",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "2c6807f03acd",
+    "instance": "2c6807f03acd",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "fallback_reason": "none - served model equals requested model",
+  "independence": "Independent auditor (lopdev task child, session 2c6807f03acd); did not author or modify any translation. Translator was a separate LLM translator task agent (job b74c566beb3f).",
+  "instance": "2c6807f03acd",
+  "session": "2c6807f03acd",
+  "locale": "ru",
+  "date": "2026-11-19",
+  "branch": "fix/i18n-duration-units-state-words",
+  "base": "c092a74b45cdc847bc65434f6bede5ea20b0e750",
+  "base_note": "merge-base with origin/main; origin/main advanced to 32c2b19f84 (mesh-pairing PR #1984) during the audit, which touches no audited namespace",
+  "head": "40831919ca959cf23c9b08e777cee2e7c4d70055",
+  "head_note": "translations audited as uncommitted working-tree bytes at this head; sha256 values below are of those bytes",
+  "round": 1,
+  "scope": "Independent ru audit of the 45 new keys on the C3 durations branch (ui.chat.run_details 31 incl. the {kind, select} subagent/job arms on 18 state./tally. keys, ui.chat.trace 12, ui.common.time 2); existing catalogue values used as glossary context only, not re-audited. Plurals rendered at 0,1,2,5,11,21,22,25,1000000 for both kind arms.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": [
+      {
+        "id": "RU-W2-1",
+        "severity": "nit",
+        "key": "ui.chat.trace.send.mode.wake",
+        "finding": "«пробуждение» is a noun while its siblings send.mode.now «сразу» and send.mode.quiet «тихо» are adverbs, so the three delivery-mode words read as mixed parts of speech in the tool-row summary. Meaning is correct and matches the ru glossary (wake = пробуждение). Suggestion: «с пробуждением». Disposition: deferred, non-gating NIT."
+      }
+    ]
+  },
+  "namespaces": {
+    "ui.chat.run_details": {
+      "namespace": "ui.chat.run_details",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "94df786b4138564c4a8d0d9fc904a541ffbf702288d5dc4e928c20fb3fd2bf0e",
+        "ru": "8371135ded58ca5b970bb4ca393758b4db2c18974ecd8458bf8749ab34b74b2d"
+      },
+      "context_sha256": "bae1bf611940a5f677fad29ce2ddbead8d9df7305195781058c2cb5048e1f96a",
+      "keys_read": 31,
+      "reviewed_keys": [
+        "ui.chat.run_details.state.running",
+        "ui.chat.run_details.tally.running",
+        "ui.chat.run_details.state.queued",
+        "ui.chat.run_details.tally.queued",
+        "ui.chat.run_details.state.paused",
+        "ui.chat.run_details.tally.paused",
+        "ui.chat.run_details.state.interrupted",
+        "ui.chat.run_details.tally.interrupted",
+        "ui.chat.run_details.state.done",
+        "ui.chat.run_details.tally.done",
+        "ui.chat.run_details.state.cancelled",
+        "ui.chat.run_details.tally.cancelled",
+        "ui.chat.run_details.state.gone",
+        "ui.chat.run_details.tally.gone",
+        "ui.chat.run_details.state.failed",
+        "ui.chat.run_details.tally.failed",
+        "ui.chat.run_details.state.cancelled_before_start",
+        "ui.chat.run_details.tally.cancelled_before_start",
+        "ui.chat.run_details.tally.unrecognised",
+        "ui.chat.run_details.todos.tally_closed",
+        "ui.chat.run_details.todos.tally_dropped",
+        "ui.chat.run_details.chip.subagents_running",
+        "ui.chat.run_details.chip.subagents_queued",
+        "ui.chat.run_details.chip.subagents_paused",
+        "ui.chat.run_details.chip.subagents_open",
+        "ui.chat.run_details.chip.jobs_running",
+        "ui.chat.run_details.chip.jobs_queued",
+        "ui.chat.run_details.chip.jobs_paused",
+        "ui.chat.run_details.chip.jobs_open",
+        "ui.chat.run_details.chip.busiest",
+        "ui.chat.run_details.children.count"
+      ]
+    },
+    "ui.chat.trace": {
+      "namespace": "ui.chat.trace",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": [
+          {
+            "id": "RU-W2-1",
+            "severity": "nit",
+            "key": "ui.chat.trace.send.mode.wake",
+            "finding": "«пробуждение» is a noun while its siblings send.mode.now «сразу» and send.mode.quiet «тихо» are adverbs, so the three delivery-mode words read as mixed parts of speech in the tool-row summary. Meaning is correct and matches the ru glossary (wake = пробуждение). Suggestion: «с пробуждением». Disposition: deferred, non-gating NIT."
+          }
+        ]
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "sha256": {
+        "en": "ac2ac11314335ce13e6d82d57cedbefd29728ae7a875a4fe160c70808b0d0501",
+        "ru": "200d4ce33774774710e23e548c90535eab9d0e4add8cdfcf6cb1c2032d7dc764"
+      },
+      "context_sha256": "8b6ec8d879078befa314d1d57fc6987e67b4033c3b179dbca044ae6ef9711603",
+      "keys_read": 12,
+      "reviewed_keys": [
+        "ui.chat.trace.send.mode.now",
+        "ui.chat.trace.send.mode.quiet",
+        "ui.chat.trace.send.mode.wake",
+        "ui.chat.trace.address.pid",
+        "ui.chat.trace.address.session",
+        "ui.chat.trace.sessions.peek.search",
+        "ui.chat.trace.sessions.peek.search_around",
+        "ui.chat.trace.sessions.peek.last",
+        "ui.chat.trace.sessions.peek.first",
+        "ui.chat.trace.sessions.peek.digest",
+        "ui.chat.trace.sessions.peek.before",
+        "ui.chat.trace.sessions.peek.around"
+      ]
+    },
+    "ui.common.time": {
+      "namespace": "ui.common.time",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "953888ccca37b9962f231cbf49e0aa6d82309d10b7301f18b8f115f2c99bf409",
+        "ru": "d934e300bedf847e802ce742a282b8f6ed4db48408aed67b7baef7b3f2e3fb7f"
+      },
+      "context_sha256": "4e727be0dffc231800579e971ddaf8577fddd0d3e37ab582c1f42ea062b7cb9f",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.common.time.duration.under_minimum",
+        "ui.common.time.duration.over_cap"
+      ]
+    }
+  }
+}

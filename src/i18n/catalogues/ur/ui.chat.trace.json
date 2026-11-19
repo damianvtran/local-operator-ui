@@ -30,5 +30,17 @@
 	"ui.chat.trace.send.delivery.unconfirmed.label": "ترسیل کی تصدیق نہیں — ممکن ہے یہ اب بھی پہنچ جائے، اس لیے دوبارہ بھیجنے سے پہلے دیکھ لیں",
 	"ui.chat.trace.send.delivery.unconfirmed.note": "تصدیق نہیں ہو سکی: کوئی جواب نہیں ملا اور پیغام ان کے ٹرانسکرپٹ میں نہیں ہے۔ ممکن ہے یہ اب بھی پہنچ جائے، اس لیے دوبارہ بھیجنے سے پہلے دیکھ لیں۔",
 	"ui.chat.trace.send.delivery.unconfirmed.title": "بیداری کا جواب نہیں ملا اور پیغام ابھی ان کے ٹرانسکرپٹ میں نہیں — ممکن ہے یہ اب بھی پہنچ جائے۔ دوبارہ بھیجنے سے پہلے دیکھ لیں۔",
-	"ui.chat.trace.send.delivery.unconfirmed.word": "ترسیل کی تصدیق نہیں"
+	"ui.chat.trace.send.delivery.unconfirmed.word": "ترسیل کی تصدیق نہیں",
+	"ui.chat.trace.send.mode.now": "ابھی",
+	"ui.chat.trace.send.mode.quiet": "خاموش",
+	"ui.chat.trace.send.mode.wake": "بیداری",
+	"ui.chat.trace.address.pid": "pid {pid}",
+	"ui.chat.trace.address.session": "سیشن {session}",
+	"ui.chat.trace.sessions.peek.search": "تلاش {query}",
+	"ui.chat.trace.sessions.peek.search_around": "تلاش {query} · آس پاس {count, number, ::group-off}",
+	"ui.chat.trace.sessions.peek.last": "آخری {count, number, ::group-off}",
+	"ui.chat.trace.sessions.peek.first": "پہلے {count, number, ::group-off}",
+	"ui.chat.trace.sessions.peek.digest": "خلاصہ",
+	"ui.chat.trace.sessions.peek.before": "{id} سے پہلے",
+	"ui.chat.trace.sessions.peek.around": "{id} کے آس پاس"
 }
