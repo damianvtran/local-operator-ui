@@ -9,6 +9,9 @@ import {
 import { pruneStorybookCacheFromEnv } from "../scripts/storybook-cache-prune.mjs";
 import { musicStoryScope } from "../scripts/storybook-music-scope.mjs";
 
+// This non-shipping i18n carrier extends the existing music evidence scope.
+// Keep the real project config/preview: the hosted QA Bundle classifier opts
+// in on .storybook changes; no alternate config or product fixture is needed.
 const musicScope = musicStoryScope(process.env);
 
 /*

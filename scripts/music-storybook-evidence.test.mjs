@@ -88,7 +88,7 @@ test("static manifest hashes bytes and records exact source and fixture scope", 
 		assert.equal(result.requestedHead, "requested");
 		assert.equal(result.fixtureScope.reactDocgen, false);
 		assert.equal(result.nativeDependenciesIncluded, false);
-		assert.equal(result.fixtureScope.stories.length, 2);
+		assert.equal(result.fixtureScope.stories.length, 7);
 		assert.equal(
 			result.files.find((file) => file.path === "index.html").sha256,
 			createHash("sha256")
