@@ -1378,6 +1378,25 @@ test("negative control: reverting the combobox name to its literal defeats the l
 	useLocale(lib, "en");
 });
 
+/*
+ * The team pane's member table printed its kind column as a string EXPRESSION
+ * (`kind === "team" ? "Team" : "Agent"`), which the literal scanner does not
+ * read, so "Agent" stayed English in a ur frame (RTL follow-up to UI #1952). A
+ * source contract rather than a mount: the table needs the whole team pane and
+ * its queries, and what is owned here is only that the cell reads the keys.
+ */
+test("the team member table's kind column reads its catalogue keys, not literals", () => {
+	const pane = readFileSync(
+		"src/renderer/src/features/agents/components/team-detail.tsx",
+		"utf8",
+	);
+	assert.doesNotMatch(pane, /\? "Team" : "Agent"/);
+	assert.match(
+		pane,
+		/member\.kind === "team"\s*\?\s*t\("ui\.agents\.teams\.kind\.team"\)\s*:\s*t\("ui\.agents\.teams\.kind\.agent"\)/,
+	);
+});
+
 test("teardown: the store is back to English, and the suite closes what it opened", async () => {
 	const lib = await load();
 	useLocale(lib, "en");

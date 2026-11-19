@@ -57,7 +57,7 @@ const CategoryItem: FC<{
 		onClick={onClick}
 		aria-pressed={selected}
 		className={cn(
-			"flex w-full cursor-pointer items-center gap-2.5 rounded-sm px-3 py-1.5 text-left",
+			"flex w-full cursor-pointer items-center gap-2.5 rounded-sm px-3 py-1.5 text-start",
 			"text-body-sm transition-colors duration-fast ease-out-quart",
 			selected ? rowCurrent : "text-ink hover:bg-row-hover",
 		)}

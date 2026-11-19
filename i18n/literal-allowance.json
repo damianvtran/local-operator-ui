@@ -4,11 +4,7 @@
 	"entries": [
 		{
 			"file": "src/renderer/src/features/agents/components/team-detail.tsx",
-			"ids": [
-				"jsx-child-expression | Agent",
-				"jsx-child-expression | Team",
-				"jsx-child-expression | · Includes a team"
-			],
+			"ids": ["jsx-child-expression | · Includes a team"],
 			"owner": "the i18n renderer-keying lane",
 			"payoff": "2027-01-31",
 			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."

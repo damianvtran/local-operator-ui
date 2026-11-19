@@ -19,7 +19,7 @@
  * `translate()` is the one seam every message passes through, so the controls
  * are added there, only for a message that an RTL catalogue answered.
  *
- * TWO STEPS, BOTH ONLY FOR AN RTL-ANSWERED MESSAGE:
+ * THREE STEPS, ALL ONLY FOR AN RTL-ANSWERED MESSAGE:
  *
  * 1. `isolateArguments` wraps each string argument that is a Latin-led,
  *    code-ish token (a path, a command, a key chord, a name) in FSI...PDI
@@ -33,6 +33,9 @@
  *    `dir=auto` container to LTR for the whole sentence, while an isolate is
  *    skipped by the first-strong scan. The same LRI precedent is
  *    `shared/i18n/isolate-ltr.ts`.
+ * 3. `isolateNumberUnits` wraps a number and its Latin unit symbol (`10 MB`)
+ *    in one LRI...PDI under the same gate, so the pair does not paint `MB 10`
+ *    (see its own note below).
  *
  * LTR LOCALES ARE UNTOUCHED. `translate()` calls neither function unless the
  * catalogue that answered is RTL, so every en/fr/es/zh-CN/ru/vi/hi string is
@@ -222,6 +225,90 @@ export function isolateSigils(text: string): string {
 		}
 		// Digits are weak even inside the Arabic block (U+0660-06F9): they never
 		// decide which side a neutral falls on, so they are skipped like punctuation.
+		if (DIGIT.test(char)) {
+			/* weak */
+		} else if (RTL_CHAR.test(char)) lastStrong = "R";
+		else if (LETTER.test(char)) lastStrong = "L";
+		out += char;
+		index += 1;
+	}
+	return out;
+}
+
+/*
+ * A NUMBER AND ITS LATIN UNIT (`10 MB`, `64 KB`, `{size} KiB`, `{height} px`).
+ *
+ * THE FAULT. After Urdu text a European digit run resolves as an Arabic number
+ * (rule W2) and the Latin unit after it is its own LTR run, so the paragraph
+ * orders the two right-to-left: the avatar hint's `زیادہ سے زیادہ 10 MB۔` painted
+ * `MB 10` (design review on UI #1952; `fribidi --rtl` reproduces it). Neither
+ * step above reaches it: the pair is LITERAL catalogue text, or a number
+ * argument (never isolated, see `needsIsolation`) next to a literal unit.
+ *
+ * THE FIX: one LRI...PDI around the whole pair, so it is one left-to-right
+ * token to its neighbours - the same one-token-one-isolate rule as a path.
+ *
+ * WHY AN ALLOWLIST OF UNITS rather than "any Latin word after a number": a
+ * catalogue also says `1Password`, `4o` and `{count} PR`, and the defect is
+ * specifically a measurement's symbol. These are the symbols the ur catalogues
+ * actually carry after a number (KB, MB, KiB, MiB, px, measured by scanning
+ * `src/i18n/catalogues/ur/*.json`) plus their siblings in the same family, so a
+ * new size limit in GB is covered without a code change.
+ *
+ * Gated like `isolateSigils`: only when the nearest strong character before the
+ * number is RTL or absent - after Latin text the pair already paints in order,
+ * and leaving it alone keeps the output identical wherever it was not wrong.
+ */
+/*
+ * A RANGE AND A SIGN ARE PART OF THE TOKEN (review round 1, R1-2): matching from
+ * the last number alone isolated only `20 MB` in `10–20 MB` and left the `-` of
+ * `-5 px` outside the isolate, so the range's first end and the sign still
+ * resolved against the Urdu around them. The optional
+ * sign and the optional `<number><dash>` prefix keep the whole measurement in
+ * one LRI...PDI. Only an RTL-answered catalogue reaches this pass (see
+ * `messages.ts`), so LTR output stays byte-identical.
+ */
+const SIGN = /[-+\u2212]/u;
+const NUMBER_PART = String.raw`[-+\u2212]?\p{Nd}+(?:[.,\u066B\u066C]\p{Nd}+)*`;
+const NUMBER_UNIT = new RegExp(
+	String.raw`^${NUMBER_PART}(?:[ \u00A0\u202F]?[\u2013\u2212-][ \u00A0\u202F]?${NUMBER_PART})?[ \u00A0\u202F]?(?:[KMGTP]i?B|kB|B|px)(?![\p{L}\p{Nd}])`,
+	"u",
+);
+
+/** Wrap each number + Latin unit pair that would paint reversed in LRI...PDI. */
+export function isolateNumberUnits(text: string): string {
+	let out = "";
+	let lastStrong: "L" | "R" | null = null;
+	let index = 0;
+	while (index < text.length) {
+		const char = text[index] as string;
+		if (isOpener(char)) {
+			const end = isolateEnd(text, index);
+			out += text.slice(index, end);
+			index = end;
+			continue;
+		}
+		// A digit that continues a word or a number (`v2`, `1.5`) is not the
+		// start of a measurement; only one that starts a token is tried.
+		const previous = index > 0 ? (text[index - 1] as string) : "";
+		// A sign opens a measurement only when a digit follows it (`-5 px`);
+		// a dash before a space or a word is punctuation.
+		const opensNumber =
+			DIGIT.test(char) ||
+			(SIGN.test(char) && DIGIT.test(text[index + 1] ?? ""));
+		if (
+			opensNumber &&
+			lastStrong !== "L" &&
+			!LETTER.test(previous) &&
+			!DIGIT.test(previous)
+		) {
+			const pair = NUMBER_UNIT.exec(text.slice(index));
+			if (pair) {
+				out += `${LRI}${pair[0]}${PDI}`;
+				index += pair[0].length;
+				continue;
+			}
+		}
 		if (DIGIT.test(char)) {
 			/* weak */
 		} else if (RTL_CHAR.test(char)) lastStrong = "R";

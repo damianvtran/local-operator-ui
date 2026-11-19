@@ -38,6 +38,7 @@ import {
 } from "@shared/hooks";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { USER_TEXT_ALIGN } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -183,14 +184,35 @@ export const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 						<Bot size={16} aria-hidden={true} />
 					</AvatarFallback>
 				</AgentAvatar>
+				{/*
+				 * THE NAME AND DESCRIPTION SET THEIR OWN DIRECTION (`dir="auto"` on the
+				 * truncating box, as in `archive-conversation-dialog.tsx`):
+				 * `text-overflow` clips at the END of the box's own direction, so an
+				 * English name inheriting Urdu's RTL lost its first letters behind the
+				 * ellipsis ("...ase-captain").
+				 *
+				 * THE ALIGNMENT FOLLOWS THE DOCUMENT, NOT THE TEXT (review round 1,
+				 * R1-1 / D2): Tailwind's `rtl:` also matches an element's OWN resolved
+				 * `:dir(rtl)`, so under en an Urdu-script name right-aligned away from
+				 * its icon. `USER_TEXT_ALIGN` keys the edge to an RTL ANCESTOR (the
+				 * `<html dir>` the locale writes) instead, so a short
+				 * name sits on the locale's start edge with the rest of the row while
+				 * `dir="auto"` still decides glyph order and the ellipsis end.
+				 */}
 				<span className="min-w-0 flex-1">
 					<Tooltip content={agent.name} side="top" align="start">
-						<span className="block truncate font-medium text-body-sm text-ink">
+						<span
+							dir="auto"
+							className={`block truncate font-medium text-body-sm text-ink ${USER_TEXT_ALIGN}`}
+						>
 							{agent.name}
 						</span>
 					</Tooltip>
 					<Tooltip content={description} side="bottom" align="start">
-						<span className="block truncate text-meta text-ink-dim">
+						<span
+							dir="auto"
+							className={`block truncate text-meta text-ink-dim ${USER_TEXT_ALIGN}`}
+						>
 							{description}
 						</span>
 					</Tooltip>
