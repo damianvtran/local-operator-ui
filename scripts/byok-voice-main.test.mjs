@@ -475,7 +475,11 @@ test("RETRY: a retry after the page could not be brought back (a second crash) r
 	r.byok.retry();
 	r.on();
 	await settle();
-	assert.deepEqual(r.order, ["mic", "open"], "nothing failed: nothing reopened");
+	assert.deepEqual(
+		r.order,
+		["mic", "open"],
+		"nothing failed: nothing reopened",
+	);
 	r.byok.pageStopped("The voice page stopped");
 	r.byok.retry();
 	r.on();
@@ -1568,7 +1572,9 @@ test("SPEAK GUARD (byok): a reply that arrives while the page is still starting 
 	const c = coordinator();
 	c.voice.observeFrame(frame(SESSION));
 	c.voice.byokReport("starting");
-	c.voice.noteDesktopAnswer(...relay(SESSION, "Hello there.", ["Hello there."]));
+	c.voice.noteDesktopAnswer(
+		...relay(SESSION, "Hello there.", ["Hello there."]),
+	);
 	assert.deepEqual(c.voice.speak({ text: "Hello there.", kind: "reply" }), {
 		spoken: true,
 	});

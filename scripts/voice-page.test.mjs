@@ -15,6 +15,7 @@ const bundle = await build({
 			'export * from "./src/voice-page/wav";',
 			'export * from "./src/voice-page/scheduler";',
 			'export * from "./src/voice-page/vad";',
+			'export * from "./src/voice-page/vad-mic";',
 			'export * from "./src/voice-page/csp";',
 			'export * from "./src/voice-page/vad-assets";',
 			'export * from "./src/voice-page/channels";',
@@ -435,22 +436,114 @@ test("VAD: a misfire after an announced speech_start cancels it, once", async ()
 	assert.deepEqual(r.out.vad.slice(3), ["speech_start", "speech_end"]);
 });
 
-test("VAD factory: barge-in and speech_start come from vad-web's onSpeechRealStart, and a misfire is passed through", () => {
-	const factory = readFileSync("src/voice-page/vad-factory.ts", "utf8");
-	assert.match(
-		factory,
-		/onSpeechRealStart:\s*\(\)\s*=>\s*callbacks\.onSpeechStart\(\)/,
-	);
-	assert.equal(
-		/\bonSpeechStart:/.test(factory),
-		false,
-		"the first-frame event is unused",
-	);
-	assert.match(
-		factory,
-		/onVADMisfire:\s*\(\)\s*=>\s*callbacks\.onMisfire\?\.\(\)/,
-	);
-	assert.match(factory, /callbacks\.onMicrophoneLost\(\)/);
+/** vad-web's MicVAD and the browser's media devices, faked so the glue runs. */
+function micRig({ trackState = "live" } = {}) {
+	const listeners = { devicechange: new Set() };
+	const trackListeners = new Set();
+	const track = {
+		readyState: trackState,
+		addEventListener: (type, fn) => {
+			if (type === "ended") trackListeners.add(fn);
+		},
+	};
+	const stream = { getAudioTracks: () => [track] };
+	const mediaDevices = {
+		getUserMedia: async () => stream,
+		addEventListener: (type, fn) => listeners[type]?.add(fn),
+		removeEventListener: (type, fn) => listeners[type]?.delete(fn),
+	};
+	let options = null;
+	const vadCalls = [];
+	const MicVAD = {
+		new: async (o) => {
+			options = o;
+			return {
+				// The real one opens the stream on start.
+				start: async () => {
+					await o.getStream();
+					vadCalls.push("start");
+				},
+				pause: () => vadCalls.push("pause"),
+				destroy: async () => vadCalls.push("destroy"),
+			};
+		},
+	};
+	const lost = [];
+	const events = [];
+	const callbacks = {
+		onSpeechStart: () => events.push("start"),
+		onSpeechEnd: () => events.push("end"),
+		onMisfire: () => events.push("misfire"),
+		onMicrophoneLost: () => lost.push(true),
+	};
+	const factory = m.createMicVadFactory({
+		MicVAD,
+		mediaDevices,
+		assetBase: "app://x/voice-page-vad/",
+	});
+	return {
+		track,
+		listeners,
+		lost,
+		events,
+		vadCalls,
+		options: () => options,
+		build: () => factory(callbacks),
+		endTrack: () => {
+			track.readyState = "ended";
+			for (const fn of trackListeners) fn();
+		},
+	};
+}
+
+test("VAD factory: barge-in and speech_start come from vad-web's onSpeechRealStart, and a misfire is passed through", async () => {
+	const r = micRig();
+	await r.build();
+	const o = r.options();
+	assert.equal(typeof o.onSpeechRealStart, "function");
+	assert.equal("onSpeechStart" in o, false, "the first-frame event is unused");
+	o.onSpeechRealStart();
+	o.onVADMisfire();
+	o.onSpeechEnd(new Float32Array(1));
+	assert.deepEqual(r.events, ["start", "misfire", "end"]);
+	assert.equal(o.baseAssetPath, "app://x/voice-page-vad/");
+	assert.equal(o.startOnLoad, false, "construction does not open the mic");
+});
+
+test("VAD factory: a microphone track that ends reports the loss", async () => {
+	const r = micRig();
+	const detector = await r.build();
+	await detector.start();
+	assert.equal(r.lost.length, 0);
+	r.endTrack();
+	assert.equal(r.lost.length, 1);
+});
+
+test("VAD factory: a device change reports the loss only when the track is gone", async () => {
+	const r = micRig();
+	const detector = await r.build();
+	const [onChange] = [...r.listeners.devicechange];
+	onChange();
+	assert.equal(r.lost.length, 0, "no stream opened yet: nothing was lost");
+	await detector.start();
+	onChange();
+	assert.equal(r.lost.length, 0, "the track is still live");
+	r.track.readyState = "ended";
+	onChange();
+	assert.equal(r.lost.length, 1);
+});
+
+test("VAD factory: start throws when the stream holds no live track, and destroy detaches the device listener", async () => {
+	const dead = micRig({ trackState: "ended" });
+	const detector = await dead.build();
+	await assert.rejects(() => detector.start(), /not live/);
+	const r = micRig();
+	const live = await r.build();
+	await live.start();
+	assert.equal(r.listeners.devicechange.size, 1);
+	await live.destroy();
+	assert.equal(r.listeners.devicechange.size, 0);
+	assert.deepEqual(r.vadCalls, ["start", "destroy"]);
 });
 
 /* --------------------------- CSP, URL and verdict -------------------------- */
