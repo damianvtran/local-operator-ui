@@ -3923,7 +3923,18 @@ app
 							app.commandLine.hasSwitch(name.slice(2)),
 						),
 					],
-					env: process.env,
+					/*
+					 * Refusal-only: this env feeds nothing but the `dev_flag` check in
+					 * `pairingStaticRefusal`, which REFUSES when a driver variable is
+					 * set. So unlike the launch facts above (window mode, driver
+					 * arming), where a cwd `.env` must not be able to ADD anything and
+					 * `launchEnv` alone is the safe read, here the safe read is the
+					 * superset of the launch snapshot and the folded env: the snapshot
+					 * alone would miss a driver variable a `.env` added and so weaken
+					 * the refusal. An extra key can only make it refuse more (a key
+					 * both carry takes the folded value).
+					 */
+					env: { ...launchEnv, ...process.env },
 					windowMode: windowLaunch.mode,
 				});
 				if (pairingRequest.op === "pairings.eligibility")

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -360,6 +360,41 @@ test("an empty dev-driver env var is not a driver (unset in a parent shell)", ()
 			env: { LOCAL_OPERATOR_UI_DEV_DRIVER: "" },
 		}),
 		null,
+	);
+});
+
+/*
+ * Main builds the launch facts inside the pairings IPC handler, so the facts
+ * builder itself is not reachable from a typed double. What is pinned instead:
+ * the gate refuses on the env main composes - the launch snapshot spread under
+ * the dotenv-folded env - when the driver variable exists ONLY in the folded
+ * half, and index.ts composes exactly that superset (not the snapshot alone,
+ * which would miss it, and not bare `process.env`, which dev-driver-gate forbids).
+ */
+const PAIRING_REFUSAL_ENV =
+	/\n\t*env: \{ \.\.\.launchEnv, \.\.\.process\.env \},/;
+test("a driver var present only in the folded env still refuses dev_flag", () => {
+	const launchEnv = { HOME: "/Users/someone" };
+	const folded = { HOME: "/Users/someone", LOCAL_OPERATOR_UI_DEV_DRIVER: "1" };
+	assert.equal(
+		pairingProvenanceRefusal({ ...person(), env: launchEnv }),
+		null,
+		"control: the snapshot alone carries no driver var",
+	);
+	assert.equal(
+		pairingProvenanceRefusal({
+			...person(),
+			env: { ...launchEnv, ...folded },
+		}),
+		"dev_flag",
+	);
+	const main = readFileSync(join(process.cwd(), "src/main/index.ts"), "utf8");
+	const at = main.indexOf("const launchFacts = () => ({");
+	assert.notEqual(at, -1, "index.ts no longer builds the pairing launch facts");
+	assert.match(
+		main.slice(at, at + 2000),
+		PAIRING_REFUSAL_ENV,
+		"the pairing refusal env must be the superset of launchEnv and the folded process.env",
 	);
 });
 
