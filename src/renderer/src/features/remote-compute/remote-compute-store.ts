@@ -393,6 +393,35 @@ export type RemoteRunStartInput = {
 };
 
 /**
+ * A REFUSAL IS NOT RE-SENT (UX round 2, U8; every write in the family since agent
+ * review round 3, MINOR-1).
+ *
+ * The app's default is one retry per failed write (`shared/api/query-client.ts`),
+ * which is right for a transport hiccup and wrong for an answer: the daemon logged
+ * every refused write twice, ~1.08 s apart, and the sentence reached the surface only
+ * after the second refusal's backoff - so a `run_limit` read as an unresponsive
+ * button for over a second, and a 429 spent a second unit of the server's own rate
+ * limit to learn what the first answer already said. A refusal to CANCEL is the
+ * ordinary race where a run settled between the render and the press, and re-sending
+ * it makes the daemon log the same `not_running` twice.
+ *
+ * Everything this family raises is a `RemoteRefusal`, including the case where
+ * nothing answered at all (`code: "transport"`), which is the one shape worth one
+ * more send; `retryDesktopMutation` still owns the policy for a `DesktopControlError`
+ * that escapes `remoteCall`. The predicate is one function rather than a closure per
+ * hook because the three writes are the same rule, and the start's copy of it had
+ * already stopped being the only one that needed it.
+ */
+export function remoteRefusalRetry(
+	failureCount: number,
+	error: Error,
+): boolean {
+	if (error instanceof RemoteRefusal && error.code !== "transport")
+		return false;
+	return retryDesktopMutation(failureCount, error);
+}
+
+/**
  * `POST …/runs`.
  *
  * THE START IS NOT A POLL and never retries itself: an `idempotency_conflict` or a
@@ -403,22 +432,8 @@ export type RemoteRunStartInput = {
 export function useRemoteRunStart() {
 	const queryClient = useQueryClient();
 	return useMutation({
-		/*
-		 * A REFUSAL IS NOT RE-SENT (UX round 2, U8). The app's default is one retry per
-		 * failed write, which is right for a transport hiccup and wrong for an answer: the
-		 * daemon logged every refused start twice, ~1.08 s apart, and the sentence reached
-		 * the sheet only after the second refusal's backoff - so a `run_limit` read as an
-		 * unresponsive button for over a second, and a 429 spent a second unit of the
-		 * server's own rate limit to learn what the first answer already said. Everything
-		 * this family raises is a `RemoteRefusal`, including the case where nothing
-		 * answered at all (`code: "transport"`), which is the one shape worth one more
-		 * send; `retryDesktopMutation` still owns the policy for a `DesktopControlError`
-		 * that escapes `remoteCall`.
-		 */
-		retry: (failureCount, error) =>
-			error instanceof RemoteRefusal && error.code !== "transport"
-				? false
-				: retryDesktopMutation(failureCount, error),
+		/* A refusal is not re-sent: see `remoteRefusalRetry`. */
+		retry: remoteRefusalRetry,
 		mutationFn: async (input: RemoteRunStartInput) => {
 			const answer = await remoteCall<{ run?: unknown }>({
 				op: "remote_compute.start",
@@ -452,6 +467,8 @@ export function useRemoteRunStart() {
 export function useRemoteRunCancel() {
 	const queryClient = useQueryClient();
 	return useMutation({
+		/* A refusal is not re-sent: see `remoteRefusalRetry`. */
+		retry: remoteRefusalRetry,
 		mutationFn: async (runId: string) => {
 			const answer = await remoteCall<{ run?: unknown } | null>({
 				op: "remote_compute.cancel",
@@ -480,6 +497,8 @@ export function useRemoteRunCancel() {
 export function useRemoteRunDelete() {
 	const queryClient = useQueryClient();
 	return useMutation({
+		/* A refusal is not re-sent: see `remoteRefusalRetry`. */
+		retry: remoteRefusalRetry,
 		mutationFn: async (runId: string) => {
 			await remoteCall<unknown>({ op: "remote_compute.delete", runId });
 			return runId;

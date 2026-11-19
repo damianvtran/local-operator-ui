@@ -59,11 +59,12 @@ import {
 } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { messageRuns } from "@shared/lib/message-runs";
 import { cn } from "@shared/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Cloud } from "lucide-react";
 import { type FC, useEffect, useState } from "react";
-import { messageRuns } from "../chat/device/chat-header-device";
+import { useMenuHandOff } from "../chat/device/menu-handoff";
 import { useNow } from "./remote-compute-clock";
 import { type RadientRowView, radientRowView } from "./remote-compute-model";
 import {
@@ -130,6 +131,15 @@ export const RemoteComputePicker: FC<RemoteComputePickerProps> = ({
 	useI18nLocale();
 	const queryClient = useQueryClient();
 	const narrow = useNarrowWindow();
+	/*
+	 * THE PRESS IS HANDED TO THE MENU THAT HOLDS THIS ROW (UX round 3, U6). The
+	 * `DropdownMenu` restores focus to its chip when its content unmounts, and that
+	 * restore landed after the sheet had focused its own panel - so the pointer door
+	 * put the caret back on the chip with the page already `aria-hidden` and the first
+	 * Tab walked it. `menu-handoff.ts` owns the rest: the open is deferred to the menu's
+	 * close, which drops the restore.
+	 */
+	const handOff = useMenuHandOff();
 	/*
 	 * A PICKER THAT JUST OPENED ASKS AGAIN, ONCE (UX U2). The mounted popover is the
 	 * moment the row's answer decides whether a money action is offered, and the
@@ -203,7 +213,7 @@ export const RemoteComputePicker: FC<RemoteComputePickerProps> = ({
 		 * already spending. `loading` has nothing to open yet, so it asks again.
 		 */
 		if (view.kind === "ready" || view.kind === "runs") {
-			onOpenSheet();
+			handOff(onOpenSheet);
 			return;
 		}
 		void read.refetch();
@@ -243,6 +253,18 @@ export const RemoteComputePicker: FC<RemoteComputePickerProps> = ({
 					 * while it works, so both refuse the default close.
 					 */
 					if (disabled) {
+						event.preventDefault();
+						return;
+					}
+					/*
+					 * A PRESS WHILE THE READ IS OUTSTANDING IS HELD, NOT SWALLOWED (UX round 3,
+					 * U12). The row reads `checking…` with a spinner while this row's own retry
+					 * is in flight, and a press then closed the menu and answered nothing - the
+					 * one control on a money surface that replied to a press with silence. The
+					 * press now leaves the menu open and the spinner running, which is the state
+					 * it already shows.
+					 */
+					if (checking) {
 						event.preventDefault();
 						return;
 					}

@@ -68,6 +68,16 @@ export type DialogContentProps = ComponentPropsWithoutRef<
 	 */
 	closeDisabled?: boolean;
 	/**
+	 * The corner close button's accessible name.
+	 *
+	 * A DIALOG WHOSE FOOTER ALREADY HAS A `Close` CANNOT LET ITS ICON SAY IT TOO (UX
+	 * round 3, U11): the icon is the next stop after the footer button inside the same
+	 * trap, so a screen reader heard "Close, Close" with nothing to tell them apart.
+	 * The surface owns the noun, so it passes the name; the default is the generic
+	 * action this button has always carried.
+	 */
+	closeLabel?: string;
+	/**
 	 * The scrim's own classes.
 	 *
 	 * The default scrim is `z-50`, which dims the app but not a surface that
@@ -91,6 +101,7 @@ export const DialogContent = forwardRef<
 			children,
 			showClose = true,
 			closeDisabled = false,
+			closeLabel,
 			overlayClassName,
 			...props
 		},
@@ -143,7 +154,7 @@ export const DialogContent = forwardRef<
 								variant="ghost"
 								size="icon-sm"
 								className="absolute top-4 end-4"
-								aria-label={t("ui.common.actions.close")}
+								aria-label={closeLabel ?? t("ui.common.actions.close")}
 								disabled={closeDisabled}
 							>
 								<X aria-hidden="true" />

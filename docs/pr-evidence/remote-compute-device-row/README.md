@@ -30,6 +30,20 @@ the first control INSIDE it), and the recaptured `sheet-open-after-pick-*`, whic
 remains the one frame driven end to end: chip press, then a real press on the
 `Radient — ready` row, then the sheet that opens over the chat (UX round 1, U1).
 
+**Round-3 remediation recapture (2026-11-19).** The sheet set was taken again in both
+palettes, because three changes reach every one of its frames: the tier notice took the
+rows' own `py-1.5` (design round 3, D10), the footer gained the `Separator` its scroll
+edge was missing (D11), and the refusal and its remedy left the scrolling body for the
+pinned region beside the primary (agent review round 3, MAJOR-1). Four frames are new:
+`sheet-refused-420x400-*` and `sheet-refused-600x500-*`, each taken AFTER a real press on
+`Start run` against a story bridge that answers the family's own refusal envelope - the
+panel in the frame is the panel a refused press produces, with the refusal, its
+`Add credits` remedy and the primary all inside the clip while the body is scrolled to
+its very top. `sheet-open-after-pick-*` was re-driven through the pointer door (a real
+press on the chip, then a real press on the `Radient - ready` row) and is the frame the
+pointer-door focus claim rests on: after the press the focused element is the sheet's
+own panel, and one Tab lands inside it (UX round 3, U6).
+
 Measurements quoted in the PR are taken from these PNG files, not from the palette:
 the band's ground against the panel's in each theme, the panel's height and its body's
 scroll extent at 420x400, and `document.activeElement` after the row press.
@@ -51,10 +65,12 @@ the table below and screenshot the viewport.
 | `row-needs-network-*` | F | `needs a network` with the commands this app can name printed under it as MONO runs carrying their own quotes, not only in the accessible name (D2, U3, D6, U7) |
 | `row-not-offered-*` | G | `not offered by this deployment` with its own quiet reason line and no hover ground |
 | `sheet-open-after-pick-*` | — | The second level reached THROUGH the row: the sheet opens over the chat after a real press (U1 / Q-001) |
-| `sheet-ready-*` | — | Network line as a statement on its own line (D3), `What kind of run` (D6), Cloud run live, Dedicated + Spot disabled in a quieter voice with the reason inline (D4), the one buyable tier stated rather than check-marked (D10), the prompt summary, the directory, the submit |
+| `sheet-ready-*` | — | Network line as a statement on its own line (D3), `What kind of run` (D6), Cloud run live, Dedicated + Spot disabled in a quieter voice with the reason inline (D4), the one buyable tier stated rather than check-marked (round 1's D10), the tier notice on the rows' own rhythm (round 3's D10), the prompt summary, the directory, the submit, and the footer's own rule above it (round 3's D11) |
 | `sheet-ambiguous-network-*` | — | Two networks and no default, the options marked as controls by their own resting ground (D4), the binding sentence naming its own subject (round 2, D2), and `Change` absent because there is nothing to change from (D7); the stand-down line under the actions |
 | `sheet-no-prompt-*` | — | An empty composer: the prompt's slot says it is empty (round 2, D3), and the submit stands down with its own reason |
-| `sheet-narrow-420x400-*` | — | The same sheet in a 420x400 window: capped to the window with a scrolling body, the title and `Start run` still reachable (round 2, U10) |
+| `sheet-narrow-420x400-*` | — | The same sheet in a 420x400 window: capped to the window with a scrolling body, the title and `Start run` still reachable (round 2, U10), and a rule at the body's cut so the slice reads as a scroll rather than as corruption (round 3, D11). The body is 163px here, not round 2's 180: the footer's `Separator` and its gap are the 17px |
+| `sheet-refused-420x400-*` | — | A pressed `Start run` the route refused, in a 420x400 window: the refusal and its `Add credits` remedy are PINNED above the primary (round 3, MAJOR-1) while the body is scrolled to its top, so the press visibly answers without the user finding anything |
+| `sheet-refused-600x500-*` | — | The same refusal at the window's own floor (600x500), where the body is 160px against 380px of content - the size at which round 3's MAJOR-1 was raised |
 | `sheet-keyboard-focus-*` | — | The sheet after ONE Tab: the ring is on `View runs`, inside the dialog, so the keyboard enters it (round 2, U6) |
 | `card-running-*` | — | A run spending: status, elapsed from the server's start, the hold one ink step above the clock (D3), the binding sentence on its own line, Cancel |
 | `card-finished-*` | — | Settled: the charge instead of the hold, Forget instead of Cancel |
@@ -65,9 +81,12 @@ the table below and screenshot the viewport.
 
 ## What these frames cannot claim
 
-- **No live daemon.** Every frame is presentational and answers from the story
-  bridge. The real load, refusal codes (`run_limit`, `insufficient_credits`, …) and
-  the provider's own latency are QA's rig, not these stills.
+- **No live daemon.** Every frame answers from the story bridge. The real load, the
+  refusal codes the route actually returns and the provider's own latency are QA's rig,
+  not these stills. The two `sheet-refused-*` frames are the one place a refusal is
+  DRAWN: the press is real and the envelope is this family's shape, but the sentence
+  and the code in it are the story's, so they say where the refusal lands and nothing
+  about what a given route will say.
 - **No focus-dependent claim beyond the one frame that is about focus.**
   `sheet-keyboard-focus-*` is taken after a real Tab key, so its ring is the app's
   own `:focus-visible`; every other frame shows a surface at rest. A frame still

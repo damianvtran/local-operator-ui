@@ -278,6 +278,19 @@ export const RemoteComputeSheet: FC<RemoteComputeSheetProps> = ({
 	const contentRef = useRef<HTMLDivElement>(null);
 	const opener = useRef<HTMLElement | null>(null);
 	/**
+	 * THE FOCUS FRAME IS CANCELLED WITH THE MOUNT (agent review round 3, NIT-1). The
+	 * frame below lands even when the dialog was closed in the same tick; the optional
+	 * chain keeps that harmless, but the frame still runs a focus call on a node that
+	 * is going away. One id and one cleanup is the whole fix.
+	 */
+	const focusFrame = useRef<number | null>(null);
+	useEffect(
+		() => () => {
+			if (focusFrame.current !== null) cancelAnimationFrame(focusFrame.current);
+		},
+		[],
+	);
+	/**
 	 * THE IDEMPOTENCY KEY IS MINTED ON THE FIRST PRESS AND RESENT ON EVERY RETRY.
 	 *
 	 * A start whose response was lost may have created a run, so a retry must carry the
@@ -402,7 +415,10 @@ export const RemoteComputeSheet: FC<RemoteComputeSheetProps> = ({
 				tabIndex={-1}
 				onOpenAutoFocus={(event) => {
 					event.preventDefault();
-					requestAnimationFrame(() => contentRef.current?.focus());
+					focusFrame.current = requestAnimationFrame(() => {
+						focusFrame.current = null;
+						contentRef.current?.focus();
+					});
 				}}
 				/*
 				 * AND THE FOCUS GOES BACK TO THE DOOR (UX round 2, U9). Closed by `Close`
@@ -434,6 +450,13 @@ export const RemoteComputeSheet: FC<RemoteComputeSheetProps> = ({
 				 * inside the viewport here.
 				 */
 				className="max-h-[calc(100dvh-2rem)] w-[27rem] max-w-[calc(100vw-2rem)] gap-4 p-5 outline-none"
+				/*
+				 * THE ICON SAYS WHAT THE FOOTER'S `Close` DOES NOT (UX round 3, U11). The
+				 * corner button is the trap's next stop after the footer one, and both were
+				 * named `Close`, so a screen reader heard the word twice with nothing to tell
+				 * them apart. `Dismiss` is the action it really is: leave without starting a run.
+				 */
+				closeLabel={t("ui.common.actions.dismiss")}
 			>
 				<DialogHeader>
 					<DialogTitle>{model.heading}</DialogTitle>
@@ -479,7 +502,14 @@ export const RemoteComputeSheet: FC<RemoteComputeSheetProps> = ({
 						{model.tierNotice ? (
 							<span
 								data-radient-tier-notice=""
-								className="px-0.5 text-meta text-ink-muted"
+								/*
+								 * THE NOTICE TAKES THE ROWS' OWN VERTICAL PAD (design round 3, D10). Every
+								 * tier row carries `py-1.5`, so two rows sit 12px apart ink to ink; the notice
+								 * was the one child with no padding and showed the column's raw `gap-1`, 7px,
+								 * which made the sentence naming the tier this run uses hug the disabled `Spot`
+								 * row more tightly than any other pair in the block.
+								 */
+								className="px-0.5 py-1.5 text-meta text-ink-muted"
 							>
 								{model.tierNotice}
 							</span>
@@ -530,55 +560,78 @@ export const RemoteComputeSheet: FC<RemoteComputeSheetProps> = ({
 							</div>
 						) : null}
 					</div>
-					{refusal ? (
-						<div
-							data-radient-refusal={refusal.code}
-							className="flex flex-col gap-1 rounded-sm bg-warning-wash px-2.5 py-2"
-						>
-							<span className="text-body-sm text-ink">{refusal.message}</span>
-							{remedy === "sign-in" ? (
-								<Button
-									variant="tonal"
-									size="sm"
-									className="self-start"
-									data-radient-sign-in=""
-									onClick={() => setSigningIn(true)}
-								>
-									{remoteRemedyLabel("sign-in", null)}
-								</Button>
-							) : remedy === "add-credits" ? (
-								<Button
-									variant="tonal"
-									size="sm"
-									className="self-start"
-									onClick={() => openConsolePage(RADIENT_BILLING_URL)}
-								>
-									{remoteRemedyLabel("add-credits", null)}
-								</Button>
-							) : remedy === "retry" || remedy === "refresh" ? (
-								<Button
-									variant="tonal"
-									size="sm"
-									className="self-start"
-									disabled={waiting !== null && waiting > 0}
-									onClick={submit}
-								>
-									{remoteRemedyLabel(remedy, waiting ?? retrySeconds)}
-								</Button>
-							) : remedy === "push-branch" ? (
-								/*
-								 * PUSHING IS NOT THIS APP'S GESTURE. The remedy names the act (the run
-								 * would start on a commit no remote has), and the button copies
-								 * nothing and runs nothing: a shell command in a dialog is the class
-								 * of advice this product refuses to give.
-								 */
-								<span className="text-meta text-ink-dim">
-									{t("ui.chat.remote_compute.remedy.push_branch_help")}
-								</span>
-							) : null}
-						</div>
-					) : null}
 				</div>
+				{/*
+				 * THE BODY'S SCROLL EDGE GETS A BOUNDARY (design round 3, D11). At 420x400 the
+				 * body's cut falls INSIDE the `coming soon` line - roughly its lower half sliced
+				 * off - with nothing between it and the primary 16px below, so "there is more
+				 * above" reads as corruption rather than as a scroll. The sheet separates its
+				 * other sections with `Separator`; the footer was the one boundary without one.
+				 */}
+				<Separator />
+				{/*
+				 * THE REFUSAL IS PINNED, NOT SCROLLED (agent review round 3, MAJOR-1). It used
+				 * to be the scrolling body's last child, and at the window's own floor (600x500)
+				 * the body always overflows, so a refused start changed nothing above the fold:
+				 * the press on the one control that spends money read as an unresponsive
+				 * button - the reading UX round 2's U8 was about, produced by the layout
+				 * instead of the retry - and the remedy that goes with it (sign in, add
+				 * credits, retry in N seconds) was the part that was off screen. Here it sits
+				 * under the boundary, beside the primary it answers, and is on screen whenever
+				 * it exists.
+				 *
+				 * `role="alert"` because it IS an answer to a press: mounted in the pinned
+				 * region it announces itself, which the block never did even when visible.
+				 */}
+				{refusal ? (
+					<div
+						role="alert"
+						data-radient-refusal={refusal.code}
+						className="flex flex-col gap-1 rounded-sm bg-warning-wash px-2.5 py-2"
+					>
+						<span className="text-body-sm text-ink">{refusal.message}</span>
+						{remedy === "sign-in" ? (
+							<Button
+								variant="tonal"
+								size="sm"
+								className="self-start"
+								data-radient-sign-in=""
+								onClick={() => setSigningIn(true)}
+							>
+								{remoteRemedyLabel("sign-in", null)}
+							</Button>
+						) : remedy === "add-credits" ? (
+							<Button
+								variant="tonal"
+								size="sm"
+								className="self-start"
+								onClick={() => openConsolePage(RADIENT_BILLING_URL)}
+							>
+								{remoteRemedyLabel("add-credits", null)}
+							</Button>
+						) : remedy === "retry" || remedy === "refresh" ? (
+							<Button
+								variant="tonal"
+								size="sm"
+								className="self-start"
+								disabled={waiting !== null && waiting > 0}
+								onClick={submit}
+							>
+								{remoteRemedyLabel(remedy, waiting ?? retrySeconds)}
+							</Button>
+						) : remedy === "push-branch" ? (
+							/*
+							 * PUSHING IS NOT THIS APP'S GESTURE. The remedy names the act (the run
+							 * would start on a commit no remote has), and the button copies
+							 * nothing and runs nothing: a shell command in a dialog is the class
+							 * of advice this product refuses to give.
+							 */
+							<span className="text-meta text-ink-dim">
+								{t("ui.chat.remote_compute.remedy.push_branch_help")}
+							</span>
+						) : null}
+					</div>
+				) : null}
 				<DialogFooter className="gap-2 sm:justify-end">
 					{onViewRuns ? (
 						<Button

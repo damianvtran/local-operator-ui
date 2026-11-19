@@ -310,6 +310,31 @@ export const RowChecking: Story = {
 	),
 };
 
+/**
+ * The read the sheet needs, and a start the route refuses.
+ *
+ * `insufficient_credits` rather than `run_limit` because its remedy is a BUTTON
+ * (`Add credits`): the layout finding is about a remedy that sat off screen, and a
+ * countdown-only remedy would show less of the thing that was missing.
+ */
+const refuseStart =
+	(over: Record<string, unknown> = {}): Parameters<typeof installBridge>[0] =>
+	(request) => {
+		if (request.op === "remote_compute.read") return read(over);
+		if (request.op === "remote_compute.start")
+			return {
+				status: 402,
+				body: {
+					error: {
+						code: "insufficient_credits",
+						message:
+							"This account has no credit left for another run. Add credits, then start this run again.",
+					},
+				},
+			};
+		return null;
+	};
+
 /* ------------------------------------------------------------------ the sheet */
 
 const Sheet = ({
@@ -366,6 +391,22 @@ export const SheetAmbiguousNetwork: Story = {
 /** An empty composer: the submit stands down with its own reason. */
 export const SheetNoPrompt: Story = {
 	render: () => <Sheet remote={readOnly({})} prompt="" />,
+};
+
+/**
+ * A pressed `Start run` that the route refused.
+ *
+ * THE PRESS IS REAL AND THE SENTENCE IS THE STORY'S. The bridge answers
+ * `remote_compute.start` with this family's own refusal envelope - a non-2xx body
+ * carrying `error.code` and `error.message` - so `remoteCall` raises the
+ * `RemoteRefusal` the sheet paints. The money and the sentence are invented (a live
+ * daemon's codes and wording are QA's rig); what the frame answers is the LAYOUT
+ * question agent review round 3's MAJOR-1 raised: whether the refusal and the remedy
+ * that goes with it are on screen after the press, at the sizes where the body
+ * scrolls, without scrolling to them.
+ */
+export const SheetRefused: Story = {
+	render: () => <Sheet remote={refuseStart()} />,
 };
 
 /* ------------------------------------------------------------------ the card */

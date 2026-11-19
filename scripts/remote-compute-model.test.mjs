@@ -66,6 +66,7 @@ const {
 	REMOTE_POLL_MAX_DELAY_MS,
 	REMOTE_COMPUTE_POLL_MS,
 	remoteCall,
+	remoteRefusalRetry,
 	RemoteRefusal,
 	desktopEndpoint,
 	desktopRequestSchema,
@@ -558,6 +559,39 @@ test("a failing read backs off, obeys the route's pace, and stops at the ceiling
 			failures: REMOTE_POLL_MAX_FAILURES + 4,
 			retryAfterMs: null,
 		}),
+		false,
+	);
+});
+
+test("no write in the family re-sends a refusal, and a transport failure keeps its one", () => {
+	/*
+	 * UX round 2's U8 stopped the START from re-sending a refusal; agent review round 3
+	 * (MINOR-1) found the same rule missing at the two sibling writes, so the predicate
+	 * is now one exported function and this pins it. A `RemoteRefusal` IS the server's
+	 * own answer - `run_limit`, `insufficient_credits`, `not_running` when a run settled
+	 * between the render and the press - and sending it again spends the server's rate
+	 * limit to hear the same sentence later. `transport` is the one code with nothing
+	 * answering at all, so it keeps the app's single retry.
+	 */
+	for (const code of [
+		"run_limit",
+		"insufficient_credits",
+		"not_running",
+		"capacity",
+	]) {
+		assert.equal(
+			remoteRefusalRetry(0, new RemoteRefusal(code, "sentence", null)),
+			false,
+			code,
+		);
+	}
+	// The transport failure is the one shape worth one more send - and only one.
+	assert.equal(
+		remoteRefusalRetry(0, new RemoteRefusal("transport", "sentence", null)),
+		true,
+	);
+	assert.equal(
+		remoteRefusalRetry(1, new RemoteRefusal("transport", "sentence", null)),
 		false,
 	);
 });
