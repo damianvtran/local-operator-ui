@@ -145,6 +145,11 @@
 			"path": "i18n/audits/evidence/pr1971-r3-gates.txt",
 			"sha256": "7c19adc82ba0174eed98334402d427523bfee235d4143124d627e5f39469a7c6",
 			"what": "actual gate output for this round (execution log, not notes)"
+		},
+		{
+			"path": "i18n/audits/evidence/pr1971-r3-clean-view.txt",
+			"sha256": "d7bf1315663bb4e666490900bcb5075ae5da389289d1daffe5cfdade3acb242c",
+			"what": "the clean-view gate on the committed HEAD export (git archive HEAD, not the working tree)"
 		}
 	],
 	"audit_notes_not_execution_log": "Prose in this record (scope, corrections, findings) is the auditor's judgement. Command output lives in pr1971-r3-gates.txt and pr1971-r3-icu-render.txt; nothing here claims a run those logs do not show.",
