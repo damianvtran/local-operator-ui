@@ -135,8 +135,8 @@ export const SpeechProviderSetting: FC<Props> = ({ onOpenProviders }) => {
 				 */
 				const unready =
 					loading || (readiness !== null && readiness.ready === false);
-				const descriptionId = `${name}-${option.value}-description`;
-				const statusId = `${name}-${option.value}-status`;
+				const descriptionId = `${name}-${option.value}-description`; // i18n: ignore an element id for aria-describedby, never rendered
+				const statusId = `${name}-${option.value}-status`; // i18n: ignore an element id for aria-describedby, never rendered
 				return (
 					<div
 						key={option.value}

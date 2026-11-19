@@ -1105,7 +1105,7 @@ export const QwenVoiceController: FC = () => {
 			return;
 		}
 		speakSink = (source) => void speakSource(activeSessionId, source);
-		const lostToastId = `voice-stream-lost:${activeSessionId}`;
+		const lostToastId = `voice-stream-lost:${activeSessionId}`; // i18n: ignore a toast de-duplication id, never rendered
 		const handle = subscribeVoiceStream(
 			activeSessionId,
 			(input) => feedTurns(activeSessionId, input),
