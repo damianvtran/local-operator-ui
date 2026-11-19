@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "kind": "independent_i18n_audit",
+  "agent": "i18n-auditor",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "2c6807f03acd",
+    "instance": "2c6807f03acd",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "fallback_reason": "none - served model equals requested model",
+  "independence": "Independent auditor (lopdev task child, session 2c6807f03acd); did not author or modify any translation. Translator was a separate LLM translator task agent (job b74c566beb3f).",
+  "instance": "2c6807f03acd",
+  "session": "2c6807f03acd",
+  "locale": "ru",
+  "date": "2026-11-19",
+  "branch": "fix/i18n-a10-caption",
+  "base": "c092a74b45cdc847bc65434f6bede5ea20b0e750",
+  "base_note": "merge-base with origin/main; origin/main advanced to 32c2b19f84 (mesh-pairing PR #1984) during the audit, which touches no audited namespace",
+  "head": "486c434e590090ea91f992e80a3b78bfb17ae4b7",
+  "head_note": "translations audited as uncommitted working-tree bytes at this head; sha256 values below are of those bytes",
+  "round": 1,
+  "scope": "Independent ru audit of the 2 new keys on the A10 branch (ui.chat header_identity agent-seat captions); existing values used as glossary context only.",
+  "status": "passed",
+  "result": "clean",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "namespaces": {
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+        "ru": "1e8e5cffdafbc6a459ccd12977e4cf5931369400f29ec5a082f0a400dfb6ecb9"
+      },
+      "context_sha256": "3e075661829d1e9bcac2db476c6b762e9aa6ebaf220fe462b184adc5f6981c49",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.chat.header_identity.agent_seat_closed_caption_known_speaker",
+        "ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker"
+      ]
+    }
+  }
+}

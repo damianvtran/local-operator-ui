@@ -1,0 +1,60 @@
+{
+	"schema": 1,
+	"kind": "independent_i18n_audit",
+	"agent": "i18n-auditor",
+	"session": "6c6609d4af4d",
+	"instance": "6c6609d4af4d",
+	"model": "anthropic/claude-opus-5-5",
+	"requested_model": "anthropic/claude-opus-5-5",
+	"fallback": false,
+	"fallback_reason": null,
+	"independence": "Independent auditor (lopdev team task child, session 6c6609d4af4d); did not author or modify any translation. The translator was a separate LLM task agent (anthropic/claude-opus-5-5), job 1b710d2567d8.",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "6c6609d4af4d",
+		"instance": "6c6609d4af4d",
+		"model": "anthropic/claude-opus-5-5",
+		"requested_model": "anthropic/claude-opus-5-5",
+		"fallback": false,
+		"fallback_reason": null,
+		"independence": "Independent auditor (lopdev team task child, session 6c6609d4af4d); did not author or modify any translation. The translator was a separate LLM task agent (anthropic/claude-opus-5-5), job 1b710d2567d8."
+	},
+	"locale": "hi",
+	"date": "2026-11-19",
+	"branch": "fix/i18n-a10-caption",
+	"base": "32c2b19f841d2f6e6f075a9dc418f436a8066781",
+	"head": "486c434e590090ea91f992e80a3b78bfb17ae4b7",
+	"round": 1,
+	"scope": "Round-1 independent audit of the 2 new hi keys added by origin/main...HEAD in ui.chat (header_identity.agent_seat_closed_caption_known_speaker / _unknown_speaker); existing hi keys verified unchanged. Placeholders {team} {speaker} {agentCommand} {detachCommand} intact; 'टीम का मैनेजर' describes the unnamed manager without reusing the chip label its_manager_label ('इसका मैनेजर'); सत्र/टीम/मैनेजर match existing header_identity copy.",
+	"status": "passed",
+	"result": "clean",
+	"findings": {
+		"blocker": [],
+		"major": [],
+		"minor": [],
+		"nit": []
+	},
+	"namespaces": {
+		"ui.chat": {
+			"namespace": "ui.chat",
+			"status": "passed",
+			"result": "clean",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": []
+			},
+			"sha256": {
+				"en": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+				"hi": "bed2f85948dfc41ead2003ada72e3f3ee624f407f18e21f531add93b5609a60a"
+			},
+			"context_sha256": "3e075661829d1e9bcac2db476c6b762e9aa6ebaf220fe462b184adc5f6981c49",
+			"keys_read": 2,
+			"reviewed_keys": [
+				"ui.chat.header_identity.agent_seat_closed_caption_known_speaker",
+				"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker"
+			]
+		}
+	}
+}

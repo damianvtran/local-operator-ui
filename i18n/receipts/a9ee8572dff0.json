@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "kind": "independent_i18n_audit",
+  "agent": "i18n-auditor",
+  "session": "a9ee8572dff0",
+  "instance": "a9ee8572dff0",
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "fallback_reason": null,
+  "independence": "Independent auditor (lopdev team task child, session a9ee8572dff0); did not author or modify any translation. The translator was a separate LLM task agent (anthropic/claude-opus-5-5), job b193a292f9e5.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "a9ee8572dff0",
+    "instance": "a9ee8572dff0",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5",
+    "fallback": false,
+    "fallback_reason": null,
+    "independence": "Independent auditor (lopdev team task child, session a9ee8572dff0); did not author or modify any translation. The translator was a separate LLM task agent (anthropic/claude-opus-5-5), job b193a292f9e5."
+  },
+  "locale": "es",
+  "date": "2026-11-19",
+  "branch": "fix/i18n-a10-caption",
+  "base": "32c2b19f841d2f6e6f075a9dc418f436a8066781",
+  "head": "486c434e590090ea91f992e80a3b78bfb17ae4b7",
+  "round": 1,
+  "scope": "Round-1 independent audit of the 2 new es keys added by origin/main...HEAD in ui.chat (header_identity.agent_seat_closed_caption_known_speaker / _unknown_speaker); existing es keys verified unchanged (only additions). Glossary matches existing siblings (« bloqueado », « responsable », « puesto »); the unknown-speaker manager wording (« el responsable del equipo ») differs from the chip label « su responsable » as the context requires.",
+  "status": "passed",
+  "result": "clean",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": []
+  },
+  "namespaces": {
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "sha256": {
+        "en": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+        "es": "d5daf80861b43092e7d8a0abfe261f800d629fc4cfcad28f9eccf333629f100e"
+      },
+      "context_sha256": "3e075661829d1e9bcac2db476c6b762e9aa6ebaf220fe462b184adc5f6981c49",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.chat.header_identity.agent_seat_closed_caption_known_speaker",
+        "ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker"
+      ]
+    }
+  }
+}

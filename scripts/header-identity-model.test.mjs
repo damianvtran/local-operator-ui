@@ -1121,18 +1121,21 @@ test("the chip follows the language and a missing caption falls back to English"
 	// `its manager` and the sentence carries core's words.
 	assert.equal(itsManagerLabel(), "its manager");
 	assert.equal(identityAgentClosedCaption("lopdev", null), CORE_SENTENCE);
-	registerCatalogue("fr", {
-		"ui.chat.header_identity.its_manager_label": "FR son responsable",
+	// The fallback needs a locale with NO bundled caption: every shipped locale
+	// (fr included) now carries an audited one, so a synthetic catalogue under
+	// an unshipped tag (de) is the only way to reach the English fallback.
+	registerCatalogue("de", {
+		"ui.chat.header_identity.its_manager_label": "DE sein Leiter",
 	});
 	try {
-		setLocale("fr");
-		assert.equal(itsManagerLabel(), "FR son responsable");
+		setLocale("de");
+		assert.equal(itsManagerLabel(), "DE sein Leiter");
 		assert.equal(identityAgentClosedCaption("lopdev", null), CORE_SENTENCE);
 		const seat = coldSeat().seat;
 		assert.notEqual(seat, null, "the cold strict frame closes the seat");
 		assert.equal(seat.speakerKnown, false);
-		assert.equal(seat.speaker, "FR son responsable");
-		assert.equal(coldSeat().agentValue, "FR son responsable");
+		assert.equal(seat.speaker, "DE sein Leiter");
+		assert.equal(coldSeat().agentValue, "DE sein Leiter");
 		assert.equal(seat.sentence, CORE_SENTENCE);
 	} finally {
 		setLocale("en");

@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "kind": "independent_i18n_audit",
+  "agent": "i18n-auditor",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "d555eb73b874",
+    "instance": "d555eb73b874",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "fallback_reason": "none: served model equals requested model (session system prompt reports anthropic/claude-opus-5-5)",
+  "independence": "Independent auditor; did not author or modify any translations (translator: LLM translator task agent, anthropic/claude-opus-5-5, job 8cbd200f5083). Catalogues read only; no commits, pushes, tests or servers.",
+  "instance": "d555eb73b874",
+  "session": "d555eb73b874",
+  "locale": "zh-CN",
+  "date": "2026-11-19",
+  "branch": "fix/i18n-a10-caption",
+  "base": "c092a74b45cdc847bc65434f6bede5ea20b0e750",
+  "head": "486c434e590090ea91f992e80a3b78bfb17ae4b7",
+  "round": 1,
+  "scope": "zh-CN W2 A10: the two new agent-seat closed captions in ui.chat. Checked meaning, completeness, ICU placeholders/arms (zh-CN plural: other only, with #), punctuation, glossary vs existing keys of the same namespaces, and that the zh-CN diff only adds keys (plus trailing-comma rewrites). Plurals rendered mentally at 0/1/2/5/21/1000000.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [
+      {
+        "id": "ZH-CN-W2-3",
+        "severity": "minor",
+        "key": "ui.chat.header_identity.agent_seat_closed_caption_known_speaker",
+        "finding": "\"解除该团队\" leaves 解除 without its usual object (关联/绑定), so it can read as \"dismiss/disband the team\" rather than \"detach the session from the team\"; existing zh-CN uses 解除关联 for unlinking (ui.projects.project_links.unlink_title). The literal command makes the action unambiguous, so not gating. Suggestion: \"请先运行{detachCommand}，解除此会话与该团队的关联。\" (or shorter \"…解除团队关联。\" for the narrow popover); disposition: fix in the next remediation wave if one runs, otherwise deferred."
+      },
+      {
+        "id": "ZH-CN-W2-4",
+        "severity": "minor",
+        "key": "ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker",
+        "finding": "\"解除该团队\" leaves 解除 without its usual object (关联/绑定), so it can read as \"dismiss/disband the team\" rather than \"detach the session from the team\"; existing zh-CN uses 解除关联 for unlinking (ui.projects.project_links.unlink_title). The literal command makes the action unambiguous, so not gating. Suggestion: \"请先运行{detachCommand}，解除此会话与该团队的关联。\" (or shorter \"…解除团队关联。\" for the narrow popover); disposition: fix in the next remediation wave if one runs, otherwise deferred."
+      }
+    ],
+    "nit": []
+  },
+  "namespaces": {
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [
+          {
+            "id": "ZH-CN-W2-3",
+            "severity": "minor",
+            "key": "ui.chat.header_identity.agent_seat_closed_caption_known_speaker",
+            "finding": "\"解除该团队\" leaves 解除 without its usual object (关联/绑定), so it can read as \"dismiss/disband the team\" rather than \"detach the session from the team\"; existing zh-CN uses 解除关联 for unlinking (ui.projects.project_links.unlink_title). The literal command makes the action unambiguous, so not gating. Suggestion: \"请先运行{detachCommand}，解除此会话与该团队的关联。\" (or shorter \"…解除团队关联。\" for the narrow popover); disposition: fix in the next remediation wave if one runs, otherwise deferred."
+          },
+          {
+            "id": "ZH-CN-W2-4",
+            "severity": "minor",
+            "key": "ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker",
+            "finding": "\"解除该团队\" leaves 解除 without its usual object (关联/绑定), so it can read as \"dismiss/disband the team\" rather than \"detach the session from the team\"; existing zh-CN uses 解除关联 for unlinking (ui.projects.project_links.unlink_title). The literal command makes the action unambiguous, so not gating. Suggestion: \"请先运行{detachCommand}，解除此会话与该团队的关联。\" (or shorter \"…解除团队关联。\" for the narrow popover); disposition: fix in the next remediation wave if one runs, otherwise deferred."
+          }
+        ],
+        "nit": []
+      },
+      "sha256": {
+        "en": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+        "zh-CN": "ee24a0521d41929a2e630654468d4f459c2f00d0fcc49e9f8895ed92c2504bf9"
+      },
+      "context_sha256": "3e075661829d1e9bcac2db476c6b762e9aa6ebaf220fe462b184adc5f6981c49",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.chat.header_identity.agent_seat_closed_caption_known_speaker",
+        "ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker"
+      ]
+    }
+  }
+}

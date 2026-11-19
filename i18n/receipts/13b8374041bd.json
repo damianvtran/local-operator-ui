@@ -1,0 +1,68 @@
+{
+	"schema": 1,
+	"kind": "independent_i18n_audit",
+	"agent": "i18n-auditor",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "13b8374041bd",
+		"instance": "13b8374041bd",
+		"model": "anthropic/claude-opus-5-5",
+		"requested_model": "anthropic/claude-opus-5-5",
+		"fallback": false,
+		"fallback_reason": "none: served model equals the requested model",
+		"independence": "Independent auditor; did not author or modify any translation (translator was LLM task agent job f4c12b16ee51).",
+		"independent_from_translator_session": true
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"requested_model": "anthropic/claude-opus-5-5",
+	"fallback": false,
+	"fallback_reason": "none: served model equals the requested model",
+	"independence": "Independent auditor; did not author or modify any translation (translator was LLM task agent job f4c12b16ee51).",
+	"instance": "13b8374041bd",
+	"session": "13b8374041bd",
+	"locale": "ur",
+	"date": "2026-11-19",
+	"branch": "fix/i18n-a10-caption",
+	"base": "c092a74b45cdc847bc65434f6bede5ea20b0e750",
+	"origin_main_at_audit": "f27f1c85c6d5478f58252b96410ffec42522c636",
+	"head": "486c434e590090ea91f992e80a3b78bfb17ae4b7",
+	"round": 1,
+	"scope": "Wave-2 delta audit of the ur values for the 2 keys new in en since merge-base c092a74b45 (ui.chat). Checked meaning, completeness, ICU validity with a python ICU parser (placeholder sets, select/plural arms, one/other per ur CLDR), gender/number agreement (ذیلی ایجنٹ masc per ui.chat.interrupt.stopped_children; جاب fem per ui.chat.run_controls.job.cancel_failed), renders at 0,1,2,5,21,1000000, glossary, bidi (no control characters; runtime isolation src/i18n/bidi.ts:131-147, src/i18n/messages.ts:242-249), and that the ur diff is additions only. Existing values are context, not re-audited.",
+	"status": "passed",
+	"result": "clean",
+	"findings": {
+		"blocker": [],
+		"major": [],
+		"minor": [],
+		"nit": []
+	},
+	"namespaces": {
+		"ui.chat": {
+			"namespace": "ui.chat",
+			"status": "passed",
+			"result": "clean",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": []
+			},
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			},
+			"sha256": {
+				"en": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+				"ur": "4473d81447365f7043aed7af50741c701c0924e26279f0df4bd9d136cb073127"
+			},
+			"context_sha256": "3e075661829d1e9bcac2db476c6b762e9aa6ebaf220fe462b184adc5f6981c49",
+			"keys_read": 2,
+			"reviewed_keys": [
+				"ui.chat.header_identity.agent_seat_closed_caption_known_speaker",
+				"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker"
+			]
+		}
+	}
+}

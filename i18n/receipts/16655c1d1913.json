@@ -1,0 +1,60 @@
+{
+	"schema": 1,
+	"kind": "independent_i18n_audit",
+	"agent": "i18n-auditor",
+	"session": "16655c1d1913",
+	"instance": "16655c1d1913",
+	"model": "anthropic/claude-opus-5-5",
+	"requested_model": "anthropic/claude-opus-5-5",
+	"fallback": false,
+	"fallback_reason": null,
+	"independence": "Independent auditor (lopdev team task child w2-audit-fr-r2, session 16655c1d1913); did not author or modify any translation. Round-1 auditor was session 00b03b6792a8; round-1 translator job d470fdaf8bde; round-2 remediation translator job 8568e64c560b (session 1be908df9fd1, anthropic/claude-opus-5-5).",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "16655c1d1913",
+		"instance": "16655c1d1913",
+		"model": "anthropic/claude-opus-5-5",
+		"requested_model": "anthropic/claude-opus-5-5",
+		"fallback": false,
+		"fallback_reason": null,
+		"independence": "Independent auditor (lopdev team task child w2-audit-fr-r2, session 16655c1d1913); did not author or modify any translation. Round-1 auditor was session 00b03b6792a8; round-1 translator job d470fdaf8bde; round-2 remediation translator job 8568e64c560b (session 1be908df9fd1, anthropic/claude-opus-5-5)."
+	},
+	"locale": "fr",
+	"date": "2026-11-19",
+	"branch": "fix/i18n-a10-caption",
+	"base": "c092a74b45cdc847bc65434f6bede5ea20b0e750",
+	"head": "486c434e590090ea91f992e80a3b78bfb17ae4b7",
+	"round": 2,
+	"scope": "Round-2 independent re-audit of the fr remediation of round-1 nit FR-W2-5 on ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker: « c’est son responsable » → « c’est le responsable de l’équipe », removing the session/team antecedent ambiguity and no longer echoing the chip label its_manager_label « son responsable », as the context asks. Placeholders {team},{agentCommand},{detachCommand} identical to English; NNBSP before the colon kept; parallel with the known_speaker sibling. FR-W2-5 resolved. The other new ui.chat key (known_speaker) unchanged since round 1 and retained. Change-set proof: reverting ONLY the listed keys in the current fr file to the pre-remediation values (as logged by the remediation translator's apply() in session 1be908df9fd1) reproduces the round-1 receipt's fr sha256 byte-for-byte, so no other fr key changed since round 1. Round-1 receipt: i18n/receipts/fr-w2-a10-00b03b6792a8.json (round-1 results of the carried namespaces are cited from it).",
+	"status": "passed",
+	"result": "clean",
+	"findings": {
+		"blocker": [],
+		"major": [],
+		"minor": [],
+		"nit": []
+	},
+	"namespaces": {
+		"ui.chat": {
+			"namespace": "ui.chat",
+			"status": "passed",
+			"result": "clean",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": []
+			},
+			"sha256": {
+				"en": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+				"fr": "6ca2e6697f10102c86afabb969823b7032d7ac76218caeb57c3dac6963c74b04"
+			},
+			"context_sha256": "3e075661829d1e9bcac2db476c6b762e9aa6ebaf220fe462b184adc5f6981c49",
+			"keys_read": 2,
+			"reviewed_keys": [
+				"ui.chat.header_identity.agent_seat_closed_caption_known_speaker",
+				"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker"
+			]
+		}
+	}
+}
