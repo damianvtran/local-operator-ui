@@ -578,6 +578,23 @@ test("the sidebar draws those sections, and a label is not a control", () => {
 		/key === firstSection \? markAllReadControl : undefined/,
 		"the bulk read receipt moved off the first section's header",
 	);
+	/*
+	 * EMPTY SECTIONS CONTRIBUTE NO LABEL, the rule Pinned already followed, and
+	 * Yesterday joins it without a branch of its own: the guard is one generic
+	 * test over `rows`, so a section that draws nothing is skipped by the same
+	 * line every other section is. A clauseful `key === "yesterday"` here would
+	 * be the second rule this pin refuses.
+	 */
+	assert.match(
+		sidebar,
+		/if \(rows\.length === 0\) return null;/,
+		"an empty section no longer skips itself",
+	);
+	assert.doesNotMatch(
+		sidebar,
+		/key === "yesterday"/,
+		"Yesterday must not need handling of its own",
+	);
 });
 
 test("a row prints its relative time, and a running row does not", () => {
