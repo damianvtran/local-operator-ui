@@ -1,0 +1,50 @@
+import { readFileSync } from "node:fs";
+import { resolve as pathResolve } from "node:path";
+import base from "/Users/bentran/workspace/repos/local-operator-ui/.worktrees/sidebar-yesterday/.storybook/main";
+
+const W = "/Users/bentran/workspace/repos/local-operator-ui/.worktrees/sidebar-yesterday";
+const S = "/Users/bentran/.local-operator/sessions/31417f2c3129/scratchpad";
+// BEFORE=1 serves the three changed modules from origin/main b399830d8f
+// (extracted with git show into $S/old) instead of the worktree's copies.
+const OLD: Record<string, string> = {
+	[W + "/src/renderer/src/features/chat/chat-list-sections.ts"]: S + "/old/chat-list-sections.ts",
+	[W + "/src/renderer/src/features/chat/chat-sidebar-view.ts"]: S + "/old/chat-sidebar-view.ts",
+	[W + "/src/renderer/src/features/chat/components/chat-sidebar.tsx"]: S + "/old/components/chat-sidebar.tsx",
+};
+const config = {
+	...base,
+	stories: [S + "/rig/stories/yesterday.stories.tsx"],
+	typescript: { reactDocgen: false },
+	viteFinal: async (c: any, o: any) => {
+		const out: any = await (base as any).viteFinal(c, o);
+		out.server = { ...(out.server ?? {}), fs: { strict: false } };
+		out.plugins = [
+			{
+				name: "tw-source-gitignored-worktree",
+				enforce: "pre",
+				transform(code: string, id: string) {
+					if (id.split("?")[0].endsWith("/src/renderer/src/styles/index.css"))
+						return code + "\n@source \"" + W + "/src\";\n";
+					return null;
+				},
+			},
+			...(out.plugins ?? []),
+		];
+		if (process.env.BEFORE === "1") {
+			out.plugins = [
+				{
+					name: "before-old-modules",
+					enforce: "pre",
+					load(id: string) {
+						const f = id.split("?")[0];
+						if (OLD[f]) return readFileSync(OLD[f], "utf8");
+						return null;
+					},
+				},
+				...(out.plugins ?? []),
+			];
+		}
+		return out;
+	},
+};
+export default config;

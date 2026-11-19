@@ -1,0 +1,57 @@
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { ChatSidebar } from "@features/chat/components/chat-sidebar";
+
+const EPOCH = "3f2a1b4c5d6e7f8091a2b3c4d5e6f708";
+const row = (id: string, name: string, mtime: number, code = "idle", label = "Recent") => ({
+	id, name, mtime, preview: "", live_state: code === "busy" ? "running" : "attached",
+	pending: null, active: true, binding: { agent: null, team: null },
+	status: { code, label }, status_revision: 1, status_epoch: EPOCH,
+});
+// now = 2026-11-19 12:00 America/New_York (EST) = 1795107600
+const ALL = [
+	row("a00000000001", "Running: reindex the project docs", 1795107300, "busy", "Working"),
+	row("a00000000002", "Today 00:05 - draft the release notes", 1795064700),
+	row("a00000000003", "Yesterday 23:50 - review sidebar PR", 1795063800),
+	row("a00000000004", "Yesterday 09:00 - triage overnight alerts", 1795010400),
+	row("a00000000005", "3 days ago - plan the Q4 roadmap", 1794848400),
+	row("a00000000006", "5 days ago - fix the login redirect", 1794675600),
+	row("a00000000007", "8 days ago - migrate the old settings", 1794416400),
+];
+const NO_YDAY = ALL.filter((r) => !r.name.startsWith("Yesterday"));
+const PROFILES = ["coder", "reviewer", "architect"].map((name) => ({
+	name, kind: "role", source: "installed", agent_id: `agent-${name}`,
+	description: `${name} role`, tools: null, effort: null, delegate: false,
+	seed_origin: name, divergent_fields: [],
+}));
+const install = (rows: unknown[]) => {
+	const ok = (result: unknown) => ({ status: 200, body: { result } });
+	const handler = async (r: { op: string; q?: string }) => {
+		switch (r.op) {
+			case "capabilities":
+				return ok({ desktop_contract: 1, desktop_available: true, desktop_auth: "bearer",
+					features: { session_catalogue: 2, profile_catalogue: 1, team_catalogue: 1, session_pins: 1, session_search: 1 } });
+			case "sessions.list": return ok({ sessions: rows, truncated: false });
+			case "sessions.search": return ok({ query: r.q ?? "", limit: 100, sessions: [] });
+			case "profiles.list": return ok({ profiles: PROFILES });
+			case "teams.list": return ok({ teams: [] });
+			default: throw new Error(`unexpected desktop op: ${r.op}`);
+		}
+	};
+	const w = window as any;
+	w.api = w.api ?? {};
+	w.api.desktop = { request: handler };
+	useUiPreferencesStore.setState({ chatSidebarRegions: "both", chatSidebarListHeight: null, chatSidebarOrder: "entities-first" });
+};
+const Page = ({ rows }: { rows: unknown[] }) => {
+	install(rows);
+	return (
+		<div style={{ display: "flex", height: "1100px" }}>
+			<div className="shrink-0 border-r border-hairline" style={{ width: "360px" }}>
+				<ChatSidebar selectedConversation={undefined} onSelectConversation={() => undefined} onStageDraft={() => undefined} />
+			</div>
+		</div>
+	);
+};
+export default { title: "Rig/Yesterday", parameters: { layout: "fullscreen" } };
+export const WithYesterday = { render: () => <Page rows={ALL} /> };
+export const NoYesterday = { render: () => <Page rows={NO_YDAY} /> };

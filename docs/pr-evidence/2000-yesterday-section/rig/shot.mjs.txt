@@ -1,0 +1,48 @@
+// usage: node shot.mjs <port> <storyId> <out.png> [popover]
+import { writeFileSync } from "node:fs";
+const [, , port, story, out, mode] = process.argv;
+const CDP = 9333;
+const NOW = Date.parse("2026-11-19T12:00:00-05:00");
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const tgt = await (await fetch(`http://127.0.0.1:${CDP}/json/new?about:blank`, { method: "PUT" })).json();
+const ws = new WebSocket(tgt.webSocketDebuggerUrl);
+await new Promise((r) => (ws.onopen = r));
+let id = 0; const pend = new Map();
+ws.onmessage = (m) => { const d = JSON.parse(m.data); if (d.id && pend.has(d.id)) { pend.get(d.id)(d); pend.delete(d.id); } };
+const send = (method, params = {}) => new Promise((res, rej) => { const i = ++id; pend.set(i, (d) => d.error ? rej(new Error(method + ": " + JSON.stringify(d.error))) : res(d.result)); ws.send(JSON.stringify({ id: i, method, params })); });
+const ev = async (expr) => { const r = await send("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true }); if (r.exceptionDetails) throw new Error(JSON.stringify(r.exceptionDetails)); return r.result.value; };
+await send("Page.enable"); await send("Runtime.enable");
+await send("Emulation.setTimezoneOverride", { timezoneId: "America/New_York" });
+await send("Emulation.setDeviceMetricsOverride", { width: 1000, height: 1200, deviceScaleFactor: 2, mobile: false });
+await send("Page.addScriptToEvaluateOnNewDocument", { source: `(()=>{const RD=Date;const base=${NOW};const t0=performance.now();const nowMs=()=>base+Math.floor(performance.now()-t0);
+class FD extends RD{constructor(...a){if(a.length===0){super(nowMs());}else{super(...a);}} static now(){return nowMs();}}
+FD.parse=RD.parse;FD.UTC=RD.UTC;globalThis.Date=FD;})();` });
+await send("Page.navigate", { url: `http://localhost:${port}/iframe.html?id=${story}&viewMode=story` });
+let info;
+for (let i = 0; i < 60; i++) {
+  await sleep(1000);
+  info = await ev(`(()=>{const l=document.querySelector('[data-sidebar-region="chats"]');return l?{rows:document.querySelectorAll('[data-session-row]').length}:null})()`).catch(() => null);
+  if (info && info.rows >= 1) break;
+}
+if (!info) throw new Error("chat list never rendered");
+await sleep(2500);
+if (mode === "popover") {
+  const pos = await ev(`(()=>{const b=[...document.querySelectorAll('button,[role=button]')].find(x=>/view/i.test(x.getAttribute('aria-label')||x.textContent||''));if(!b)return null;const r=b.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2,label:b.getAttribute('aria-label')||b.textContent}})()`);
+  console.log("view button", JSON.stringify(pos));
+  if (!pos) throw new Error("no view button");
+  for (const type of ["mousePressed", "mouseReleased"]) await send("Input.dispatchMouseEvent", { type, x: pos.x, y: pos.y, button: "left", clickCount: 1 });
+  await sleep(1500);
+}
+const dump = await ev(`(()=>{
+ const sec=[...document.querySelectorAll('[data-chat-section]')].map(s=>({key:s.dataset.chatSection,heading:(s.querySelector('h1,h2,h3,h4,[role=heading]')||s).textContent.slice(0,40),rows:[...s.querySelectorAll('[data-session-row]')].map(r=>r.textContent.slice(0,70))}));
+ const l=document.querySelector('[data-sidebar-region="chats"]');const r=l.getBoundingClientRect();
+ return {now:new Date().toString(),tz:Intl.DateTimeFormat().resolvedOptions().timeZone,sections:sec,rect:{x:r.x,y:r.y,w:r.width,h:r.height},vh:innerHeight}})()`);
+console.log(JSON.stringify(dump, null, 1));
+let clip;
+if (mode === "popover") clip = { x: 0, y: 0, width: 340, height: 700, scale: 1 };
+else { const p = 8; clip = { x: Math.max(0, dump.rect.x - p), y: Math.max(0, dump.rect.y - p), width: Math.min(1000, dump.rect.w + 2 * p), height: dump.rect.h + 2 * p, scale: 1 }; }
+const shot = await send("Page.captureScreenshot", { format: "png", clip, captureBeyondViewport: false });
+writeFileSync(out, Buffer.from(shot.data, "base64"));
+console.log("wrote", out, JSON.stringify(clip));
+ws.close();
+await fetch(`http://127.0.0.1:${CDP}/json/close/${tgt.id}`);
