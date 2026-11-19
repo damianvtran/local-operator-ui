@@ -45,6 +45,7 @@ import {
 	panelIdentityFor,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
+import { useQueryClient } from "@tanstack/react-query";
 import { type FC, useCallback, useMemo, useState } from "react";
 import {
 	useMeshNetworks,
@@ -53,11 +54,15 @@ import {
 } from "../../mesh/mesh-store";
 import type { NetworkSummary, PeerRow } from "../../mesh/mesh-types";
 import { RemoteComputePicker } from "../../remote-compute/remote-compute-picker";
-import { useRemoteComputeRead } from "../../remote-compute/remote-compute-store";
+import {
+	remoteComputeKeys,
+	useRemoteComputeRead,
+} from "../../remote-compute/remote-compute-store";
 import {
 	type RemoteComputeSurface,
 	RemoteComputeSurfaces,
 } from "../../remote-compute/remote-compute-surfaces";
+import type { RemoteComputeRead } from "../../remote-compute/remote-compute-types";
 import { useRemoteRunPins } from "../../remote-compute/remote-run-pins";
 import {
 	type DevicePickerModel,
@@ -142,8 +147,28 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	 * `{enabled: false}` therefore removes the control on a peers-off deployment rather
 	 * than leaving a chip whose only row is this device - a control rendered for a
 	 * capability the backend cannot serve is exactly what the gating above refuses.
+	 *
+	 * AND THE ANSWER STOPS THE ASK (agent review round 2, MINOR-1). The gate used to be
+	 * `!peersEnabled` alone, so a deployment that answered `{enabled: false}` kept a
+	 * thirty-second poll running for every open conversation, forever, for a family it
+	 * had already said it does not serve - the defect the picker's own `m2` fix closed
+	 * one level down at a call site that was added later. Reading the shared entry here
+	 * is that same one-line rule: the picker and this control share one query key, and
+	 * `getQueryData` is not reactive, but a write to the entry re-renders both.
+	 *
+	 * THE CHIP APPEARS WHEN THE ANSWER DOES, and that is the decision QA's Q-004 asked
+	 * for rather than an oversight: the control exists only for a family this deployment
+	 * serves, so while the read is outstanding there is nothing it can honestly say. A
+	 * `checking…` label on the chip would state a remote-compute fact on a control that
+	 * names where the conversation lives, and showing it first is what Q-002 forbids.
 	 */
-	const remoteOffer = useRemoteComputeRead(!peersEnabled);
+	const queryClient = useQueryClient();
+	const cachedOffer = queryClient.getQueryData<RemoteComputeRead>(
+		remoteComputeKeys.read,
+	);
+	const remoteOffer = useRemoteComputeRead(
+		!peersEnabled && cachedOffer?.enabled !== false,
+	);
 	const remoteEnabled = remoteOffer.data?.enabled === true;
 	/*
 	 * ONE READ PER WINDOW. The keys are the mesh store's own, so an open Mesh tab
@@ -488,10 +513,12 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 			/>
 			{/*
 			 * THE SECOND LEVEL, BESIDE THE HEADER RATHER THAN INSIDE THE MENU (UX U1 /
-			 * QA Q-001), which is where `MoveConfirmDialog` already lives for the peer flow.
-			 * A surface mounted inside `DropdownMenuContent` unmounts on the select that
-			 * opens it. No pane identity means no composer text to summarise, so there is
-			 * nothing a surface could be opened for.
+			 * QA Q-001). A surface mounted inside `DropdownMenuContent` unmounts on the select
+			 * that opens it. THIS is the mount point - one level above `ChatHeaderDevice`, a
+			 * sibling of the control that opens it - and `MoveConfirmDialog`, the peer flow's
+			 * analogue, is that header's OWN child, so the two mounts are not the same place
+			 * (agent review round 2, NIT-2). No pane identity means no composer text to
+			 * summarise, so there is nothing a surface could be opened for.
 			 */}
 			{identity ? (
 				<RemoteComputeSurfaces

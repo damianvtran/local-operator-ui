@@ -47,7 +47,7 @@ import {
 	openConsolePage,
 } from "@shared/utils/radient-account-copy";
 import { useQueryClient } from "@tanstack/react-query";
-import { type FC, useEffect, useRef, useState } from "react";
+import { type FC, Fragment, useEffect, useRef, useState } from "react";
 import { useNow } from "./remote-compute-clock";
 import {
 	type RemoteSheetModel,
@@ -104,34 +104,47 @@ const TierRow: FC<{ row: RemoteTierRow }> = ({ row }) => (
 				·
 			</span>
 			<span className="text-meta text-ink-dim">{row.note}</span>
+			{/*
+			 * THE REASON TRAVELS WITH ITS DASH (design round 2, D5). Wrapped apart, the em
+			 * dash could be the last glyph of one line and its sentence the first of the
+			 * next, which reads as a dangling mark rather than as an introduction. One
+			 * `nowrap` run keeps the pair together across a wrap.
+			 */}
 			{row.why ? (
-				<>
+				<span className="flex items-baseline gap-x-1.5 whitespace-nowrap">
 					<span aria-hidden="true" className="text-ink-dim">
 						—
 					</span>
 					<span className="text-meta text-ink-dim">{row.why}</span>
-				</>
+				</span>
 			) : null}
 		</span>
-		{row.spot ? (
-			/*
-			 * THE OPT-IN ON ONE LINE UNDER ITS PARENT, indented by a hairline so it reads
-			 * as a variant of the row above rather than a third destination, and with NO
-			 * reason of its own: Spot is an opt-in inside an already unavailable tier, so
-			 * its own `coming soon` was the same sentence forty pixels lower (D4).
-			 */
-			<span
-				data-radient-tier-spot=""
-				className="flex flex-wrap items-baseline gap-x-1.5 border-s border-hairline ps-2"
-			>
-				<span className="text-body-sm text-ink-muted">{row.spot.title}</span>
-				<span aria-hidden="true" className="text-ink-dim">
-					·
-				</span>
-				<span className="text-meta text-ink-dim">{row.spot.note}</span>
-			</span>
-		) : null}
 	</div>
+);
+
+/**
+ * `Spot`, under the tier it is an opt-in inside.
+ *
+ * A ROW OF THE LIST, NOT A SECOND LINE OF ITS PARENT (design round 2, D5). Nested in
+ * `TierRow` it sat 5px under `Dedicated`'s wrapped line, tighter than the paragraph
+ * under the list and a fraction of the 25px that separates the two tiers - so it read
+ * as the tail of Dedicated's sentence rather than as the third entry of a list. As the
+ * list's own child it takes the list's own gap, which is the thing D5 asked for, and
+ * the hairline indent is what still says it belongs to `Dedicated` rather than beside
+ * it. No reason of its own: the parent already says `coming soon` (design round 1,
+ * D4).
+ */
+const SpotRow: FC<{ spot: { title: string; note: string } }> = ({ spot }) => (
+	<span
+		data-radient-tier-spot=""
+		className="ms-2.5 flex flex-wrap items-baseline gap-x-1.5 border-s border-hairline py-1.5 ps-2 pe-2.5"
+	>
+		<span className="text-body-sm text-ink-muted">{spot.title}</span>
+		<span aria-hidden="true" className="text-ink-dim">
+			·
+		</span>
+		<span className="text-meta text-ink-dim">{spot.note}</span>
+	</span>
 );
 
 /** `Network`, then the one line that is a statement rather than a chooser. */
@@ -183,7 +196,16 @@ const NetworkLine: FC<{
 						onClick={() => onChoose(option.network_id)}
 						className={cn(
 							"flex items-center gap-2 rounded-xs px-1.5 py-1 text-start text-body-sm text-ink-muted",
-							"hover:bg-row-hover hover:text-ink",
+							/*
+							 * A RESTING GROUND, because these are the only PRESSABLE rows on the sheet
+							 * (design round 2, D4). With no mark at rest they were the same shape as the
+							 * inert tier rows directly below them - muted text, a right-hand meta column,
+							 * nothing else - so inside one dialog the decision and the statement looked
+							 * alike. A border is not available to them: a bordered control nested in a
+							 * floating surface is a regression by construction, so the mark is the recessed
+							 * `surface` step every other control in a dialog wears.
+							 */
+							"bg-surface hover:bg-row-hover hover:text-ink",
 						)}
 					>
 						<span className="min-w-0 flex-1 truncate">
@@ -237,6 +259,25 @@ export const RemoteComputeSheet: FC<RemoteComputeSheetProps> = ({
 	const [chosenNetworkId, setChosenNetworkId] = useState<string | null>(null);
 	const [choosing, setChoosing] = useState(false);
 	/**
+	 * WHERE THE FOCUS GOES, AND WHERE IT COMES BACK TO (UX round 2, U6/U9).
+	 *
+	 * `onOpenAutoFocus` is preventDefault-ed so Radix's first-focusable rule does not
+	 * put the ring on the tertiary `View runs`, and NOTHING took the focus afterwards -
+	 * the caret stayed on the chip outside the dialog, so the trap never engaged, Tab
+	 * walked the page Radix had already marked `aria-hidden`, and Escape reached the
+	 * composer's own handler and did nothing. Measured on the built app: sixteen Tabs,
+	 * not one of them inside the sheet. So the panel itself takes the focus (see
+	 * `onOpenAutoFocus` below) - the shape `language-dialog.tsx` already uses.
+	 *
+	 * The opener is remembered here because this dialog has no `DialogTrigger`: the
+	 * chip it was opened from belongs to the menu beside it, when the sheet opens the menu
+	 * has shut, and Radix's own restore therefore has nothing to focus - Escape dropped
+	 * the caret to `<body>`. `archive-conversation-dialog.tsx` is the file this shape is
+	 * copied from, down to the disconnected check and the trigger fallback.
+	 */
+	const contentRef = useRef<HTMLDivElement>(null);
+	const opener = useRef<HTMLElement | null>(null);
+	/**
 	 * THE IDEMPOTENCY KEY IS MINTED ON THE FIRST PRESS AND RESENT ON EVERY RETRY.
 	 *
 	 * A start whose response was lost may have created a run, so a retry must carry the
@@ -251,7 +292,17 @@ export const RemoteComputeSheet: FC<RemoteComputeSheetProps> = ({
 	const [signingIn, setSigningIn] = useState(false);
 	const start = useRemoteRunStart();
 	const queryClient = useQueryClient();
-	const now = useNow(1_000);
+	/*
+	 * THE CLOCK ONLY TICKS WHILE SOMETHING READS IT (agent review round 2, MINOR-3).
+	 * Both second levels are mounted for every conversation that has an identity, so
+	 * `useNow(1_000)` here re-rendered a closed sheet - and rebuilt the whole sheet
+	 * model - once a second on every open chat: `remote-compute-clock.ts` states the
+	 * opposite as its reason for affording a second. The only countdown this clock
+	 * feeds is the refusal's own `retry in N seconds`, and it is reset on open, so a
+	 * minute's resolution while shut costs nothing a reader can see while still
+	 * republishing the wall clock for the first frame after it opens.
+	 */
+	const now = useNow(open ? 1_000 : 60_000);
 	/*
 	 * A FRESH SHEET IS A FRESH INTENT, and the reset is EDGE-TRIGGERED on `open`.
 	 * Depending on `start` would re-run it on every mutation state change and mint a
@@ -262,6 +313,10 @@ export const RemoteComputeSheet: FC<RemoteComputeSheetProps> = ({
 	const wasOpen = useRef(false);
 	useEffect(() => {
 		if (open && !wasOpen.current) {
+			opener.current =
+				document.activeElement instanceof HTMLElement
+					? document.activeElement
+					: null;
 			setChosenNetworkId(null);
 			setChoosing(false);
 			setRefusedAt(null);
@@ -327,121 +382,203 @@ export const RemoteComputeSheet: FC<RemoteComputeSheetProps> = ({
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
+				ref={contentRef}
 				data-radient-sheet=""
 				/*
 				 * THE SHEET TAKES THE FOCUS ITSELF, not its first control. Radix focuses
 				 * the first focusable element, which here is the tertiary `View runs` -
 				 * so the dialog opened with a focus ring on the quietest thing on it, and
 				 * the one action nobody should trigger by accident (Start run, which
-				 * spends money) is a Tab away rather than the default. Preventing the
-				 * auto-focus leaves the caret on the dialog's own scroll container, where
-				 * Escape and the Tab order both keep working.
+				 * spends money) was a Tab away rather than the default. Suppressing the
+				 * auto-focus and focusing the PANEL keeps that ring off every control and
+				 * still puts the caret inside the trap, which is what makes Escape and the
+				 * Tab cycle work at all (UX round 2, U6).
+				 *
+				 * `tabIndex={-1}` is what makes a `div` focusable at all, and the rAF is
+				 * the part that matters: the FocusScope that installs the trap is not
+				 * mounted at the instant this event fires, so a synchronous `focus()` lands
+				 * before the trap exists and Radix then moves the focus back out.
 				 */
-				onOpenAutoFocus={(event) => event.preventDefault()}
-				className="w-[27rem] max-w-[calc(100vw-2rem)] gap-4 p-5"
+				tabIndex={-1}
+				onOpenAutoFocus={(event) => {
+					event.preventDefault();
+					requestAnimationFrame(() => contentRef.current?.focus());
+				}}
+				/*
+				 * AND THE FOCUS GOES BACK TO THE DOOR (UX round 2, U9). Closed by `Close`
+				 * the caret already returned to the chip; closed by Escape it fell to
+				 * `<body>`, so the next Tab started at the top of the document. Both ways
+				 * out are the same way out now: the element that opened the sheet, then
+				 * the chip itself when that element has gone (the menu's row is unmounted by
+				 * the select that opens this sheet, which is the usual case for the
+				 * keyboard door).
+				 */
+				onCloseAutoFocus={(event) => {
+					event.preventDefault();
+					const target = opener.current;
+					opener.current = null;
+					if (target?.isConnected) {
+						target.focus();
+						if (document.activeElement === target) return;
+					}
+					document.querySelector<HTMLElement>("[data-device-chip]")?.focus();
+				}}
+				/*
+				 * A PANEL THAT FITS THE WINDOW, AND SCROLLS ITS OWN BODY (UX round 2, U10).
+				 * At 420x400 the sheet measured 542px tall with `max-height: none`, anchored
+				 * above the viewport: the title, the network and the tiers were off screen and
+				 * nothing scrolled. The panel is capped to the window and the middle is the
+				 * scroll container, so the header and the primary stay where they are whatever
+				 * the height - a bottom-pinned primary is the one control a money surface may
+				 * not scroll away. `dvh` rather than `vh` because the window's own chrome is
+				 * inside the viewport here.
+				 */
+				className="max-h-[calc(100dvh-2rem)] w-[27rem] max-w-[calc(100vw-2rem)] gap-4 p-5 outline-none"
 			>
 				<DialogHeader>
 					<DialogTitle>{model.heading}</DialogTitle>
 				</DialogHeader>
-				<NetworkLine
-					model={model}
-					onChoose={(networkId) => {
-						if (!networkId) {
-							setChoosing(true);
-							return;
-						}
-						setChosenNetworkId(networkId);
-						setChoosing(false);
-					}}
-					choosing={choosing}
-				/>
-				<Separator />
-				<div className="flex flex-col gap-1 pb-1" data-radient-tiers="">
-					<span className="px-0.5 text-meta text-ink-dim">
-						{t("ui.chat.remote_compute.sheet.tier.group_label")}
-					</span>
-					{model.tiers.map((row) => (
-						<TierRow key={row.tier} row={row} />
-					))}
-					{/* Which tier a run will use, in words: see `TierRow` on the marks. */}
-					{model.tierNotice ? (
-						<span
-							data-radient-tier-notice=""
-							className="px-0.5 text-meta text-ink-muted"
-						>
-							{model.tierNotice}
+				{/*
+				 * THE SCROLL CONTAINER, so the header and the footer are the panel's own and
+				 * everything between them moves (UX round 2, U10). `min-h-0` is what lets a
+				 * flex child shrink below its content at all.
+				 */}
+				<div
+					data-radient-sheet-body=""
+					className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
+				>
+					<NetworkLine
+						model={model}
+						onChoose={(networkId) => {
+							if (!networkId) {
+								setChoosing(true);
+								return;
+							}
+							setChosenNetworkId(networkId);
+							setChoosing(false);
+						}}
+						choosing={choosing}
+					/>
+					<Separator />
+					{/*
+					 * NO TRAILING PAD (design round 2, D8): `pb-1` without a matching top pad put
+					 * the tier block 4px closer to the rule above it than to the one below, in a
+					 * sheet whose other sections run 19-20px top and bottom. The gaps do the work.
+					 */}
+					<div className="flex flex-col gap-1" data-radient-tiers="">
+						<span className="px-0.5 text-meta text-ink-dim">
+							{t("ui.chat.remote_compute.sheet.tier.group_label")}
 						</span>
+						{model.tiers.map((row) => (
+							<Fragment key={row.tier}>
+								<TierRow row={row} />
+								{row.spot ? <SpotRow spot={row.spot} /> : null}
+							</Fragment>
+						))}
+						{/* Which tier a run will use, in words: see `TierRow` on the marks. */}
+						{model.tierNotice ? (
+							<span
+								data-radient-tier-notice=""
+								className="px-0.5 text-meta text-ink-muted"
+							>
+								{model.tierNotice}
+							</span>
+						) : null}
+					</div>
+					<Separator />
+					<div className="flex flex-col gap-2">
+						<div className="flex flex-col gap-0.5">
+							<span className="text-meta text-ink-dim">
+								{model.prompt.label}
+							</span>
+							{/*
+							 * AN EMPTY SLOT SAYS IT IS EMPTY (design round 2, D3). It used to collapse to
+							 * zero height, so `Prompt` stacked 13px above `Directory` with nothing under
+							 * it and nothing saying whether the value was missing or still loading - the
+							 * only explanation sat under the buttons, past the reason it was read for.
+							 * The model computes the sentence already (`prompt.empty`), at `ink-dim` so a
+							 * placeholder never reads as the prompt itself.
+							 */}
+							{model.prompt.summary ? (
+								<span className="text-body-sm text-ink">
+									{model.prompt.summary}
+								</span>
+							) : model.prompt.empty ? (
+								<span className="text-meta text-ink-dim">
+									{model.prompt.empty}
+								</span>
+							) : null}
+						</div>
+						{/*
+						 * NO DIRECTORY IS NO FIELD (design round 2, D3): a path this pane has not
+						 * resolved yet has nothing to print, and a label over an empty slot was the
+						 * second half of the same finding. The stand-down line under the primary is
+						 * where "this conversation has no directory yet" belongs.
+						 */}
+						{model.directory.path ? (
+							<div className="flex flex-col gap-0.5">
+								<span className="text-meta text-ink-dim">
+									{model.directory.label}
+								</span>
+								{/* A path is machine voice: mono, and LTR inside an RTL paragraph. */}
+								<span
+									className="truncate text-mono-sm text-ink-muted"
+									dir="ltr"
+								>
+									{model.directory.path}
+								</span>
+							</div>
+						) : null}
+					</div>
+					{refusal ? (
+						<div
+							data-radient-refusal={refusal.code}
+							className="flex flex-col gap-1 rounded-sm bg-warning-wash px-2.5 py-2"
+						>
+							<span className="text-body-sm text-ink">{refusal.message}</span>
+							{remedy === "sign-in" ? (
+								<Button
+									variant="tonal"
+									size="sm"
+									className="self-start"
+									data-radient-sign-in=""
+									onClick={() => setSigningIn(true)}
+								>
+									{remoteRemedyLabel("sign-in", null)}
+								</Button>
+							) : remedy === "add-credits" ? (
+								<Button
+									variant="tonal"
+									size="sm"
+									className="self-start"
+									onClick={() => openConsolePage(RADIENT_BILLING_URL)}
+								>
+									{remoteRemedyLabel("add-credits", null)}
+								</Button>
+							) : remedy === "retry" || remedy === "refresh" ? (
+								<Button
+									variant="tonal"
+									size="sm"
+									className="self-start"
+									disabled={waiting !== null && waiting > 0}
+									onClick={submit}
+								>
+									{remoteRemedyLabel(remedy, waiting ?? retrySeconds)}
+								</Button>
+							) : remedy === "push-branch" ? (
+								/*
+								 * PUSHING IS NOT THIS APP'S GESTURE. The remedy names the act (the run
+								 * would start on a commit no remote has), and the button copies
+								 * nothing and runs nothing: a shell command in a dialog is the class
+								 * of advice this product refuses to give.
+								 */
+								<span className="text-meta text-ink-dim">
+									{t("ui.chat.remote_compute.remedy.push_branch_help")}
+								</span>
+							) : null}
+						</div>
 					) : null}
 				</div>
-				<Separator />
-				<div className="flex flex-col gap-2">
-					<div className="flex flex-col gap-0.5">
-						<span className="text-meta text-ink-dim">{model.prompt.label}</span>
-						{/* Said once, beside the disabled primary: this block is the prompt. */}
-						{model.prompt.summary ? (
-							<span className="text-body-sm text-ink">
-								{model.prompt.summary}
-							</span>
-						) : null}
-					</div>
-					<div className="flex flex-col gap-0.5">
-						<span className="text-meta text-ink-dim">
-							{model.directory.label}
-						</span>
-						{/* A path is machine voice: mono, and LTR inside an RTL paragraph. */}
-						<span className="truncate text-mono-sm text-ink-muted" dir="ltr">
-							{model.directory.path}
-						</span>
-					</div>
-				</div>
-				{refusal ? (
-					<div
-						data-radient-refusal={refusal.code}
-						className="flex flex-col gap-1 rounded-sm bg-warning-wash px-2.5 py-2"
-					>
-						<span className="text-body-sm text-ink">{refusal.message}</span>
-						{remedy === "sign-in" ? (
-							<Button
-								variant="tonal"
-								size="sm"
-								className="self-start"
-								data-radient-sign-in=""
-								onClick={() => setSigningIn(true)}
-							>
-								{remoteRemedyLabel("sign-in", null)}
-							</Button>
-						) : remedy === "add-credits" ? (
-							<Button
-								variant="tonal"
-								size="sm"
-								className="self-start"
-								onClick={() => openConsolePage(RADIENT_BILLING_URL)}
-							>
-								{remoteRemedyLabel("add-credits", null)}
-							</Button>
-						) : remedy === "retry" || remedy === "refresh" ? (
-							<Button
-								variant="tonal"
-								size="sm"
-								className="self-start"
-								disabled={waiting !== null && waiting > 0}
-								onClick={submit}
-							>
-								{remoteRemedyLabel(remedy, waiting ?? retrySeconds)}
-							</Button>
-						) : remedy === "push-branch" ? (
-							/*
-							 * PUSHING IS NOT THIS APP'S GESTURE. The remedy names the act (the run
-							 * would start on a commit no remote has), and the button copies
-							 * nothing and runs nothing: a shell command in a dialog is the class
-							 * of advice this product refuses to give.
-							 */
-							<span className="text-meta text-ink-dim">
-								{t("ui.chat.remote_compute.remedy.push_branch_help")}
-							</span>
-						) : null}
-					</div>
-				) : null}
 				<DialogFooter className="gap-2 sm:justify-end">
 					{onViewRuns ? (
 						<Button

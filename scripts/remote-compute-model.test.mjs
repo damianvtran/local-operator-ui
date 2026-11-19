@@ -59,8 +59,12 @@ const {
 	remoteRunList,
 	remoteRunEnvelope,
 	remoteRunPollMs,
+	remotePollDelayMs,
 	REMOTE_RUN_POLL_MS,
 	REMOTE_RUN_POLL_GRACE_MS,
+	REMOTE_POLL_MAX_FAILURES,
+	REMOTE_POLL_MAX_DELAY_MS,
+	REMOTE_COMPUTE_POLL_MS,
 	remoteCall,
 	RemoteRefusal,
 	desktopEndpoint,
@@ -241,6 +245,16 @@ test("state F: no network is its own state, with the remedy and no promise", () 
 	assert.match(view.note, /lop network init/);
 	assert.match(view.note, /lop network join/);
 	assert.match(view.sentence, /lop network init/);
+	/*
+	 * THE MARKERS AND THE QUOTES BOTH SURVIVE THE FORMATTER (design round 2 D6, UX
+	 * round 2 U7). The markers are what the picker paints as mono runs, so a value
+	 * with them stripped loses the machine voice; and ICU's own quoting rule eats a
+	 * single pair of quotes, so the catalogue writes them tripled and the RENDERED
+	 * sentence is what this reads - the string `t()` returns, not the JSON.
+	 */
+	assert.equal(view.note.split("`").length - 1, 4);
+	assert.match(view.note, /lop network join '<token>'/);
+	assert.match(view.sentence, /lop network join '<token>'/);
 });
 
 test("state G: the deployment's own switch is off and it outranks the account", () => {
@@ -386,8 +400,20 @@ test("the binding sentence says recorded and never claims enforcement", () => {
 		directory: "/d",
 		chosenNetworkId: null,
 	});
-	// Nothing chosen: the qualification alone, and no network claimed.
-	assert.equal(ambiguous.network.note, "Not enforced in this version.");
+	/*
+	 * THE UNCHOSEN SENTENCE NAMES ITS OWN SUBJECT (design round 2, D2). It used to be
+	 * the qualification alone - `Not enforced in this version.` - standing 20px under
+	 * the last network option with nothing above it to attach to, so the nearest
+	 * referent was the list of choices and it read as a claim about what the user
+	 * picked. The subject is what the binding is about, and the test pins it rather
+	 * than pinning the sentence, so rewording stays free and losing the subject does
+	 * not.
+	 */
+	assert.match(ambiguous.network.note, /run's network/i);
+	assert.match(ambiguous.network.note, /recorded/);
+	assert.match(ambiguous.network.note, /not enforced/i);
+	// No network is claimed: the sentence names the binding, never one of the options.
+	assert.doesNotMatch(ambiguous.network.note, /devmesh|homelab/);
 	for (const note of [none.network.note, ambiguous.network.note]) {
 		for (const forbidden of ["isolat", "segmented", "private", "secure"]) {
 			assert.doesNotMatch(note.toLowerCase(), new RegExp(forbidden));
@@ -405,6 +431,23 @@ test("an empty composer or no directory stands the submit down with its own reas
 	assert.equal(emptyPrompt.submit.enabled, false);
 	assert.equal(emptyPrompt.submit.why, "Type a prompt in the composer first.");
 	assert.equal(emptyPrompt.prompt.summary, "");
+	/*
+	 * AND THE EMPTY SLOT SAYS SO (design round 2, D3): the label above an empty value
+	 * used to be the whole block, so nothing said whether the prompt was missing or
+	 * still loading. A prompt that exists carries no placeholder.
+	 */
+	assert.equal(
+		emptyPrompt.prompt.empty,
+		"The composer is empty; a run needs a prompt.",
+	);
+	const full = remoteSheetModel({
+		value: read(),
+		prompt: "fix the importer",
+		directory: "/src/importer",
+		chosenNetworkId: null,
+	});
+	assert.equal(full.prompt.empty, null);
+	assert.equal(full.prompt.summary, "fix the importer");
 
 	const noDirectory = remoteSheetModel({
 		value: read(),
@@ -443,6 +486,79 @@ test("a live run prints its age from the server's start and the hold it carries"
 	assert.equal(
 		model.binding,
 		"No network recorded. Not enforced in this version.",
+	);
+});
+
+/* --------------------------------------------- the backoff on a failing read */
+
+/**
+ * THE ROUND'S OWN BACKOFF, AS NUMBERS (agent review round 2, MINOR-2).
+ *
+ * `remotePollDelayMs` is exported with the words "the numbers are testable without a
+ * timer" beside it, and nothing tested them - while a wrong sign or an off-by-one here
+ * silently restores the defect `m1` named: a constant interval against a route that
+ * keeps failing. The order is the route's own (`retry_after` first, because the server
+ * is the only party that knows when it will be ready), then a doubling, then a stop.
+ */
+test("a failing read backs off, obeys the route's pace, and stops at the ceiling", () => {
+	const base = REMOTE_COMPUTE_POLL_MS;
+	// A healthy read keeps the caller's cadence, whatever the route also said.
+	assert.equal(
+		remotePollDelayMs({ baseMs: base, failures: 0, retryAfterMs: null }),
+		base,
+	);
+	assert.equal(
+		remotePollDelayMs({ baseMs: base, failures: 0, retryAfterMs: 7_000 }),
+		base,
+	);
+	// Each consecutive failure doubles, from the caller's own cadence.
+	assert.equal(
+		remotePollDelayMs({ baseMs: base, failures: 1, retryAfterMs: null }),
+		base * 2,
+	);
+	assert.equal(
+		remotePollDelayMs({ baseMs: base, failures: 3, retryAfterMs: null }),
+		base * 8,
+	);
+	// A stated `retry_after` wins over the doubling, and a non-positive one does not.
+	assert.equal(
+		remotePollDelayMs({ baseMs: base, failures: 2, retryAfterMs: 7_000 }),
+		7_000,
+	);
+	assert.equal(
+		remotePollDelayMs({ baseMs: base, failures: 2, retryAfterMs: -1 }),
+		base * 4,
+	);
+	// The wait is bounded from either branch, and the bound is the ceiling.
+	assert.equal(
+		remotePollDelayMs({
+			baseMs: base,
+			failures: REMOTE_POLL_MAX_FAILURES - 1,
+			retryAfterMs: null,
+		}),
+		REMOTE_POLL_MAX_DELAY_MS,
+	);
+	assert.equal(
+		remotePollDelayMs({ baseMs: base, failures: 1, retryAfterMs: 1e9 }),
+		REMOTE_POLL_MAX_DELAY_MS,
+	);
+	// At the ceiling it STOPS - it does not shorten to some other interval, which is
+	// the shape that would hammer a broken route forever.
+	assert.equal(
+		remotePollDelayMs({
+			baseMs: base,
+			failures: REMOTE_POLL_MAX_FAILURES,
+			retryAfterMs: 1_000,
+		}),
+		false,
+	);
+	assert.equal(
+		remotePollDelayMs({
+			baseMs: base,
+			failures: REMOTE_POLL_MAX_FAILURES + 4,
+			retryAfterMs: null,
+		}),
+		false,
 	);
 });
 

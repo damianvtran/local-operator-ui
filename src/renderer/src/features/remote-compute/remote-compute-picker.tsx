@@ -22,9 +22,12 @@
  * `DropdownMenuContent` - which unmounts on any select, taking the sheet's `open`
  * state with it. Pressing this row closed the menu and opened nothing: the whole
  * sheet, every refusal remedy and the runs list were unreachable through the product.
- * The second level is now composed beside the device picker
- * (`remote-compute-surfaces.tsx`, mounted by `ChatHeaderDevice` the way
- * `MoveConfirmDialog` already is) and this row only ASKS for it.
+ * The second level is now composed by `ChatDeviceSlot`, BESIDE the header and outside
+ * the dropdown's content (`remote-compute-surfaces.tsx`), and this row only ASKS for
+ * it. That mount lives one level ABOVE `ChatHeaderDevice`, which is where this file's
+ * first version said it was: `MoveConfirmDialog` is the header's own child, so naming
+ * it here as the precedent sent a reader to the wrong file (agent review round 2,
+ * NIT-2).
  *
  * THE STATES ARE `radientRowView`'s (A-G, and the three read states), and this file
  * only paints them. Three rules matter when reading it:
@@ -37,7 +40,9 @@
  *   can reach the sentence that explains why it is not offered.
  * - THE REMEDY THIS APP CAN NAME IS SHOWN, NOT HIDDEN IN THE ACCESSIBLE NAME (UX U3).
  *   Creating a network is CLI-only, so state F prints the commands instead of ending
- *   in `create one`, an imperative with nothing behind it.
+ *   in `create one`, an imperative with nothing behind it - and paints them as mono
+ *   runs through `messageRuns`, because the catalogue's markers are the only thing
+ *   that says which part of the sentence is a command (design round 2, D6).
  * - `Dedicated` IS DRAWN DISABLED ON THE SECOND LEVEL, not hidden. A capability the
  *   product has and this version does not sell is one line saying when; hiding it
  *   makes the app look like it does not know.
@@ -58,6 +63,7 @@ import { cn } from "@shared/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Cloud } from "lucide-react";
 import { type FC, useEffect, useState } from "react";
+import { messageRuns } from "../chat/device/chat-header-device";
 import { useNow } from "./remote-compute-clock";
 import { type RadientRowView, radientRowView } from "./remote-compute-model";
 import {
@@ -318,7 +324,14 @@ export const RemoteComputePicker: FC<RemoteComputePickerProps> = ({
 						data-radient-row-note=""
 						className="w-full ps-5.5 text-meta text-ink-muted"
 					>
-						{view.note}
+						{/*
+						 * THE COMMANDS ARE MACHINE VOICE (design round 2, D6). Printed as a plain
+						 * string the catalogue's markers reached the screen as grave accents; the
+						 * picker's own pairing line already paints them as mono runs through
+						 * `messageRuns`, so this note does too - one treatment for one sentence shape,
+						 * in the same panel.
+						 */}
+						{messageRuns(view.note)}
 					</span>
 				) : null}
 			</DropdownMenuItem>

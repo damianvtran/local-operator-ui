@@ -42,6 +42,26 @@ import {
 } from "./remote-compute-store";
 import { type RemoteRun, remoteRunPhase } from "./remote-compute-types";
 
+/**
+ * One fact after the status, with the middot the card paints before its own.
+ *
+ * ONLY FOR THE FACTS THAT FOLLOW ANOTHER (design round 2, D7): the status is the
+ * line's first word and needs no mark, and the card's rule is the same one - a
+ * separator before everything but the first.
+ */
+const Fact: FC<{ text: string; ink?: string; tabular?: boolean }> = ({
+	text,
+	ink = "text-ink-dim",
+	tabular = false,
+}) => (
+	<span className="flex items-baseline gap-1.5">
+		<span aria-hidden="true" className="text-ink-dim">
+			·
+		</span>
+		<span className={cn(ink, tabular && "tabular-nums")}>{text}</span>
+	</span>
+);
+
 const phaseInk = (run: RemoteRun): string => {
 	switch (remoteRunPhase(run.status)) {
 		case "failed":
@@ -70,7 +90,8 @@ export const RemoteRunsDialog: FC<RemoteRunsDialogProps> = ({
 	networkName,
 }) => {
 	useI18nLocale();
-	const now = useNow(10_000);
+	/* The clock only ticks while this panel is on screen; see `remote-compute-clock.ts`. */
+	const now = useNow(open ? 10_000 : 60_000);
 	const list = useRemoteRuns(open && enabled, { poll: open });
 	const cancel = useRemoteRunCancel();
 	const [failure, setFailure] = useState<string | null>(null);
@@ -148,16 +169,25 @@ export const RemoteRunsDialog: FC<RemoteRunsDialogProps> = ({
 											<span className="truncate text-body-sm text-ink">
 												{model.title}
 											</span>
-											<span className="flex flex-wrap gap-x-2 text-meta text-ink-dim">
+											<span className="flex flex-wrap items-baseline gap-x-1.5 text-meta text-ink-dim">
 												<span className={cn(phaseInk(run))}>
 													{model.status}
 												</span>
-												{model.elapsed ? <span>{model.elapsed}</span> : null}
+												{/*
+												 * THE SAME SEPARATOR THE CARD PAINTS (design round 2, D7). These are one
+												 * model and one row family, and the card already marks its facts with a
+												 * middot "so two lines of this family read as one voice"; the list separated
+												 * them with 8px of whitespace instead, which made the same three facts look
+												 * like two different notations on two surfaces a click apart.
+												 */}
+												{model.elapsed ? <Fact text={model.elapsed} /> : null}
 												{/* One step louder than the clock it sits beside (design D3). */}
 												{model.amount ? (
-													<span className="tabular-nums text-ink-muted">
-														{model.amount.text}
-													</span>
+													<Fact
+														text={model.amount.text}
+														ink="text-ink-muted"
+														tabular
+													/>
 												) : null}
 											</span>
 										</div>

@@ -394,7 +394,13 @@ export type RemoteSheetModel = {
 	 * buyable - the sentence must not promise a tier that is standing down.
 	 */
 	tierNotice: string | null;
-	prompt: { label: string; summary: string };
+	prompt: {
+		label: string;
+		/** The composer's text, summarised to one line; `""` when it is empty. */
+		summary: string;
+		/** What the slot says when there is no prompt, or `null` when there is one. */
+		empty: string | null;
+	};
 	directory: { label: string; path: string };
 	submit: { label: string; enabled: boolean; why: string | null };
 };
@@ -502,6 +508,13 @@ export function remoteSheetModel(input: RemoteSheetInput): RemoteSheetModel {
 		prompt: {
 			label: t("ui.chat.remote_compute.sheet.prompt.label"),
 			summary: summarisePrompt(trimmed),
+			/*
+			 * THE EMPTY SLOT'S OWN SENTENCE (design round 2, D3). With a label and no value
+			 * the block collapsed to zero height and nothing said whether the prompt was
+			 * missing or still loading; this is the same string the stand-down list already
+			 * used, printed where the value would be.
+			 */
+			empty: promptWhy,
 		},
 		directory: {
 			label: t("ui.chat.remote_compute.sheet.directory.label"),

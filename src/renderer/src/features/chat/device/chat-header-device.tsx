@@ -104,6 +104,12 @@ const EMPTY_PLAN: MovePlan = {
  * and that renders the message exactly as written rather than crashing or
  * drawing half a span. A render path does not throw on a catalogue defect
  * (`t()` does not either); the catalogue checks own that failure.
+ *
+ * TWO CALLERS, ONE TREATMENT: this paragraph, and the Radient row's remedy line
+ * (`remote-compute-picker.tsx`) which printed the same markers as grave accents
+ * until design round 2's D6. The picker imports this function rather than
+ * splitting on backticks of its own; a second splitter beside this one is the
+ * defect that finding was about.
  */
 export const messageRuns = (text: string): ReactNode[] => {
 	const parts = text.split("`");
@@ -450,15 +456,28 @@ const DevicePicker = ({
 			model.offerCheckAgain ? (
 				<>
 					{/*
-					 * THE PINNED BAND'S RULE IS THE HEAVIER ONE (design round 1, D1 part 3).
-					 * The two rules flanking the Radient row were twins - same ink, same width,
-					 * same inset - so a nameless group between them read as a destination the
-					 * pinned sentence then described. The group rule stays a hairline; this one is
-					 * `hairline-strong`, so "below this line is not a destination" is visible
-					 * rather than inferred.
+					 * THE PINNED BAND HAS ITS OWN GROUND, AND THAT IS ITS RULE (design round 2,
+					 * D1 part 3). Round 1 gave the rule above it `bg-hairline-strong`; the separator
+					 * paints its own `divider-inset` background and that utility is not a Tailwind
+					 * class, so tailwind-merge could not drop it - all three rules measured the same
+					 * `#353023` in localOperatorDark. Even had the cascade gone the other way, a
+					 * weight step cannot carry it: `hairline-strong` is 1.28:1 on this panel's ground
+					 * against the divider's 1.09:1, which is not a visible step at 1x. The contract's
+					 * instrument for something that is not part of the flow is a lightness step, so
+					 * the band takes `surface` - the step below the panel's `elevated` - and that
+					 * edge, not a hairline of any weight, is what says "below this is not a
+					 * destination".
+					 *
+					 * FULL-BLEED, because a band inset by the panel's own `p-1` would hang a 4px
+					 * frame of `elevated` under a strip that is meant to be the panel's last line.
+					 * `-mx-1 -mb-1` reaches that padding on three sides and `rounded-b-md` follows the
+					 * panel's own corner; `px-3` keeps the text on the same 12px the item labels start
+					 * at (`p-1` + `px-2`), so the band's sentence does not step sideways.
 					 */}
-					<DropdownMenuSeparator className="bg-hairline-strong" />
-					<div className="flex shrink-0 items-center gap-2 px-2 py-1.5">
+					<div
+						data-device-band=""
+						className="-mx-1 -mb-1 flex shrink-0 items-center gap-2 rounded-b-md bg-surface px-3 py-2"
+					>
 						{/*
 						 * ONE BAND, FOUR SENTENCES, IN THE ORDER THAT MATTERS: a move in flight
 						 * outranks everything (nothing here can be pressed anyway), then the read's

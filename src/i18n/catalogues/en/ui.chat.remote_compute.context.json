@@ -183,7 +183,7 @@
 	"ui.chat.remote_compute.row.network_remedy": {
 		"role": "the visible remedy line under the Radient row when the device is in no network",
 		"tone": "one sentence naming two commands, plain, no exclamation",
-		"note": "Visible text rather than only the accessible name (UX round 1, U3): creating a network is CLI-only, so the row prints the commands instead of ending in an imperative with no control behind it. Never translate the command names, the flags or the quoted token placeholder.",
+		"note": "Visible text rather than only the accessible name (UX round 1, U3): creating a network is CLI-only, so the row prints the commands instead of ending in an imperative with no control behind it. The backticked runs are terminal commands and the picker paints them as mono runs (messageRuns), which is why the ticks never reach the screen (design round 2, D6) - never remove the backticks, and never retype the token's quoting: ''' is what makes one pair of quotes survive ICU's own quoting rule (UX round 2, U7). Never translate the command names or the token placeholder.",
 		"maxCells": 92
 	},
 	"ui.chat.remote_compute.row.not_offered": {
@@ -234,7 +234,7 @@
 	"ui.chat.remote_compute.row.sentence.network": {
 		"role": "accessible name of the picker row when the device is in no network",
 		"tone": "one sentence of fact, then the two commands that fix it",
-		"note": "The backticked runs are terminal commands: keep them exactly as written, in backticks, Latin script and left-to-right even in an RTL locale. Do not translate `lop network init` or `lop network join`."
+		"note": "The two commands that fix it, exactly as written: keep the backticks (the visible note paints them as mono runs) and the token's ''' quoting (UX round 2, U7). Do not translate 'lop network init' or 'lop network join'."
 	},
 	"ui.chat.remote_compute.row.sentence.not_offered": {
 		"role": "accessible name of the picker row when the deployment does not offer the family",
@@ -334,9 +334,9 @@
 		"note": "The mesh network the run is recorded against."
 	},
 	"ui.chat.remote_compute.sheet.network.not_enforced": {
-		"role": "the same sentence when no network has been chosen yet",
+		"role": "the binding sentence when no network has been chosen yet",
 		"tone": "one short sentence, plain statement",
-		"note": "The qualification alone: it must state that enforcement is absent without naming a network the user has not chosen. Never say isolated, segmented or private."
+		"note": "Names its own subject, because it stands alone when no network has been chosen: the run's network is recorded, and enforcement is absent in this version (design round 2, D2). Never elide the subject into 'Not enforced in this version.' - with nothing above it to attach to, the nearest referent became the list of choices, which reads as a claim about the user's pick rather than about the binding. Never say isolated, segmented or private."
 	},
 	"ui.chat.remote_compute.sheet.network.recorded": {
 		"role": "the sentence under the network line explaining what the binding does",

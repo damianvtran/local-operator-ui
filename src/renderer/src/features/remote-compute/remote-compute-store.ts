@@ -46,6 +46,7 @@
  *   in the body that failed.
  */
 
+import { retryDesktopMutation } from "@shared/api/local-operator/backend-error";
 import {
 	DesktopControlError,
 	desktopRequest,
@@ -402,6 +403,22 @@ export type RemoteRunStartInput = {
 export function useRemoteRunStart() {
 	const queryClient = useQueryClient();
 	return useMutation({
+		/*
+		 * A REFUSAL IS NOT RE-SENT (UX round 2, U8). The app's default is one retry per
+		 * failed write, which is right for a transport hiccup and wrong for an answer: the
+		 * daemon logged every refused start twice, ~1.08 s apart, and the sentence reached
+		 * the sheet only after the second refusal's backoff - so a `run_limit` read as an
+		 * unresponsive button for over a second, and a 429 spent a second unit of the
+		 * server's own rate limit to learn what the first answer already said. Everything
+		 * this family raises is a `RemoteRefusal`, including the case where nothing
+		 * answered at all (`code: "transport"`), which is the one shape worth one more
+		 * send; `retryDesktopMutation` still owns the policy for a `DesktopControlError`
+		 * that escapes `remoteCall`.
+		 */
+		retry: (failureCount, error) =>
+			error instanceof RemoteRefusal && error.code !== "transport"
+				? false
+				: retryDesktopMutation(failureCount, error),
 		mutationFn: async (input: RemoteRunStartInput) => {
 			const answer = await remoteCall<{ run?: unknown }>({
 				op: "remote_compute.start",

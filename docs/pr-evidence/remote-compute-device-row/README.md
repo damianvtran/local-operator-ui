@@ -20,6 +20,20 @@ coordinates, against anything measured on the earlier set. `sheet-open-after-pic
 new and is the one frame driven end to end: chip press, then a real press on the
 `Radient — ready` row, then the sheet that opens over the chat (UX round 1, U1).
 
+**Round-2 remediation recapture (2026-11-18).** The whole set was taken again on the
+round-2 head, in both palettes, because two changes reach every frame: the pinned
+band below the list now carries its own ground instead of a heavier hairline (design
+round 2, D1 part 3), and the sheet gained a bounded height with a scrolling body (UX
+round 2, U10). Four frames are new: `sheet-narrow-420x400-*` (the sheet in a 420x400
+window), `sheet-keyboard-focus-*` (the sheet after one Tab, so the focus ring is on
+the first control INSIDE it), and the recaptured `sheet-open-after-pick-*`, which
+remains the one frame driven end to end: chip press, then a real press on the
+`Radient — ready` row, then the sheet that opens over the chat (UX round 1, U1).
+
+Measurements quoted in the PR are taken from these PNG files, not from the palette:
+the band's ground against the panel's in each theme, the panel's height and its body's
+scroll extent at 420x400, and `document.activeElement` after the row press.
+
 Reproduce: `pnpm storybook` (port 6006), then drive
 `/iframe.html?id=<story>&args=theme:<palette>;locale:en&viewMode=story` at the size in
 the table below and screenshot the viewport.
@@ -31,19 +45,21 @@ the table below and screenshot the viewport.
 | `row-flag-off-*` | A | The family's switch off (`{enabled:false}`): no group, no rule, today's picker |
 | `row-checking-*` | loading | `checking…` while the read is outstanding - no spinner that implies presence |
 | `row-signed-out-*` | B | `sign in to use`: an on-ramp, selectable, and it starts the sign-in |
-| `row-ready-*` | C | The group NAMED (`Run on Radient`), `ready` in the status slot, and the pinned sentence naming its own subject (design round 1, D1) |
+| `row-ready-*` | C | The group NAMED (`Run on Radient`), `ready` in the status slot, the pinned sentence naming its own subject (design round 1, D1), and the pinned band BELOW a rule that is a ground, not a heavier hairline (design round 2, D1 part 3) |
 | `row-running-*` | D | `1 run · 4m 13s · held $5.09`: the aggregate, from the server's `started_at` and `hold_usd` |
 | `row-capacity-*` | E | `capacity unavailable · retry` on the row's REASON LINE, not in the status slot (D2) |
-| `row-needs-network-*` | F | `needs a network` with the commands this app can name printed under it, not only in the accessible name (D2, U3) |
+| `row-needs-network-*` | F | `needs a network` with the commands this app can name printed under it as MONO runs carrying their own quotes, not only in the accessible name (D2, U3, D6, U7) |
 | `row-not-offered-*` | G | `not offered by this deployment` with its own quiet reason line and no hover ground |
 | `sheet-open-after-pick-*` | — | The second level reached THROUGH the row: the sheet opens over the chat after a real press (U1 / Q-001) |
 | `sheet-ready-*` | — | Network line as a statement on its own line (D3), `What kind of run` (D6), Cloud run live, Dedicated + Spot disabled in a quieter voice with the reason inline (D4), the one buyable tier stated rather than check-marked (D10), the prompt summary, the directory, the submit |
-| `sheet-ambiguous-network-*` | — | Two networks and no default: the decision is stated once, beside the disabled primary, and `Change` is absent because there is nothing to change from (D7); the stand-down line under the actions |
-| `sheet-no-prompt-*` | — | An empty composer: the submit stands down with its own reason |
+| `sheet-ambiguous-network-*` | — | Two networks and no default, the options marked as controls by their own resting ground (D4), the binding sentence naming its own subject (round 2, D2), and `Change` absent because there is nothing to change from (D7); the stand-down line under the actions |
+| `sheet-no-prompt-*` | — | An empty composer: the prompt's slot says it is empty (round 2, D3), and the submit stands down with its own reason |
+| `sheet-narrow-420x400-*` | — | The same sheet in a 420x400 window: capped to the window with a scrolling body, the title and `Start run` still reachable (round 2, U10) |
+| `sheet-keyboard-focus-*` | — | The sheet after ONE Tab: the ring is on `View runs`, inside the dialog, so the keyboard enters it (round 2, U6) |
 | `card-running-*` | — | A run spending: status, elapsed from the server's start, the hold one ink step above the clock (D3), the binding sentence on its own line, Cancel |
 | `card-finished-*` | — | Settled: the charge instead of the hold, Forget instead of Cancel |
 | `card-failed-*` | — | The provider's failure state, `Failed` in `danger` rather than the banner's warning hue (D8) |
-| `runs-populated-*` | — | The list: three rows, two live, Cancel only where a run can still spend, and NO panel-level accent ring (D5) |
+| `runs-populated-*` | — | The list: three rows, two live, Cancel only where a run can still spend, the facts separated by the same painted middots the card uses (round 2, D7), and NO panel-level accent ring (D5) |
 | `runs-record-only-*` | — | Signed out: the banner says these are this device's last known rows |
 | `runs-empty-*` | — | Nothing run yet |
 
@@ -52,11 +68,12 @@ the table below and screenshot the viewport.
 - **No live daemon.** Every frame is presentational and answers from the story
   bridge. The real load, refusal codes (`run_limit`, `insufficient_credits`, …) and
   the provider's own latency are QA's rig, not these stills.
-- **No focus-dependent claim.** The capture runs with focus emulation on and the
-  dialogs take the focus themselves rather than a control, so a frame does not show
-  what a focus ring looks like on `Start run`. The runs dialog's PANEL-level ring is
-  gone in code (D5), which is a rendering fact this set can show only because these
-  frames are element clips: a ring on the panel would be inside the crop.
+- **No focus-dependent claim beyond the one frame that is about focus.**
+  `sheet-keyboard-focus-*` is taken after a real Tab key, so its ring is the app's
+  own `:focus-visible`; every other frame shows a surface at rest. A frame still
+  cannot say what the ring looks like on `Start run` (no state here leaves it
+  focused), and the runs dialog's PANEL-level ring is gone in code (D5), which is
+  visible here only because these frames are element clips.
 - **`Logs` / `Results` are absent on purpose.** The two artifact routes land in a
   follow-up release, the probe answers 404 in these stories, and the card draws the
   controls only when the server answers them.

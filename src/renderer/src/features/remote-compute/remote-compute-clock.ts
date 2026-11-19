@@ -10,10 +10,14 @@
  *
  * WHY A SECOND IS THE FLOOR AND NOT THE CADENCE OF EVERY SURFACE. A card prints
  * seconds, so it asks for 1,000 ms; the picker's aggregate is allowed to be up to
- * ten seconds stale because its unit is a minute. Both are mounted only while they
- * are on screen: nothing here runs in a background window, because React unmounts
- * the picker's content when the menu closes and the card when its conversation
- * leaves the viewport.
+ * ten seconds stale because its unit is a minute. Nothing here runs in a background
+ * window, because React unmounts the picker's content when the menu closes and the
+ * card when its conversation leaves the viewport - AND THE TWO SECOND LEVELS ARE
+ * NOT UNMOUNTED, so their callers lower the cadence while they are shut
+ * (`useNow(open ? …)`, agent review round 2, MINOR-3). Until that was done this
+ * paragraph was false: both dialogs sit mounted beside the header for every
+ * conversation with an identity, so a closed sheet rebuilt its model every second
+ * on every open chat.
  */
 
 import { useEffect, useState } from "react";
