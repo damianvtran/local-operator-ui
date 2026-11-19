@@ -5052,6 +5052,38 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			keep: z.boolean().optional(),
 			waitS: z.number().min(0).max(300).optional(),
 			requestId: requestId.optional(),
+			/*
+			 * THE WORKING-SET CONSENT (`features.session_transfer_working_set`, design
+			 * move-working-set §11.1). `confirmWorkingSet` is the preflight's
+			 * `scope_digest` the user was SHOWN and ticked for: the route compares it and
+			 * refuses `working_set_changed` (with the fresh manifest) when the scope moved,
+			 * so consent is to a specific list, never a bool a stray retry could also
+			 * send. `withoutWorkingSet` is the explicit "leave the files behind" consent.
+			 * There is deliberately NO opt-in for a worktree withheld because its
+			 * unpushed history carries secret-shaped material: v1 leaves it behind with a
+			 * reason and a remedy, and no flag can override that. Both fields are
+			 * omitted while absent: the core's model is closed, so a backend without the
+			 * key would 422 on either.
+			 */
+			confirmWorkingSet: z
+				.string()
+				.regex(/^sha256:[0-9a-f]{64}$/)
+				.optional(),
+			withoutWorkingSet: z.boolean().optional(),
+		})
+		.strict(),
+	/*
+	 * What a move WOULD carry, without moving anything: the manifest the move
+	 * dialog shows and the digest its consent echoes back. A read (nothing is
+	 * written on either device), posted because the route takes the destination in
+	 * a body like the transfer it previews. Behind
+	 * `features.session_transfer_working_set` only.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.transfer.preflight"),
+			sessionId,
+			to: z.union([z.literal("local"), meshId]),
 		})
 		.strict(),
 	/*
@@ -7957,6 +7989,13 @@ const PROVIDER_READ_OPS: ReadonlySet<string> = new Set(["usage.get"]);
 const MESH_READ_OPS: ReadonlySet<string> = new Set([
 	"networks.list",
 	"peers.list",
+	/*
+	 * The working-set preflight asks the DESTINATION too (free space, whether it
+	 * can clone a missing primary from origin - design move-working-set §4/§17 Q1)
+	 * over the same mesh link the listings dial, so it waits on the same
+	 * backend-published probe budgets rather than the 20 s control budget.
+	 */
+	"sessions.transfer.preflight",
 ]);
 
 /**
@@ -8421,6 +8460,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"sessions.list",
 	"sessions.preview",
 	"sessions.report",
+	// The move's preflight computes a manifest and moves nothing.
+	"sessions.transfer.preflight",
 	"sessions.search",
 	"sessions.variables.list",
 	"skills.list",
@@ -9913,7 +9954,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 					// recorded outcome instead of moving twice, and a request with no key
 					// is a different (unjournalled) request on purpose.
 					...(request.requestId ? { request_id: request.requestId } : {}),
+					// Each consent field only when the caller set it: see the op's own
+					// comment (closed core model, gated key).
+					...(request.confirmWorkingSet
+						? { confirm_working_set: request.confirmWorkingSet }
+						: {}),
+					...(request.withoutWorkingSet ? { without_working_set: true } : {}),
 				},
+			};
+		case "sessions.transfer.preflight":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/transfer/preflight`,
+				method: "POST",
+				body: { to: request.to },
 			};
 		/*
 		 * Profile proposals: the record's own id, `encodeURIComponent`ed for the

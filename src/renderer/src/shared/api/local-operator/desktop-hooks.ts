@@ -1032,6 +1032,30 @@ export type DesktopFeature =
 	 */
 	| "session_transfer"
 	/**
+	 * A move that carries the session's WORKING SET (worktrees, unpushed commits,
+	 * uncommitted files, scratch, session memory) to the destination:
+	 * `POST /v1/desktop/sessions/{id}/transfer/preflight` plus the transfer body's
+	 * `confirm_working_set` / `without_working_set` (deliberately no history-secret
+	 * opt-in: v1 never sends a withheld worktree).
+	 *
+	 * ITS OWN KEY, not a version of `session_transfer` (the backend's
+	 * `server/features.py` rule, design move-working-set §11.1): the old move
+	 * dialog must keep working byte for byte against a backend without it, and the
+	 * core's transfer model is closed, so an ungated send of the new fields would be
+	 * a 422. Absent ⇒ no preflight, no checklist, no new body fields.
+	 */
+	| "session_transfer_working_set"
+	/**
+	 * The preflight's DESTINATION PROBE (core `server/features.py`, design
+	 * move-working-set §11.1a): each `working_set.worktrees[]` row carries the
+	 * destination's own `clone_check` answer plus optional `clone_detail` /
+	 * `https_rewrite` / `remedy` / `missing_tools`, and the block carries
+	 * `destination_probe`. Additive members of the same mapping, so its own key:
+	 * without it the review renders exactly what it did before (an unprobed
+	 * `pending_destination` row keeps its "cloned if missing" note).
+	 */
+	| "session_transfer_working_set_probe"
+	/**
 	 * The onboarding approval surface (`features.approvals`): the badge read
 	 * (`GET /v1/desktop/approvals`) plus the two decision posts, and nothing else.
 	 *

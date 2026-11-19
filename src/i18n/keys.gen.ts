@@ -10008,6 +10008,128 @@ export type MessageParams = {
 	"ui.mesh.mesh_actions.type_the_network_s_name_to_confirm": undefined;
 	"ui.mesh.mesh_actions.wait_for_the_turn_to_finish": undefined;
 	"ui.mesh.mesh_actions.which_operation": undefined;
+	"ui.mesh.mesh_actions.working_set_changed": undefined;
+	"ui.mesh.mesh_actions.working_set_checkbox": { device: string };
+	"ui.mesh.mesh_actions.working_set_checkbox_leave": { device: string };
+	"ui.mesh.mesh_actions.working_set_clone": { device: string; url: string };
+	"ui.mesh.mesh_actions.working_set_clone_pending": {
+		device: string;
+		url: string;
+	};
+	"ui.mesh.mesh_actions.working_set_clone_sized": {
+		device: string;
+		url: string;
+		size: string;
+	};
+	"ui.mesh.mesh_actions.working_set_copy_without": undefined;
+	"ui.mesh.mesh_actions.working_set_count_staged": { count: number };
+	"ui.mesh.mesh_actions.working_set_count_unpushed": { count: number };
+	"ui.mesh.mesh_actions.working_set_count_unstaged": { count: number };
+	"ui.mesh.mesh_actions.working_set_count_untracked": { count: number };
+	"ui.mesh.mesh_actions.working_set_dest_path": { path: string };
+	"ui.mesh.mesh_actions.working_set_detached": undefined;
+	"ui.mesh.mesh_actions.working_set_error": undefined;
+	"ui.mesh.mesh_actions.working_set_kept_heading": { count: number };
+	"ui.mesh.mesh_actions.working_set_kept_heading_on": {
+		count: number;
+		source: string;
+	};
+	"ui.mesh.mesh_actions.working_set_kind_build_output": undefined;
+	"ui.mesh.mesh_actions.working_set_kind_dependency_tree": undefined;
+	"ui.mesh.mesh_actions.working_set_kind_ignored": undefined;
+	"ui.mesh.mesh_actions.working_set_kind_loose_file": undefined;
+	"ui.mesh.mesh_actions.working_set_left_behind_heading": undefined;
+	"ui.mesh.mesh_actions.working_set_loading": undefined;
+	"ui.mesh.mesh_actions.working_set_missing_tools": { device: string };
+	"ui.mesh.mesh_actions.working_set_move_without": undefined;
+	"ui.mesh.mesh_actions.working_set_probe_cannot_clone": {
+		device: string;
+		remote: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_cannot_fetch": {
+		device: string;
+		remote: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_cannot_push": {
+		device: string;
+		remote: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_copy": undefined;
+	"ui.mesh.mesh_actions.working_set_probe_detail_auth_denied": {
+		device: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_detail_error": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_detail_git_missing": {
+		device: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_detail_host_key": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_detail_host_refused": undefined;
+	"ui.mesh.mesh_actions.working_set_probe_detail_not_found": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_detail_probe_error": {
+		device: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_detail_timeout": undefined;
+	"ui.mesh.mesh_actions.working_set_probe_detail_tls": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_detail_unknown": {
+		device: string;
+		code: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_detail_unreachable": {
+		device: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_detail_url_refused": undefined;
+	"ui.mesh.mesh_actions.working_set_probe_https_rewrite": {
+		device: string;
+		url: string;
+	};
+	"ui.mesh.mesh_actions.working_set_probe_no_remote": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_ok": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_remedy_include": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_remedy_on": { lender: string };
+	"ui.mesh.mesh_actions.working_set_probe_remedy_share": { device: string };
+	"ui.mesh.mesh_actions.working_set_probe_unknown": { device: string };
+	"ui.mesh.mesh_actions.working_set_reason_contended": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_destination_cannot_clone": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_destination_cannot_clone_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_destination_conflict": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_history_secret": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_history_secret_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_history_unscanned": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_history_unscanned_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_in_progress_operation": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_in_progress_operation_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_lfs": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_not_transferred": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_outside_home": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_over_cap": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_over_cap_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_submodule": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_unknown": { code: string };
+	"ui.mesh.mesh_actions.working_set_reason_unmerged": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_unmerged_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer": undefined;
+	"ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_recreate_with": { command: string };
+	"ui.mesh.mesh_actions.working_set_row_missing_tools": {
+		device: string;
+		tools: string;
+	};
+	"ui.mesh.mesh_actions.working_set_sent_heading": {
+		count: number;
+		size: string;
+	};
+	"ui.mesh.mesh_actions.working_set_team_bridge": { device: string };
+	"ui.mesh.mesh_actions.working_set_unconfirmed": undefined;
+	"ui.mesh.mesh_actions.working_set_unknown": { device: string };
+	"ui.mesh.mesh_actions.working_set_warning": { device: string };
+	"ui.mesh.mesh_actions.working_set_warning_leave": { device: string };
+	"ui.mesh.mesh_actions.working_set_warning_without": { device: string };
+	"ui.mesh.mesh_actions.working_set_withheld_heading": undefined;
+	"ui.mesh.mesh_actions.working_set_withheld_heading_stay": undefined;
+	"ui.mesh.mesh_actions.working_set_withheld_history_secret_content": undefined;
+	"ui.mesh.mesh_actions.working_set_withheld_history_secret_path": undefined;
+	"ui.mesh.mesh_actions.working_set_withheld_secret_content": undefined;
+	"ui.mesh.mesh_actions.working_set_withheld_secret_path": undefined;
 	"ui.mesh.mesh_approvals.answer_approval_prompts_there": undefined;
 	"ui.mesh.mesh_approvals.approval_title": { head: string };
 	"ui.mesh.mesh_approvals.approval_title_with_clauses": {
@@ -10223,6 +10345,10 @@ export type MessageParams = {
 	"ui.mesh.mesh_page.list": undefined;
 	"ui.mesh.mesh_page.mesh": undefined;
 	"ui.mesh.mesh_page.move_receipt": { destination: string; retirement: string };
+	"ui.mesh.mesh_page.move_receipt_resumed": {
+		destination: string;
+		retirement: string;
+	};
 	"ui.mesh.mesh_page.moved": undefined;
 	"ui.mesh.mesh_page.no_network_on_this_device": undefined;
 	"ui.mesh.mesh_page.presentation": undefined;

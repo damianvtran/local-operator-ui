@@ -1,0 +1,90 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "second independent translation audit, round 2 (high-visibility/safety copy: move confirmation working set) - re-check after the second-audit remediation",
+ "locale": "hi",
+ "namespace": "ui.mesh",
+ "pr": 1978,
+ "date": "2026-11-18",
+ "head": "54a3bad3c4673885a7e7937dc864b838c02330a4",
+ "instance": "f4f5a50c8316-pr1978-second-r2-hi",
+ "auditor": {
+  "agent": "task",
+  "role": "SECOND independent i18n auditor (lopdev task subagent); did not translate, remediate, or perform the first audit",
+  "model": "anthropic/claude-opus-5-5",
+  "independence": "Auditor session f4f5a50c8316 (task role, lopdev lane move-working-set, manager 35c4f00e8d73), the round-1 second auditor. Remediation translator: coder e9c7087804bf (commit e61aba9d89); earlier translators coder 76c99189cb1d/eacba7a3806e, beaadf6c08ec, 9d716ec66066. First auditor: task session d11d211390f8 (r4 receipts). Same served model family (anthropic/claude-opus-5-5), different agent/run; no fallback. No MT or translation API used.",
+  "instance": "f4f5a50c8316-pr1978-second-r2-hi"
+ },
+ "model": "anthropic/claude-opus-5-5",
+ "status": "passed",
+ "result": "clean",
+ "references": {
+  "glossary": "damianvtran/local-operator i18n/glossary.md @ origin/main 28173772c (sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7)",
+  "style_guide": "damianvtran/local-operator i18n/style-guides/hi.md @ origin/main 28173772c (sha256 82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5)",
+  "context": "src/i18n/catalogues/en/ui.mesh.context.json @ 54a3bad3c4673885a7e7937dc864b838c02330a4",
+  "prior_second_audit": "i18n/receipts/f4f5a50c8316-pr1978-second-hi.json",
+  "first_audit": "i18n/receipts/d11d211390f8-pr1978-r4-hi.json"
+ },
+ "scope": "Round 2 of the second audit on ca07811e9f..54a3bad3c4: 10 changed value(s) re-audited semantically (with the move_receipt_resumed retirement clause substituted where relevant) plus every prior finding's disposition; the other 74 values are byte-identical to the round-1 audited bytes (compared key by key against ca07811e9f) and retained from f4f5a50c8316-pr1978-second-hi; English and context bytes unchanged; mechanical checks re-run on all 84 keys.",
+ "changed_keys": [
+  "ui.mesh.mesh_actions.working_set_warning",
+  "ui.mesh.mesh_actions.working_set_withheld_history_secret_path",
+  "ui.mesh.mesh_actions.working_set_withheld_history_secret_content",
+  "ui.mesh.mesh_actions.working_set_reason_history_secret",
+  "ui.mesh.mesh_actions.working_set_warning_leave",
+  "ui.mesh.mesh_actions.working_set_reason_history_unscanned",
+  "ui.mesh.mesh_actions.working_set_probe_detail_host_key",
+  "ui.mesh.mesh_actions.working_set_reason_history_secret_stay",
+  "ui.mesh.mesh_actions.working_set_reason_history_unscanned_stay",
+  "ui.mesh.mesh_actions.working_set_count_unpushed"
+ ],
+ "prior_findings_disposition": [
+  {
+   "id": "HI-S2-1",
+   "key": "ui.mesh.mesh_actions.working_set_probe_detail_host_key",
+   "status": "fixed",
+   "now": "{device} रिमोट की SSH होस्ट कुंजी नहीं पहचानता।",
+   "was_severity": "MINOR"
+  },
+  {
+   "id": "HI-S2-2",
+   "key": "ui.mesh.mesh_actions.working_set_count_unpushed",
+   "status": "fixed",
+   "now": "{count, plural, one {{count, number, ::group-off} पुश न किया गया कमिट} other {{count, number, ::group-off} पुश न किए गए कमिट}}",
+   "was_severity": "NIT"
+  }
+ ],
+ "safety_checks": "Receiving device ({device} in warning/checkbox), keeping device (warning_leave/without/unknown, checkbox_leave, kept_heading_on {source}), withheld-secret lines, refusal remedies and probe lender lines re-confirmed on the current bytes: PASS.",
+ "findings": [
+  {
+   "severity": "INFO",
+   "key": "*",
+   "note": "Mechanical checks re-run by this auditor on the committed bytes (repo @formatjs/icu-messageformat-parser, 84 keys x 7 locales, 0 issues): ICU parses; argument names/types match English; plural selectors are locale CLDR categories with 'other'; no bidi controls; no ASCII '...'; trailing ':' kept; fr U+202F/U+2019; zh-CN '……', no Han/Latin spaces."
+  },
+  {
+   "severity": "INFO",
+   "key": "*",
+   "note": "No new findings in the changed values. Residual scans: fr 0 'cet appareil', hi 0 'अनपुश्ड', vi 0 'máy chủ', ru 0 'слияни'/'перебазир' in the 84 keys."
+  }
+ ],
+ "binding": "Verified on the committed tree at 54a3bad3c4673885a7e7937dc864b838c02330a4 (worktree .worktrees/move-confirm-dialog): target src/i18n/catalogues/hi/ui.mesh.json sha256 425070c62f0673106f61ef559b42a14e24b318a5851e9551e4b4cbb95d25d671; English sha256 235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c; context sha256 c7d07b902dfbdaa8082344ab9417ecb122726d097cb0eda189af17d3a9fca46b.",
+ "audited_values": {
+  "ui.mesh.mesh_actions.working_set_warning": "बातचीत के बीच में ले जाने पर इस बातचीत की सभी कार्य फ़ाइलें {device} पर भेज दी जाती हैं: नीचे दिए गए वर्कट्री अपने पुश न किए गए कमिट और बिना कमिट किए बदलावों के साथ, साथ ही स्क्रैच फ़ाइलें और सत्र मेमोरी। तभी जारी रखें जब यह काम {device} पर होना चाहिए।",
+  "ui.mesh.mesh_actions.working_set_withheld_history_secret_path": "पुश न किया गया एक कमिट गोपनीय फ़ाइल जैसी फ़ाइल जोड़ता है, इसलिए नहीं भेजा जाएगा।",
+  "ui.mesh.mesh_actions.working_set_withheld_history_secret_content": "पुश न किए गए एक कमिट में गोपनीय जानकारी जैसा मान है, इसलिए नहीं भेजा जाएगा।",
+  "ui.mesh.mesh_actions.working_set_reason_history_secret": "पुश न किए गए इतिहास में गोपनीय जानकारी जैसी सामग्री है। कमिट को पुश करें या फिर से लिखें, या उसे इस ब्रांच से हटाएँ, फिर दोबारा ले जाएँ।",
+  "ui.mesh.mesh_actions.working_set_warning_leave": "Local Operator का यह संस्करण अभी कार्य फ़ाइलें नहीं ले जाता। नीचे दिए गए वर्कट्री अपनी जगह रहेंगे, इसलिए {device} पर बातचीत के पास उनके पुश न किए गए कमिट या बिना कमिट किए बदलाव नहीं होंगे। ले जाने से पहले जो ज़रूरी है उसे पुश या कमिट कर लें।",
+  "ui.mesh.mesh_actions.working_set_reason_history_unscanned": "पुश न किया गया इतिहास गोपनीय जानकारी की जाँच के लिए बहुत बड़ा है, इसलिए इसे नहीं भेजा जाता। कमिट पुश करें या उन्हें इस ब्रांच से हटाएँ, फिर दोबारा ले जाएँ।",
+  "ui.mesh.mesh_actions.working_set_probe_detail_host_key": "{device} रिमोट की SSH होस्ट कुंजी नहीं पहचानता।",
+  "ui.mesh.mesh_actions.working_set_reason_history_secret_stay": "पुश न किए गए इतिहास में गोपनीय जानकारी जैसी सामग्री है।",
+  "ui.mesh.mesh_actions.working_set_reason_history_unscanned_stay": "पुश न किया गया इतिहास गोपनीय जानकारी की जाँच के लिए बहुत बड़ा है।",
+  "ui.mesh.mesh_actions.working_set_count_unpushed": "{count, plural, one {{count, number, ::group-off} पुश न किया गया कमिट} other {{count, number, ::group-off} पुश न किए गए कमिट}}"
+ },
+ "en_sha256": "235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c",
+ "context_sha256": "c7d07b902dfbdaa8082344ab9417ecb122726d097cb0eda189af17d3a9fca46b",
+ "target_sha256": "425070c62f0673106f61ef559b42a14e24b318a5851e9551e4b4cbb95d25d671",
+ "sha256": {
+  "hi": "425070c62f0673106f61ef559b42a14e24b318a5851e9551e4b4cbb95d25d671",
+  "en": "235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c"
+ }
+}
