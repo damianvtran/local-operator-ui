@@ -155,7 +155,6 @@ test("TODAY is the local calendar day, not a rolling 24 hours", () => {
 });
 
 test("YESTERDAY is the calendar day before today, and WEEK starts at its midnight", () => {
-	const todayStart = new Date(2026, 8, 24, 0, 0, 0).getTime();
 	const yesterdayStart = new Date(2026, 8, 23, 0, 0, 0).getTime();
 	// Both ends of yesterday: the first millisecond and the last.
 	assert.equal(sectionOf(row(at(yesterdayStart)), NOW, ACTIVE), "yesterday");
@@ -169,10 +168,12 @@ test("YESTERDAY is the calendar day before today, and WEEK starts at its midnigh
 	);
 	// One millisecond earlier is the day before, which is the WEEK's outer edge.
 	assert.equal(sectionOf(row(at(yesterdayStart - 1)), NOW, ACTIVE), "week");
-	// The weekday names the same wall clock as the bins do: both midnights are
-	// local calendar starts, so neither depends on the ambient zone's UTC offset.
-	assert.equal(new Date(todayStart).getHours(), 0);
-	assert.equal(new Date(yesterdayStart).getHours(), 0);
+	/*
+	 * THAT BOTH CUTS ARE THE READER'S LOCAL CALENDAR STARTS, not UTC midnights and
+	 * not a fixed wall-clock time, is what the transition tests below hold to
+	 * account in zones whose offset moves - a `getHours() === 0` check here would
+	 * only restate the constants this test built the boundaries with (round 1, M4).
+	 */
 	// The bins keep their order, and `sectionRows` draws every one of them.
 	assert.deepEqual(Object.keys(sectionRows([], NOW, ACTIVE)), [
 		"running",
@@ -305,6 +306,55 @@ test("the week boundary is a local midnight across a daylight-saving change", ()
 			"older",
 			"the 6x24h cut landed at 23:30 in a half-hour zone, so a quarter hour of the week was drawn as WEEK",
 		);
+	} finally {
+		process.env.TZ = original;
+	}
+});
+
+/*
+ * THE MIDNIGHT GAP (round 1, M2), the shape the transition blocks above miss
+ * because their zones jump at 02:00 or 02:30. A zone can spring forward AT
+ * midnight, so the day itself has no 00:00: America/Santiago goes 23:59:59 ->
+ * 01:00 on 2026-09-06 (Havana and Asunción share the shape). What the cut must
+ * be is the FIRST instant of each calendar day - 01:00 on the gap day itself,
+ * because no instant of that day precedes it - and that gap day is no reason to
+ * cut its neighbours an hour late, which is what a time of day carried across
+ * the day arithmetic did.
+ */
+test("a midnight DST gap moves only its own day's cut, never the days around it", () => {
+	const original = process.env.TZ;
+	const atLocal = (year, month, day, hour, minute) =>
+		new Date(year, month - 1, day, hour, minute, 0, 0).getTime();
+	const bin = (instant, now) => sectionOf(row(at(instant)), now, ACTIVE);
+	try {
+		process.env.TZ = "America/Santiago";
+		/* The gap is the environment's fact to state before the bins are read: on
+		 * Sep 6, 00:00 and 01:00 name ONE instant, so 01:00 is the day's first. */
+		assert.equal(
+			new Date(2026, 8, 6, 0, 0, 0, 0).getTime(),
+			new Date(2026, 8, 6, 1, 0, 0, 0).getTime(),
+			"this zone's 2026-09-06 has no 00:00, which is the case being pinned",
+		);
+		const now = atLocal(2026, 9, 6, 10, 0);
+		// Sep 6 begins at 01:00, and everything from that instant is TODAY.
+		assert.equal(bin(new Date(2026, 8, 6, 1, 0, 0, 0).getTime(), now), "today");
+		assert.equal(
+			bin(new Date(2026, 8, 6, 1, 0, 0, 0).getTime() - 1, now),
+			"yesterday",
+		);
+		/* Yesterday cuts at SEP 5's OWN midnight, 00:00. The carried 01:00 filed this
+		 * hour under WEEK (measured on the old `setHours` + `setDate` body). */
+		assert.equal(bin(atLocal(2026, 9, 5, 0, 0), now), "yesterday");
+		assert.equal(
+			bin(atLocal(2026, 9, 5, 0, 30), now),
+			"yesterday",
+			"the inherited 01:00 cut filed this half hour as WEEK",
+		);
+		assert.equal(bin(atLocal(2026, 9, 5, 23, 59), now), "yesterday");
+		assert.equal(bin(atLocal(2026, 9, 4, 23, 59), now), "week");
+		// And the week's outer edge is six midnights back, Aug 31's own 00:00.
+		assert.equal(bin(atLocal(2026, 8, 31, 0, 0), now), "week");
+		assert.equal(bin(atLocal(2026, 8, 31, 0, 0) - 1, now), "older");
 	} finally {
 		process.env.TZ = original;
 	}

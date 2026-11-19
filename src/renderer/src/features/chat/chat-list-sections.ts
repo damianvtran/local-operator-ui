@@ -164,22 +164,33 @@ export function isStoppedOnReader(row: CanonicalSessionRow): boolean {
 }
 
 /**
- * Local midnight `days` calendar days before `now`.
+ * The FIRST instant of the local calendar day `days` days before `now`'s.
  *
  * CALENDAR DAYS, NOT 24-HOUR STEPS (2026-11-19). This replaced
  * `startOfDay(now) - N * 24h`, which is a local midnight only on a day the
  * zone's UTC offset did not move: either side of a daylight-saving transition
  * it lands at 23:00 or 01:00 of the wrong day, so the week's outer boundary
  * filed a conversation under OLDER for an hour after the reader's own midnight
- * (and took an extra hour in autumn). `setDate` moves the calendar field and
- * keeps the local time of day, so every boundary this module draws is a
- * midnight the reader's clock agrees with.
+ * (and took an extra hour in autumn).
+ *
+ * BUILT FROM THE CALENDAR FIELDS IN ONE CONSTRUCTOR CALL, and the time of day
+ * is never carried across a day arithmetic (round 1, M2). `setHours(0,0,0,0)`
+ * then `setDate(d - days)` reads 00:00 as a wall-clock time to be picked, then
+ * keeps it: in a zone whose clocks jump AT midnight - America/Santiago
+ * 2026-09-06 goes 23:59:59 -> 01:00, and Havana and Asunción do the same - the
+ * day has no 00:00, so `setHours` resolved forward to 01:00 and every later
+ * cut inherited that hour. Sep 5's own midnight became 01:00 and the hour
+ * before it filed as WEEK.
+ *
+ * The forward resolution is CORRECT for the gap day itself and must stay: that
+ * day's first instant is 01:00, no instant of it precedes that, and the
+ * constructor applies the offset per calendar day, so only the gap day moves
+ * while its neighbours still cut at 00:00. On such a day `new Date(y, m, d, 0)`
+ * and `new Date(y, m, d, 1)` are the same instant.
  */
 const startOfDayOffset = (now: number, days: number): number => {
 	const d = new Date(now);
-	d.setHours(0, 0, 0, 0);
-	d.setDate(d.getDate() - days);
-	return d.getTime();
+	return new Date(d.getFullYear(), d.getMonth(), d.getDate() - days).getTime();
 };
 
 /**

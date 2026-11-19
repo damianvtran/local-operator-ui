@@ -1278,7 +1278,7 @@ test("reordering moves the section the reader can see, past a hidden one", () =>
 	assert.deepEqual(
 		shownSections(moved),
 		["pinned", "running", "today", "older", "yesterday", "agents", "teams"],
-		"older moves past the neighbour it can see, not past the hidden section",
+		"older swaps with yesterday, the neighbour the reader can see, stepping over the hidden week",
 	);
 	assert.equal(
 		new Set(moved.order).size,
@@ -1358,6 +1358,66 @@ test("a stored order from before YESTERDAY inserts it after Today", () => {
 		"today",
 		"yesterday",
 		"week",
+	]);
+});
+
+test("a stored order that already has YESTERDAY keeps the place the reader put it", () => {
+	/*
+	 * The insert is skipped for a section the order already holds (round 1, M5),
+	 * including a position the migration itself would never have written - the
+	 * reader's own arrangement is not the migration's to correct.
+	 */
+	const placed = parseSidebarView({
+		order: ["pinned", "yesterday", "running", "today", "week", "older"],
+	});
+	assert.deepEqual(placed.order.slice(0, 7), [
+		"pinned",
+		"yesterday",
+		"running",
+		"today",
+		"week",
+		"older",
+		"agents",
+	]);
+	assert.equal(
+		placed.order.filter((key) => key === "yesterday").length,
+		1,
+		"one entry, in the reader's place, not a second one beside Today",
+	);
+});
+
+test("duplicates and unknown keys are dropped before YESTERDAY is inserted", () => {
+	/*
+	 * The dedupe and the known-key filter run FIRST, so a store that repeats
+	 * `today` and carries junk ahead of it still gets exactly one `yesterday`,
+	 * directly after the surviving `today` (round 1, M5).
+	 */
+	const noisy = parseSidebarView({
+		order: ["pinned", "nonsense", "today", "today", "week", 7],
+	});
+	assert.deepEqual(noisy.order.slice(0, 5), [
+		"pinned",
+		"today",
+		"yesterday",
+		"week",
+		"running",
+	]);
+	assert.equal(noisy.order.filter((key) => key === "yesterday").length, 1);
+	/*
+	 * And an order with NEITHER anchor - no `today`, no `running` - has no
+	 * neighbour to join, so the canonical append takes it: the section lands in
+	 * its canonical place in the appended tail, behind every section the reader
+	 * kept. Recorded here rather than left unstated.
+	 */
+	assert.deepEqual(parseSidebarView({ order: ["week", "older"] }).order, [
+		"week",
+		"older",
+		"pinned",
+		"running",
+		"today",
+		"yesterday",
+		"agents",
+		"teams",
 	]);
 });
 

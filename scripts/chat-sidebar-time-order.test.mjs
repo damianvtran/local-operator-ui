@@ -420,15 +420,20 @@ function audit(lists, orderBy, basis) {
 			if (list.section !== null && list.section !== "running") {
 				const at = clockOf(row, basis);
 				/*
-				 * The bins restated INDEPENDENTLY of `sectionOf`: local calendar
-				 * midnights, never 24-hour subtractions (a DST day is 23 or 25 hours
-				 * long, and this oracle exists to disagree when the module is wrong).
+				 * The bins restated INDEPENDENTLY of `sectionOf`: the cut is built from the
+				 * calendar FIELDS, not by zeroing a clock and moving its date (round 1, M3
+				 * - the old `setHours` + `setDate` body was the implementation's own, so it
+				 * could not disagree with it). It is the first instant of the day, and a
+				 * midnight-gap day resolves forward exactly as any component-built date
+				 * does: 01:00, because that day has no 00:00.
 				 */
 				const midnight = (days) => {
 					const d = new Date(NOW);
-					d.setHours(0, 0, 0, 0);
-					d.setDate(d.getDate() - days);
-					return d.getTime();
+					return new Date(
+						d.getFullYear(),
+						d.getMonth(),
+						d.getDate() - days,
+					).getTime();
 				};
 				const bin =
 					at === null

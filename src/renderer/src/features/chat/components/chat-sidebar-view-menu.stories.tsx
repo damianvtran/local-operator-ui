@@ -965,9 +965,15 @@ export const PopoverHiddenSection: Story = {
  * The popover after the move pair reorders a SECTION PAIR, driven by the pair.
  *
  * The press is `Move Today down`, so the frame is the result of the control
- * the operator's request is about: `This week` and `Today` trade places in the
- * panel's list AND in the list behind it, and the readout prints the stored
- * order the press wrote. One frame, one press, both halves of "reordering".
+ * the operator's request is about: `Today` and its next SHOWN neighbour trade
+ * places in the panel's list AND in the list behind it, and the readout prints
+ * the stored order the press wrote. One frame, one press, both halves of
+ * "reordering".
+ *
+ * THE NEIGHBOUR IS `YESTERDAY` SINCE 2026-11-19, not `week`: the roster below
+ * carries a row dated one day back, so Yesterday draws between them and
+ * `moveSection` swaps with the section the reader can see. Asserting `week`
+ * here would wait on an order the press no longer writes (round 1, M1).
  */
 export const PopoverReorderedPair: Story = {
 	render: () => {
@@ -989,8 +995,8 @@ export const PopoverReorderedPair: Story = {
 				),
 			].map((el) => el.dataset.sidebarViewSection);
 			return (
-				order.indexOf("week") >= 0 &&
-				order.indexOf("week") < order.indexOf("today")
+				order.indexOf("yesterday") >= 0 &&
+				order.indexOf("yesterday") < order.indexOf("today")
 			);
 		});
 		await sleep(350);
@@ -1121,7 +1127,13 @@ export const PopoverBasisCreated: Story = {
 					.querySelector(`[data-session-row="${id}"]`)
 					?.closest("[data-chat-section]")
 					?.getAttribute("data-chat-section") ?? null;
-			for (const section of ["running", "today", "week", "older"]) {
+			for (const section of [
+				"running",
+				"today",
+				"yesterday",
+				"week",
+				"older",
+			]) {
 				const drawn = drawnRowIds().filter(
 					(id) => sectionOfRow(id) === section,
 				);
@@ -1366,9 +1378,13 @@ export const ReorderEdges: Story = {
 					"[data-sidebar-view-section]",
 				),
 			].map((el) => el.dataset.sidebarViewSection);
+			/*
+			 * Yesterday is the next SHOWN section below Today on this roster, so that
+			 * is the pair this legal press writes (round 1, M1).
+			 */
 			return (
-				order.indexOf("week") >= 0 &&
-				order.indexOf("week") < order.indexOf("today")
+				order.indexOf("yesterday") >= 0 &&
+				order.indexOf("yesterday") < order.indexOf("today")
 			);
 		});
 		await sleep(350);
