@@ -18,13 +18,22 @@
   "session": "d555eb73b874",
   "locale": "zh-CN",
   "date": "2026-11-19",
-  "branch": "fix/i18n-canonical-transcript-b3a",
-  "base": "c092a74b45cdc847bc65434f6bede5ea20b0e750",
-  "head": "9510c61b5ebcbaade7243a27ee572df29252785e",
   "round": 1,
-  "scope": "zh-CN W2 B3: every new key in ui.chat.canonical (42) and ui.canvas (9). Checked meaning, completeness, ICU placeholders/arms (zh-CN plural: other only, with #), punctuation, glossary vs existing keys of the same namespaces, and that the zh-CN diff only adds keys (plus trailing-comma rewrites). Plurals rendered mentally at 0/1/2/5/21/1000000.",
-  "status": "passed",
-  "result": "clean-with-findings",
+  "branches": {
+    "b3": {
+      "worktree": "i18n-b3a",
+      "branch": "fix/i18n-canonical-transcript-b3a",
+      "head": "9510c61b5ebcbaade7243a27ee572df29252785e",
+      "base": "c092a74b45cdc847bc65434f6bede5ea20b0e750"
+    },
+    "a10": {
+      "worktree": "i18n-a10-caption",
+      "branch": "fix/i18n-a10-caption",
+      "head": "486c434e590090ea91f992e80a3b78bfb17ae4b7",
+      "base": "c092a74b45cdc847bc65434f6bede5ea20b0e750"
+    }
+  },
+  "scope": "zh-CN W2 independent audit of branches i18n-b3a (B3: ui.chat.canonical, ui.canvas) and i18n-a10-caption (A10: ui.chat), combined from the per-branch receipts; verdicts unchanged (the C3 i18n-c3-durations receipt is excluded here because a separate round-2 auditor instance supersedes it).",
   "findings": {
     "blocker": [],
     "major": [],
@@ -34,10 +43,24 @@
         "severity": "minor",
         "key": "ui.chat.canonical.supplement.status.preparing",
         "finding": "\"Highlights\" (supplement block) is rendered 要点 across the eight new supplement keys (status.preparing/cancelled/failed, explanation.model_unavailable/service_unresponsive/cost_limit/time_limit/retryable), but existing zh-CN copy renders the same product term as 重点文件 (ui.canvas.files.highlights, ui.canvas.finder_layout.highlights, ui.notices.files.highlights_update_failed); 要点 also suggests textual key points while the block holds graphics and pinned files. Meaning is understandable, so not gating. Suggestion: one 重点 family for all eight keys, e.g. 正在准备重点内容…… / 重点内容已取消 / 无法准备重点内容 / 生成重点内容的模型当前不可用。…; disposition: fix in the next remediation wave if one runs, otherwise deferred as a glossary follow-up."
+      },
+      {
+        "id": "ZH-CN-W2-3",
+        "severity": "minor",
+        "key": "ui.chat.header_identity.agent_seat_closed_caption_known_speaker",
+        "finding": "\"解除该团队\" leaves 解除 without its usual object (关联/绑定), so it can read as \"dismiss/disband the team\" rather than \"detach the session from the team\"; existing zh-CN uses 解除关联 for unlinking (ui.projects.project_links.unlink_title). The literal command makes the action unambiguous, so not gating. Suggestion: \"请先运行{detachCommand}，解除此会话与该团队的关联。\" (or shorter \"…解除团队关联。\" for the narrow popover); disposition: fix in the next remediation wave if one runs, otherwise deferred."
+      },
+      {
+        "id": "ZH-CN-W2-4",
+        "severity": "minor",
+        "key": "ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker",
+        "finding": "\"解除该团队\" leaves 解除 without its usual object (关联/绑定), so it can read as \"dismiss/disband the team\" rather than \"detach the session from the team\"; existing zh-CN uses 解除关联 for unlinking (ui.projects.project_links.unlink_title). The literal command makes the action unambiguous, so not gating. Suggestion: \"请先运行{detachCommand}，解除此会话与该团队的关联。\" (or shorter \"…解除团队关联。\" for the narrow popover); disposition: fix in the next remediation wave if one runs, otherwise deferred."
       }
     ],
     "nit": []
   },
+  "result": "clean-with-findings",
+  "status": "passed",
   "namespaces": {
     "ui.chat.canonical": {
       "namespace": "ui.chat.canonical",
@@ -133,6 +156,40 @@
         "ui.canvas.artifact.cue.image",
         "ui.canvas.artifact.cue.video",
         "ui.canvas.artifact.cue.audio"
+      ]
+    },
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [
+          {
+            "id": "ZH-CN-W2-3",
+            "severity": "minor",
+            "key": "ui.chat.header_identity.agent_seat_closed_caption_known_speaker",
+            "finding": "\"解除该团队\" leaves 解除 without its usual object (关联/绑定), so it can read as \"dismiss/disband the team\" rather than \"detach the session from the team\"; existing zh-CN uses 解除关联 for unlinking (ui.projects.project_links.unlink_title). The literal command makes the action unambiguous, so not gating. Suggestion: \"请先运行{detachCommand}，解除此会话与该团队的关联。\" (or shorter \"…解除团队关联。\" for the narrow popover); disposition: fix in the next remediation wave if one runs, otherwise deferred."
+          },
+          {
+            "id": "ZH-CN-W2-4",
+            "severity": "minor",
+            "key": "ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker",
+            "finding": "\"解除该团队\" leaves 解除 without its usual object (关联/绑定), so it can read as \"dismiss/disband the team\" rather than \"detach the session from the team\"; existing zh-CN uses 解除关联 for unlinking (ui.projects.project_links.unlink_title). The literal command makes the action unambiguous, so not gating. Suggestion: \"请先运行{detachCommand}，解除此会话与该团队的关联。\" (or shorter \"…解除团队关联。\" for the narrow popover); disposition: fix in the next remediation wave if one runs, otherwise deferred."
+          }
+        ],
+        "nit": []
+      },
+      "sha256": {
+        "en": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+        "zh-CN": "ee24a0521d41929a2e630654468d4f459c2f00d0fcc49e9f8895ed92c2504bf9"
+      },
+      "context_sha256": "3e075661829d1e9bcac2db476c6b762e9aa6ebaf220fe462b184adc5f6981c49",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.chat.header_identity.agent_seat_closed_caption_known_speaker",
+        "ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker"
       ]
     }
   }

@@ -21,11 +21,25 @@
   },
   "locale": "vi",
   "date": "2026-11-19",
-  "branch": "fix/i18n-canonical-transcript-b3a",
-  "base": "32c2b19f841d2f6e6f075a9dc418f436a8066781",
-  "head": "9510c61b5ebcbaade7243a27ee572df29252785e",
   "round": 1,
-  "scope": "Round-1 independent audit of the 51 new vi keys in ui.chat.canonical (42) and ui.canvas (9). The vi working-tree delta is additions plus 1 trailing-comma rewrite only. supplement.graphics.show_head renders « Hiện 0/1/2 trong 3 đồ họa » and « Hiện 0/1/2 trong 5 đồ họa »: natural, the same « X trong Y » subset pattern as the existing ui.chat.header_identity.footer_partial_agents; Vietnamese needs no head/count agreement. Plurals use only `other`; rendered at 0/1/2/5/21/1000000. maxCells checked: segment labels ≤18 (peer 17), groups ≤22 (peer 22/22), adjust 11/12, empty 7/12. ICU parsed: placeholders and arms equal English; all values NFC. Glossary matches existing copy: tác vụ, phiên, bản ghi, lượt, thao tác, đồ họa, nổi bật.",
+  "branches": {
+    "c3": {
+      "branch": "fix/i18n-duration-units-state-words",
+      "head": "40831919ca959cf23c9b08e777cee2e7c4d70055",
+      "base": "32c2b19f841d2f6e6f075a9dc418f436a8066781"
+    },
+    "b3": {
+      "branch": "fix/i18n-canonical-transcript-b3a",
+      "head": "9510c61b5ebcbaade7243a27ee572df29252785e",
+      "base": "32c2b19f841d2f6e6f075a9dc418f436a8066781"
+    },
+    "a10": {
+      "branch": "fix/i18n-a10-caption",
+      "head": "486c434e590090ea91f992e80a3b78bfb17ae4b7",
+      "base": "32c2b19f841d2f6e6f075a9dc418f436a8066781"
+    }
+  },
+  "scope": "Round-1 independent vi audit across C3 (fix/i18n-duration-units-state-words), B3 (fix/i18n-canonical-transcript-b3a) and A10 (fix/i18n-a10-caption), combined from the per-branch receipts; verdicts unchanged.",
   "status": "passed",
   "result": "clean-with-findings",
   "findings": {
@@ -54,6 +68,108 @@
     ]
   },
   "namespaces": {
+    "ui.chat.run_details": {
+      "namespace": "ui.chat.run_details",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "sha256": {
+        "en": "94df786b4138564c4a8d0d9fc904a541ffbf702288d5dc4e928c20fb3fd2bf0e",
+        "vi": "0d0db4cacbe47be99aad445f5f2f83a53a3f74b4c5ac5a2468c7aab27dbcc327"
+      },
+      "context_sha256": "bae1bf611940a5f677fad29ce2ddbead8d9df7305195781058c2cb5048e1f96a",
+      "keys_read": 31,
+      "reviewed_keys": [
+        "ui.chat.run_details.state.running",
+        "ui.chat.run_details.tally.running",
+        "ui.chat.run_details.state.queued",
+        "ui.chat.run_details.tally.queued",
+        "ui.chat.run_details.state.paused",
+        "ui.chat.run_details.tally.paused",
+        "ui.chat.run_details.state.interrupted",
+        "ui.chat.run_details.tally.interrupted",
+        "ui.chat.run_details.state.done",
+        "ui.chat.run_details.tally.done",
+        "ui.chat.run_details.state.cancelled",
+        "ui.chat.run_details.tally.cancelled",
+        "ui.chat.run_details.state.gone",
+        "ui.chat.run_details.tally.gone",
+        "ui.chat.run_details.state.failed",
+        "ui.chat.run_details.tally.failed",
+        "ui.chat.run_details.state.cancelled_before_start",
+        "ui.chat.run_details.tally.cancelled_before_start",
+        "ui.chat.run_details.tally.unrecognised",
+        "ui.chat.run_details.todos.tally_closed",
+        "ui.chat.run_details.todos.tally_dropped",
+        "ui.chat.run_details.chip.subagents_running",
+        "ui.chat.run_details.chip.subagents_queued",
+        "ui.chat.run_details.chip.subagents_paused",
+        "ui.chat.run_details.chip.subagents_open",
+        "ui.chat.run_details.chip.jobs_running",
+        "ui.chat.run_details.chip.jobs_queued",
+        "ui.chat.run_details.chip.jobs_paused",
+        "ui.chat.run_details.chip.jobs_open",
+        "ui.chat.run_details.chip.busiest",
+        "ui.chat.run_details.children.count"
+      ]
+    },
+    "ui.chat.trace": {
+      "namespace": "ui.chat.trace",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "sha256": {
+        "en": "ac2ac11314335ce13e6d82d57cedbefd29728ae7a875a4fe160c70808b0d0501",
+        "vi": "eeafa0a96c3459a6462546ffc99ab060db1665ed74f19e6608608ee8aa9072f8"
+      },
+      "context_sha256": "8b6ec8d879078befa314d1d57fc6987e67b4033c3b179dbca044ae6ef9711603",
+      "keys_read": 12,
+      "reviewed_keys": [
+        "ui.chat.trace.send.mode.now",
+        "ui.chat.trace.send.mode.quiet",
+        "ui.chat.trace.send.mode.wake",
+        "ui.chat.trace.address.pid",
+        "ui.chat.trace.address.session",
+        "ui.chat.trace.sessions.peek.search",
+        "ui.chat.trace.sessions.peek.search_around",
+        "ui.chat.trace.sessions.peek.last",
+        "ui.chat.trace.sessions.peek.first",
+        "ui.chat.trace.sessions.peek.digest",
+        "ui.chat.trace.sessions.peek.before",
+        "ui.chat.trace.sessions.peek.around"
+      ]
+    },
+    "ui.common.time": {
+      "namespace": "ui.common.time",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "sha256": {
+        "en": "953888ccca37b9962f231cbf49e0aa6d82309d10b7301f18b8f115f2c99bf409",
+        "vi": "ff4a7396dde6b0418197a6b61baf0f6d0da31f5b3acd7e423827aa80430d4b06"
+      },
+      "context_sha256": "4e727be0dffc231800579e971ddaf8577fddd0d3e37ab582c1f42ea062b7cb9f",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.common.time.duration.under_minimum",
+        "ui.common.time.duration.over_cap"
+      ]
+    },
     "ui.canvas": {
       "namespace": "ui.canvas",
       "status": "passed",
@@ -160,6 +276,27 @@
         "ui.chat.canonical.condense.sentence_bare",
         "ui.chat.canonical.checkpoint_jump.miss",
         "ui.chat.canonical.tool_row.detail.empty"
+      ]
+    },
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "sha256": {
+        "en": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+        "vi": "87a83e06ab73526d747d5bb1540fc80fbf0a61731e42a160529c4318e3725c29"
+      },
+      "context_sha256": "3e075661829d1e9bcac2db476c6b762e9aa6ebaf220fe462b184adc5f6981c49",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.chat.header_identity.agent_seat_closed_caption_known_speaker",
+        "ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker"
       ]
     }
   }

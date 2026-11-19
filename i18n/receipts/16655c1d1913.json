@@ -21,11 +21,25 @@
 	},
 	"locale": "fr",
 	"date": "2026-11-19",
-	"branch": "fix/i18n-canonical-transcript-b3a",
-	"base": "c092a74b45cdc847bc65434f6bede5ea20b0e750",
-	"head": "9510c61b5ebcbaade7243a27ee572df29252785e",
 	"round": 2,
-	"scope": "Round-2 independent re-audit of the fr remediation of round-1 finding FR-W2-2 (major) on ui.chat.canonical.supplement.graphics.show_head. The noun now sits in a nested {head, plural, one/other} inside the count many/other arms; placeholders {count},{head} identical to English. Rendered head=0,1,2,3 with count=1,2,3,5,1000000: « Afficher 0 graphique sur 3 », « Afficher 1 graphique sur 5 », « Afficher 2 graphiques sur 3 », « Afficher 3 graphiques sur 5 »; ::group-off kept as in English; missing many arm on head falls back to other (correct). FR-W2-2 resolved. Other 41 ui.chat.canonical keys unchanged since round 1 and retained. ui.canvas unchanged (en/fr/context sha256 identical to round 1) and carried with its round-1 result clean, no findings. Change-set proof: reverting ONLY the listed keys in the current fr file to the pre-remediation values (as logged by the remediation translator's apply() in session 1be908df9fd1) reproduces the round-1 receipt's fr sha256 byte-for-byte, so no other fr key changed since round 1. Round-1 receipt: i18n/receipts/fr-w2-b3-00b03b6792a8.json (round-1 results of the carried namespaces are cited from it).",
+	"branches": {
+		"c3": {
+			"branch": "fix/i18n-duration-units-state-words",
+			"head": "40831919ca959cf23c9b08e777cee2e7c4d70055",
+			"base": "c092a74b45cdc847bc65434f6bede5ea20b0e750"
+		},
+		"b3": {
+			"branch": "fix/i18n-canonical-transcript-b3a",
+			"head": "9510c61b5ebcbaade7243a27ee572df29252785e",
+			"base": "c092a74b45cdc847bc65434f6bede5ea20b0e750"
+		},
+		"a10": {
+			"branch": "fix/i18n-a10-caption",
+			"head": "486c434e590090ea91f992e80a3b78bfb17ae4b7",
+			"base": "c092a74b45cdc847bc65434f6bede5ea20b0e750"
+		}
+	},
+	"scope": "Round-2 fr audit across C3 (fix/i18n-duration-units-state-words), B3 (fix/i18n-canonical-transcript-b3a) and A10 (fix/i18n-a10-caption): combined from the per-branch receipts; verdicts unchanged.",
 	"status": "passed",
 	"result": "clean",
 	"findings": {
@@ -35,6 +49,108 @@
 		"nit": []
 	},
 	"namespaces": {
+		"ui.chat.run_details": {
+			"namespace": "ui.chat.run_details",
+			"status": "passed",
+			"result": "clean",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": []
+			},
+			"sha256": {
+				"en": "94df786b4138564c4a8d0d9fc904a541ffbf702288d5dc4e928c20fb3fd2bf0e",
+				"fr": "18aa5e7095b7795bcb849837b5f79cc9cac1f337fcc822f2cd6c9f56ff4792ad"
+			},
+			"context_sha256": "bae1bf611940a5f677fad29ce2ddbead8d9df7305195781058c2cb5048e1f96a",
+			"keys_read": 31,
+			"reviewed_keys": [
+				"ui.chat.run_details.state.running",
+				"ui.chat.run_details.tally.running",
+				"ui.chat.run_details.state.queued",
+				"ui.chat.run_details.tally.queued",
+				"ui.chat.run_details.state.paused",
+				"ui.chat.run_details.tally.paused",
+				"ui.chat.run_details.state.interrupted",
+				"ui.chat.run_details.tally.interrupted",
+				"ui.chat.run_details.state.done",
+				"ui.chat.run_details.tally.done",
+				"ui.chat.run_details.state.cancelled",
+				"ui.chat.run_details.tally.cancelled",
+				"ui.chat.run_details.state.gone",
+				"ui.chat.run_details.tally.gone",
+				"ui.chat.run_details.state.failed",
+				"ui.chat.run_details.tally.failed",
+				"ui.chat.run_details.state.cancelled_before_start",
+				"ui.chat.run_details.tally.cancelled_before_start",
+				"ui.chat.run_details.tally.unrecognised",
+				"ui.chat.run_details.todos.tally_closed",
+				"ui.chat.run_details.todos.tally_dropped",
+				"ui.chat.run_details.chip.subagents_running",
+				"ui.chat.run_details.chip.subagents_queued",
+				"ui.chat.run_details.chip.subagents_paused",
+				"ui.chat.run_details.chip.subagents_open",
+				"ui.chat.run_details.chip.jobs_running",
+				"ui.chat.run_details.chip.jobs_queued",
+				"ui.chat.run_details.chip.jobs_paused",
+				"ui.chat.run_details.chip.jobs_open",
+				"ui.chat.run_details.chip.busiest",
+				"ui.chat.run_details.children.count"
+			]
+		},
+		"ui.chat.trace": {
+			"namespace": "ui.chat.trace",
+			"status": "passed",
+			"result": "clean",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": []
+			},
+			"sha256": {
+				"en": "ac2ac11314335ce13e6d82d57cedbefd29728ae7a875a4fe160c70808b0d0501",
+				"fr": "cded1d86543fc4394cc5b869e722a55c371cfcffc580a3fb0fc23a75a3200cb5"
+			},
+			"context_sha256": "8b6ec8d879078befa314d1d57fc6987e67b4033c3b179dbca044ae6ef9711603",
+			"keys_read": 12,
+			"reviewed_keys": [
+				"ui.chat.trace.send.mode.now",
+				"ui.chat.trace.send.mode.quiet",
+				"ui.chat.trace.send.mode.wake",
+				"ui.chat.trace.address.pid",
+				"ui.chat.trace.address.session",
+				"ui.chat.trace.sessions.peek.search",
+				"ui.chat.trace.sessions.peek.search_around",
+				"ui.chat.trace.sessions.peek.last",
+				"ui.chat.trace.sessions.peek.first",
+				"ui.chat.trace.sessions.peek.digest",
+				"ui.chat.trace.sessions.peek.before",
+				"ui.chat.trace.sessions.peek.around"
+			]
+		},
+		"ui.common.time": {
+			"namespace": "ui.common.time",
+			"status": "passed",
+			"result": "clean",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": []
+			},
+			"sha256": {
+				"en": "953888ccca37b9962f231cbf49e0aa6d82309d10b7301f18b8f115f2c99bf409",
+				"fr": "fc4e0763d28c6d6e98265506fd5544a2c415eeb1622f4970ea08905b85413c21"
+			},
+			"context_sha256": "4e727be0dffc231800579e971ddaf8577fddd0d3e37ab582c1f42ea062b7cb9f",
+			"keys_read": 2,
+			"reviewed_keys": [
+				"ui.common.time.duration.under_minimum",
+				"ui.common.time.duration.over_cap"
+			]
+		},
 		"ui.canvas": {
 			"namespace": "ui.canvas",
 			"status": "passed",
@@ -122,6 +238,27 @@
 				"ui.chat.canonical.condense.sentence_bare",
 				"ui.chat.canonical.checkpoint_jump.miss",
 				"ui.chat.canonical.tool_row.detail.empty"
+			]
+		},
+		"ui.chat": {
+			"namespace": "ui.chat",
+			"status": "passed",
+			"result": "clean",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": []
+			},
+			"sha256": {
+				"en": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+				"fr": "6ca2e6697f10102c86afabb969823b7032d7ac76218caeb57c3dac6963c74b04"
+			},
+			"context_sha256": "3e075661829d1e9bcac2db476c6b762e9aa6ebaf220fe462b184adc5f6981c49",
+			"keys_read": 2,
+			"reviewed_keys": [
+				"ui.chat.header_identity.agent_seat_closed_caption_known_speaker",
+				"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker"
 			]
 		}
 	}
