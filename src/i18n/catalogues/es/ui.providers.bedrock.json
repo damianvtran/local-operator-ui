@@ -22,7 +22,7 @@
 	"ui.providers.bedrock.error_profile_not_found": "Ese perfil no está en tu configuración de AWS",
 	"ui.providers.bedrock.error_region_invalid": "Amazon Bedrock no está disponible en esa región",
 	"ui.providers.bedrock.how_to_connect": "Cómo conectarse a Amazon Bedrock",
-	"ui.providers.bedrock.kind_assume_role": "Asumir rol",
+	"ui.providers.bedrock.kind_assume_role": "Rol asumido",
 	"ui.providers.bedrock.kind_login": "AWS login",
 	"ui.providers.bedrock.kind_other": "Otro",
 	"ui.providers.bedrock.kind_process": "Proceso de credenciales",

@@ -78,7 +78,7 @@
 	"ui.providers.bedrock.sso_sign_in": "AWS SSO سے سائن اِن کریں",
 	"ui.providers.bedrock.sso_waiting": "AWS سائن اِن مکمل ہونے کا انتظار ہے…",
 	"ui.providers.bedrock.tab_access_key": "رسائی کلید",
-	"ui.providers.bedrock.tab_ambient": "طے شدہ اسناد",
+	"ui.providers.bedrock.tab_ambient": "ڈیفالٹ اسناد",
 	"ui.providers.bedrock.tab_api_key": "Bedrock API کلید",
 	"ui.providers.bedrock.tab_profile": "AWS پروفائل",
 	"ui.providers.bedrock.tab_sso": "AWS SSO"
