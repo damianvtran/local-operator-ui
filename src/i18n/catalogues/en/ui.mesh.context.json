@@ -1798,5 +1798,100 @@
 		"role": "closing line after a joiner's pairing card expired",
 		"tone": "Neutral, factual",
 		"note": "Joiner-side twin of ui.mesh.pairing.result.expired: the window ran out (not declined, not closed without an answer). {peer} is the inviting device's name, where a new invite has to be made."
+	},
+	"ui.mesh.pairing.sheet.message.inviter_admit": {
+		"role": "native confirmation sheet — title, inviter admitting a device",
+		"tone": "Direct question",
+		"note": "The macOS app shows this in a native sheet before it admits the other device; the person must press the sheet's Admit button. {peer} = the other device's name (inert text); {network} = mesh network name."
+	},
+	"ui.mesh.pairing.sheet.message.inviter_decline": {
+		"role": "native confirmation sheet — title, inviter declining a device",
+		"tone": "Direct question",
+		"note": "Shown before the inviting device declines the other device's request. {peer} = the other device's name; {network} = mesh network name."
+	},
+	"ui.mesh.pairing.sheet.message.joiner_admit": {
+		"role": "native confirmation sheet — title, joiner confirming",
+		"tone": "Direct question",
+		"note": "Shown on the joining device before it confirms the code and joins. {network} = mesh network name; {peer} = the inviting device's name. Matches the card title ui.mesh.pairing.title.joiner ('Joining {network} from {peer}')."
+	},
+	"ui.mesh.pairing.sheet.message.joiner_decline": {
+		"role": "native confirmation sheet — title, joiner declining",
+		"tone": "Direct question",
+		"note": "Shown on the joining device before it declines the invite. {network} = mesh network name; {peer} = the inviting device's name."
+	},
+	"ui.mesh.pairing.sheet.device": {
+		"role": "native confirmation sheet — detail line, device",
+		"tone": "Factual label",
+		"note": "Names the other device so the person can check it. {peer} = device name; {id} = its fingerprint or device id (opaque, never translated). Keep the label short; one line of a plain-text list."
+	},
+	"ui.mesh.pairing.sheet.device_name_only": {
+		"role": "native confirmation sheet — detail line, device without an id",
+		"tone": "Factual label",
+		"note": "Same as ui.mesh.pairing.sheet.device when no fingerprint or id is known. {peer} = device name."
+	},
+	"ui.mesh.pairing.sheet.role": {
+		"role": "native confirmation sheet — detail line, role",
+		"tone": "Factual label",
+		"note": "{role} = the role the device gets in the network: a core identifier (read, drive, admin) kept verbatim, like ui.mesh.pairing.role."
+	},
+	"ui.mesh.pairing.sheet.code": {
+		"role": "native confirmation sheet — detail line, code",
+		"tone": "Factual label",
+		"note": "{code} = the six digits being confirmed, grouped '481 926'. Shown on admit only. Use the same word for the code as the card does."
+	},
+	"ui.mesh.pairing.sheet.shares_outgoing": {
+		"role": "native confirmation sheet — detail line, what this device shares",
+		"tone": "Factual",
+		"note": "The exact credentials the inviting device will share. Same wording as ui.mesh.pairing.offers.owner_listed followed by {list}. {peer} = the other device's name; {list} = the credential labels joined by the locale's list format (inert text)."
+	},
+	"ui.mesh.pairing.sheet.shares_outgoing_none": {
+		"role": "native confirmation sheet — detail line, this device shares nothing",
+		"tone": "Factual, reassuring",
+		"note": "Shown when the inviting device admits with no credentials kept. {peer} = the other device's name."
+	},
+	"ui.mesh.pairing.sheet.shares_incoming": {
+		"role": "native confirmation sheet — detail line, what the peer shares",
+		"tone": "Factual",
+		"note": "The credentials the inviting device offers to this joining device. Same wording as ui.mesh.pairing.offers.listed followed by {list}. {peer} = the other device's name; {list} = labels joined by the locale's list format."
+	},
+	"ui.mesh.pairing.sheet.shares_incoming_none": {
+		"role": "native confirmation sheet — detail line, the peer shares nothing",
+		"tone": "Factual",
+		"note": "Shown on the joining device when nothing is offered. {peer} = the inviting device's name."
+	},
+	"ui.mesh.pairing.sheet.shares_decline": {
+		"role": "native confirmation sheet — detail line on a decline",
+		"tone": "Factual, reassuring",
+		"note": "A decline shares nothing in either direction."
+	},
+	"ui.mesh.pairing.sheet.button.admit": {
+		"role": "native sheet button — approve the admit",
+		"tone": "Decisive, short",
+		"note": "The only button that admits the device. Keep it the same verb as ui.mesh.pairing.action.admit."
+	},
+	"ui.mesh.pairing.sheet.button.join": {
+		"role": "native sheet button — approve joining",
+		"tone": "Decisive, short",
+		"note": "The only button that confirms the code and joins the network on the joining device. One short verb."
+	},
+	"ui.mesh.pairing.sheet.button.decline": {
+		"role": "native sheet button — approve the decline",
+		"tone": "Decisive, short",
+		"note": "The only button that sends the decline. Same verb as ui.mesh.pairing.action.decline."
+	},
+	"ui.mesh.pairing.sheet.button.cancel": {
+		"role": "native sheet button — cancel",
+		"tone": "Neutral, short",
+		"note": "Closes the sheet; nothing is sent. Also what Return and Escape press. Use the platform's usual Cancel word."
+	},
+	"ui.mesh.pairing.error.closed": {
+		"role": "inline status — pairing already closed",
+		"tone": "Calm, neutral",
+		"note": "Core refused a duplicate answer (409 pairing_answered) or the card closed while the person answered: the pairing was answered elsewhere or ended. Not an error to retry; nothing was recorded from this answer."
+	},
+	"ui.mesh.pairing.error.changed": {
+		"role": "inline error — pairing changed during the answer",
+		"tone": "Helpful",
+		"note": "The card moved to a new step, or its details changed, while the native sheet was open, so the approval was not used. {action} names the button to press again: admit = 'Admit' (ui.mesh.pairing.action.admit), confirm = 'Confirm' (action.confirm), decline = 'Decline' (action.decline). Quote each arm's label EXACTLY as your translation of that key, as in ui.mesh.pairing.error.foreground; 'other' is the generic 'press the button again'."
 	}
 }

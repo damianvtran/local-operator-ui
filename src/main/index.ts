@@ -3900,9 +3900,11 @@ app
 			linkPreview,
 			/*
 			 * Main's own mesh pairing ops (`mesh-pairing-attest.ts`): the launch's
-			 * static eligibility, the one-shot confirmation (click-provenance gate +
-			 * isolated-world activation read), and the answer (consume, re-check,
-			 * attest over `mesh-pairing.sock`, then this same forwarder). ONLY the
+			 * static eligibility, the one-shot confirmation (click-provenance gate,
+			 * isolated-world activation pre-filter, then the person's approval of
+			 * the exact answer on a native sheet built from main's own read), and
+			 * the answer (consume for the identical answer, re-check, attest over
+			 * `mesh-pairing.sock`, then this same forwarder). ONLY the
 			 * main window may confirm or answer (the tray lives there; the mini view
 			 * has no pairing card), so the sender is re-checked against it alone.
 			 */
@@ -3972,6 +3974,35 @@ app
 									false,
 								)) === true
 							: false,
+					/*
+					 * Main's OWN read of the cards (security review round 2, US-R2-1):
+					 * the sheet's labels and the answerability check never come from
+					 * the renderer's request.
+					 */
+					readPairings: () => sendDesktop({ op: "pairings.list" }),
+					/*
+					 * The TRUSTED CONTROL: a native message box attached to the main
+					 * window (window-modal - a sheet on macOS), which no page script,
+					 * CDP session or dev driver can click. Button 0 is the action and
+					 * the ONLY answer that approves. Cancel is the default AND the
+					 * cancel button, so a held or repeated Return from the code field
+					 * and Escape both dismiss rather than approve. `signal` closes it
+					 * at the card's expiry (Electron resolves that as the cancel id).
+					 */
+					showSheet: async (sheet, signal) => {
+						if (owner === null || owner.isDestroyed()) return false;
+						const { response } = await dialog.showMessageBox(owner, {
+							type: "question",
+							buttons: [sheet.actionLabel, sheet.cancelLabel],
+							defaultId: 1,
+							cancelId: 1,
+							noLink: true,
+							message: sheet.message,
+							detail: sheet.detail,
+							signal,
+						});
+						return response === 0 && !signal.aborted;
+					},
 					confirmations: meshPairingConfirmations,
 					configDir: () => quickSendConfigDir(),
 					forward: sendDesktop,

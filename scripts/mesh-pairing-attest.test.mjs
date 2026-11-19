@@ -23,6 +23,15 @@ import { build } from "esbuild";
  *    token from another frame, document generation or window, an expired token,
  *    and a sender document that changed between consume and dial are all refused
  *    with NO dial and NO forward; a refused attempt burns the token.
+ *  - THE NATIVE SHEET (security review round 2, US-R2-1): page activation alone
+ *    mints nothing; Cancel/dismissal/a failing sheet send nothing; every label
+ *    comes from main's own read (the contract refuses renderer labels); a confirm
+ *    main's read cannot back raises no sheet; never two sheets; expiry, a nonce,
+ *    document, wording or focus change while the sheet is open mints nothing;
+ *    an answer whose code or shares differ from the approved one is refused and
+ *    burns the token; the approved answer succeeds exactly once; the card is
+ *    re-read right before the dial. The sheet is a typed double: main's
+ *    `dialog.showMessageBox` itself is native and is exercised on the Mac lane.
  *  - STATIC ELIGIBILITY (`pairings.eligibility`, design D1 / UX U1) reports the
  *    launch half of the gate only, so the card can disable itself up front.
  *  - ATTEST-THEN-FORWARD with ONE object: the forwarded body is byte-for-byte the
@@ -106,16 +115,7 @@ after(() => rmSync(scratch, { recursive: true, force: true }));
  * carrying the token main minted. Every answer test below goes through it.
  */
 async function confirmed(request, h) {
-	const minted = await confirmMeshPairing(
-		{
-			op: "pairings.confirm",
-			side: request.side,
-			inviteId: request.inviteId,
-			nonce: request.nonce,
-			decision: request.decision,
-		},
-		h,
-	);
+	const minted = await confirmMeshPairing(confirmOf(request), h);
 	assert.equal(minted.status, 200, JSON.stringify(minted.body));
 	return answerMeshPairing(
 		{ ...request, confirmation: minted.body.result.confirmation },
@@ -142,14 +142,69 @@ const person = () => ({
 const NOW_MS = 1_763_500_000_000;
 const NOW_S = NOW_MS / 1000;
 
-/** The `pairings.confirm` request the card sends before `answer`. */
+/**
+ * The `pairings.confirm` request the card sends before `answer`: the SAME exact
+ * answer (security review round 2, US-R2-1) - act, code and shares.
+ */
 const confirmOf = (answer) => ({
 	op: "pairings.confirm",
 	side: answer.side,
 	inviteId: answer.inviteId,
 	nonce: answer.nonce,
 	decision: answer.decision,
+	code: answer.code,
+	...(answer.shares !== undefined ? { shares: answer.shares } : {}),
 });
+
+/** Core's open inviter card for `inviterAdmit()`, as `GET /mesh/pairings` lists it. */
+const inviterRow = (over = {}) => ({
+	id: "inviter:inv_abc123",
+	side: "inviter",
+	stage: "awaiting_confirmation",
+	invite_id: "inv_abc123",
+	network_id: "net_home",
+	network_name: "Home mesh",
+	peer_device_id: "dev_studio",
+	peer_name: "Studio Mac",
+	role: "drive",
+	code: "481926",
+	fingerprint: "SHA256:ab12cd",
+	offers: {
+		state: "listed",
+		items: [
+			{ key: "openai", label: "OpenAI key", kind: "secret", share: true },
+			{ key: "anthropic", label: "Anthropic key", kind: "secret", share: true },
+			{ key: "github", label: "GitHub token", kind: "secret", share: false },
+		],
+	},
+	expires_at: NOW_S + 600,
+	attempts_left: 3,
+	nonce: "n0nce.1",
+	can_answer_here: true,
+	answer_unavailable: null,
+	...over,
+});
+
+/** Core's open joiner card for the joiner requests below. */
+const joinerRow = (over = {}) => ({
+	...inviterRow(),
+	id: "joiner:inv_j",
+	side: "joiner",
+	stage: "awaiting_confirmation",
+	invite_id: "inv_j",
+	nonce: "n2",
+	role: "",
+	...over,
+});
+
+/** The list envelope main's own `pairings.list` read answers with. */
+const listed = (...pairings) => ({
+	status: 200,
+	body: { result: { pairings } },
+});
+
+/** Bidi isolates (`messages.ts` isolateArguments) stripped, for text asserts. */
+const plain = (text) => text.replace(/[\u2066-\u2069]/g, "");
 
 const inviterAdmit = (extra = {}) => ({
 	op: "pairings.answer",
@@ -174,7 +229,13 @@ const mainDocument = (over = {}) => ({
 
 /** A host double recording every dial and forward. */
 function host(overrides = {}) {
-	const calls = { attest: [], forward: [], activation: 0 };
+	const calls = {
+		attest: [],
+		forward: [],
+		activation: 0,
+		sheets: [],
+		reads: 0,
+	};
 	const clock = { ms: NOW_MS };
 	return {
 		calls,
@@ -185,6 +246,16 @@ function host(overrides = {}) {
 			confirmations: new MeshPairingConfirmations({ nowMs: () => clock.ms }),
 			userActivation: async () => {
 				calls.activation += 1;
+				return true;
+			},
+			// Main's own read: both cards open, unchanged, unless a test says otherwise.
+			readPairings: async () => {
+				calls.reads += 1;
+				return listed(inviterRow(), joinerRow());
+			},
+			// The person presses the sheet's action button unless a test says otherwise.
+			showSheet: async (sheet, signal) => {
+				calls.sheets.push({ sheet, signal });
 				return true;
 			},
 			configDir: () => "/cfg",
@@ -594,8 +665,9 @@ test("sender document and focus are re-read immediately before the dial", async 
 	const flip = host({
 		document: () => {
 			reads += 1;
-			// confirm reads twice, answer's binding once; the 4th is pre-dial.
-			return mainDocument(reads >= 4 ? { generation: 1 } : {});
+			// confirm reads three times (before/after activation, after the
+			// sheet), answer's binding once; the 5th is pre-dial.
+			return mainDocument(reads >= 5 ? { generation: 1 } : {});
 		},
 	});
 	const token = await mint(inviterAdmit(), flip.host);
@@ -610,8 +682,8 @@ test("sender document and focus are re-read immediately before the dial", async 
 		facts: () => {
 			factReads += 1;
 			const facts = person();
-			// confirm: 2 reads; answer: gate then pre-dial.
-			return factReads >= 4
+			// confirm: 3 reads (gate, late, after the sheet); answer: gate then pre-dial.
+			return factReads >= 5
 				? { ...facts, window: { ...facts.window, focused: false } }
 				: facts;
 		},
@@ -635,6 +707,376 @@ test("the activation read leaves no timer behind (code review F3)", async () => 
 	const { host: h } = host();
 	await mint(inviterAdmit(), h);
 	assert.equal(timers(), before);
+});
+
+/* ------------------------- the native sheet (security review round 2, US-R2-1) */
+
+test("page activation alone mints nothing: without the sheet's own button there is no token", async () => {
+	// The page reports activation (any click or key press on it would), but the
+	// person never pressed the native action button: the sheet was dismissed.
+	const { host: h, calls } = host({
+		showSheet: async (sheet) => {
+			calls.sheets.push({ sheet });
+			return false;
+		},
+	});
+	const response = await confirmMeshPairing(confirmOf(inviterAdmit()), h);
+	assert.equal(calls.activation, 1, "activation was there - and is not enough");
+	assert.equal(calls.sheets.length, 1);
+	assert.equal(response.status, 200);
+	assert.deepEqual(response.body.result, {
+		confirmation: null,
+		cancelled: true,
+	});
+	assert.equal(h.confirmations.size, 0);
+	assertRefused(
+		await answerMeshPairing(inviterAdmit(), h),
+		calls,
+		"no_confirmation",
+	);
+});
+
+test("cancel sends nothing: no token, no dial, no forward, and the sheet is released", async () => {
+	const { host: h, calls } = host({ showSheet: async () => false });
+	const response = await confirmMeshPairing(confirmOf(inviterAdmit()), h);
+	assert.equal(response.body.result.cancelled, true);
+	assert.equal(h.confirmations.size, 0);
+	assert.equal(h.confirmations.sheetOpen, false);
+	assert.deepEqual([calls.attest.length, calls.forward.length], [0, 0]);
+	// A sheet that throws (window gone mid-sheet) is a cancel too, never a yes.
+	const thrown = host({
+		showSheet: async () => {
+			throw new Error("window destroyed");
+		},
+	});
+	const failed = await confirmMeshPairing(
+		confirmOf(inviterAdmit()),
+		thrown.host,
+	);
+	assert.equal(failed.body.result.cancelled, true);
+	assert.equal(thrown.host.confirmations.size, 0);
+});
+
+test("a changed code or share list after the sheet is refused, and burns the token", async () => {
+	const changed = [
+		["another code", { code: "111111" }],
+		["one share dropped", { shares: ["openai"] }],
+		["a share added", { shares: ["openai", "anthropic", "github"] }],
+		["no share list", { shares: undefined }],
+		["a decline instead", { decision: "decline", code: "", shares: [] }],
+	];
+	for (const [name, patch] of changed) {
+		const { host: h, calls } = host();
+		const token = await mint(inviterAdmit(), h);
+		assertRefused(
+			await answerMeshPairing(
+				inviterAdmit({ ...patch, confirmation: token }),
+				h,
+			),
+			calls,
+			"confirmation_mismatch",
+		);
+		// Burnt: the approved answer with the same token now finds nothing.
+		const retry = await answerMeshPairing(
+			inviterAdmit({ confirmation: token }),
+			h,
+		);
+		assert.equal(retry.body.detail.reason, "no_confirmation", name);
+		assert.equal(calls.forward.length, 0, name);
+	}
+});
+
+test("the approved answer succeeds exactly once, forwarding the frozen answer", async () => {
+	const { host: h, calls } = host();
+	const token = await mint(inviterAdmit(), h);
+	// The same SET of shares in another order is the same canonical answer.
+	const first = await answerMeshPairing(
+		inviterAdmit({ shares: ["anthropic", "openai"], confirmation: token }),
+		h,
+	);
+	assert.equal(first.status, 200);
+	assert.equal(calls.sheets.length, 1);
+	assert.equal(calls.forward.length, 1);
+	assert.deepEqual(
+		{
+			side: calls.forward[0].side,
+			inviteId: calls.forward[0].inviteId,
+			nonce: calls.forward[0].nonce,
+			decision: calls.forward[0].decision,
+			code: calls.forward[0].code,
+			shares: calls.forward[0].shares,
+		},
+		{
+			side: "inviter",
+			inviteId: "inv_abc123",
+			nonce: "n0nce.1",
+			decision: "admit",
+			code: "481926",
+			shares: ["anthropic", "openai"],
+		},
+	);
+	const again = await answerMeshPairing(
+		inviterAdmit({ confirmation: token }),
+		h,
+	);
+	assertRefused(again, { attest: [], forward: [] }, "no_confirmation");
+	assert.equal(calls.forward.length, 1);
+	assert.equal(calls.attest.length, 1);
+});
+
+test("every sheet label comes from main's own read, never from the renderer", async () => {
+	const { host: h, calls } = host();
+	await mint(inviterAdmit(), h);
+	const [{ sheet }] = calls.sheets;
+	assert.equal(plain(sheet.message), "Admit Studio Mac to Home mesh?");
+	assert.deepEqual(plain(sheet.detail).split("\n"), [
+		"Device: Studio Mac (SHA256:ab12cd)",
+		"Role: drive",
+		"Code: 481 926",
+		"This device will share with Studio Mac: Anthropic key, OpenAI key",
+	]);
+	assert.equal(sheet.actionLabel, "Admit");
+	assert.equal(sheet.cancelLabel, "Cancel");
+	// The renderer CANNOT send a label: the contract is strict.
+	for (const extra of [
+		{ peerName: "Trusted Laptop" },
+		{ networkName: "Work" },
+		{ labels: { openai: "nothing" } },
+	])
+		assert.equal(
+			desktopRequestSchema.safeParse({ ...confirmOf(inviterAdmit()), ...extra })
+				.success,
+			false,
+		);
+	// The joiner names what the PEER shares with it; a decline shares nothing.
+	const joiner = host();
+	await mint(
+		{
+			op: "pairings.answer",
+			side: "joiner",
+			inviteId: "inv_j",
+			nonce: "n2",
+			decision: "admit",
+			code: "481926",
+		},
+		joiner.host,
+	);
+	const joinerSheet = joiner.calls.sheets[0].sheet;
+	assert.equal(plain(joinerSheet.message), "Join Home mesh from Studio Mac?");
+	assert.equal(joinerSheet.actionLabel, "Join");
+	assert.ok(
+		plain(joinerSheet.detail).includes(
+			"Studio Mac will share with this device: OpenAI key, Anthropic key",
+		),
+	);
+	assert.ok(!plain(joinerSheet.detail).includes("Role:"));
+	const decline = host();
+	await mint(
+		inviterAdmit({ decision: "decline", code: "", shares: [] }),
+		decline.host,
+	);
+	const declineSheet = decline.calls.sheets[0].sheet;
+	assert.equal(declineSheet.actionLabel, "Decline");
+	assert.ok(plain(declineSheet.detail).endsWith("Nothing will be shared."));
+	assert.ok(!plain(declineSheet.detail).includes("Code:"));
+});
+
+test("a confirm main's read cannot back shows no sheet at all", async () => {
+	const cases = [
+		[
+			"a share core does not offer",
+			inviterAdmit({ shares: ["openai", "aws"] }),
+			listed(inviterRow()),
+			"pairing_changed",
+		],
+		[
+			"a share core offers as not shared",
+			inviterAdmit({ shares: ["github"] }),
+			listed(inviterRow()),
+			"pairing_changed",
+		],
+		[
+			"another stage's nonce",
+			inviterAdmit(),
+			listed(inviterRow({ nonce: "n0nce.2" })),
+			"pairing_changed",
+		],
+		[
+			"a card core says is not answerable",
+			inviterAdmit(),
+			listed(inviterRow({ can_answer_here: false })),
+			"pairing_changed",
+		],
+		["no such card", inviterAdmit(), listed(joinerRow()), "pairing_closed"],
+		[
+			"an expired card",
+			inviterAdmit(),
+			listed(inviterRow({ expires_at: NOW_S - 1 })),
+			"expired",
+		],
+		[
+			"a failed read",
+			inviterAdmit(),
+			{ status: 503, body: { detail: "down" } },
+			"pairing_read_failed",
+		],
+	];
+	for (const [name, request, read, reason] of cases) {
+		const { host: h, calls } = host({ readPairings: async () => read });
+		const response = await confirmMeshPairing(confirmOf(request), h);
+		assert.equal(response.body.detail?.reason, reason, name);
+		assert.equal(calls.sheets.length, 0, `${name}: no sheet`);
+		assert.equal(h.confirmations.size, 0, name);
+		assert.equal(h.confirmations.sheetOpen, false, name);
+	}
+});
+
+test("never two sheets: a confirm while one is open is refused and raises none", async () => {
+	let release;
+	const { host: h, calls } = host({
+		showSheet: (sheet) => {
+			calls.sheets.push({ sheet });
+			return new Promise((resolve) => {
+				release = resolve;
+			});
+		},
+	});
+	const first = confirmMeshPairing(confirmOf(inviterAdmit()), h);
+	// Let the first reach its sheet.
+	while (calls.sheets.length === 0) await new Promise((r) => setImmediate(r));
+	const second = await confirmMeshPairing(confirmOf(inviterAdmit()), h);
+	assert.equal(second.body.detail.reason, "sheet_open");
+	assert.equal(calls.sheets.length, 1);
+	release(true);
+	assert.equal((await first).status, 200);
+	assert.equal(h.confirmations.sheetOpen, false);
+	assert.equal(h.confirmations.size, 1);
+});
+
+test("expiry while the sheet is open: the sheet closes itself and nothing is minted", async () => {
+	// The card has 50 ms left; the person never answers - the expiry aborts it.
+	const { host: h, calls } = host({
+		readPairings: async () => listed(inviterRow({ expires_at: NOW_S + 0.05 })),
+		showSheet: (sheet, signal) => {
+			calls.sheets.push({ sheet, signal });
+			return new Promise((resolve) => {
+				signal.addEventListener("abort", () => resolve(false));
+			});
+		},
+	});
+	const response = await confirmMeshPairing(confirmOf(inviterAdmit()), h);
+	assert.equal(response.body.detail.reason, "expired");
+	assert.equal(calls.sheets[0].signal.aborted, true);
+	assert.equal(h.confirmations.size, 0);
+	// Approved, but the clock passed the card's expiry while the sheet was up.
+	const clock = { ms: NOW_MS };
+	const late = host({
+		nowMs: () => clock.ms,
+		showSheet: async () => {
+			clock.ms += 601_000;
+			return true;
+		},
+	});
+	const lateResponse = await confirmMeshPairing(
+		confirmOf(inviterAdmit()),
+		late.host,
+	);
+	assert.equal(lateResponse.body.detail.reason, "expired");
+	assert.equal(late.host.confirmations.size, 0);
+});
+
+test("a nonce, document or wording change while the sheet is open invalidates the approval", async () => {
+	const changes = [
+		["a new stage nonce", { nonce: "n0nce.2" }, "pairing_changed"],
+		["the card closed", null, "pairing_closed"],
+		["the peer renamed", { peer_name: "Someone Else" }, "pairing_changed"],
+		[
+			"a share label changed",
+			{
+				offers: {
+					state: "listed",
+					items: [
+						{ key: "openai", label: "Everything", share: true },
+						{ key: "anthropic", label: "Anthropic key", share: true },
+					],
+				},
+			},
+			"pairing_changed",
+		],
+		["the expiry moved", { expires_at: NOW_S + 900 }, "pairing_changed"],
+	];
+	for (const [name, patch, reason] of changes) {
+		let reads = 0;
+		const { host: h, calls } = host({
+			readPairings: async () => {
+				reads += 1;
+				if (reads === 1) return listed(inviterRow());
+				return patch === null ? listed() : listed(inviterRow(patch));
+			},
+		});
+		const response = await confirmMeshPairing(confirmOf(inviterAdmit()), h);
+		assert.equal(response.body.detail?.reason, reason, name);
+		assert.equal(calls.sheets.length, 1, name);
+		assert.equal(h.confirmations.size, 0, name);
+	}
+	// The page navigated (document generation bumped) while the sheet was up.
+	let generation = 0;
+	const moved = host({
+		document: () => mainDocument({ generation }),
+		showSheet: async () => {
+			generation = 1;
+			return true;
+		},
+	});
+	const response = await confirmMeshPairing(
+		confirmOf(inviterAdmit()),
+		moved.host,
+	);
+	assert.equal(response.body.detail.reason, "confirmation_mismatch");
+	assert.equal(moved.host.confirmations.size, 0);
+	// Focus did not come back to the window after the sheet: refused, no token.
+	let sheetDone = false;
+	const blurred = host({
+		facts: () => {
+			const facts = person();
+			return sheetDone
+				? { ...facts, window: { ...facts.window, focused: false } }
+				: facts;
+		},
+		showSheet: async () => {
+			sheetDone = true;
+			return true;
+		},
+	});
+	const blurredResponse = await confirmMeshPairing(
+		confirmOf(inviterAdmit()),
+		blurred.host,
+	);
+	assert.equal(blurredResponse.body.detail.reason, "window_not_focused");
+	assert.equal(blurred.host.confirmations.size, 0);
+});
+
+test("the card is re-read right before the dial: a card that closed after the sheet is not dialled", async () => {
+	let reads = 0;
+	const { host: h, calls } = host({
+		readPairings: async () => {
+			reads += 1;
+			// confirm reads twice (before and after the sheet); the 3rd is pre-dial.
+			return reads >= 3 ? listed() : listed(inviterRow());
+		},
+	});
+	const token = await mint(inviterAdmit(), h);
+	assertRefused(
+		await answerMeshPairing(inviterAdmit({ confirmation: token }), h),
+		calls,
+		"pairing_closed",
+	);
+	// The answer's deadline is capped at the expiry main read, not the renderer's hint.
+	const soon = host({
+		readPairings: async () => listed(inviterRow({ expires_at: NOW_S + 7 })),
+	});
+	await confirmed(inviterAdmit({ deadline: NOW_S + 9_999 }), soon.host);
+	assert.equal(soon.calls.forward[0].deadline, NOW_S + 7);
 });
 
 test("the activation is read in a world of its own, not the page's or the preload's", () => {

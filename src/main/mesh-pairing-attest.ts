@@ -36,29 +36,43 @@
  *     `webContents.debugger` session attached;
  *   - window mode `normal` (a `headless` or `inactive` launch is a rig by
  *     definition: it exists so an agent can drive the app without a person);
- *   - a ONE-SHOT CONFIRMATION main minted for THIS card's exact action (security
- *     review round 1, US-R1-1). The card's button first asks main for it
- *     (`pairings.confirm`); main mints it only while the sending document holds
- *     TRANSIENT USER ACTIVATION (`navigator.userActivation.isActive`, which a
- *     click or key press grants for a few seconds and no page script can grant),
- *     read in an ISOLATED WORLD so a page script that redefined the getter in the
- *     main world cannot answer for it (code review F2). The token is bound to the
- *     webContents, the frame (process id + frame token), a document generation
- *     main bumps on every cross-document navigation or renderer loss, and the
- *     card's side + invite_id + nonce + act; `pairings.answer` consumes it ONCE
- *     (a mismatch burns it too) and main re-reads sender, document, visibility and
- *     focus immediately before it dials. So an activation earned on one card, one
- *     act or one document cannot answer another, and a replay finds nothing.
- *     Input can only be synthesised into the renderer by CDP or the dev driver,
- *     both refused above; OS-level synthetic input (accessibility automation) is
- *     the residual this gate shares with #4132 and does not claim to close.
- * Every refusal is a 403 the card renders as "approve this on the device itself";
- * nothing is dialled, nothing is POSTed, no attempt is spent.
+ *   - a ONE-SHOT CONFIRMATION main minted for ONE EXACT ANSWER after the person
+ *     approved it on a TRUSTED CONTROL (security review rounds 1-2, US-R1-1 and
+ *     US-R2-1). Page activation is not that control: any input on the page - a
+ *     click on unrelated chrome, a key press in another field - grants it, and
+ *     it binds nothing about the answer. So the card's button sends main the
+ *     exact answer (`pairings.confirm`: act, code, sorted explicit shares);
+ *     main FREEZES its canonical form, reads the pairing cards from core ITSELF
+ *     and shows a WINDOW-MODAL NATIVE SHEET (`dialog.showMessageBox(mainWindow,
+ *     ...)`) whose every word - device, action, role, code, the exact
+ *     credentials shared or "nothing" - comes from that read, never from the
+ *     renderer. Only the sheet's own Admit/Join/Decline button mints a token;
+ *     Cancel, Escape and dismissal mint nothing, and the sheet closes itself at
+ *     the card's expiry. One sheet at a time: a second request while one is open
+ *     is refused, never queued. Before minting, main revalidates the expiry, the
+ *     gate (focus included), the sender document and a FRESH read whose card,
+ *     nonce and sheet text are unchanged. The token is bound to the webContents,
+ *     the frame (process id + frame token), a document generation main bumps on
+ *     every cross-document navigation or renderer loss, and the frozen answer;
+ *     `pairings.answer` must present the IDENTICAL answer, and consumes the
+ *     token ONCE either way (a changed code or share list burns it). The forward
+ *     is built from the frozen answer, and main re-reads the card, sender,
+ *     document, visibility and focus immediately before it dials. The
+ *     isolated-world activation read (`navigator.userActivation.isActive`, code
+ *     review F2) stays as a PRE-FILTER only, so a page cannot raise sheets the
+ *     person never asked for. A native sheet cannot be clicked by CDP or the dev
+ *     driver (both refused above anyway); OS-level synthetic input
+ *     (accessibility automation) is the residual this gate shares with #4132
+ *     and does not claim to close.
+ * Every refusal is a 403 the card renders as keyed copy; nothing is dialled,
+ * nothing is POSTed, no attempt is spent.
  *
- * ORDER. confirm (gate → isolated activation read → mint) → answer (consume →
- * gate → re-read sender document → attest the EXACT body: side, invite_id, nonce,
- * act, code, sorted shares, deadline → forward that same body). The renderer never
- * sees the socket and cannot reach it: `MESH_PAIRING_MAIN_OPS` are the desktop ops
+ * ORDER. confirm (gate → activation pre-filter → freeze the answer → claim the
+ * sheet → main's own read → native sheet → revalidate → mint) → answer (consume
+ * for the identical answer → gate → re-read card and sender document → attest
+ * the FROZEN body: side, invite_id, nonce, act, code, sorted shares, deadline →
+ * forward that same body). The renderer never sees the socket and cannot reach
+ * it: `MESH_PAIRING_MAIN_OPS` are the desktop ops
  * `desktop-ipc.ts` never forwards on its own.
  *
  * NO `electron` IMPORT. Every Electron fact arrives through `PairingAnswerHost`,
@@ -69,6 +83,8 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { type Socket, createConnection } from "node:net";
 import { join } from "node:path";
+import { formatList } from "../i18n/format";
+import { t } from "../i18n/index";
 import type {
 	DesktopRequest,
 	DesktopResponse,
@@ -110,13 +126,14 @@ export const MESH_PAIRING_DIAL_TIMEOUT_MS = 10_000;
 export const MESH_PAIRING_ACTIVATION_TIMEOUT_MS = 1_000;
 
 /**
- * How long a minted confirmation stays consumable, in ms.
+ * How long a minted confirmation stays consumable, in ms, counted from the
+ * native sheet's approval (not from the page click).
  *
- * It may not outlive the activation that minted it: Chromium's transient user
- * activation lasts 5 s (`UserActivationState`, kActivationLifespan), so a token
- * older than that would vouch for a click the browser itself no longer counts.
- * The card asks for it and answers in back-to-back IPC hops, so honest use spends
- * milliseconds of this.
+ * The card sends `pairings.answer` in the IPC hop right after `pairings.confirm`
+ * resolves, so honest use spends milliseconds of this; 5 s is Chromium's own
+ * transient-activation lifespan (`UserActivationState`, kActivationLifespan),
+ * kept as the bound so a token never outlives the shortest proof of presence
+ * the app already relies on.
  */
 export const MESH_PAIRING_CONFIRMATION_TTL_MS = 5_000;
 
@@ -146,8 +163,16 @@ export type PairingProvenanceRefusal =
 	| "no_user_action"
 	/** The answer carried no live token: never minted, expired, or already spent. */
 	| "no_confirmation"
-	/** A token minted for another card, act, frame or document. Burnt by the attempt. */
-	| "confirmation_mismatch";
+	/** A token minted for another answer, frame or document. Burnt by the attempt. */
+	| "confirmation_mismatch"
+	/** A native confirmation sheet is already open; this request raised none. */
+	| "sheet_open"
+	/** Main's own read of the cards failed: nothing to name on a sheet. */
+	| "pairing_read_failed"
+	/** Main's read has no such card: it was answered, withdrawn or ended. */
+	| "pairing_closed"
+	/** The card moved on (new nonce/stage, no longer answerable, shares not offered, words changed). */
+	| "pairing_changed";
 
 /** The refusals that depend only on how the app was launched (see `pairingStaticRefusal`). */
 export type PairingStaticRefusal = Extract<
@@ -371,13 +396,62 @@ export type PairingDocument = {
 	generation: number;
 };
 
-/** What a confirmation vouches for: one act, on one card, from one document. */
-export type PairingConfirmationBinding = {
-	document: PairingDocument;
+/**
+ * The ONE answer a confirmation vouches for, frozen by main before anything is
+ * shown (security review round 2, US-R2-1). Canonical: `act` in core's words, a
+ * decline's code always "" and its shares always [] (nothing is shared on a
+ * decline), a joiner's shares always [] (it has no list; main forwards none),
+ * an inviter's shares sorted (core binds the sorted list). `pairings.confirm`
+ * and `pairings.answer` both pass through `canonicalPairingAnswer`, so "the same
+ * answer" means these six values are equal - nothing the renderer phrases
+ * differently can make two different answers compare equal, or the reverse.
+ */
+export type PairingCanonicalAnswer = Readonly<{
 	side: "inviter" | "joiner";
 	inviteId: string;
 	nonce: string;
 	act: "respond" | "decline";
+	code: string;
+	shares: readonly string[];
+}>;
+
+export function canonicalPairingAnswer(
+	request: Pick<
+		PairingAnswerRequest,
+		"side" | "inviteId" | "nonce" | "decision" | "code" | "shares"
+	>,
+): PairingCanonicalAnswer {
+	const admit = request.decision === "admit";
+	return Object.freeze({
+		side: request.side,
+		inviteId: request.inviteId,
+		nonce: request.nonce,
+		act: admit ? "respond" : "decline",
+		code: admit ? request.code : "",
+		shares: Object.freeze(
+			admit && request.side === "inviter"
+				? [...(request.shares ?? [])].sort()
+				: [],
+		),
+	});
+}
+
+function sameAnswer(a: PairingCanonicalAnswer, b: PairingCanonicalAnswer) {
+	return (
+		a.side === b.side &&
+		a.inviteId === b.inviteId &&
+		a.nonce === b.nonce &&
+		a.act === b.act &&
+		a.code === b.code &&
+		a.shares.length === b.shares.length &&
+		a.shares.every((key, index) => key === b.shares[index])
+	);
+}
+
+/** What a confirmation vouches for: one exact answer, from one document. */
+export type PairingConfirmationBinding = {
+	document: PairingDocument;
+	answer: PairingCanonicalAnswer;
 };
 
 function sameDocument(a: PairingDocument, b: PairingDocument): boolean {
@@ -393,27 +467,33 @@ function sameBinding(
 	a: PairingConfirmationBinding,
 	b: PairingConfirmationBinding,
 ): boolean {
-	return (
-		sameDocument(a.document, b.document) &&
-		a.side === b.side &&
-		a.inviteId === b.inviteId &&
-		a.nonce === b.nonce &&
-		a.act === b.act
-	);
+	return sameDocument(a.document, b.document) && sameAnswer(a.answer, b.answer);
 }
 
 /** A token's wire shape: 32 random bytes, lowercase hex (the contract's regex). */
 const CONFIRMATION_TOKEN = /^[0-9a-f]{64}$/;
 
+/** What a consumed token hands the answer: the frozen answer and its ceremony's expiry. */
+export type PairingConfirmed = {
+	answer: PairingCanonicalAnswer;
+	/** The card's `expires_at` as MAIN read it when the person approved (seconds). */
+	expiresAtS: number;
+};
+
 /**
- * Main's outstanding one-shot confirmations (security review round 1, US-R1-1).
+ * Main's outstanding one-shot confirmations (security review rounds 1-2,
+ * US-R1-1 / US-R2-1), and the one native sheet that may be open.
  *
- * AT MOST ONE PER webContents: minting replaces the previous token, so the store
- * is bounded by the number of windows and an abandoned mint cannot pile up. A
- * consume ALWAYS removes that webContents' token - a wrong card, act or document
- * burns it, so a probe cannot learn which binding a live token has and retry.
- * Tokens are 32 random bytes compared in constant time; they never leave the
- * renderer that asked and are never logged.
+ * AT MOST ONE TOKEN PER webContents: minting replaces the previous token, so the
+ * store is bounded by the number of windows and an abandoned mint cannot pile
+ * up. A consume ALWAYS removes that webContents' token - a different answer or
+ * document burns it, so a probe cannot learn which answer a live token has and
+ * retry. Tokens are 32 random bytes compared in constant time; they never leave
+ * the renderer that asked and are never logged.
+ *
+ * AT MOST ONE SHEET IN THE APP: a second confirm while a sheet is open is
+ * refused, never queued (a queue would let a page line up sheets behind the one
+ * the person is reading, and a reflexive second click would approve the next).
  */
 export class MeshPairingConfirmations {
 	readonly #tokens = new Map<
@@ -422,10 +502,12 @@ export class MeshPairingConfirmations {
 			token: Buffer;
 			binding: PairingConfirmationBinding;
 			expiresAtMs: number;
+			ceremonyExpiresAtS: number;
 		}
 	>();
 	readonly #nowMs: () => number;
 	readonly #ttlMs: number;
+	#sheetOpen = false;
 
 	constructor({
 		nowMs = Date.now,
@@ -435,33 +517,62 @@ export class MeshPairingConfirmations {
 		this.#ttlMs = ttlMs;
 	}
 
-	mint(binding: PairingConfirmationBinding): string {
+	mint(
+		binding: PairingConfirmationBinding,
+		ceremonyExpiresAtS: number,
+	): string {
 		const token = randomBytes(32);
 		this.#tokens.set(binding.document.webContentsId, {
 			token,
 			binding,
 			expiresAtMs: this.#nowMs() + this.#ttlMs,
+			ceremonyExpiresAtS,
 		});
 		return token.toString("hex");
 	}
 
-	/** `null` when `token` is the live one for exactly `binding`; consumed either way. */
+	/** The frozen answer when `token` is the live one for exactly `binding`; consumed either way. */
 	consume(
 		token: string | undefined,
 		binding: PairingConfirmationBinding,
-	): "no_confirmation" | "confirmation_mismatch" | null {
+	):
+		| { refusal: "no_confirmation" | "confirmation_mismatch" }
+		| { confirmed: PairingConfirmed } {
 		const entry = this.#tokens.get(binding.document.webContentsId);
 		this.#tokens.delete(binding.document.webContentsId);
 		if (!entry || typeof token !== "string" || !CONFIRMATION_TOKEN.test(token))
-			return "no_confirmation";
+			return { refusal: "no_confirmation" };
 		const offered = Buffer.from(token, "hex");
 		if (
 			offered.length !== entry.token.length ||
 			!timingSafeEqual(offered, entry.token) ||
 			this.#nowMs() >= entry.expiresAtMs
 		)
-			return "no_confirmation";
-		return sameBinding(entry.binding, binding) ? null : "confirmation_mismatch";
+			return { refusal: "no_confirmation" };
+		return sameBinding(entry.binding, binding)
+			? {
+					confirmed: {
+						answer: entry.binding.answer,
+						expiresAtS: entry.ceremonyExpiresAtS,
+					},
+				}
+			: { refusal: "confirmation_mismatch" };
+	}
+
+	/** Claim the one sheet; false when one is already open. */
+	openSheet(): boolean {
+		if (this.#sheetOpen) return false;
+		this.#sheetOpen = true;
+		return true;
+	}
+
+	closeSheet(): void {
+		this.#sheetOpen = false;
+	}
+
+	/** Whether a sheet is open now; for tests. */
+	get sheetOpen(): boolean {
+		return this.#sheetOpen;
 	}
 
 	/** Drop a window's token (its renderer navigated, crashed or closed). */
@@ -475,6 +586,18 @@ export class MeshPairingConfirmations {
 	}
 }
 
+/**
+ * The words of one native confirmation sheet. Built by MAIN from its own read of
+ * the pairing (`pairingSheet`), never from anything the renderer sent.
+ */
+export type PairingSheet = {
+	message: string;
+	detail: string;
+	/** The one button that approves (index 0); the other is Cancel. */
+	actionLabel: string;
+	cancelLabel: string;
+};
+
 /** What main supplies per pairing op; every field is main's own reading. */
 export type PairingAnswerHost = {
 	/** The gate's facts, read at the moment of the call. */
@@ -486,10 +609,24 @@ export type PairingAnswerHost = {
 	document: () => PairingDocument | null;
 	/**
 	 * Whether the main window's renderer holds transient user activation NOW, read
-	 * in an isolated world (`MESH_PAIRING_PROBE_WORLD_ID`). Main asks the page; it
-	 * never takes the renderer's word in the request.
+	 * in an isolated world (`MESH_PAIRING_PROBE_WORLD_ID`). A PRE-FILTER only since
+	 * US-R2-1: it keeps a page from raising sheets nobody asked for; the native
+	 * sheet is what authorizes.
 	 */
 	userActivation: () => Promise<boolean>;
+	/**
+	 * Core's open pairing cards (`pairings.list` → `GET /v1/desktop/mesh/pairings`),
+	 * read by MAIN through its own forwarder. Anything but a 2xx carrying
+	 * `result.pairings` is a failed read (refused, never guessed). The sheet's
+	 * every label and the answerability check come from it.
+	 */
+	readPairings: () => Promise<DesktopResponse>;
+	/**
+	 * Show `sheet` as a WINDOW-MODAL native message box on the main window and
+	 * resolve true ONLY for its action button. Cancel, Escape, closing it, an
+	 * abort through `signal` (the card's expiry) or any failure is false.
+	 */
+	showSheet: (sheet: PairingSheet, signal: AbortSignal) => Promise<boolean>;
 	confirmations: MeshPairingConfirmations;
 	configDir: () => string;
 	forward: (input: unknown) => Promise<DesktopResponse>;
@@ -556,21 +693,235 @@ export type PairingConfirmRequest = Extract<
 	{ op: "pairings.confirm" }
 >;
 
+/** One open card as MAIN reads it: only the fields the sheet and the checks use. */
+export type MainPairingRow = {
+	side: "inviter" | "joiner";
+	inviteId: string;
+	nonce: string;
+	peerName: string;
+	/** The fingerprint, else the device id, else "" - what tells two "Studio Mac"s apart. */
+	peerId: string;
+	networkName: string;
+	role: string;
+	expiresAtS: number;
+	canAnswerHere: boolean;
+	/** Offered items in core's order, `share` as core says (reduce-only list). */
+	offers: { key: string; label: string; share: boolean }[];
+	offersListed: boolean;
+};
+
+function record(value: unknown): Record<string, unknown> | null {
+	return typeof value === "object" && value !== null && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+}
+
+function str(value: unknown): string {
+	return typeof value === "string" ? value : "";
+}
+
 /**
- * `pairings.confirm`: mint the one-shot token for one card action.
+ * Find the card `answer` is for in main's own read, or say why it cannot be
+ * answered now. Strict on what binds (side, id, nonce, answerability, expiry,
+ * offered keys); display fields fall back the way the card's parser does
+ * (`mesh-pairings.ts` `parsePairingRow`), so the sheet names what the card drew.
+ */
+export function livePairingRow(
+	rows: unknown,
+	answer: PairingCanonicalAnswer,
+	nowS: number,
+):
+	| { row: MainPairingRow }
+	| {
+			refusal:
+				| "pairing_read_failed"
+				| "pairing_closed"
+				| "pairing_changed"
+				| "expired";
+	  } {
+	if (!Array.isArray(rows)) return { refusal: "pairing_read_failed" };
+	const raw = rows
+		.map(record)
+		.find(
+			(item) =>
+				item !== null &&
+				item.side === answer.side &&
+				str(item.invite_id) === answer.inviteId,
+		);
+	if (!raw) return { refusal: "pairing_closed" };
+	const offersRecord = record(raw.offers) ?? {};
+	const items = Array.isArray(offersRecord.items) ? offersRecord.items : [];
+	const state = str(offersRecord.state);
+	const offers = items
+		.map(record)
+		.filter((item): item is Record<string, unknown> => item !== null)
+		.map((item) => ({
+			key: str(item.key),
+			label: str(item.label) || str(item.key),
+			share: item.share !== false,
+		}))
+		.filter((item) => item.key !== "");
+	const expiresAtS = Number(raw.expires_at);
+	const row: MainPairingRow = {
+		side: answer.side,
+		inviteId: answer.inviteId,
+		nonce: str(raw.nonce),
+		peerName: str(raw.peer_name) || str(raw.peer_device_id),
+		peerId: str(raw.fingerprint) || str(raw.peer_device_id),
+		networkName: str(raw.network_name) || str(raw.network_id),
+		role: str(raw.role),
+		expiresAtS: Number.isFinite(expiresAtS) ? expiresAtS : 0,
+		canAnswerHere: raw.can_answer_here === true,
+		offers,
+		// The card's own rule (`pairingOffersView`): a legacy inviter `sent` reads as listed.
+		offersListed:
+			(state === "listed" || (answer.side === "inviter" && state === "sent")) &&
+			offers.length > 0,
+	};
+	if (!(row.expiresAtS > nowS)) return { refusal: "expired" };
+	// A new stage (new nonce) is a new question: the answer was for the old one.
+	if (row.nonce === "" || row.nonce !== answer.nonce || !row.canAnswerHere)
+		return { refusal: "pairing_changed" };
+	// Reduce-only: every share must be an item core offers as shared, by key.
+	const offered = new Set(
+		row.offersListed
+			? row.offers.filter((item) => item.share).map((item) => item.key)
+			: [],
+	);
+	if (answer.shares.some((key) => !offered.has(key)))
+		return { refusal: "pairing_changed" };
+	return { row };
+}
+
+/** Six digits as the card draws them ("481 926"). */
+function groupedCode(code: string): string {
+	return code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code;
+}
+
+/**
+ * The sheet for one exact answer, every label from MAIN's read of the card.
  *
- * Gate first (no page is consulted for a launch that may not attest), then the
- * isolated-world activation read, then the gate and the sender's document AGAIN -
- * the window may have lost focus, or the page navigated, while it answered.
+ * It names the device (with its fingerprint or id, so two devices of the same
+ * name differ), the action, the role, the code being confirmed and the exact
+ * credentials that move: what THIS device shares (the inviter's kept list) or
+ * what the peer shares with it (the joiner's offered list) - "nothing" when
+ * none, and always "nothing" on a decline.
+ */
+export function pairingSheet(
+	answer: PairingCanonicalAnswer,
+	row: MainPairingRow,
+): PairingSheet {
+	const values = { peer: row.peerName, network: row.networkName };
+	const admit = answer.act === "respond";
+	const message =
+		answer.side === "inviter"
+			? admit
+				? t("ui.mesh.pairing.sheet.message.inviter_admit", values)
+				: t("ui.mesh.pairing.sheet.message.inviter_decline", values)
+			: admit
+				? t("ui.mesh.pairing.sheet.message.joiner_admit", values)
+				: t("ui.mesh.pairing.sheet.message.joiner_decline", values);
+	const lines = [
+		row.peerId
+			? t("ui.mesh.pairing.sheet.device", {
+					peer: row.peerName,
+					id: row.peerId,
+				})
+			: t("ui.mesh.pairing.sheet.device_name_only", { peer: row.peerName }),
+	];
+	if (row.role) lines.push(t("ui.mesh.pairing.sheet.role", { role: row.role }));
+	if (admit)
+		lines.push(
+			t("ui.mesh.pairing.sheet.code", { code: groupedCode(answer.code) }),
+		);
+	if (!admit) lines.push(t("ui.mesh.pairing.sheet.shares_decline"));
+	else if (answer.side === "inviter") {
+		const labels = answer.shares.map(
+			(key) => row.offers.find((item) => item.key === key)?.label ?? key,
+		);
+		lines.push(
+			labels.length > 0
+				? t("ui.mesh.pairing.sheet.shares_outgoing", {
+						peer: row.peerName,
+						list: formatList(labels),
+					})
+				: t("ui.mesh.pairing.sheet.shares_outgoing_none", {
+						peer: row.peerName,
+					}),
+		);
+	} else {
+		const labels = row.offersListed
+			? row.offers.filter((item) => item.share).map((item) => item.label)
+			: [];
+		lines.push(
+			labels.length > 0
+				? t("ui.mesh.pairing.sheet.shares_incoming", {
+						peer: row.peerName,
+						list: formatList(labels),
+					})
+				: t("ui.mesh.pairing.sheet.shares_incoming_none", {
+						peer: row.peerName,
+					}),
+		);
+	}
+	return {
+		message,
+		detail: lines.join("\n"),
+		actionLabel: !admit
+			? t("ui.mesh.pairing.sheet.button.decline")
+			: answer.side === "inviter"
+				? t("ui.mesh.pairing.sheet.button.admit")
+				: t("ui.mesh.pairing.sheet.button.join"),
+		cancelLabel: t("ui.mesh.pairing.sheet.button.cancel"),
+	};
+}
+
+async function readLiveRow(
+	host: PairingAnswerHost,
+	answer: PairingCanonicalAnswer,
+	nowS: number,
+): Promise<ReturnType<typeof livePairingRow>> {
+	let response: DesktopResponse;
+	try {
+		response = await host.readPairings();
+	} catch {
+		return { refusal: "pairing_read_failed" };
+	}
+	const result =
+		response.status >= 200 && response.status < 300
+			? record(record(response.body)?.result)
+			: null;
+	return livePairingRow(result?.pairings, answer, nowS);
+}
+
+/**
+ * `pairings.confirm`: ask the person, on a native sheet, about ONE exact answer,
+ * and mint the one-shot token only if they approve it (security review round 2,
+ * US-R2-1).
+ *
+ * 1. Gate, sender document, and the isolated-world activation read - a
+ *    PRE-FILTER, so a page cannot raise sheets on its own; it authorizes nothing.
+ * 2. FREEZE the canonical answer (act, code, sorted shares, side, invite, nonce)
+ *    before anything is read or shown.
+ * 3. Claim the one sheet (a second request while one is open is refused).
+ * 4. Read the cards from core ITSELF; refuse unless this exact card is open,
+ *    answerable, at this nonce, with every share one core offers.
+ * 5. Show the window-modal sheet, built from that read alone; it closes itself
+ *    at the card's expiry. Anything but the action button mints nothing.
+ * 6. After approval, revalidate EVERYTHING - expiry, gate (focus included),
+ *    sender document, and a fresh read whose card and sheet text are unchanged -
+ *    and only then mint, bound to the document and the frozen answer.
  */
 export async function confirmMeshPairing(
 	request: PairingConfirmRequest,
 	host: PairingAnswerHost,
 ): Promise<DesktopResponse> {
+	const nowMs = host.nowMs ?? Date.now;
 	const refused = pairingProvenanceRefusal(host.facts());
 	if (refused) return pairingAttestRefusal(refused);
 	const document = host.document();
 	if (!document) return pairingAttestRefusal("no_window");
+	const answer = canonicalPairingAnswer(request);
 	if (!(await boundedActivation(host)))
 		return pairingAttestRefusal("no_user_action");
 	const late = pairingProvenanceRefusal(host.facts());
@@ -578,70 +929,114 @@ export async function confirmMeshPairing(
 	const after = host.document();
 	if (!after || !sameDocument(document, after))
 		return pairingAttestRefusal("confirmation_mismatch");
-	const confirmation = host.confirmations.mint({
-		document,
-		side: request.side,
-		inviteId: request.inviteId,
-		nonce: request.nonce,
-		act: request.decision === "admit" ? "respond" : "decline",
-	});
-	return { status: 200, body: { result: { confirmation } } };
+	if (!host.confirmations.openSheet())
+		return pairingAttestRefusal("sheet_open");
+	try {
+		const before = await readLiveRow(host, answer, Math.floor(nowMs() / 1000));
+		if ("refusal" in before) return pairingAttestRefusal(before.refusal);
+		const sheet = pairingSheet(answer, before.row);
+		const remainingMs = before.row.expiresAtS * 1000 - nowMs();
+		if (!(remainingMs > 0)) return pairingAttestRefusal("expired");
+		// The card's own clock closes the sheet: an approval after expiry is no answer.
+		const expiry = new AbortController();
+		const timer = setTimeout(() => expiry.abort(), remainingMs);
+		let approved = false;
+		try {
+			approved = (await host.showSheet(sheet, expiry.signal)) === true;
+		} catch {
+			approved = false;
+		} finally {
+			clearTimeout(timer);
+		}
+		// The card's clock closed the sheet (or ran out as it was answered): no answer.
+		if (expiry.signal.aborted) return pairingAttestRefusal("expired");
+		// Cancel, Escape or a dismissed sheet: nothing minted, nothing sent, and not
+		// an error either - the card just becomes answerable again.
+		if (!approved)
+			return {
+				status: 200,
+				body: { result: { confirmation: null, cancelled: true } },
+			};
+		const nowS = Math.floor(nowMs() / 1000);
+		if (!(before.row.expiresAtS > nowS)) return pairingAttestRefusal("expired");
+		const settled = pairingProvenanceRefusal(host.facts());
+		if (settled) return pairingAttestRefusal(settled);
+		const current = host.document();
+		if (!current || !sameDocument(document, current))
+			return pairingAttestRefusal("confirmation_mismatch");
+		const again = await readLiveRow(host, answer, nowS);
+		if ("refusal" in again) return pairingAttestRefusal(again.refusal);
+		// What the person read must still be true: same expiry, same words.
+		const reread = pairingSheet(answer, again.row);
+		if (
+			again.row.expiresAtS !== before.row.expiresAtS ||
+			reread.message !== sheet.message ||
+			reread.detail !== sheet.detail
+		)
+			return pairingAttestRefusal("pairing_changed");
+		const confirmation = host.confirmations.mint(
+			{ document, answer },
+			before.row.expiresAtS,
+		);
+		return { status: 200, body: { result: { confirmation } } };
+	} finally {
+		host.confirmations.closeSheet();
+	}
 }
 
 /**
- * Answer one card: gate, consume the confirmation, re-check, attest, forward.
- * `request` is already schema-valid (`desktop-ipc.ts` parsed it); `deadline` in
- * it is the card's expiry hint only.
+ * Answer one card: consume the confirmation for the IDENTICAL answer, re-check
+ * everything, attest, forward. `request` is already schema-valid
+ * (`desktop-ipc.ts` parsed it); its `deadline` is the card's expiry hint only.
  */
 export async function answerMeshPairing(
 	request: PairingAnswerRequest,
 	host: PairingAnswerHost,
 ): Promise<DesktopResponse> {
 	const document = host.document();
-	const binding = document
-		? {
-				document,
-				side: request.side,
-				inviteId: request.inviteId,
-				nonce: request.nonce,
-				act:
-					request.decision === "admit"
-						? ("respond" as const)
-						: ("decline" as const),
-			}
-		: null;
+	const offered = canonicalPairingAnswer(request);
 	// Consumed FIRST, whatever happens next: a token is good for one try, so a
-	// refusal below never leaves a live one behind for a scripted retry.
-	const spent = binding
-		? host.confirmations.consume(request.confirmation, binding)
-		: "no_window";
+	// refusal below never leaves a live one behind for a scripted retry - and a
+	// changed code or share list burns it rather than being told what to fix.
+	const spent = document
+		? host.confirmations.consume(request.confirmation, {
+				document,
+				answer: offered,
+			})
+		: ({ refusal: "no_window" } as const);
 	const refused = pairingProvenanceRefusal(host.facts());
 	if (refused) return pairingAttestRefusal(refused);
-	if (spent) return pairingAttestRefusal(spent);
+	if ("refusal" in spent) return pairingAttestRefusal(spent.refusal);
+	const { answer, expiresAtS } = spent.confirmed;
 
 	const nowS = Math.floor((host.nowMs ?? Date.now)() / 1000);
-	const ceiling = request.deadline ?? Number.POSITIVE_INFINITY;
+	const ceiling = Math.min(
+		expiresAtS,
+		request.deadline ?? Number.POSITIVE_INFINITY,
+	);
 	const deadline = Math.min(nowS + MESH_PAIRING_DEADLINE_S, ceiling);
 	if (!(deadline > nowS)) return pairingAttestRefusal("expired");
 
-	// ONE object is attested and forwarded, so the two cannot disagree. Shares are
-	// sorted and, for the inviter, always explicit (core requires them on an admit
-	// and accepts `[]` on a decline). The joiner has no list and sends none; the
-	// confirmation token is main's own and never reaches core.
+	// ONE object, built from the FROZEN answer, is attested and forwarded, so the
+	// two cannot disagree and neither can differ from what the sheet showed.
+	// Shares are sorted and, for the inviter, always explicit (core requires them
+	// on an admit and accepts `[]` on a decline). The joiner has no list and sends
+	// none; the confirmation token is main's own and never reaches core.
 	const forwarded: PairingAnswerRequest & { deadline: number } = {
 		op: request.op,
-		side: request.side,
-		inviteId: request.inviteId,
-		nonce: request.nonce,
-		decision: request.decision,
-		code: request.decision === "admit" ? request.code : "",
+		side: answer.side,
+		inviteId: answer.inviteId,
+		nonce: answer.nonce,
+		decision: answer.act === "respond" ? "admit" : "decline",
+		code: answer.code,
 		deadline,
-		...(request.side === "inviter"
-			? { shares: [...(request.shares ?? [])].sort() }
-			: {}),
+		...(answer.side === "inviter" ? { shares: [...answer.shares] } : {}),
 	};
-	// Revalidated IMMEDIATELY before the dial: the same sender document and a
-	// window that is still visible and focused.
+	// Revalidated IMMEDIATELY before the dial: the card is still open at this
+	// nonce with these shares, and the same sender document holds a window that
+	// is still visible and focused.
+	const live = await readLiveRow(host, answer, nowS);
+	if ("refusal" in live) return pairingAttestRefusal(live.refusal);
 	const late = pairingProvenanceRefusal(host.facts());
 	if (late) return pairingAttestRefusal(late);
 	const now = host.document();

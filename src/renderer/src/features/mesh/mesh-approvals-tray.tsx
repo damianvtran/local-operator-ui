@@ -477,6 +477,10 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	const pairingCount = pairings
 		? livePairingRows(pairings.rows, pairings.nowSeconds).length
 		: 0;
+	// The pairing section draws its list (cards or closing lines) above the waiting one.
+	const pairingListed =
+		pairings !== undefined &&
+		(pairings.rows.length > 0 || pairings.outcomes.length > 0);
 	const pairingShown =
 		pairings !== undefined &&
 		(pairings.rows.length > 0 ||
@@ -561,7 +565,17 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 
 			{waiting.length > 0 && (
 				<ul
-					className="flex flex-col divide-y divide-hairline"
+					/*
+					 * A HAIRLINE BETWEEN THE PAIRING SET AND THE APPROVALS (design round
+					 * 2, D7): each list's `divide-y` stops at its own last item, so with
+					 * pairing cards above, the first approval read as one more part of
+					 * the last pairing card. Same rule and `pt-3` the settled panel uses
+					 * after a prompt (below); no pairing rows, no rule.
+					 */
+					className={cn(
+						"flex flex-col divide-y divide-hairline",
+						pairingListed && "border-hairline border-t pt-3",
+					)}
 					data-tour-tag="mesh-approvals-live"
 				>
 					{waiting.map((row) => (

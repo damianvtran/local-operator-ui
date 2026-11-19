@@ -5162,11 +5162,14 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 * design round 1, U1/D1). `pairings.eligibility` is main's STATIC reading of
 	 * whether this launch could ever attest (platform, packaged, debug/driver
 	 * switches, window mode), so a card disables its input up front instead of
-	 * taking six digits and refusing them. `pairings.confirm` asks main for a
-	 * ONE-SHOT confirmation bound to this card's exact action and to the sending
-	 * document; main mints it only while that document holds transient user
-	 * activation, and `pairings.answer` must carry it back (`confirmation`) or main
-	 * refuses before dialling. Both are answered by main (`desktop-ipc.ts`) and have
+	 * taking six digits and refusing them. `pairings.confirm` carries the EXACT
+	 * answer (act, code, shares) and asks main for a ONE-SHOT confirmation of it:
+	 * main freezes that answer, shows it on a native window-modal sheet worded
+	 * from main's own read of the cards, and mints a token bound to the answer
+	 * and the sending document only when the person presses the sheet's action
+	 * button (security review round 2, US-R2-1). `pairings.answer` must carry the
+	 * identical answer and the token (`confirmation`) or main refuses before
+	 * dialling. Both are answered by main (`desktop-ipc.ts`) and have
 	 * no core route - see their `desktopEndpoint` cases.
 	 */
 	z
@@ -5180,6 +5183,15 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			inviteId: z.string().regex(MESH_PAIRING_ID),
 			nonce: z.string().regex(MESH_PAIRING_ID),
 			decision: z.enum(["admit", "decline"]),
+			/*
+			 * THE EXACT ANSWER the person is about to give (security review round 2,
+			 * US-R2-1): main freezes it, shows it on a native sheet, and binds the
+			 * token to it, so `pairings.answer` must carry these same values or it is
+			 * refused. Same grammar as the answer's own fields. No labels travel here:
+			 * every word the sheet shows is main's own read of the pairing.
+			 */
+			code: z.string().regex(/^([0-9]{6})?$/),
+			shares: z.array(z.string().min(1).max(256)).max(256).optional(),
 		})
 		.strict(),
 	z
@@ -5843,7 +5855,7 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		   attest frame refuses any other pairing (`pairing_attest.validate_frame`),
 		   so a request shaped otherwise could never be answered. */
 		if (
-			request.op === "pairings.answer" &&
+			(request.op === "pairings.answer" || request.op === "pairings.confirm") &&
 			(request.decision === "admit") !== (request.code !== "")
 		) {
 			ctx.addIssue({

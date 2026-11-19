@@ -124,6 +124,7 @@ const bundle = await build({
 			export { MeshApprovalsTray } from "./src/renderer/src/features/mesh/mesh-approvals-tray";
 			export { useMeshPairingTray } from "./src/renderer/src/features/mesh/use-mesh-pairing-tray";
 			export * as model from "./src/renderer/src/features/mesh/mesh-pairings";
+			export { approvalRows } from "./src/renderer/src/features/mesh/mesh-approvals";
 			export { desktopEndpoint } from "./src/shared/desktop-contract";
 			export { createElement };
 		`,
@@ -170,6 +171,7 @@ const {
 	MeshApprovalsTray,
 	useMeshPairingTray,
 	model,
+	approvalRows,
 	desktopEndpoint,
 	createElement,
 } = await import(bundlePath.href);
@@ -771,7 +773,7 @@ test("the feed naming a card re-reads the list at once", async () => {
 const confirms = () =>
 	sent.filter((request) => request.op === "pairings.confirm");
 
-test("a click asks main for a confirmation for THIS act, then answers with it (US-R1-1)", async () => {
+test("a click asks main to confirm the EXACT answer, then answers with the same one (US-R1-1, US-R2-1)", async () => {
 	script["pairings.list"] = list(row());
 	script["pairings.confirm"] = ok({ confirmation: "ab".repeat(32) });
 	script["pairings.answer"] = ok({
@@ -792,8 +794,18 @@ test("a click asks main for a confirmation for THIS act, then answers with it (U
 		inviteId: "inv_1",
 		nonce: "n1",
 		decision: "admit",
+		code: "112233",
 	});
 	assert.equal(answers()[0].confirmation, "ab".repeat(32));
+	// The answer repeats the confirmed answer field for field (main refuses any other).
+	const { op: _confirmOp, ...confirmedAnswer } = confirms()[0];
+	const {
+		op: _answerOp,
+		confirmation: _token,
+		deadline: _deadline,
+		...answered
+	} = answers()[0];
+	assert.deepEqual(answered, confirmedAnswer);
 });
 
 test("a refused confirmation sends no answer and asks for the press again", async () => {
@@ -878,7 +890,8 @@ test("a non-macOS launch names the signed Mac app; an unknown eligibility stays 
 	script = { "pairings.list": list(row()) };
 	root = undefined;
 	await render(createElement(Tray));
-	await until(() => input(), "card");
+	// Live once the failed eligibility read settles (pending is not answerable, Q2).
+	await until(() => input() && !input().disabled, "card answerable");
 	assert.equal(input().disabled, false);
 	assert.equal($("mesh-pairing-terminal-fallback"), null);
 	assert.match($("mesh-pairing-hint").textContent, /Type the six digits/);
@@ -915,7 +928,8 @@ test("a build refusal at the click becomes the fallback block, said once", async
 	script["pairings.list"] = list(row());
 	script["pairings.answer"] = refuse(403, {
 		code: "pairing_attest_refused",
-		reason: "devtools_open",
+		// The listener refused THIS process: a property of the build.
+		reason: "listener_refused",
 		message: "x",
 	});
 	await render(createElement(Tray));
@@ -1033,4 +1047,255 @@ test("the badge reads the list before the feed speaks, and counts live cards onl
 	assert.equal(model.pairingBadgeCount(undefined, "joiner:inv_9", 0), 1);
 	assert.equal(model.pairingReadWanted(undefined), true);
 	assert.equal(model.pairingReadWanted(null), false);
+});
+
+/* ------------------------------------------------- round 2 remediation */
+
+test("the badge counts nothing once the feed says none, whatever the read cached (M1)", () => {
+	const live = [model.parsePairingRow(row())];
+	const now = Math.floor(NOW());
+	assert.equal(model.pairingBadgeCount(live, "joiner:inv_1", now), 1);
+	assert.equal(model.pairingBadgeCount(live, undefined, now), 1);
+	// `null` = "none open": the cached row is the past.
+	assert.equal(model.pairingBadgeCount(live, null, now), 0);
+});
+
+test("DevTools or a debugger open NOW asks for the press again; it is not a dead end (M2)", async () => {
+	for (const reason of ["devtools_open", "debugger_attached", "sheet_open"]) {
+		script = {
+			"pairings.list": list(row()),
+			"pairings.answer": refuse(403, {
+				code: "pairing_attest_refused",
+				reason,
+				message: "x",
+			}),
+		};
+		sent = [];
+		await act(async () => root?.unmount());
+		root = undefined;
+		await render(createElement(Tray));
+		await type(input(), "112233");
+		await click(admit());
+		await until(() => $("mesh-pairing-error"), reason);
+		assert.equal(
+			$("mesh-pairing-error").textContent,
+			"Bring this window to the front and press Confirm again.",
+			reason,
+		);
+		assert.equal($("mesh-pairing-terminal-fallback"), null, reason);
+		assert.equal(input().disabled, false, reason);
+		assert.equal(admit().disabled, false, reason);
+	}
+});
+
+test("while main's eligibility read is pending the card is not answerable yet (Q2)", async () => {
+	let answer;
+	script["pairings.eligibility"] = () =>
+		new Promise((resolve) => {
+			answer = resolve;
+		});
+	script["pairings.list"] = list(inviter());
+	await render(createElement(Tray));
+	await until(() => input(), "card");
+	assert.equal(input().disabled, true, "no live field before main has said");
+	assert.equal($("mesh-pairing-decline").disabled, true);
+	assert.equal(
+		$("mesh-pairing-terminal-fallback"),
+		null,
+		"unknown is not 'cannot'",
+	);
+	await act(async () => answer(ok({ eligible: true, reason: null })));
+	await until(() => !input().disabled, "answerable once main said yes");
+	assert.equal($("mesh-pairing-decline").disabled, false);
+});
+
+test("a retry-style refusal puts focus back on the button it names (U7)", async () => {
+	const cases = [
+		["listener_unavailable", "admit", () => admit()],
+		["window_not_focused", "admit", () => admit()],
+		["pairing_changed", "admit", () => admit()],
+		["no_user_action", "decline", () => $("mesh-pairing-decline")],
+	];
+	for (const [reason, decision, target] of cases) {
+		let release;
+		script = {
+			"pairings.list": list(inviter()),
+			"pairings.eligibility": ok({ eligible: true, reason: null }),
+			// Held open so the case can drop focus while the button is disabled.
+			"pairings.confirm": () =>
+				new Promise((resolve) => {
+					release = () =>
+						resolve(
+							refuse(403, {
+								code: "pairing_attest_refused",
+								reason,
+								message: "x",
+							}),
+						);
+				}),
+		};
+		sent = [];
+		await act(async () => root?.unmount());
+		root = undefined;
+		await render(createElement(Tray));
+		await until(() => input() && !input().disabled, "answerable");
+		await type(input(), "481926");
+		const button = decision === "admit" ? admit() : $("mesh-pairing-decline");
+		// A dispatched click moves no focus: focus sits on the body, where
+		// Chromium drops it once the pressed button is disabled in flight
+		// (jsdom keeps focus on a disabled control, so this is the honest start).
+		await click(button);
+		await until(() => typeof release === "function", `${reason}: in flight`);
+		assert.equal(button.disabled, true, `${reason}: disabled in flight`);
+		// `assert.ok`, not `equal`: a failing equal would inspect the whole DOM.
+		assert.ok(
+			document.activeElement === document.body,
+			`${reason}: focus fell to ${document.activeElement?.tagName}`,
+		);
+		await act(async () => release());
+		await settle();
+		await until(() => $("mesh-pairing-error"), reason);
+		assert.ok(
+			document.activeElement === target(),
+			`${reason}: focus is on ${document.activeElement?.tagName} ${document.activeElement?.getAttribute?.("data-testid")}`,
+		);
+		assert.equal(answers().length, 0, reason);
+		if (reason === "pairing_changed")
+			// The card moved on while the sheet was up: look again, then press Admit.
+			assert.equal(
+				$("mesh-pairing-error").textContent,
+				"This pairing changed while you were answering. Check it and press Admit again.",
+			);
+	}
+});
+
+test("a cancelled native sheet sends nothing, says nothing, and returns focus (US-R2-1, U7)", async () => {
+	script["pairings.list"] = list(inviter());
+	script["pairings.eligibility"] = ok({ eligible: true, reason: null });
+	script["pairings.confirm"] = ok({ confirmation: null, cancelled: true });
+	await render(createElement(Tray));
+	await until(() => input() && !input().disabled, "answerable");
+	await type(input(), "481926");
+	// Focus starts on the body (a dispatched click moves none - see U7 above).
+	await click(admit());
+	await until(() => confirms().length === 1, "confirm");
+	await settle();
+	assert.equal(answers().length, 0, "nothing answered after a cancel");
+	assert.equal($("mesh-pairing-error"), null, "a cancel is not an error");
+	assert.equal(admit().disabled, false, "digits kept; answerable again");
+	assert.ok(document.activeElement === admit(), "focus back on Admit");
+	// The confirm carried the exact answer, shares sorted by the card.
+	assert.deepEqual(confirms()[0].shares, ["github", "openai"]);
+	assert.equal(confirms()[0].code, "481926");
+});
+
+test("a pairing already answered elsewhere closes neutrally (core 409 pairing_answered)", async () => {
+	for (const [where, reply] of [
+		[
+			"core",
+			refuse(409, {
+				code: "pairing_answered",
+				message: "This pairing is no longer open. This answer wasn't recorded.",
+			}),
+		],
+		[
+			"main",
+			refuse(403, {
+				code: "pairing_attest_refused",
+				reason: "pairing_closed",
+				message: "x",
+			}),
+		],
+	]) {
+		script = {
+			"pairings.list": list(row()),
+			"pairings.eligibility": ok({ eligible: true, reason: null }),
+			[where === "core" ? "pairings.answer" : "pairings.confirm"]: reply,
+		};
+		sent = [];
+		await act(async () => root?.unmount());
+		root = undefined;
+		await render(createElement(Tray));
+		await until(() => input() && !input().disabled, "answerable");
+		await type(input(), "112233");
+		await click(admit());
+		await until(() => $("mesh-pairing-error"), where);
+		const line = $("mesh-pairing-error");
+		assert.equal(
+			line.textContent,
+			"This pairing is no longer open. This answer wasn't recorded.",
+			where,
+		);
+		assert.equal(
+			line.getAttribute("role"),
+			"status",
+			`${where}: news, not an alarm`,
+		);
+		assert.doesNotMatch(line.className, /text-danger/, where);
+		assert.equal(input().disabled, true, `${where}: nothing left to answer`);
+		assert.equal(admit().disabled, true, where);
+		assert.equal($("mesh-pairing-terminal-fallback"), null, where);
+	}
+});
+
+test("a hairline separates the pairing set from the approvals below it (D7)", async () => {
+	const pairings = {
+		rows: [model.parsePairingRow(row())],
+		outcomes: [],
+		loading: false,
+		error: null,
+		onRetry: () => {},
+		nowSeconds: Math.floor(NOW()),
+		pending: null,
+		refusal: null,
+		eligibility: { eligible: true, reason: "" },
+		onAnswer: () => {},
+	};
+	const approvals = approvalRows({
+		approvals: [
+			{
+				approval_id: "ap_2v9k4m0q7r1s",
+				state: "requested",
+				what: {
+					connect: true,
+					install: true,
+					unattended: true,
+					grant: ["approve"],
+					network_id: "net_home",
+					role: "drive",
+				},
+				requested_by: { surface: "cli", session_id: "0123456789ef" },
+				expires_at: NOW() + 42 * 60,
+				device: {
+					device_id: "dev_devon",
+					name: "devon-laptop",
+					host: "devon-laptop.local",
+					user: "damian",
+					transport: "ssh",
+					host_key_fp: "SHA256:9f3cQm2p",
+				},
+			},
+		],
+	});
+	const tray = (withPairings) =>
+		createElement(MeshApprovalsTray, {
+			rows: approvals,
+			error: null,
+			pending: null,
+			refusal: null,
+			onDecide: () => {},
+			onRetry: () => {},
+			nowSeconds: Math.floor(NOW()),
+			...(withPairings ? { pairings } : {}),
+		});
+	const live = () =>
+		document.querySelector('[data-tour-tag="mesh-approvals-live"]');
+	await render(tray(true));
+	assert.match(live().className, /border-t/);
+	assert.match(live().className, /border-hairline/);
+	assert.match(live().className, /pt-3/);
+	await act(async () => root.unmount());
+	root = undefined;
+	await render(tray(false));
+	assert.doesNotMatch(live().className, /border-t/);
 });

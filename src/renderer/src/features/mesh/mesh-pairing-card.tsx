@@ -201,6 +201,12 @@ export interface MeshPairingCardProps {
 	 * without asking core, so it lands before the card list it gates.
 	 */
 	eligibility?: PairingEligibility | null;
+	/**
+	 * Main has not answered the eligibility read YET (QA round 2, Q2): the card is
+	 * not answerable until it does, so an ineligible build never offers a live
+	 * field for its first frame. A FAILED read is not pending: see `eligibility`.
+	 */
+	eligibilityPending?: boolean;
 	onAnswer: (ask: PairingAnswerAsk) => void;
 }
 
@@ -211,6 +217,7 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 	refusal,
 	refusalSerial = 0,
 	eligibility = null,
+	eligibilityPending = false,
 	onAnswer,
 }) => {
 	// Always starts EMPTY: there is deliberately no prop that could seed it.
@@ -225,6 +232,9 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 	// A "this build cannot" refusal is the same dead end, found at the click.
 	const buildRefused = refusal?.kind === "build";
 	const terminal = pairingNeedsTerminal(row) || appIneligible || buildRefused;
+	// Core or main says this card already closed: nothing left to answer here.
+	const closed = refusal?.kind === "closed";
+	const answerable = !terminal && !closed && !eligibilityPending;
 	const busy = pending !== null;
 	const seconds = pairingSecondsLeft(row, nowSeconds);
 	const lapsed = seconds <= 0;
@@ -246,13 +256,49 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 	}, [row.nonce]);
 
 	const canType =
-		mode === "type_code" && row.canAnswerHere && !lapsed && !terminal;
+		mode === "type_code" && row.canAnswerHere && !lapsed && answerable;
 	const canAdmit = canType && digits.length === 6 && !busy;
 	// Decline needs the same attestation (core binds `decline` too) and the same
 	// answerable stage: core refuses either decision on the inviter's stage 1
 	// (`pairing_not_ready`) and on a joiner that already matched, so the controls
 	// exist only on a `type_code` card and are disabled where the host cannot answer.
-	const canDecline = row.canAnswerHere && !lapsed && !busy && !terminal;
+	const canDecline = row.canAnswerHere && !lapsed && !busy && answerable;
+
+	/*
+	 * FOCUS BACK TO THE BUTTON the refusal names (UX review U7). The button was
+	 * disabled while the answer was in flight, so a keyboard user's focus fell to
+	 * the page body; "press Admit again" (foreground, relay, changed) and a
+	 * cancelled sheet put it back on that button once it is enabled again. The
+	 * serial is consumed once, so a later re-enable never steals focus.
+	 */
+	const admitRef = useRef<HTMLButtonElement>(null);
+	const declineRef = useRef<HTMLButtonElement>(null);
+	const [actionFocus, setActionFocus] = useState<{
+		serial: number;
+		decline: boolean;
+	} | null>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the serial and kind ARE the triggers
+	useEffect(() => {
+		if (
+			refusal?.kind !== "foreground" &&
+			refusal?.kind !== "relay" &&
+			refusal?.kind !== "changed" &&
+			refusal?.kind !== "cancelled"
+		)
+			return;
+		setActionFocus({
+			serial: refusalSerial,
+			decline: refusal.action === "decline",
+		});
+	}, [refusalSerial, refusal?.kind]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: re-run when the target button re-enables (it is disabled while the answer is in flight)
+	useEffect(() => {
+		if (!actionFocus) return;
+		const target = actionFocus.decline ? declineRef : admitRef;
+		if (!target.current || target.current.disabled) return;
+		target.current.focus();
+		setActionFocus(null);
+	}, [actionFocus, canAdmit, canDecline]);
 	/*
 	 * The hint under the code. Expired: what to do next, by side (a joiner cannot
 	 * start an invite - UX U5). A host that cannot answer: no "type the digits"
@@ -270,7 +316,9 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 					? null
 					: t("ui.mesh.pairing.code.type_hint", { peer: row.peerName });
 	// The build refusal is said once, as the fallback block's first line.
-	const errorShown = refusal !== null && !buildRefused;
+	// A cancelled sheet says nothing: the person chose it and nothing was sent.
+	const errorShown =
+		refusal !== null && !buildRefused && refusal.kind !== "cancelled";
 	const describedBy = [hint ? hintId : null, errorShown ? errorId : null]
 		.filter(Boolean)
 		.join(" ");
@@ -435,8 +483,12 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 			{refusal && errorShown && (
 				<p
 					id={errorId}
-					role="alert"
-					className="text-body-sm text-danger"
+					// A closed card is news, not a failure: neutral ink, polite status.
+					role={closed ? "status" : "alert"}
+					className={cn(
+						"text-body-sm",
+						closed ? "text-ink-muted" : "text-danger",
+					)}
 					data-testid="mesh-pairing-error"
 				>
 					{pairingRefusalSentence(refusal, row)}
@@ -484,6 +536,7 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 					data-tour-tag="mesh-pairing-controls"
 				>
 					<Button
+						ref={admitRef}
 						variant="primary"
 						size="sm"
 						disabled={!canAdmit}
@@ -505,6 +558,7 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 								: t("ui.mesh.pairing.action.confirm")}
 					</Button>
 					<Button
+						ref={declineRef}
 						variant="ghost"
 						size="sm"
 						disabled={!canDecline}
@@ -556,6 +610,8 @@ export interface MeshPairingSectionProps {
 	refusal: { id: string; refusal: PairingRefusal; serial: number } | null;
 	/** Main's static eligibility; see `MeshPairingCardProps.eligibility`. */
 	eligibility?: PairingEligibility | null;
+	/** See `MeshPairingCardProps.eligibilityPending`. */
+	eligibilityPending?: boolean;
 	onAnswer: MeshPairingCardProps["onAnswer"];
 }
 
@@ -570,6 +626,7 @@ export const MeshPairingSection: FC<MeshPairingSectionProps> = ({
 	pending,
 	refusal,
 	eligibility = null,
+	eligibilityPending = false,
 	onAnswer,
 }) => {
 	if (rows.length === 0 && outcomes.length === 0 && !loading && !error)
@@ -610,6 +667,7 @@ export const MeshPairingSection: FC<MeshPairingSectionProps> = ({
 							refusal={refusal?.id === row.id ? refusal.refusal : null}
 							refusalSerial={refusal?.id === row.id ? refusal.serial : 0}
 							eligibility={eligibility}
+							eligibilityPending={eligibilityPending}
 							onAnswer={onAnswer}
 						/>
 					))}

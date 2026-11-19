@@ -332,7 +332,21 @@ export type PairingRefusal =
 	| { kind: "build" }
 	| { kind: "expired" }
 	| { kind: "not_ready" }
-	| { kind: "relay" }
+	/** Nothing answered on this device's side; trying again is safe. */
+	| { kind: "relay"; action?: PairingAction }
+	/**
+	 * The card is no longer open: core's 409 `pairing_answered` (answered from the
+	 * other device, a terminal or a second click), or main's read no longer has
+	 * it. A neutral close, never an error to retry - nothing was recorded.
+	 */
+	| { kind: "closed" }
+	/** The card moved on while the person answered (new stage, new words): look again. */
+	| { kind: "changed"; action?: PairingAction }
+	/**
+	 * The person cancelled main's native confirmation sheet. Not an error: no
+	 * sentence, nothing sent; focus returns to the button (UX review U7).
+	 */
+	| { kind: "cancelled"; action?: PairingAction }
 	| { kind: "other"; sentence: string };
 
 /** The button a refusal asks the person to press again. */
@@ -348,6 +362,13 @@ const FOREGROUND_REASONS = new Set([
 	// press mints a new one (security review round 1, US-R1-1).
 	"no_confirmation",
 	"confirmation_mismatch",
+	// The window's DevTools or a debugger session is open NOW. Not a build
+	// property: closing it and pressing again works, so this is never the
+	// permanent "this build cannot" dead end (code review round 2, M2).
+	"devtools_open",
+	"debugger_attached",
+	// Another pairing's native sheet is open; this press raised none.
+	"sheet_open",
 ]);
 
 /**
@@ -360,6 +381,8 @@ const RETRYABLE_ATTEST_REASONS = new Set([
 	"listener_unavailable",
 	"frame_refused",
 	"timeout",
+	// Main's own read of the cards failed before it could show the sheet.
+	"pairing_read_failed",
 ]);
 
 export function pairingRefusal(error: unknown): PairingRefusal {
@@ -383,6 +406,8 @@ export function pairingRefusal(error: unknown): PairingRefusal {
 			if (FOREGROUND_REASONS.has(reason)) return { kind: "foreground" };
 			if (reason === "expired") return { kind: "expired" };
 			if (RETRYABLE_ATTEST_REASONS.has(reason)) return { kind: "relay" };
+			if (reason === "pairing_closed") return { kind: "closed" };
+			if (reason === "pairing_changed") return { kind: "changed" };
 			// Not macOS, not packaged, a driver/debug launch, DevTools, or a listener
 			// that refused THIS process: this build cannot attest, full stop.
 			return { kind: "build" };
@@ -392,6 +417,9 @@ export function pairingRefusal(error: unknown): PairingRefusal {
 			return { kind: "expired" };
 		case "pairing_not_ready":
 			return { kind: "not_ready" };
+		// Core #4259: a duplicate answer on a card that already closed (409).
+		case "pairing_answered":
+			return { kind: "closed" };
 		case "relay_unavailable":
 			return { kind: "relay" };
 		default: {
@@ -429,6 +457,14 @@ export function pairingRefusalSentence(
 			return t("ui.mesh.pairing.waiting.inviter", { peer: row.peerName });
 		case "relay":
 			return t("ui.mesh.pairing.error.relay");
+		case "closed":
+			return t("ui.mesh.pairing.error.closed");
+		case "changed":
+			return t("ui.mesh.pairing.error.changed", {
+				action: refusal.action ?? "other",
+			});
+		case "cancelled":
+			return "";
 		case "other":
 			return refusal.sentence;
 	}
@@ -569,6 +605,9 @@ export function pairingBadgeCount(
 	feedId: string | null | undefined,
 	nowSeconds: number,
 ): number {
+	// The feed said "none open": the read is switched off, so whatever it cached
+	// is the past and counts for nothing (code review round 2, M1).
+	if (feedId === null) return 0;
 	const live = livePairingRows(rows ?? [], nowSeconds).length;
 	if (
 		typeof feedId === "string" &&
@@ -657,11 +696,13 @@ export type PairingAnswerAsk = {
  * One answer. NEVER RETRIED: a replayed admit with a wrong code is a second
  * strike on a 3-attempt budget shared with the wire.
  *
- * TWO HOPS, back to back, both answered by main (`desktop-ipc.ts`):
- * `pairings.confirm` mints a one-shot token for THIS card's act while the click's
- * transient activation is still live, then `pairings.answer` spends it - main
- * consumes it, re-checks the sender document and focus, attests and only then
- * forwards (security review round 1, US-R1-1). A refused confirm sends no answer.
+ * TWO HOPS, both answered by main (`desktop-ipc.ts`): `pairings.confirm` sends
+ * the EXACT answer; main shows it on a native sheet worded from its own read of
+ * the card and mints a one-shot token only when the person presses the sheet's
+ * action button (security review round 2, US-R2-1). `pairings.answer` then
+ * sends the IDENTICAL answer with the token - main consumes it, re-checks the
+ * card, sender document and focus, attests and only then forwards. A refused or
+ * cancelled confirm sends no answer; a cancel resolves `{status: "cancelled"}`.
  * `deadline` here is the card's expiry as an UPPER BOUND - main picks the real one.
  */
 export function useMeshPairingAnswer() {
@@ -670,13 +711,25 @@ export function useMeshPairingAnswer() {
 		retry: false,
 		mutationFn: async (ask: PairingAnswerAsk) => {
 			const admit = ask.decision === "admit";
-			const confirmed = await desktopResult<{ confirmation?: unknown }>({
-				op: "pairings.confirm",
+			// The EXACT answer, sent twice: main freezes it for its native sheet and
+			// refuses an answer that differs from it (security review round 2).
+			const exact = {
 				side: ask.row.side,
 				inviteId: ask.row.inviteId,
 				nonce: ask.row.nonce,
 				decision: ask.decision,
-			});
+				code: admit ? ask.code : "",
+				...(ask.row.side === "inviter" && ask.shares !== undefined
+					? { shares: ask.shares }
+					: {}),
+			};
+			const confirmed = await desktopResult<{
+				confirmation?: unknown;
+				cancelled?: unknown;
+			}>({ op: "pairings.confirm", ...exact });
+			// The person cancelled the sheet: nothing was minted and nothing is sent.
+			if (confirmed?.cancelled === true)
+				return { status: "cancelled" } as const;
 			const confirmation = confirmed?.confirmation;
 			// Main answers 200 only with a token; anything else is not an answer.
 			if (typeof confirmation !== "string" || confirmation === "")
@@ -686,14 +739,7 @@ export function useMeshPairingAnswer() {
 				attempts_left?: unknown;
 			}>({
 				op: "pairings.answer",
-				side: ask.row.side,
-				inviteId: ask.row.inviteId,
-				nonce: ask.row.nonce,
-				decision: ask.decision,
-				code: admit ? ask.code : "",
-				...(ask.row.side === "inviter" && ask.shares !== undefined
-					? { shares: ask.shares }
-					: {}),
+				...exact,
 				deadline: Math.floor(ask.row.expiresAt),
 				confirmation,
 			});

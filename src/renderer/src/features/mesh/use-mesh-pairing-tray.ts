@@ -13,6 +13,7 @@ import type { MeshPairingSectionProps } from "./mesh-pairing-card";
 import {
 	MESH_PAIRING_OUTCOME_MS,
 	type MeshPairingRow,
+	type PairingAction,
 	type PairingAnswerAsk,
 	type PairingAnswerRecord,
 	type PairingOutcome,
@@ -119,8 +120,24 @@ export function useMeshPairingTray(
 	if (!enabled) return undefined;
 	const onAnswer = (ask: PairingAnswerAsk) => {
 		setRefusal(null);
+		// The button a retry-style refusal names and gives focus back to (D6, U7).
+		const action: PairingAction =
+			ask.decision === "decline"
+				? "decline"
+				: ask.row.side === "inviter"
+					? "admit"
+					: "confirm";
 		answer.mutate(ask, {
 			onSuccess: (result) => {
+				// The person cancelled main's sheet: nothing was sent, nothing to hold.
+				if (result.status === "cancelled") {
+					setRefusal({
+						id: ask.row.id,
+						refusal: { kind: "cancelled", action },
+						serial: Date.now(),
+					});
+					return;
+				}
 				answers.current.set(ask.row.id, {
 					decision: ask.decision,
 					status: result.status,
@@ -129,18 +146,13 @@ export function useMeshPairingTray(
 			},
 			onError: (error) => {
 				const mapped = pairingRefusal(error);
-				// Name the button to press again (design D6).
+				// Name the button to press again (design D6) and return focus to it
+				// (UX review U7) on every refusal whose copy says "press it again".
 				const refused: PairingRefusal =
-					mapped.kind === "foreground"
-						? {
-								...mapped,
-								action:
-									ask.decision === "decline"
-										? "decline"
-										: ask.row.side === "inviter"
-											? "admit"
-											: "confirm",
-							}
+					mapped.kind === "foreground" ||
+					mapped.kind === "relay" ||
+					mapped.kind === "changed"
+						? { ...mapped, action }
 						: mapped;
 				if (refused.kind === "mismatch" && refused.attemptsLeft === 0)
 					answers.current.set(ask.row.id, {
@@ -168,6 +180,9 @@ export function useMeshPairingTray(
 					: null,
 		// `null` until main has said, or when it could not: unknown, answerable.
 		eligibility: eligibility.data ?? null,
+		// Still asking main: not answerable YET (QA round 2, Q2). A FAILED read is
+		// not pending, so it stays answerable and main still refuses at the click.
+		eligibilityPending: eligibility.isPending,
 		refusal,
 		onAnswer,
 	};

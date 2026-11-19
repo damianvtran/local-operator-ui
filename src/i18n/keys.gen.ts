@@ -10236,6 +10236,8 @@ export type MessageParams = {
 	"ui.mesh.pairing.code.type_hint": { peer: string };
 	"ui.mesh.pairing.code.type_label": { peer: string };
 	"ui.mesh.pairing.error.build": undefined;
+	"ui.mesh.pairing.error.changed": { action: string };
+	"ui.mesh.pairing.error.closed": undefined;
 	"ui.mesh.pairing.error.expired": undefined;
 	"ui.mesh.pairing.error.foreground": { action: string };
 	"ui.mesh.pairing.error.mismatch": { count: number };
@@ -10264,6 +10266,35 @@ export type MessageParams = {
 	"ui.mesh.pairing.result.spent": { peer: string };
 	"ui.mesh.pairing.role": { role: string };
 	"ui.mesh.pairing.section": undefined;
+	"ui.mesh.pairing.sheet.button.admit": undefined;
+	"ui.mesh.pairing.sheet.button.cancel": undefined;
+	"ui.mesh.pairing.sheet.button.decline": undefined;
+	"ui.mesh.pairing.sheet.button.join": undefined;
+	"ui.mesh.pairing.sheet.code": { code: string };
+	"ui.mesh.pairing.sheet.device": { peer: string; id: string };
+	"ui.mesh.pairing.sheet.device_name_only": { peer: string };
+	"ui.mesh.pairing.sheet.message.inviter_admit": {
+		peer: string;
+		network: string;
+	};
+	"ui.mesh.pairing.sheet.message.inviter_decline": {
+		peer: string;
+		network: string;
+	};
+	"ui.mesh.pairing.sheet.message.joiner_admit": {
+		network: string;
+		peer: string;
+	};
+	"ui.mesh.pairing.sheet.message.joiner_decline": {
+		network: string;
+		peer: string;
+	};
+	"ui.mesh.pairing.sheet.role": { role: string };
+	"ui.mesh.pairing.sheet.shares_decline": undefined;
+	"ui.mesh.pairing.sheet.shares_incoming": { peer: string; list: string };
+	"ui.mesh.pairing.sheet.shares_incoming_none": { peer: string };
+	"ui.mesh.pairing.sheet.shares_outgoing": { peer: string; list: string };
+	"ui.mesh.pairing.sheet.shares_outgoing_none": { peer: string };
 	"ui.mesh.pairing.time_left_minutes": { count: number };
 	"ui.mesh.pairing.time_left_seconds": { count: number };
 	"ui.mesh.pairing.title.inviter": { peer: string; network: string };
