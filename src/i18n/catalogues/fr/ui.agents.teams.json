@@ -38,5 +38,13 @@
 	"ui.agents.teams.action.create": "Créer l’équipe",
 	"ui.agents.teams.action.creating": "Création…",
 	"ui.agents.teams.action.discard_question": "Abandonner cette équipe ?",
-	"ui.agents.teams.empty.description": "Aucune description pour l’instant."
+	"ui.agents.teams.empty.description": "Aucune description pour l’instant.",
+	"ui.agents.teams.create.error_name_required": "Donnez un nom à l’équipe.",
+	"ui.agents.teams.create.error_name_taken": "Une équipe nommée « {name} » existe déjà. Ouvrez-la pour la modifier, ou choisissez un autre nom.",
+	"ui.agents.teams.create.error_instructions_required": "Donnez des instructions à l’équipe.",
+	"ui.agents.teams.edit.error_generic": "Impossible d’enregistrer l’équipe.",
+	"ui.agents.teams.create.title_new": "Nouvelle équipe",
+	"ui.agents.teams.includes_team": "· Inclut une équipe",
+	"ui.agents.teams.group.agents": "Agents",
+	"ui.agents.teams.group.teams": "Équipes"
 }

@@ -1,0 +1,216 @@
+{
+  "schema": 1,
+  "kind": "independent_i18n_audit",
+  "agent": "i18n-auditor",
+  "session": "a3a4b499b17d",
+  "instance": "a3a4b499b17d",
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "fallback_reason": "No fallback. The model named in this session's system context is the one that served this audit.",
+  "independence": "Independent auditor (session a3a4b499b17d). I did not write or change any translation. The translator was a separate job (5995a3db9565) running the same model, anthropic/claude-opus-5-5.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "a3a4b499b17d",
+    "instance": "a3a4b499b17d",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5",
+    "fallback": false,
+    "fallback_reason": "No fallback. The model named in this session's system context is the one that served this audit.",
+    "independence": "Independent auditor (session a3a4b499b17d). I did not write or change any translation. The translator was a separate job (5995a3db9565) running the same model, anthropic/claude-opus-5-5.",
+    "model_source": "Session system context: 'Model: anthropic/claude-opus-5-5'",
+    "independent_from_translator_session": true
+  },
+  "locale": "fr",
+  "date": "2026-11-19",
+  "branch": "fix/i18n-agents-team-config-english",
+  "base": "1eec0703e662114f37e61e3b2c92cb2c04fb64d7",
+  "head": "f6e6260da1",
+  "round": 1,
+  "scope": "Round 1 audit of the 55 fr keys this branch adds (47 in ui.agents.config, 8 in ui.agents.teams). They were judged against the English, the translator context, the existing fr ui.agents.* glossary, fr CLDR plurals and French typography. Existing catalogue values are terminology context only and were not re-audited. Note: the audited fr files are uncommitted working-tree edits on top of head f6e6260da1, identified by the sha256 values below.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": [
+      {
+        "id": "FR-1",
+        "severity": "nit",
+        "key": "ui.agents.config.seed_prompt",
+        "description": "FR wraps {name} in « » (U+202F inside), which the English does not have. The identifier itself stays exactly as given, so the assistant still matches it by name. Fine to keep; noted only because it departs from the source. Disposition: no change required."
+      },
+      {
+        "id": "FR-2",
+        "severity": "nit",
+        "key": "ui.agents.config.title.stopped_error",
+        "description": "'Arrêté sur une erreur' and its sibling 'Terminé avec une erreur' use different prepositions. 'sur une erreur' is idiomatic for stopping on an error, and the two headings still read as distinct, as the context asks. Disposition: no change required."
+      },
+      {
+        "id": "FR-3",
+        "severity": "nit",
+        "key": "ui.agents.config.summary.change.tools_added, ui.agents.config.summary.change.tools_removed",
+        "description": "The many arm renders count=1000000 as '1 000 000 d’outils ajoutés/retirés'. With digits, 'de' is slightly less natural than with 'million', but this follows the established fr convention (104 of 131 many arms across the fr catalogues use '# de/d’', including ui.agents.config.definitions). Disposition: no change required; convention-consistent."
+      }
+    ]
+  },
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 3
+  },
+  "checks": {
+    "meaning": "pass",
+    "completeness_no_english": "pass. 'backend', 'Local Operator', {name}/{tool}/{field} and 'Agents' (a French word) are identifiers, product names or established glossary terms",
+    "icu": "pass. Placeholder names match the English; every select has agent/team/skill/other; every plural has one/many/other with # inside each arm; braces balance; no straight apostrophes (ICU escape)",
+    "register": "pass (vous imperatives: Modifiez, Donnez, Ouvrez-la, Mettez à jour)",
+    "glossary": "pass. exécution=run, compétence=skill, responsable=manager, niveau d’effort=effort tier, type=kind, zone de saisie=box, « Demander une modification »=ui.agents.detail.action.ask_change, Proactif/Réactif=class labels",
+    "typography": "pass. U+202F before every : ; ? ! and inside every « », U+2019 apostrophes throughout",
+    "fit": "pass. Within the context's length guidance; the longest relative growth is error.send_after_setup (125→159 chars), a two-sentence wrapping error line",
+    "existing_keys_unchanged": "pass. Diff of fr against HEAD has only additions plus the one trailing-comma rewrite per file",
+    "plural_render": {
+      "tools_added": {
+        "0": "0 outil ajouté",
+        "1": "1 outil ajouté",
+        "2": "2 outils ajoutés",
+        "1000000": "1 000 000 d’outils ajoutés"
+      },
+      "tools_removed": {
+        "0": "0 outil retiré",
+        "1": "1 outil retiré",
+        "2": "2 outils retirés",
+        "1000000": "1 000 000 d’outils retirés"
+      }
+    }
+  },
+  "namespaces": {
+    "ui.agents.config": {
+      "namespace": "ui.agents.config",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "sha256": {
+        "en": "035f6293e67df81cc4cb9c68ece30de322c2a8fbf150c477cd2ac5a9dfe39201",
+        "fr": "56c5fd05d46e8b5be480694f2fade936707f8b90f1df63b98db749cda9f54ad1"
+      },
+      "context_sha256": "dff7308a7e793d9f847d98fea3a2fd596b901ef09844a77aa43229b5e9488ca3",
+      "keys_read": 47,
+      "reviewed_keys": [
+        "ui.agents.config.title.working",
+        "ui.agents.config.title.stopping",
+        "ui.agents.config.title.finished",
+        "ui.agents.config.title.finished_no_changes",
+        "ui.agents.config.title.stopped",
+        "ui.agents.config.title.stopped_error",
+        "ui.agents.config.title.finished_error",
+        "ui.agents.config.placeholder.working",
+        "ui.agents.config.seed_prompt",
+        "ui.agents.config.error.lists_unreadable",
+        "ui.agents.config.error.send_after_setup",
+        "ui.agents.config.error.start_failed",
+        "ui.agents.config.error.send_failed",
+        "ui.agents.config.error.stop_unacknowledged",
+        "ui.agents.config.disabled.connecting",
+        "ui.agents.config.disabled.needs_newer_backend",
+        "ui.agents.config.summary.step.creating_named",
+        "ui.agents.config.summary.step.creating",
+        "ui.agents.config.summary.step.updating_named",
+        "ui.agents.config.summary.step.updating",
+        "ui.agents.config.summary.step.editing_named",
+        "ui.agents.config.summary.step.editing",
+        "ui.agents.config.summary.step.installing_named",
+        "ui.agents.config.summary.step.installing",
+        "ui.agents.config.summary.step.reading_named",
+        "ui.agents.config.summary.step.reading",
+        "ui.agents.config.summary.step.working",
+        "ui.agents.config.summary.step.checked",
+        "ui.agents.config.summary.change.description",
+        "ui.agents.config.summary.change.kind",
+        "ui.agents.config.summary.change.effort",
+        "ui.agents.config.summary.change.manager",
+        "ui.agents.config.summary.change.instructions",
+        "ui.agents.config.summary.change.field",
+        "ui.agents.config.summary.change.tools",
+        "ui.agents.config.summary.change.tools_widened",
+        "ui.agents.config.summary.change.tools_narrowed",
+        "ui.agents.config.summary.change.tool_added",
+        "ui.agents.config.summary.change.tool_removed",
+        "ui.agents.config.summary.change.tools_added",
+        "ui.agents.config.summary.change.tools_removed",
+        "ui.agents.config.summary.change.tools_changed",
+        "ui.agents.config.summary.change.delegation_on",
+        "ui.agents.config.summary.change.delegation_off",
+        "ui.agents.config.summary.change.class_proactive",
+        "ui.agents.config.summary.change.class_reactive",
+        "ui.agents.config.summary.change.members"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": [
+          {
+            "id": "FR-1",
+            "severity": "nit",
+            "key": "ui.agents.config.seed_prompt",
+            "description": "FR wraps {name} in « » (U+202F inside), which the English does not have. The identifier itself stays exactly as given, so the assistant still matches it by name. Fine to keep; noted only because it departs from the source. Disposition: no change required."
+          },
+          {
+            "id": "FR-2",
+            "severity": "nit",
+            "key": "ui.agents.config.title.stopped_error",
+            "description": "'Arrêté sur une erreur' and its sibling 'Terminé avec une erreur' use different prepositions. 'sur une erreur' is idiomatic for stopping on an error, and the two headings still read as distinct, as the context asks. Disposition: no change required."
+          },
+          {
+            "id": "FR-3",
+            "severity": "nit",
+            "key": "ui.agents.config.summary.change.tools_added, ui.agents.config.summary.change.tools_removed",
+            "description": "The many arm renders count=1000000 as '1 000 000 d’outils ajoutés/retirés'. With digits, 'de' is slightly less natural than with 'million', but this follows the established fr convention (104 of 131 many arms across the fr catalogues use '# de/d’', including ui.agents.config.definitions). Disposition: no change required; convention-consistent."
+          }
+        ]
+      },
+      "existing_keys_changed": 0,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 3
+      }
+    },
+    "ui.agents.teams": {
+      "namespace": "ui.agents.teams",
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "286085cbd56112a7a337de99e5dc6cac029b9d3c024080264c6ea2eb0cd3605c",
+        "fr": "29da8679af6247d0933ece6e64c1093c795df6ad755ccaef1113c4f0c849313f"
+      },
+      "context_sha256": "5bbd0ccbd3bb57c4ebdabcfcb75990be80a5617d267ca334648d70f2045dc206",
+      "keys_read": 8,
+      "reviewed_keys": [
+        "ui.agents.teams.create.error_name_required",
+        "ui.agents.teams.create.error_name_taken",
+        "ui.agents.teams.create.error_instructions_required",
+        "ui.agents.teams.edit.error_generic",
+        "ui.agents.teams.create.title_new",
+        "ui.agents.teams.includes_team",
+        "ui.agents.teams.group.agents",
+        "ui.agents.teams.group.teams"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "existing_keys_changed": 0,
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    }
+  }
+}

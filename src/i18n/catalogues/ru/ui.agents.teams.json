@@ -38,5 +38,13 @@
 	"ui.agents.teams.action.create": "Создать команду",
 	"ui.agents.teams.action.creating": "Создание…",
 	"ui.agents.teams.action.discard_question": "Отменить создание команды?",
-	"ui.agents.teams.empty.description": "Описания пока нет."
+	"ui.agents.teams.empty.description": "Описания пока нет.",
+	"ui.agents.teams.create.error_name_required": "Укажите название команды.",
+	"ui.agents.teams.create.error_name_taken": "Команда «{name}» уже существует. Откройте её, чтобы изменить, или выберите другое название.",
+	"ui.agents.teams.create.error_instructions_required": "Добавьте инструкции команды.",
+	"ui.agents.teams.edit.error_generic": "Не удалось сохранить команду.",
+	"ui.agents.teams.create.title_new": "Новая команда",
+	"ui.agents.teams.includes_team": "· Включает команду",
+	"ui.agents.teams.group.agents": "Агенты",
+	"ui.agents.teams.group.teams": "Команды"
 }
