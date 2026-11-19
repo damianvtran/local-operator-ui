@@ -378,6 +378,13 @@ export type DesktopFeature =
 	 */
 	| "team_bridge_thread_reads"
 	/**
+	 * The admitted body behind an inbound Team Bridge transcript card:
+	 * `sessions.bridgeCardBody`, core's entry-keyed display-store read (bridge-body
+	 * design §4). Absent (an older backend): the card keeps "Message body
+	 * unavailable." and makes no request at all.
+	 */
+	| "team_bridge_card_body"
+	/**
 	 * The owner's own agent's per-conversation wake level: the conversation
 	 * menu's "Wake your agent for" group, writing
 	 * `PUT /v1/desktop/team-bridge/conversations/{id}/agent-notify`.

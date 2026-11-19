@@ -63,6 +63,7 @@ import { SpeechGateScope } from "@shared/components/common/speak-control";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { usePassiveDesktopFeature } from "@shared/hooks/display-density";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { useServerOffline } from "@shared/hooks/use-connectivity-status";
 import { formatDateTime, t } from "@shared/i18n";
@@ -142,6 +143,7 @@ import {
 } from "../components/send-recovery-action";
 import { skillBlockNames } from "../components/skill-invocation";
 import { DiffBlock, TraceLine } from "../components/trace";
+import { BridgeCardBodySection } from "../components/trace/bridge-card-body";
 import { bridgeReceiptOf } from "../components/trace/bridge-receipt-model";
 import {
 	type BridgeLabelResolver,
@@ -3277,6 +3279,23 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 }) {
 	useI18nLocale();
 	const receipt = record.bridgeReceipt ?? bridgeReceiptOf({});
+	/*
+	 * THE BODY READ'S GATE. Core advertises `team_bridge_card_body` when its
+	 * entry-keyed display-store read exists; without it the pane keeps today's
+	 * sentence and asks nothing. The read is answered by THIS machine's daemon
+	 * for a session it hosts, so a child transcript (the parent route refuses
+	 * child ids) and a conversation hosted on another device (its journal and
+	 * display store live there) keep the old sentence too, rather than rendering
+	 * a refusal as if it were the message's state.
+	 */
+	const bodyCapable = usePassiveDesktopFeature("team_bridge_card_body");
+	const sessionId = scope && !scope.childId ? scope.sessionId : null;
+	const remote = useCanonicalSessionsStore((state) =>
+		sessionId
+			? remoteOwnedId(state.sessions, state.placementFacts, sessionId)
+			: false,
+	);
+	const bodyEnabled = bodyCapable && sessionId !== null && !remote;
 	const sender = receipt.sender.name || t("ui.teamBridge.page.title");
 	const received = t("ui.chat.bridgeReceipt.received", { sender });
 	const target =
@@ -3302,7 +3321,15 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 						view={{
 							headline: [received, target].filter(Boolean).join(" · "),
 							body: null,
-							outcome: t("ui.chat.bridgeReceipt.unavailable"),
+							/*
+							 * When the read is offered, the body section below owns the
+							 * outcome sentence. When it is not (older backend, child or
+							 * remote transcript), today's sentence stays in this slot, above
+							 * the provenance line, so that pane is unchanged (review R3).
+							 */
+							outcome: bodyEnabled
+								? null
+								: t("ui.chat.bridgeReceipt.unavailable"),
 							internals: [],
 							raw: record.text,
 						}}
@@ -3323,6 +3350,17 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 								</time>
 							) : null}
 						</div>
+						{/*
+						 * Under the provenance line on purpose: the label is what frames
+						 * the text that follows as someone else's untrusted words.
+						 */}
+						{bodyEnabled ? (
+							<BridgeCardBodySection
+								sessionId={sessionId}
+								entryId={record.id}
+								enabled
+							/>
+						) : null}
 					</BridgeDetailPane>
 				}
 			/>

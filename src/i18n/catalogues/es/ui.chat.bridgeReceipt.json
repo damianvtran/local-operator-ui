@@ -1,5 +1,20 @@
 {
 	"ui.chat.bridgeReceipt.received": "Recibido de {sender}",
 	"ui.chat.bridgeReceipt.unavailable": "Contenido del mensaje no disponible.",
-	"ui.chat.bridgeReceipt.provenance": "Mensaje externo · contenido no fiable"
+	"ui.chat.bridgeReceipt.provenance": "Mensaje externo · contenido no fiable",
+	"ui.chat.bridgeReceipt.loading": "Cargando mensaje…",
+	"ui.chat.bridgeReceipt.pending": "Aún se está entregando.",
+	"ui.chat.bridgeReceipt.held": "Retenido por la moderación.",
+	"ui.chat.bridgeReceipt.held_transient": "Pendiente de filtrado — aún no se muestra a tu agente.",
+	"ui.chat.bridgeReceipt.refused": "Rechazado por la moderación.",
+	"ui.chat.bridgeReceipt.not_admitted": "No se entregó a este agente.",
+	"ui.chat.bridgeReceipt.unavailable_reason.signed_out": "Contenido del mensaje no disponible. Inicia sesión en Team Bridge para cargarlo.",
+	"ui.chat.bridgeReceipt.unavailable_reason.other_account": "Contenido del mensaje no disponible. Lo recibió otra cuenta de Team Bridge.",
+	"ui.chat.bridgeReceipt.unavailable_reason.not_member": "Contenido del mensaje no disponible. Ya no participas en esta conversación.",
+	"ui.chat.bridgeReceipt.unavailable_reason.deleted": "Este mensaje se eliminó.",
+	"ui.chat.bridgeReceipt.unavailable_reason.hub_unsupported": "Contenido del mensaje no disponible. Team Bridge no puede cargar este mensaje antiguo.",
+	"ui.chat.bridgeReceipt.unavailable_reason.offline": "No se pudo conectar con Radient — cierra y vuelve a abrir.",
+	"ui.chat.bridgeReceipt.show_more": "Mostrar más",
+	"ui.chat.bridgeReceipt.show_less": "Mostrar menos",
+	"ui.chat.bridgeReceipt.more": "{count, plural, one {Y {count, number} mensaje más} many {Y {count, number} de mensajes más} other {Y {count, number} mensajes más}}"
 }

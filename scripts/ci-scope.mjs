@@ -379,6 +379,9 @@ export const PARITY_MODEL_SOURCES = new Set([
 	"src/renderer/src/features/chat/canonical/turn-segments.ts",
 	"src/renderer/src/features/chat/components/skill-invocation.ts",
 	"src/renderer/src/features/chat/components/slash-token.ts",
+	// Inbound Bridge card facts (sender, conversation, admitted body); transcript-reducer
+	// imports it, so an edit here regrows the fixture.
+	"src/renderer/src/features/chat/components/trace/bridge-receipt-model.ts",
 	"src/renderer/src/features/chat/components/trace/bridge-row-model.ts",
 	"src/renderer/src/features/chat/components/trace/receipt-row-model.ts",
 	"src/renderer/src/features/chat/components/trace/tool-row-model.ts",
