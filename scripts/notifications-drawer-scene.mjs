@@ -12,6 +12,229 @@ import { join } from "node:path";
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** Diagnostic-only, bounded metadata ledger. No process flag changes the scene verdict. */
+export function createDismissRecorder(targetId, enabled = false) {
+	const records = [];
+	const errors = [];
+	let stopped = false;
+	const anchor = {
+		wall: new Date().toISOString(),
+		monotonic: performance.now(),
+	};
+	return {
+		targetId,
+		enabled,
+		records,
+		errors,
+		anchor,
+		stop() {
+			stopped = true;
+		},
+		record(phase, metadata = {}) {
+			if (!enabled || stopped) return;
+			try {
+				if (records.length < 2048)
+					records.push({ phase, at: performance.now(), ...metadata });
+				else if (!errors.includes("trace-cap")) errors.push("trace-cap");
+			} catch {
+				errors.push("recorder-error");
+			}
+		},
+	};
+}
+
+/** Runs in the existing renderer, passive listeners only; never changes the gesture. */
+export function installDismissDiagnostic(targetId, neighborId) {
+	const records = [];
+	const listeners = [];
+	let stopped = false;
+	const sink = {
+		targetId,
+		records,
+		errors: 0,
+		dropped: 0,
+		cleanup: [],
+		anchor: { wall: new Date().toISOString(), monotonic: performance.now() },
+		record(phase, metadata) {
+			if (stopped) return;
+			if (records.length < 2048)
+				records.push({ phase, at: performance.now(), ...metadata });
+			else sink.dropped++;
+		},
+	};
+	globalThis.__notificationDiagnostic = sink;
+	const describe = (element) => {
+		const row = element?.closest?.("[data-drawer-update]");
+		const rect = element?.getBoundingClientRect?.();
+		const style = element && getComputedStyle(element);
+		return {
+			row: row?.dataset.drawerUpdate,
+			action: element?.closest?.("[data-row-action]")?.dataset.rowAction,
+			connected: element?.isConnected,
+			ariaDisabled: element
+				?.closest?.("[aria-disabled]")
+				?.getAttribute("aria-disabled"),
+			inert: Boolean(element?.closest?.("[inert]")),
+			pointerEvents: style?.pointerEvents,
+			opacity: style?.opacity,
+			rect: rect && {
+				x: rect.x,
+				y: rect.y,
+				width: rect.width,
+				height: rect.height,
+			},
+		};
+	};
+	sink.snapshot = () =>
+		[targetId, neighborId].map((id) => ({
+			id,
+			...describe(document.querySelector(`[data-drawer-update="${id}"]`)),
+		}));
+	for (const type of [
+		"pointerdown",
+		"mousedown",
+		"pointerup",
+		"mouseup",
+		"click",
+	]) {
+		for (const capture of [true, false]) {
+			const listener = (event) => {
+				try {
+					sink.record(`dom.${type}`, {
+						id: targetId,
+						capture,
+						isTrusted: event.isTrusted,
+						detail: event.detail,
+						button: event.button,
+						x: event.clientX,
+						y: event.clientY,
+						defaultPrevented: event.defaultPrevented,
+						target: describe(event.target),
+						onTop: describe(
+							document.elementFromPoint(event.clientX, event.clientY),
+						),
+						rows: sink.snapshot(),
+						viewport: { width: innerWidth, height: innerHeight },
+					});
+				} catch {
+					sink.errors++;
+				}
+			};
+			document.addEventListener(type, listener, { capture, passive: true });
+			listeners.push(() =>
+				document.removeEventListener(type, listener, capture),
+			);
+		}
+	}
+	sink.stop = () => {
+		if (stopped) return;
+		stopped = true;
+		for (const stop of [...listeners, ...sink.cleanup]) {
+			try {
+				stop();
+			} catch {
+				sink.errors++;
+			}
+		}
+		if (globalThis.__notificationDiagnostic === sink)
+			globalThis.__notificationDiagnostic = undefined;
+	};
+	return { installed: true, targetId, neighborId, rows: sink.snapshot() };
+}
+
+/** Harvest while the measured renderer still exists, then freeze both ledgers.
+ * Diagnostic failures must never replace the original scene outcome. Stop runs
+ * even when snapshot fails, and later fixture cleanup cannot append to this file.
+ */
+export function harvestDismissDiagnostic() {
+	const sink = globalThis.__notificationDiagnostic;
+	if (!sink) return { missing: true };
+	let rows;
+	try {
+		rows = sink.snapshot();
+	} catch {
+		sink.errors++;
+	} finally {
+		sink.stop();
+	}
+	return {
+		records: sink.records,
+		errors: sink.errors,
+		dropped: sink.dropped,
+		anchor: sink.anchor,
+		rows,
+	};
+}
+
+export async function finishDismissDiagnostic(cdp, diagnostic, out) {
+	if (!diagnostic.enabled) return;
+	try {
+		let renderer;
+		try {
+			renderer = await cdp.evaluate(
+				`(${harvestDismissDiagnostic.toString()})()`,
+			);
+		} catch {
+			diagnostic.errors.push("snapshot-error");
+			// A failed CDP response need not mean evaluation never ran. Stop is idempotent.
+			await cdp
+				.evaluate("globalThis.__notificationDiagnostic?.stop()")
+				.catch(() => {});
+			renderer = { missing: true };
+		}
+		diagnostic.stop();
+		writeFileSync(
+			join(out, "dismiss-diagnostic.json"),
+			JSON.stringify(
+				{
+					schema: "notification-dismiss-v1",
+					targetId: diagnostic.targetId,
+					hostAnchor: diagnostic.anchor,
+					host: diagnostic.records,
+					renderer,
+					errors: diagnostic.errors,
+					classification: classifyDismissTrace(
+						[...diagnostic.records, ...(renderer?.records ?? [])],
+						diagnostic.targetId,
+					),
+				},
+				null,
+				2,
+			),
+		);
+	} catch {
+		diagnostic.errors.push("snapshot-or-write-error");
+	} finally {
+		diagnostic.stop();
+	}
+}
+
+/** Missing phases are evidence gaps, never a substitute optimistic-dismiss PASS. */
+export function classifyDismissTrace(records, targetId) {
+	const scoped = records.filter((row) => row.id === targetId);
+	const has = (phase) => scoped.some((row) => row.phase === phase);
+	const click = scoped.find(
+		(row) => row.phase === "dom.click" && row.isTrusted,
+	);
+	if (!click) return "gesture-unobserved";
+	if (click.target?.row !== targetId || click.target?.action !== "dismiss")
+		return "wrong-target";
+	if (click.target?.ariaDisabled === "true" && !has("applyWrite.entry"))
+		return "handler-guarded";
+	if (!has("applyWrite.entry")) return "handler-not-entered";
+	if (!has("onMutate.entry")) return "mutation-not-entered";
+	if (has("cancel.start") && !has("cancel.resolve"))
+		return has("cancel.reject")
+			? "cancellation-rejected"
+			: "cancellation-unfinished";
+	if (scoped.some((row) => row.phase === "cache.known" && !row.present))
+		return "target-missing-from-cache";
+	if (!has("publish.after")) return "projection-unfinished";
+	if (has("proxy.hold-enter") && !has("proxy.forward"))
+		return "transport-held-after-projection";
+	return "inspect-ordered-trace";
+}
+
 /* Three digits in any of the three digit families the shipped locales print: Latin,
  * Arabic-Indic and Extended Arabic-Indic (Urdu). Module level so the poll below does
  * not rebuild the literal on every tick. */
@@ -67,7 +290,13 @@ export async function prepareDrawerRemediation({
 		),
 	);
 	const ids = new Set(seedRows.map((row) => row.id));
+	const diagnostic = createDismissRecorder(
+		seedRows[2].id,
+		process.env.LOCAL_OPERATOR_UI_NOTIFICATION_DIAGNOSTIC ===
+			"1988-single-step-v1",
+	);
 	const state = {
+		diagnostic,
 		enabled: false,
 		holdReads: false,
 		holdPatch: false,
@@ -103,6 +332,31 @@ export async function prepareDrawerRemediation({
 				(payload.ids?.some((item) => ids.has(item.id)) ||
 					payload.target?.items?.some((item) => ids.has(item.id)) ||
 					payload.session_id === session);
+			// Record arrival BEFORE the existing hold; completed receipts remain separate.
+			const matched =
+				ownPatch &&
+				[...(payload.ids ?? []), ...(payload.target?.items ?? [])].some(
+					(item) => item.id === diagnostic.targetId,
+				);
+			const trace = (phase, extra = {}) => {
+				if (matched)
+					diagnostic.record(phase, {
+						id: diagnostic.targetId,
+						method: req.method,
+						path: url.pathname,
+						verb: payload.verb,
+						revision: [
+							...(payload.ids ?? []),
+							...(payload.target?.items ?? []),
+						].find((item) => item.id === diagnostic.targetId)?.revision,
+						holdPatch: state.holdPatch,
+						failNextPatch: state.failNextPatch,
+						...extra,
+					});
+			};
+			trace("proxy.arrived-body-read");
+			req.once("aborted", () => trace("proxy.aborted"));
+			res.once("close", () => trace("proxy.closed"));
 			if (state.enabled && isList && state.failReads) {
 				res.writeHead(503, { "Content-Type": "application/json" });
 				res.end(JSON.stringify({ detail: "CI drawer transport unavailable" }));
@@ -111,8 +365,11 @@ export async function prepareDrawerRemediation({
 			if (
 				(state.enabled && isList && state.holdReads) ||
 				(ownPatch && state.holdPatch)
-			)
+			) {
+				trace("proxy.hold-enter");
 				await new Promise((resolve) => state.releases.push(resolve));
+				trace("proxy.release");
+			}
 			if (ownPatch && state.failNextPatch) {
 				state.failNextPatch = false;
 				res.writeHead(409, { "Content-Type": "application/json" });
@@ -123,15 +380,18 @@ export async function prepareDrawerRemediation({
 				);
 				return;
 			}
+			trace("proxy.forward");
 			const upstream = httpRequest(
 				url,
 				{ method: req.method, headers: { ...req.headers, host: url.host } },
 				(answer) => {
+					trace("proxy.response", { status: answer.statusCode });
 					res.writeHead(answer.statusCode, answer.headers);
 					if (ownPatch) {
 						const parts = [];
 						answer.on("data", (part) => parts.push(part));
 						answer.on("end", () => {
+							trace("proxy.end");
 							const raw = Buffer.concat(parts).toString();
 							let receipt;
 							try {
@@ -342,11 +602,23 @@ const hittablePoint = (selector) => `(()=>{
  * is not retried and not softened, because a control that genuinely cannot be hit at
  * this viewport must never be clicked into a pass.
  */
-async function click(cdp, selector) {
+const diagnosticGeometry = (probe) =>
+	probe && {
+		x: probe.x,
+		y: probe.y,
+		rect: probe.rect,
+		viewport: probe.viewport,
+		present: probe.present,
+		reason: probe.reason,
+	};
+async function click(cdp, selector, diagnostic) {
 	let box;
 	try {
 		box = await until(async () => {
 			const probed = await cdp.evaluate(hittablePoint(selector));
+			diagnostic?.record("click.initial-hit", {
+				geometry: diagnosticGeometry(probed),
+			});
 			return probed && typeof probed.x === "number"
 				? { x: probed.x, y: probed.y }
 				: null;
@@ -376,19 +648,30 @@ async function click(cdp, selector) {
 			`click ${selector}: no point of the control is hittable immediately before the press - ${JSON.stringify(fresh)}`,
 		);
 	}
+	diagnostic?.record("click.fresh-hit", {
+		geometry: diagnosticGeometry(fresh),
+	});
 	const press = { x: fresh.x, y: fresh.y };
 	await cdp.send("Input.dispatchMouseEvent", {
 		type: "mouseMoved",
 		button: "none",
 		...press,
 	});
-	for (const type of ["mousePressed", "mouseReleased"])
-		await cdp.send("Input.dispatchMouseEvent", {
-			type,
-			button: type === "mouseMoved" ? "none" : "left",
-			clickCount: 1,
-			...press,
-		});
+	for (const type of ["mousePressed", "mouseReleased"]) {
+		diagnostic?.record("cdp.sent", { type, ...press });
+		try {
+			await cdp.send("Input.dispatchMouseEvent", {
+				type,
+				button: type === "mouseMoved" ? "none" : "left",
+				clickCount: 1,
+				...press,
+			});
+			diagnostic?.record("cdp.ack", { type });
+		} catch (error) {
+			diagnostic?.record("cdp.error", { type });
+			throw error;
+		}
+	}
 }
 const stateOf = (cdp) =>
 	cdp.evaluate(`(()=>({
@@ -713,15 +996,42 @@ export async function runDrawerRemediationScene({
 		// uses core's real store; only the failed dismiss is a native user gesture.
 		const concurrent = fixture.seedRows[2];
 		fixture.state.holdPatch = true;
-		await click(
-			cdp,
-			`[data-drawer-update="${concurrent.id}"] [data-row-action="dismiss"]`,
-		);
-		await until(
-			async () =>
-				!(await stateOf(cdp)).rows.some((row) => row.id === concurrent.id),
-			"optimistic dismiss",
-		);
+		const diagnostic = fixture.state.diagnostic;
+		try {
+			if (diagnostic.enabled) {
+				diagnostic.record("step.armed", {
+					id: concurrent.id,
+					revision: concurrent.revision,
+					sourceCommit: process.env.GITHUB_SHA,
+					coreCommit: process.env.LOCAL_OPERATOR_CORE_REF,
+					seedIndex: 2,
+					title: "Drawer update 2",
+					neighborId: fixture.seedRows[3].id,
+					session: fixture.session,
+				});
+				const installed = await cdp.evaluate(
+					`(${installDismissDiagnostic.toString()})(${JSON.stringify(concurrent.id)},${JSON.stringify(fixture.seedRows[3].id)})`,
+				);
+				assert.equal(
+					installed?.targetId,
+					concurrent.id,
+					"diagnostic target must match selected seed row",
+				);
+				diagnostic.record("step.installed", installed);
+			}
+			await click(
+				cdp,
+				`[data-drawer-update="${concurrent.id}"] [data-row-action="dismiss"]`,
+				diagnostic.enabled ? diagnostic : undefined,
+			);
+			await until(
+				async () =>
+					!(await stateOf(cdp)).rows.some((row) => row.id === concurrent.id),
+				"optimistic dismiss",
+			);
+		} finally {
+			await finishDismissDiagnostic(cdp, diagnostic, out);
+		}
 		fixture.readFromOtherSurface(concurrent);
 		fixture.state.failNextPatch = true;
 		fixture.release();
@@ -1057,6 +1367,11 @@ export async function runDrawerRemediationScene({
 		} catch {}
 		throw error;
 	} finally {
+		// Measured evidence is already frozen; unconditional cleanup has its own reel.
+		const diagnostic = fixture.state.diagnostic;
+		const cleanup = [
+			{ phase: "cleanup.before-release", at: performance.now() },
+		];
 		fixture.release();
 		fixture.state.failReads = false;
 		fixture.state.enabled = false;
@@ -1081,6 +1396,27 @@ export async function runDrawerRemediationScene({
 			handoverError = error;
 			receipt.handover = { error: String(error?.message ?? error) };
 			receipt.result = "FAIL";
+		}
+		if (diagnostic.enabled) {
+			try {
+				cleanup.push({
+					phase: "cleanup.after-handover",
+					at: performance.now(),
+				});
+				writeFileSync(
+					join(out, "dismiss-diagnostic-cleanup.json"),
+					JSON.stringify(
+						{
+							host: cleanup,
+							errors: diagnostic.errors,
+						},
+						null,
+						2,
+					),
+				);
+			} catch {
+				/* Keep the original scene error/return code and cleanup path. */
+			}
 		}
 		/* The write above is the crash-safe early copy; this one carries the handover
 		 * it could not know about yet, so the artifact matches the outcome the run had. */

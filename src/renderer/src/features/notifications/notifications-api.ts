@@ -889,16 +889,29 @@ export function useNotificationsWrite() {
 			"items" in target
 				? beginOptimisticWrite(client, verb, target.items)
 				: undefined,
-		onError: (_error, _variables, rollback) => rollback?.(),
+		onError: (_error, variables, rollback) => {
+			if ("items" in variables.target)
+				for (const item of variables.target.items)
+					recordNotificationDiagnostic("mutation.error", item.id);
+			return rollback?.();
+		},
 		mutationFn: ({
 			verb,
 			target,
 		}: {
 			verb: NotificationsVerb;
 			target: NotificationsTarget;
-		}) => writeNotifications(verb, target),
+		}) => {
+			if ("items" in target)
+				for (const item of target.items)
+					recordNotificationDiagnostic("mutationFn.start", item.id, { verb });
+			return writeNotifications(verb, target);
+		},
 		retry: retryDesktopMutation,
 		onSuccess: (result, variables, optimistic) => {
+			if ("items" in variables.target)
+				for (const item of variables.target.items)
+					recordNotificationDiagnostic("mutation.resolve", item.id);
 			if (optimistic) {
 				optimistic.settle(result);
 				// The ledger has already applied revision-bound accepted rows. A second
@@ -1378,6 +1391,97 @@ export type CompactNotificationReceipt = Pick<
 	};
 };
 
+/** NON-SHIPPING diagnostic carrier: the native scene installs this target-only sink.
+ * Never retain bodies, arbitrary cache values or error messages. Sink failures must
+ * not change a mutation's ordering, return value or rejection. Absent is inert.
+ */
+type NotificationDiagnostic = {
+	targetId: string;
+	record: (phase: string, metadata: Record<string, unknown>) => void;
+	errors: number;
+	cleanup: (() => void)[];
+	watching?: boolean;
+};
+export function recordNotificationDiagnostic(
+	phase: string,
+	id: string,
+	metadata: Record<string, unknown> = {},
+): void {
+	try {
+		const sink = (
+			globalThis as typeof globalThis & {
+				__notificationDiagnostic?: NotificationDiagnostic;
+			}
+		).__notificationDiagnostic;
+		if (!sink || sink.targetId !== id) return;
+		try {
+			sink.record(phase, { id, ...metadata });
+		} catch {
+			sink.errors += 1;
+		}
+	} catch {
+		/* A broken diagnostic must never become a product failure. */
+	}
+}
+
+/** Subscribe only while this one scene target is armed; never serialize cache data. */
+function watchNotificationDiagnostic(client: QueryClient): void {
+	try {
+		const sink = (
+			globalThis as typeof globalThis & {
+				__notificationDiagnostic?: NotificationDiagnostic;
+			}
+		).__notificationDiagnostic;
+		if (!sink || sink.watching) return;
+		sink.watching = true;
+		const snapshot = () => {
+			try {
+				for (const query of client
+					.getQueryCache()
+					.findAll({ queryKey: notificationKeys.all })) {
+					const data = query.state.data as
+						| {
+								items?: DesktopNotificationItem[];
+								waiting?: DesktopNotificationItem[];
+								pages?: { items?: DesktopNotificationItem[] }[];
+						  }
+						| undefined;
+					const rows = [
+						...(data?.items ?? []),
+						...(data?.waiting ?? []),
+						...(data?.pages ?? []).flatMap((page) => page.items ?? []),
+					];
+					const row = rows.find((item) => item.id === sink.targetId);
+					recordNotificationDiagnostic("cache.notification", sink.targetId, {
+						queryKind: String(query.queryKey[2]),
+						// Stable opaque query identity without copying filter/session values.
+						queryHash: Array.from(query.queryHash)
+							.reduce(
+								(hash, char) =>
+									Math.imul(hash ^ char.charCodeAt(0), 16777619) >>> 0,
+								2166136261,
+							)
+							.toString(16),
+						status: query.state.status,
+						dataUpdatedAt: query.state.dataUpdatedAt,
+						present: Boolean(row),
+						revision: row?.revision,
+						seq: row?.seq,
+						read: row?.read,
+						dismissed: row?.dismissed,
+					});
+				}
+			} catch {
+				sink.errors += 1;
+			}
+		};
+		sink.cleanup.push(client.getQueryCache().subscribe(snapshot));
+		snapshot();
+	} catch {
+		/* Instrumentation is never on the mutation's failure path. */
+	}
+}
+
 export type OptimisticNotificationWrite = (() => void) & {
 	settle: (receipt: DesktopNotificationsWriteResult) => void;
 	settleCompact: (receipt: CompactNotificationReceipt) => void;
@@ -1401,18 +1505,40 @@ export async function beginOptimisticWrite(
 	)[],
 	scope?: NotificationOptimisticScope,
 ): Promise<OptimisticNotificationWrite | undefined> {
-	if (!client || (!tokens.length && !scope)) return undefined;
+	const trace = (phase: string, metadata: Record<string, unknown> = {}) => {
+		for (const token of tokens)
+			recordNotificationDiagnostic(
+				phase,
+				typeof token === "string" ? token : token.id,
+				{ verb, ...metadata },
+			);
+	};
+	trace("onMutate.entry");
+	if (!client || (!tokens.length && !scope)) {
+		trace("onMutate.early-return", { clientPresent: Boolean(client) });
+		return undefined;
+	}
 	/*
 	 * Cancel only the reads whose answers this projection edits. A detail body
 	 * and the scope-count walk are not edited by a read/dismiss, and cancelling
 	 * them threw away an in-flight `notifications.get` - opening a detail fires
 	 * a read - so the pane re-requested its body behind the PATCH.
 	 */
-	await client.cancelQueries({
-		queryKey: notificationKeys.all,
-		predicate: (query) =>
-			!UNPROJECTED_READS.has(String((query.queryKey as readonly unknown[])[2])),
-	});
+	watchNotificationDiagnostic(client);
+	trace("cancel.start");
+	try {
+		await client.cancelQueries({
+			queryKey: notificationKeys.all,
+			predicate: (query) =>
+				!UNPROJECTED_READS.has(
+					String((query.queryKey as readonly unknown[])[2]),
+				),
+		});
+	} catch (error) {
+		trace("cancel.reject");
+		throw error;
+	}
+	trace("cancel.resolve");
 	const ledger = notificationLedger(client);
 	const known = cachedRows(client);
 	const owner = Symbol("notification-write");
@@ -1422,6 +1548,14 @@ export async function beginOptimisticWrite(
 	for (const token of tokens) {
 		const id = typeof token === "string" ? token : token.id;
 		const row = known.get(id);
+		recordNotificationDiagnostic("cache.known", id, {
+			present: Boolean(row),
+			source: row?.source,
+			revision: row?.revision,
+			seq: row?.seq,
+			read: row?.read,
+			dismissed: row?.dismissed,
+		});
 		if (!row || row.source !== "notify" || ids.includes(id)) continue;
 		let entry = ledger.rows.get(id);
 		if (
@@ -1442,6 +1576,12 @@ export async function beginOptimisticWrite(
 			verb,
 			revision: typeof token === "string" ? row.revision : token.revision,
 		});
+		recordNotificationDiagnostic("ledger.intent", id, {
+			verb,
+			revision: typeof token === "string" ? row.revision : token.revision,
+			read: projectReadRow(entry).read,
+			dismissed: projectReadRow(entry).dismissed,
+		});
 		const delta = isUnread(projectReadRow(entry)) - isUnread(before);
 		knownDelta += delta;
 		knownSessionDeltas.set(
@@ -1457,10 +1597,14 @@ export async function beginOptimisticWrite(
 			knownDelta,
 			knownSessionDeltas,
 		});
+	trace("publish.before");
 	publishNotificationLedger(client, ledger);
+	trace("publish.after");
+	trace("onMutate.return");
 	let settled = false;
 	const finish = (receipt?: DesktopNotificationsWriteResult) => {
 		if (settled) return;
+		trace("ledger.settlement", { receipt: Boolean(receipt) });
 		settled = true;
 		ledger.scopes.delete(owner);
 		const changed = new Set(receipt?.changed ?? []);
