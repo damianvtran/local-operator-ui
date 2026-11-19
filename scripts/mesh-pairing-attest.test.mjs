@@ -99,6 +99,7 @@ const {
 	meshPairingFrame,
 	meshPairingSocketPath,
 	pairingProvenanceRefusal,
+	refusalEnv,
 	MESH_PAIRING_DEADLINE_S,
 	MESH_PAIRING_ATTEST_REFUSED,
 	registerDesktopIPC,
@@ -366,35 +367,44 @@ test("an empty dev-driver env var is not a driver (unset in a parent shell)", ()
 /*
  * Main builds the launch facts inside the pairings IPC handler, so the facts
  * builder itself is not reachable from a typed double. What is pinned instead:
- * the gate refuses on the env main composes - the launch snapshot spread under
- * the dotenv-folded env - when the driver variable exists ONLY in the folded
- * half, and index.ts composes exactly that superset (not the snapshot alone,
- * which would miss it, and not bare `process.env`, which dev-driver-gate forbids).
+ * `refusalEnv` (the merge main uses for the `dev_flag` env) refuses when a
+ * driver variable is set in EITHER the launch snapshot or the dotenv-folded env
+ * - including a launch value a `.env` line blanked, which a plain spread would
+ * mask - and index.ts composes exactly `refusalEnv(launchEnv, process.env)`
+ * (not the snapshot alone, and not bare `process.env`, which dev-driver-gate
+ * forbids).
  */
-const PAIRING_REFUSAL_ENV =
-	/\n\t*env: \{ \.\.\.launchEnv, \.\.\.process\.env \},/;
-test("a driver var present only in the folded env still refuses dev_flag", () => {
-	const launchEnv = { HOME: "/Users/someone" };
-	const folded = { HOME: "/Users/someone", LOCAL_OPERATOR_UI_DEV_DRIVER: "1" };
-	assert.equal(
-		pairingProvenanceRefusal({ ...person(), env: launchEnv }),
-		null,
-		"control: the snapshot alone carries no driver var",
-	);
-	assert.equal(
-		pairingProvenanceRefusal({
-			...person(),
-			env: { ...launchEnv, ...folded },
-		}),
+const PAIRING_REFUSAL_ENV = /\n\t*env: refusalEnv\(launchEnv, process\.env\),/;
+const DRIVER = "LOCAL_OPERATOR_UI_DEV_DRIVER";
+const pairingEnvCases = [
+	["a launch-only driver var", { [DRIVER]: "1" }, {}, "dev_flag"],
+	["a folded-only driver var", {}, { [DRIVER]: "1" }, "dev_flag"],
+	[
+		"a launch driver var a .env blanked (launch=1, folded empty)",
+		{ [DRIVER]: "1" },
+		{ [DRIVER]: "" },
 		"dev_flag",
-	);
+	],
+	["no driver var in either env", {}, {}, null],
+];
+for (const [name, launch, folded, reason] of pairingEnvCases) {
+	test(`refusalEnv(launch, folded): ${name}`, () => {
+		const env = refusalEnv(
+			{ HOME: "/Users/someone", ...launch },
+			{ HOME: "/Users/someone", ...folded },
+		);
+		assert.equal(pairingProvenanceRefusal({ ...person(), env }), reason);
+	});
+}
+
+test("index.ts composes the pairing refusal env from both envs", () => {
 	const main = readFileSync(join(process.cwd(), "src/main/index.ts"), "utf8");
 	const at = main.indexOf("const launchFacts = () => ({");
 	assert.notEqual(at, -1, "index.ts no longer builds the pairing launch facts");
 	assert.match(
 		main.slice(at, at + 2000),
 		PAIRING_REFUSAL_ENV,
-		"the pairing refusal env must be the superset of launchEnv and the folded process.env",
+		"the pairing refusal env must be refusalEnv(launchEnv, process.env)",
 	);
 });
 

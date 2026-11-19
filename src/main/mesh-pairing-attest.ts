@@ -211,6 +211,32 @@ export type PairingProvenanceFacts = {
  */
 const DRIVER_ENV_PREFIXES = [DEV_DRIVER_ENV, "LOCAL_OPERATOR_UI_SMOKE_TEST"];
 
+/**
+ * Merge env sources for the `dev_flag` refusal, keeping, per key, any NON-EMPTY
+ * value from any source.
+ *
+ * Why not a plain spread: main has two envs - the launch snapshot (`launchEnv`)
+ * and `process.env` after the cwd `.env` was folded in with `override: true`.
+ * A spread lets the later source win per key, so a `.env` line
+ * `LOCAL_OPERATOR_UI_DEV_DRIVER=` would blank a driver variable the process was
+ * launched with, and the refusal (which treats empty as unset, see the test "an
+ * empty dev-driver env var is not a driver") would pass a launch the driver
+ * still arms from `launchEnv`. Keeping any non-empty value means a driver
+ * variable set in EITHER env refuses. Use it only for refusals: for a fact that
+ * GRANTS something (window mode, driver arming) a merged env is the wrong read,
+ * and main uses `launchEnv` alone.
+ */
+export function refusalEnv(
+	...sources: readonly Readonly<Record<string, string | undefined>>[]
+): Record<string, string> {
+	const merged: Record<string, string> = {};
+	for (const source of sources)
+		for (const [key, value] of Object.entries(source))
+			if (value !== undefined && value !== "" && !(key in merged))
+				merged[key] = value;
+	return merged;
+}
+
 /** Switches that attach a debugger/driver, matched as `--name` or `--name=value`. */
 export const MESH_PAIRING_DEBUG_SWITCHES = [
 	"--remote-debugging-port",

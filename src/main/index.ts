@@ -161,6 +161,7 @@ import {
 	answerMeshPairing,
 	confirmMeshPairing,
 	meshPairingEligibility,
+	refusalEnv,
 } from "./mesh-pairing-attest";
 import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
 import { installTypeOfServiceGuard } from "./net-tos-guard";
@@ -3931,10 +3932,11 @@ app
 					 * `launchEnv` alone is the safe read, here the safe read is the
 					 * superset of the launch snapshot and the folded env: the snapshot
 					 * alone would miss a driver variable a `.env` added and so weaken
-					 * the refusal. An extra key can only make it refuse more (a key
-					 * both carry takes the folded value).
+					 * the refusal. `refusalEnv` keeps any non-empty value per key, so
+					 * a `.env` line blanking a launch-time driver variable cannot mask
+					 * it either: a driver variable set in EITHER env refuses.
 					 */
-					env: { ...launchEnv, ...process.env },
+					env: refusalEnv(launchEnv, process.env),
 					windowMode: windowLaunch.mode,
 				});
 				if (pairingRequest.op === "pairings.eligibility")
