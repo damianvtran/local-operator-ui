@@ -418,7 +418,7 @@ test("READY: a ready that arrives with no page open (voice off, closed) says not
 	assert.equal(r.reports.at(-1), "idle");
 });
 
-test("FAILED: the page's failed (model, WASM or microphone lost) closes the page, says page_failed and does not reopen until voice is switched", async () => {
+test("FAILED: the page's failed (model, WASM or microphone lost) closes the page, says page_failed and a repeat AUTOMATIC apply does not reopen it", async () => {
 	const r = byokRig();
 	r.on();
 	await settle();
@@ -426,6 +426,9 @@ test("FAILED: the page's failed (model, WASM or microphone lost) closes the page
 	r.fail();
 	assert.equal(r.order.at(-1), "close", "the microphone is released");
 	assert.equal(r.reports.at(-1), "page_failed");
+	// Every automatic caller (a slot move, a provider re-read) is an apply: only
+	// an explicit retry may reopen, or a broken page would loop open/fail.
+	r.on();
 	r.on();
 	await settle();
 	assert.deepEqual(r.order, ["mic", "open", "close"], "no loop");
@@ -435,6 +438,50 @@ test("FAILED: the page's failed (model, WASM or microphone lost) closes the page
 	assert.equal(r.reports.at(-1), "starting");
 	r.ready();
 	assert.equal(r.reports.at(-1), "listening");
+});
+
+test("RETRY: Try again after a failed page reopens it and reaches starting; a second failure can be retried too, one click per attempt", async () => {
+	const r = byokRig();
+	r.on();
+	await settle();
+	r.ready();
+	r.fail();
+	assert.equal(r.reports.at(-1), "page_failed");
+	r.byok.retry();
+	r.on();
+	await settle();
+	assert.deepEqual(r.order, ["mic", "open", "close", "mic", "open"]);
+	assert.equal(r.reports.at(-1), "starting");
+	// It fails again: still failed, and an automatic apply still does not loop.
+	r.fail();
+	assert.equal(r.reports.at(-1), "page_failed");
+	r.on();
+	await settle();
+	assert.deepEqual(r.order, ["mic", "open", "close", "mic", "open", "close"]);
+	// A new click is a new attempt.
+	r.byok.retry();
+	r.on();
+	await settle();
+	assert.equal(r.order.filter((x) => x === "open").length, 3);
+	assert.equal(r.reports.at(-1), "starting");
+	r.ready();
+	assert.equal(r.reports.at(-1), "listening");
+});
+
+test("RETRY: a retry after the page could not be brought back (a second crash) reopens it, and a retry with nothing failed does nothing", async () => {
+	const r = byokRig();
+	r.on();
+	await settle();
+	r.byok.retry();
+	r.on();
+	await settle();
+	assert.deepEqual(r.order, ["mic", "open"], "nothing failed: nothing reopened");
+	r.byok.pageStopped("The voice page stopped");
+	r.byok.retry();
+	r.on();
+	await settle();
+	assert.deepEqual(r.order.slice(-2), ["mic", "open"]);
+	assert.equal(r.reports.at(-1), "starting");
 });
 
 test("FAILED: a page that never says ready is a page failure after the start budget, not a Listening that never ends", async () => {
@@ -464,6 +511,30 @@ test("READY: a page that was recreated after a first crash is 'starting' again u
 	assert.equal(r.reports.at(-1), "starting");
 	r.ready();
 	assert.equal(r.reports.at(-1), "listening");
+});
+
+test("READY: a crash mid-utterance leaves no 'hearing' or utterance slot behind", async () => {
+	const r = byokRig();
+	r.on();
+	await settle();
+	r.ready();
+	r.byok.onVad("speech_start");
+	r.byok.pageRestarted();
+	const before = r.events().length;
+	r.byok.onVad("speech_cancel");
+	assert.equal(r.events().length, before, "no stray speech_stopped");
+	// The slot the dead page's utterance began under is forgotten too.
+	r.byok.onVad("speech_start");
+	r.byok.pageRestarted();
+	r.on(OTHER);
+	await settle();
+	r.byok.onTake(wav());
+	await settle();
+	assert.equal(
+		r.mediaCalls[0]?.request.sessionId,
+		OTHER,
+		"a take under the new holder is not dropped by a dead page's slot",
+	);
 });
 
 test("VAD: only the page's own detector words are accepted (junk and objects are ignored)", async () => {
@@ -1170,6 +1241,7 @@ function coordinator({ rig = false } = {}) {
 			return speakAnswer;
 		},
 		stop: () => applied.push("stop"),
+		retry: () => applied.push("retry"),
 	};
 	const voice = new m.QwenVoice({
 		gateway,
@@ -1203,7 +1275,8 @@ function coordinator({ rig = false } = {}) {
 		setSpeakAnswer: (a) => {
 			speakAnswer = a;
 		},
-		lastApply: () => applied.filter((a) => a !== "stop").at(-1),
+		lastApply: () =>
+			applied.filter((a) => a !== "stop" && a !== "retry").at(-1),
 		statuses: () =>
 			toRenderer
 				.filter((x) => x.channel === "voice.qwen.status")
@@ -1489,6 +1562,37 @@ test("SPEAK GUARD (byok): only a text main relayed from a 200 voice.text, with i
 		false,
 		"once",
 	);
+});
+
+test("SPEAK GUARD (byok): a reply that arrives while the page is still starting is spoken (playback needs no microphone); a stopped or errored rig still refuses", async () => {
+	const c = coordinator();
+	c.voice.observeFrame(frame(SESSION));
+	c.voice.byokReport("starting");
+	c.voice.noteDesktopAnswer(...relay(SESSION, "Hello there.", ["Hello there."]));
+	assert.deepEqual(c.voice.speak({ text: "Hello there.", kind: "reply" }), {
+		spoken: true,
+	});
+	assert.equal(c.spoken.length, 1);
+	c.voice.byokReport("page_failed");
+	c.voice.noteDesktopAnswer(...relay(SESSION, "Again.", ["Again."]));
+	assert.deepEqual(c.voice.speak({ text: "Again.", kind: "reply" }), {
+		spoken: false,
+		reason: "rig_not_ready",
+	});
+});
+
+test("RETRY (coordinator): only the renderer's explicit start clears the page's failure; an enable, a frame or a status read never does", async () => {
+	const c = coordinator();
+	c.voice.observeFrame(frame(SESSION));
+	await c.voice.start("enable");
+	c.voice.noteDesktopAnswer(...statusAnswer(SESSION));
+	await settle();
+	assert.equal(c.applied.includes("retry"), false, "automatic callers");
+	await c.voice.start("renderer");
+	assert.equal(c.applied.filter((a) => a === "retry").length, 1);
+	// The retry comes before the apply that acts on it.
+	assert.equal(c.applied.at(-2), "retry");
+	assert.equal(c.applied.at(-1).active, true);
 });
 
 test("SPEAK GUARD (byok): a gate's source is its request id; paused and a moved slot are refused", async () => {

@@ -523,6 +523,9 @@ export class QwenVoice {
 		// instead, which loads no model (and still waits for a ready provider).
 		if (!this.rigAllowed) {
 			this.byokListening = true;
+			// The renderer's start is the person's own "Try again"; `enable` is
+			// automatic and must not undo a failure the page just reported.
+			if (reason === "renderer") this.deps.byok?.retry();
 			this.syncByok();
 			return Promise.resolve(this.getStatus());
 		}
@@ -1086,7 +1089,11 @@ export class QwenVoice {
 	private speakByok(index: number): { spoken: boolean; reason?: string } {
 		const byok = this.deps.byok;
 		const entry = this.relayed[index];
-		if (!byok || this.status.rig !== "ready" || this.slot === null)
+		// "starting" speaks too: playback needs no microphone, and a reply must not
+		// be lost to the page's model load. The page's own `speak` still refuses
+		// (no_client) when no page is open, e.g. while the provider is unchecked.
+		const live = this.status.rig === "ready" || this.status.rig === "starting";
+		if (!byok || !live || this.slot === null)
 			return { spoken: false, reason: "rig_not_ready" };
 		if (entry.source === null) return { spoken: false, reason: "not_relayed" };
 		this.relayed.splice(index, 1);

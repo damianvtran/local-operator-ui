@@ -134,6 +134,11 @@ export interface ByokVoicePort {
 	/** `voice.status`'s provider choice and readiness; see `VoiceProviderStatus`. */
 	setProvider(status: VoiceProviderStatus): void;
 	speak(entry: ByokSpeakEntry): { spoken: boolean; reason?: string };
+	/**
+	 * The person's own "Try again" after a failed page: the one thing that lifts
+	 * the failure, so the next apply reopens it. An automatic apply never does.
+	 */
+	retry(): void;
 	stop(): void;
 }
 
@@ -291,8 +296,21 @@ export class ByokVoice implements ByokVoicePort {
 	pageRestarted(): void {
 		if (!this.pageOpen) return;
 		this.stopReply();
+		// The dead document's utterance is over: its "hearing" and slot must not
+		// outlive it (a later cancel would emit a stray speech_stopped).
+		this.hearing = false;
+		this.speechSlot = null;
 		this.armReady();
 		this.say("starting");
+	}
+
+	/**
+	 * Clear a failure on an EXPLICIT retry only. `apply` runs on every slot move
+	 * and status read, so lifting it there would loop a broken page open/fail;
+	 * each retry is one user click, so it cannot.
+	 */
+	retry(): void {
+		this.failed = false;
 	}
 
 	stop(): void {
