@@ -6,7 +6,7 @@
 export const VOICE_PAGE_CHANNELS = {
 	/** page -> main: the WAV bytes of one finished utterance. */
 	take: "voice-page:take",
-	/** page -> main: `speech_start | speech_end`. */
+	/** page -> main: the detector's events (`VadEventKind`), liveness included. */
 	vad: "voice-page:vad",
 	/** main -> page: a segment's bytes and its id. */
 	play: "voice-page:play",
@@ -22,7 +22,19 @@ export const VOICE_PAGE_CHANNELS = {
 	progress: "voice-page:progress",
 } as const;
 
-export type VadEventKind = "speech_start" | "speech_end";
+/**
+ * What the page's detector reports. `ready` / `failed` are its liveness, riding
+ * this channel so the preload stays at six functions: `ready` once the detector
+ * has started over a live microphone, `failed` when it could not or the
+ * microphone was lost. `speech_cancel` withdraws a `speech_start` that never
+ * became an utterance.
+ */
+export type VadEventKind =
+	| "speech_start"
+	| "speech_end"
+	| "speech_cancel"
+	| "ready"
+	| "failed";
 
 /**
  * One segment of a reply. `id.replyId` names the reply and `id.index` the
@@ -40,4 +52,6 @@ export type PlayMessage = {
 /** What the page reports about the reply it is playing (`replyId` as pushed). */
 export type ProgressMessage =
 	| { kind: "segment_start"; replyId: string; index: number }
-	| { kind: "drained"; replyId: string };
+	| { kind: "drained"; replyId: string }
+	/** The page could not play the reply (a segment would not decode). */
+	| { kind: "failed"; replyId: string };

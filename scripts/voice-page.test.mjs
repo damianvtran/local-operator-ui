@@ -264,7 +264,7 @@ test("VAD: speech end sends one WAV take of the samples, after the vad event", a
 	await r.ctl.start();
 	assert.equal(r.out.started, 1);
 	r.fire().onSpeechEnd(new Float32Array([0.1, 0.2]));
-	assert.deepEqual(r.out.vad, ["speech_end"]);
+	assert.deepEqual(r.out.vad, ["ready", "speech_end"]);
 	assert.equal(r.out.takes.length, 1);
 	assert.equal(r.out.takes[0].length, 44 + 4);
 	assert.equal(r.out.stops, 0);
@@ -275,7 +275,7 @@ test("VAD: speech start while playing is barge-in - playback stops, then the eve
 	await r.ctl.start();
 	r.fire().onSpeechStart();
 	assert.equal(r.out.stops, 1);
-	assert.deepEqual(r.out.vad, ["speech_start"]);
+	assert.deepEqual(r.out.vad, ["ready", "speech_start"]);
 });
 
 test("VAD: speech start while idle sends the event and stops nothing", async () => {
@@ -283,7 +283,7 @@ test("VAD: speech start while idle sends the event and stops nothing", async () 
 	await r.ctl.start();
 	r.fire().onSpeechStart();
 	assert.equal(r.out.stops, 0);
-	assert.deepEqual(r.out.vad, ["speech_start"]);
+	assert.deepEqual(r.out.vad, ["ready", "speech_start"]);
 });
 
 test("VAD: after close the detector is destroyed and a late event sends nothing", async () => {
@@ -294,7 +294,7 @@ test("VAD: after close the detector is destroyed and a late event sends nothing"
 	assert.equal(r.out.destroyed, 1);
 	callbacks.onSpeechStart();
 	callbacks.onSpeechEnd(new Float32Array(10));
-	assert.deepEqual(r.out.vad, []);
+	assert.deepEqual(r.out.vad, ["ready"], "only what went up before close");
 	assert.deepEqual(r.out.takes, []);
 	assert.equal(r.out.stops, 0);
 	await r.ctl.start();
@@ -328,6 +328,129 @@ test("VAD: closing while the detector is still being built destroys it and never
 	release();
 	await starting;
 	assert.deepEqual(out, { destroyed: 1, started: 0 });
+});
+
+/*
+ * LISTENING IS PROVEN, NOT ASSUMED (review round 1, finding 1): the page tells
+ * main `ready` only once the detector has started, and `failed` when it never
+ * does or loses the microphone afterwards. Main shows "Listening" on `ready`.
+ */
+test("VAD: `ready` goes up only after the detector has actually started", async () => {
+	const out = [];
+	let finishStart;
+	const ctl = new m.VadController({
+		createVad: async () => ({
+			start: () =>
+				new Promise((resolve) => {
+					finishStart = resolve;
+				}),
+			pause() {},
+			destroy: async () => {},
+		}),
+		sendTake() {},
+		sendVad: (k) => out.push(k),
+		isPlaying: () => false,
+		stopPlayback() {},
+	});
+	const starting = ctl.start();
+	await new Promise((r) => setImmediate(r));
+	assert.deepEqual(out, [], "constructed but not started: nothing claimed");
+	finishStart();
+	await starting;
+	assert.deepEqual(out, ["ready"]);
+});
+
+test("VAD: a start that rejects (model, WASM or microphone) reports `failed`, never `ready`, and still rejects", async () => {
+	const out = [];
+	const ctl = new m.VadController({
+		createVad: async () => ({
+			start: async () => {
+				throw new Error("NotAllowedError");
+			},
+			pause() {},
+			destroy: async () => {},
+		}),
+		sendTake() {},
+		sendVad: (k) => out.push(k),
+		isPlaying: () => false,
+		stopPlayback() {},
+	});
+	await assert.rejects(ctl.start(), /NotAllowedError/);
+	assert.deepEqual(out, ["failed"]);
+	const building = new m.VadController({
+		createVad: async () => {
+			throw new Error("model did not load");
+		},
+		sendTake() {},
+		sendVad: (k) => out.push(k),
+		isPlaying: () => false,
+		stopPlayback() {},
+	});
+	await assert.rejects(building.start(), /model did not load/);
+	assert.deepEqual(out, ["failed", "failed"]);
+});
+
+test("VAD: losing the microphone after it started reports `failed` once; after close nothing is sent", async () => {
+	const r = vadRig();
+	await r.ctl.start();
+	assert.deepEqual(r.out.vad, ["ready"]);
+	r.fire().onMicrophoneLost();
+	r.fire().onMicrophoneLost();
+	assert.deepEqual(
+		r.out.vad,
+		["ready", "failed"],
+		"once, however often it ends",
+	);
+	const q = vadRig();
+	await q.ctl.start();
+	await q.ctl.close();
+	q.fire().onMicrophoneLost();
+	assert.deepEqual(q.out.vad, ["ready"]);
+});
+
+/*
+ * A FALSE TRIGGER MUST NOT CUT A REPLY (finding 2): vad-web's `onSpeechStart`
+ * fires on the first positive frame and a misfire follows when the segment
+ * proves too short; the factory hands the controller `onSpeechRealStart`
+ * instead, and a misfire after an announced start clears main's "Hearing you".
+ */
+test("VAD: a misfire that never became real speech sends nothing and does not touch playback", async () => {
+	const r = vadRig({ playing: true });
+	await r.ctl.start();
+	r.fire().onMisfire();
+	assert.deepEqual(r.out.vad, ["ready"]);
+	assert.equal(r.out.stops, 0);
+});
+
+test("VAD: a misfire after an announced speech_start cancels it, once", async () => {
+	const r = vadRig();
+	await r.ctl.start();
+	r.fire().onSpeechStart();
+	r.fire().onMisfire();
+	r.fire().onMisfire();
+	assert.deepEqual(r.out.vad, ["ready", "speech_start", "speech_cancel"]);
+	r.fire().onSpeechStart();
+	r.fire().onSpeechEnd(new Float32Array(4));
+	r.fire().onMisfire();
+	assert.deepEqual(r.out.vad.slice(3), ["speech_start", "speech_end"]);
+});
+
+test("VAD factory: barge-in and speech_start come from vad-web's onSpeechRealStart, and a misfire is passed through", () => {
+	const factory = readFileSync("src/voice-page/vad-factory.ts", "utf8");
+	assert.match(
+		factory,
+		/onSpeechRealStart:\s*\(\)\s*=>\s*callbacks\.onSpeechStart\(\)/,
+	);
+	assert.equal(
+		/\bonSpeechStart:/.test(factory),
+		false,
+		"the first-frame event is unused",
+	);
+	assert.match(
+		factory,
+		/onVADMisfire:\s*\(\)\s*=>\s*callbacks\.onMisfire\?\.\(\)/,
+	);
+	assert.match(factory, /callbacks\.onMicrophoneLost\(\)/);
 });
 
 /* --------------------------- CSP, URL and verdict -------------------------- */
@@ -585,6 +708,71 @@ test("INBOX (m1): a new replyId resets the inbox - the old reply's leftovers are
 	r.onPlay(r.seg("B", 0, 40, true));
 	for (let i = 0; i < 10; i += 1) await r.tick();
 	assert.deepEqual(r.played, [40]);
+});
+
+/*
+ * A SEGMENT THAT WILL NOT DECODE (finding 6): the scheduler stops silently, so
+ * the page must say the reply failed, or main waits on `reply.waiting` for ever.
+ */
+test("PLAYBACK FAILURE: a segment that will not decode tells main the reply failed and retires it", async () => {
+	const inbox = new m.ReplyInbox();
+	const sent = [];
+	const sched = new m.SegmentScheduler({
+		audio: {
+			currentTime: 0,
+			async decode() {
+				throw new Error("EncodingError");
+			},
+			start: () => ({ stop() {} }),
+			waitUntil: async () => {},
+		},
+		fetchSegment: (i, s) => inbox.pull(i, s),
+		onError: () => m.reportPlaybackFailure(inbox, (msg) => sent.push(msg)),
+	});
+	inbox.push({ id: { replyId: "r1", index: 0 }, bytes: new Uint8Array([1]) });
+	await sched.play();
+	assert.deepEqual(sent, [{ kind: "failed", replyId: "r1" }]);
+	assert.equal(inbox.current, null, "the reply is retired");
+	assert.equal(sched.playing, false);
+	const late = inbox.push({
+		id: { replyId: "r1", index: 1 },
+		bytes: new Uint8Array(1),
+	});
+	assert.equal(late.accepted, false, "its late segments are refused");
+});
+
+test("PLAYBACK FAILURE: with no reply current there is nothing to report", () => {
+	const inbox = new m.ReplyInbox();
+	const sent = [];
+	m.reportPlaybackFailure(inbox, (msg) => sent.push(msg));
+	assert.deepEqual(sent, []);
+});
+
+test("PLAYBACK FAILURE: the page entry routes the scheduler's onError through it", () => {
+	const entry = readFileSync("src/voice-page/main.ts", "utf8");
+	assert.match(entry, /onError:[\s\S]{0,200}reportPlaybackFailure\(/);
+});
+
+test("INBOX (nit): the retired ids are bounded, and a recent one is still refused", () => {
+	const inbox = new m.ReplyInbox();
+	const total = m.MAX_RETIRED_REPLIES + 50;
+	for (let i = 0; i < total; i += 1) {
+		inbox.push({
+			id: { replyId: `r${i}`, index: 0 },
+			bytes: new Uint8Array(1),
+		});
+		inbox.stop();
+	}
+	assert.equal(inbox.retiredCount, m.MAX_RETIRED_REPLIES);
+	const recent = inbox.push({
+		id: { replyId: `r${total - 1}`, index: 1 },
+		bytes: new Uint8Array(1),
+	});
+	assert.equal(
+		recent.accepted,
+		false,
+		"the latest retired reply stays refused",
+	);
 });
 
 /*

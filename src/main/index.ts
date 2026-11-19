@@ -1997,6 +1997,7 @@ const byokPage = (): ByokVoicePage => {
 		},
 		log: (message) => logger.info(message, LogFileType.BACKEND),
 		onStopped: (reason) => byokVoice.pageStopped(reason),
+		onRestarted: () => byokVoice.pageRestarted(),
 	});
 	return byokPageInstance;
 };

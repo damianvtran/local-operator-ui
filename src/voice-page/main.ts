@@ -1,5 +1,5 @@
 import type { VoicePageBridge } from "./bridge";
-import { ReplyInbox } from "./reply-inbox";
+import { ReplyInbox, reportPlaybackFailure } from "./reply-inbox";
 import { SegmentScheduler } from "./scheduler";
 import { VadController } from "./vad";
 import { createVad } from "./vad-factory";
@@ -57,6 +57,12 @@ const scheduler = new SegmentScheduler({
 		if (replyId) bridge.sendProgress({ kind: "drained", replyId });
 	},
 	fetchSegment: (index, signal) => inbox.pull(index, signal),
+	// The scheduler has already stopped itself; without this main would wait for
+	// a segment_start that never comes and the person would hear nothing, told nothing.
+	onError: (error) => {
+		console.error("voice page: playback failed", error);
+		reportPlaybackFailure(inbox, (message) => bridge.sendProgress(message));
+	},
 });
 
 bridge.onPlay((message) => {
@@ -83,9 +89,9 @@ const vad = new VadController({
 		scheduler.stop();
 	},
 });
-// A failed start (no detector yet, or the microphone refused) must not be an
-// unhandled rejection; the page has no error channel up yet, so it reports
-// "no speech" by staying silent and logs for the app's console capture.
+// A failed start (no model, or the microphone refused) is already reported to
+// main by the controller (`failed`); this only keeps it from being an unhandled
+// rejection and logs for the app's console capture.
 vad.start().catch((error: unknown) => {
 	console.error("voice page: listening did not start", error);
 });

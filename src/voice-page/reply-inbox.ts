@@ -1,4 +1,11 @@
-import type { PlayMessage } from "./channels";
+import type { PlayMessage, ProgressMessage } from "./channels";
+
+/**
+ * How many spent reply ids the inbox remembers. A late segment can only be for
+ * a reply main was fetching one ahead of, so the last few are all that can
+ * arrive; the cap keeps a long session from growing the set for ever.
+ */
+export const MAX_RETIRED_REPLIES = 64;
 
 /**
  * Where the voice page holds the segments main has pushed, keyed by reply and
@@ -22,6 +29,11 @@ export class ReplyInbox {
 		index: number;
 		resolve(bytes: Uint8Array | null): void;
 	} | null = null;
+
+	/** How many retired ids are remembered (bounded by `MAX_RETIRED_REPLIES`). */
+	get retiredCount(): number {
+		return this.retired.size;
+	}
 
 	/** The reply being played now, or null (retired by a stop or a drain). */
 	get current(): string | null {
@@ -85,7 +97,14 @@ export class ReplyInbox {
 	}
 
 	private retire(): void {
-		if (this.replyId !== null) this.retired.add(this.replyId);
+		if (this.replyId !== null) {
+			this.retired.add(this.replyId);
+			// A Set iterates in insertion order: drop the oldest.
+			if (this.retired.size > MAX_RETIRED_REPLIES) {
+				const oldest = this.retired.values().next().value;
+				if (oldest !== undefined) this.retired.delete(oldest);
+			}
+		}
 		this.replyId = null;
 	}
 
@@ -97,4 +116,18 @@ export class ReplyInbox {
 		this.waiter = null;
 		waiter?.resolve(null);
 	}
+}
+
+/**
+ * The scheduler stopped itself on an error (a segment would not decode): retire
+ * the reply and tell main which one failed, so it stops waiting and the person
+ * is told. Nothing to say when no reply is current.
+ */
+export function reportPlaybackFailure(
+	inbox: ReplyInbox,
+	send: (message: ProgressMessage) => void,
+): void {
+	const replyId = inbox.current;
+	inbox.stop();
+	if (replyId) send({ kind: "failed", replyId });
 }

@@ -83,7 +83,9 @@ function byokRig({
 	mic = "granted",
 	provider = READY_STATUS,
 	media = null,
+	timers = [],
 } = {}) {
+	let cleared = false;
 	const calls = [];
 	const order = [];
 	const toRenderer = [];
@@ -127,6 +129,14 @@ function byokRig({
 		},
 		newId: () => `00000000-0000-4000-8000-${String(++ids).padStart(12, "0")}`,
 		now: () => Date.parse("2026-11-18T10:00:00.000Z"),
+		setTimer: (fn, ms) => {
+			const timer = { fn, ms };
+			timers.push(timer);
+			return timer;
+		},
+		clearTimer: () => {
+			cleared = true;
+		},
 	});
 	if (provider !== null) byok.setProvider(provider);
 	const on = (slot = SESSION, muted = false) =>
@@ -138,6 +148,10 @@ function byokRig({
 		page,
 		calls,
 		order,
+		timerCleared: () => cleared,
+		/** The page's own word that its detector started over a live microphone. */
+		ready: () => byok.onVad("ready"),
+		fail: () => byok.onVad("failed"),
 		toRenderer,
 		reports,
 		gaps,
@@ -156,7 +170,9 @@ test("LISTEN: the microphone is asked BEFORE the page opens; then the page is op
 	r.on();
 	await settle();
 	assert.deepEqual(r.order, ["mic", "open"]);
-	assert.deepEqual(r.reports.at(-1), "listening");
+	assert.equal(r.reports.at(-1), "starting", "open is not proof of hearing");
+	r.ready();
+	assert.equal(r.reports.at(-1), "listening");
 });
 
 test("LISTEN: a denied microphone opens no page and says so; Try again (a new apply) asks again", async () => {
@@ -169,6 +185,8 @@ test("LISTEN: a denied microphone opens no page and says so; Try again (a new ap
 	r.on();
 	await settle();
 	assert.deepEqual(r.order, ["mic", "mic", "open"]);
+	assert.equal(r.reports.at(-1), "starting", "open is not proof of hearing");
+	r.ready();
 	assert.equal(r.reports.at(-1), "listening");
 });
 
@@ -180,6 +198,8 @@ test("LISTEN: an unanswered prompt is 'prompting'; the OS's later grant opens th
 	assert.equal(r.page.preflight.timeoutMs, 5000);
 	r.page.preflight.onSettled("granted");
 	assert.deepEqual(r.order, ["mic", "open"]);
+	assert.equal(r.reports.at(-1), "starting", "open is not proof of hearing");
+	r.ready();
 	assert.equal(r.reports.at(-1), "listening");
 	const d = byokRig({ mic: "prompting" });
 	d.on();
@@ -208,6 +228,8 @@ test("LISTEN: an unknown microphone verdict (not macOS) proceeds; a run that may
 	const r = byokRig({ mic: "unknown" });
 	r.on();
 	await settle();
+	assert.equal(r.reports.at(-1), "starting", "open is not proof of hearing");
+	r.ready();
 	assert.equal(r.reports.at(-1), "listening");
 	const n = byokRig();
 	n.page.allowed = false;
@@ -289,6 +311,8 @@ test("PROVIDER: not read yet waits - no page, no microphone question, 'checking'
 	r.byok.setProvider(READY_STATUS);
 	await settle();
 	assert.deepEqual(r.order, ["mic", "open"]);
+	assert.equal(r.reports.at(-1), "starting", "open is not proof of hearing");
+	r.ready();
 	assert.equal(r.reports.at(-1), "listening");
 });
 
@@ -299,6 +323,8 @@ test("PROVIDER: the choice arriving opens the page; losing it closes the page", 
 	r.byok.setProvider(READY_STATUS);
 	await settle();
 	assert.deepEqual(r.order, ["mic", "open"]);
+	assert.equal(r.reports.at(-1), "starting", "open is not proof of hearing");
+	r.ready();
 	assert.equal(r.reports.at(-1), "listening");
 	r.byok.setProvider({
 		provider: "radient",
@@ -332,6 +358,8 @@ test("PROVIDER: moving between two ready providers keeps the same page, with no 
 	});
 	await settle();
 	assert.deepEqual(r.order, ["mic", "open"]);
+	assert.equal(r.reports.at(-1), "starting", "open is not proof of hearing");
+	r.ready();
 	assert.equal(r.reports.at(-1), "listening");
 });
 
@@ -355,6 +383,96 @@ test("MUTE: the person's mute is handed to the page, on every apply that changes
 		r.calls.filter((c) => c?.muted !== undefined),
 		[{ muted: true }, { muted: false }],
 	);
+});
+
+/*
+ * LISTENING IS THE PAGE'S WORD (review round 1, finding 1): opening the page is
+ * "starting"; `ready` (the detector started over a live microphone) is the only
+ * thing that says "listening"; `failed` closes the page and says page_failed.
+ */
+test("READY: an opened page is 'starting' until the page says ready, and a repeat ready does not re-report", async () => {
+	const r = byokRig();
+	r.on();
+	await settle();
+	assert.equal(r.reports.at(-1), "starting");
+	r.ready();
+	assert.equal(r.reports.at(-1), "listening");
+	const count = r.reports.length;
+	r.ready();
+	r.on();
+	await settle();
+	assert.equal(r.reports.length, count);
+	assert.equal(r.reports.at(-1), "listening");
+});
+
+test("READY: a ready that arrives with no page open (voice off, closed) says nothing", async () => {
+	const r = byokRig();
+	r.ready();
+	assert.deepEqual(r.reports, []);
+	r.on();
+	await settle();
+	r.on(null);
+	const before = r.reports.length;
+	r.ready();
+	assert.equal(r.reports.length, before);
+	assert.equal(r.reports.at(-1), "idle");
+});
+
+test("FAILED: the page's failed (model, WASM or microphone lost) closes the page, says page_failed and does not reopen until voice is switched", async () => {
+	const r = byokRig();
+	r.on();
+	await settle();
+	r.ready();
+	r.fail();
+	assert.equal(r.order.at(-1), "close", "the microphone is released");
+	assert.equal(r.reports.at(-1), "page_failed");
+	r.on();
+	await settle();
+	assert.deepEqual(r.order, ["mic", "open", "close"], "no loop");
+	r.on(null);
+	r.on();
+	await settle();
+	assert.equal(r.reports.at(-1), "starting");
+	r.ready();
+	assert.equal(r.reports.at(-1), "listening");
+});
+
+test("FAILED: a page that never says ready is a page failure after the start budget, not a Listening that never ends", async () => {
+	const timers = [];
+	const r = byokRig({ timers });
+	r.on();
+	await settle();
+	assert.equal(r.reports.at(-1), "starting");
+	assert.equal(timers.length, 1, "one start budget armed");
+	timers[0].fn();
+	assert.equal(r.reports.at(-1), "page_failed");
+	assert.equal(r.order.at(-1), "close");
+	// A ready that beats the budget disarms it.
+	const q = byokRig({ timers: [] });
+	q.on();
+	await settle();
+	q.ready();
+	assert.equal(q.timerCleared(), true);
+});
+
+test("READY: a page that was recreated after a first crash is 'starting' again until it says ready", async () => {
+	const r = byokRig();
+	r.on();
+	await settle();
+	r.ready();
+	r.byok.pageRestarted();
+	assert.equal(r.reports.at(-1), "starting");
+	r.ready();
+	assert.equal(r.reports.at(-1), "listening");
+});
+
+test("VAD: only the page's own detector words are accepted (junk and objects are ignored)", async () => {
+	const r = byokRig();
+	r.on();
+	await settle();
+	r.byok.onVad({ kind: "ready" });
+	r.byok.onVad("READY");
+	assert.equal(r.reports.at(-1), "starting");
 });
 
 test("PAGE FAILED: a page that cannot be brought back is reported once and not reopened until voice is switched", async () => {
@@ -456,6 +574,7 @@ test("TAKE: a malformed, oversize or non-WAV payload from the page is dropped", 
 		new Uint8Array(0),
 		new Uint8Array(16),
 		new Uint8Array(64),
+		wav(44), // a header and no samples holds no audio
 		wav(16 * 1024 * 1024 + 1),
 	]) {
 		r.byok.onTake(bad);
@@ -604,6 +723,44 @@ test("TAKE: a slot that moved while the request was out still reports for the se
 	assert.equal(r.byokMessages().at(-1).sessionId, SESSION);
 });
 
+test("TAKE (slot): an utterance that began under one conversation is not uploaded to the next", async () => {
+	const r = byokRig();
+	r.on();
+	await settle();
+	r.byok.onVad("speech_start");
+	r.on(OTHER);
+	await settle();
+	r.byok.onVad("speech_end");
+	r.byok.onTake(wav());
+	await settle();
+	assert.deepEqual(r.mediaCalls, [], "dropped, not misdelivered");
+	assert.deepEqual(r.byokMessages(), []);
+	// The next utterance, begun under the new holder, goes to it.
+	r.byok.onVad("speech_start");
+	r.byok.onVad("speech_end");
+	r.byok.onTake(wav());
+	await settle();
+	assert.equal(r.mediaCalls.length, 1);
+	assert.equal(r.mediaCalls[0].request.sessionId, OTHER);
+});
+
+test("TAKE (slot): a take that follows its own speech_start in the same conversation is sent, once", async () => {
+	const r = byokRig();
+	r.on();
+	await settle();
+	r.byok.onVad("speech_start");
+	r.byok.onVad("speech_end");
+	r.byok.onTake(wav());
+	r.byok.onTake(wav());
+	await settle();
+	assert.equal(
+		r.mediaCalls.length,
+		2,
+		"a take with no pending start uses the slot now",
+	);
+	assert.equal(r.mediaCalls[0].request.sessionId, SESSION);
+});
+
 /* ---- vad ---- */
 
 test("VAD: speech_start and speech_end become the allowlisted hearing events, in the ISO shape the renderer parses", async () => {
@@ -620,6 +777,34 @@ test("VAD: speech_start and speech_end become the allowlisted hearing events, in
 		["realtime.provider.speech_started", "realtime.provider.speech_stopped"],
 	);
 	for (const e of events) assert.match(e.at, ISO);
+});
+
+test("VAD: speech_cancel clears 'Hearing you' for a start main heard, and says nothing otherwise", async () => {
+	const r = byokRig();
+	r.on();
+	await settle();
+	r.byok.onVad("speech_cancel");
+	assert.deepEqual(r.events(), [], "nothing was heard: nothing to clear");
+	r.byok.onVad("speech_start");
+	r.byok.onVad("speech_cancel");
+	r.byok.onVad("speech_cancel");
+	assert.deepEqual(
+		r.events().map((e) => e.type),
+		["realtime.provider.speech_started", "realtime.provider.speech_stopped"],
+	);
+});
+
+test("VAD: a cancelled start does not leave the utterance's slot pinned", async () => {
+	const r = byokRig();
+	r.on();
+	await settle();
+	r.byok.onVad("speech_start");
+	r.byok.onVad("speech_cancel");
+	r.on(OTHER);
+	await settle();
+	r.byok.onTake(wav());
+	await settle();
+	assert.equal(r.mediaCalls[0].request.sessionId, OTHER);
 });
 
 test("VAD: nothing is said while voice is off or the slot is empty", async () => {
@@ -888,6 +1073,41 @@ test("SPEAK failure: a 429 tells the renderer and plays nothing; so does a non-a
 	unavailable.byok.speak(ENTRY(1));
 	await settle();
 	assert.equal(unavailable.byokMessages().at(-1).code, "voice_unavailable");
+});
+
+test("SPEAK failure: a page that could not decode a segment fails the reply - the renderer is told and main stops waiting", async () => {
+	const r = byokRig();
+	r.on();
+	await settle();
+	r.byok.speak(ENTRY(3));
+	await settle();
+	const { replyId } = r.played()[0].id;
+	r.byok.onProgress({ kind: "failed", replyId });
+	await settle();
+	assert.deepEqual(
+		r.byokMessages().filter((x) => x.kind === "speech_failed"),
+		[{ kind: "speech_failed", sessionId: SESSION, code: "failed" }],
+	);
+	assert.equal(r.speechCalls().length, 1, "no segment 1 is fetched");
+	// A late failure for a reply that is gone is ignored.
+	r.byok.onProgress({ kind: "failed", replyId });
+	assert.equal(
+		r.byokMessages().filter((x) => x.kind === "speech_failed").length,
+		1,
+	);
+});
+
+test("SPEAK failure: another reply's failed report is ignored", async () => {
+	const r = byokRig();
+	r.on();
+	await settle();
+	r.byok.speak(ENTRY(3));
+	await settle();
+	r.byok.onProgress({ kind: "failed", replyId: "someone-else" });
+	assert.deepEqual(
+		r.byokMessages().filter((x) => x.kind === "speech_failed"),
+		[],
+	);
 });
 
 test("SPEAK failure mid-reply: the cut is reported, and the Speaking state is released", async () => {
@@ -1310,6 +1530,7 @@ function pageRig({ mic = "granted", ask = async () => true } = {}) {
 	const created = [];
 	const views = [];
 	const stopped = [];
+	const restarted = [];
 	const installed = {};
 	const sessionListens = {};
 	let now = 1_000_000;
@@ -1359,9 +1580,11 @@ function pageRig({ mic = "granted", ask = async () => true } = {}) {
 		preloadPath: "/Applications/App/out/preload/voice-page.js",
 		mediaAccess: { status: () => mic, ask },
 		onStopped: (reason) => stopped.push(reason),
+		onRestarted: () => restarted.push(true),
 		now: () => now,
 	});
 	return {
+		restarted,
 		page,
 		created,
 		views,
@@ -1554,11 +1777,13 @@ test("PAGE: a first crash recreates it; a second inside a minute stops it and sa
 		l({});
 	assert.equal(c.views.length, 2, "recreated");
 	assert.deepEqual(c.stopped, []);
+	assert.equal(c.restarted.length, 1, "main is told the new page is unproven");
 	c.advance(5_000);
 	for (const l of c.views[1].webContents.listeners["render-process-gone"])
 		l({});
 	assert.equal(c.views.length, 2, "not recreated again");
 	assert.deepEqual(c.stopped, ["The voice page stopped"]);
+	assert.equal(c.restarted.length, 1, "a stopped page is not 'restarted'");
 	assert.equal(c.page.isOpen, false);
 });
 

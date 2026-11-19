@@ -58,13 +58,21 @@ export const BYOK_CHANNEL = "voice.qwen.byok";
 
 /** The route's own ceiling; a larger take is dropped here, not as its 413. */
 const MAX_TAKE_BYTES = 16 * 1024 * 1024;
-/** A WAV header is 44 bytes; anything shorter holds no audio. */
-const MIN_TAKE_BYTES = 44;
+/** A WAV header is 44 bytes; a take must carry at least one sample after it. */
+const WAV_HEADER_BYTES = 44;
 /** How long a first-run microphone prompt may hold listening (as the rig's). */
 const MIC_PROMPT_BUDGET_MS = 5_000;
+/**
+ * How long an opened page may take to say `ready` (model and WASM load, then the
+ * microphone). Past it the page is called failed rather than left "Opening the
+ * voice page" for ever; generous, because the first load reads ~2 MB of assets.
+ */
+const PAGE_READY_BUDGET_MS = 30_000;
 
 export type ByokState =
 	| "idle"
+	// The page is open but has not yet said its detector started: not listening.
+	| "starting"
 	| "listening"
 	// The provider status has not been read yet: nothing can be decided.
 	| "checking"
@@ -143,6 +151,8 @@ export type ByokVoiceDeps = {
 	newId?: () => string;
 	now?: () => number;
 	log?: (message: string) => void;
+	setTimer?: (fn: () => void, ms: number) => unknown;
+	clearTimer?: (handle: unknown) => void;
 };
 
 type Reply = {
@@ -184,6 +194,17 @@ export class ByokVoice implements ByokVoicePort {
 	/** The last provider status main learned; null until the first read. */
 	private provider: VoiceProviderStatus | null = null;
 	private pageOpen = false;
+	/** The page said its detector started over a live microphone (`ready`). */
+	private pageReady = false;
+	/**
+	 * The slot an utterance began under (set by `speech_start`, spent by its take):
+	 * a take is delivered to that conversation or dropped, never to whichever
+	 * holds the slot when the upload happens to start.
+	 */
+	private speechSlot: string | null = null;
+	/** A `speech_start` was relayed and not yet ended or cancelled. */
+	private hearing = false;
+	private readyTimer: unknown = null;
 	/** A page that could not be brought back; cleared when listening is switched off. */
 	private failed = false;
 	private preflighting = false;
@@ -194,11 +215,23 @@ export class ByokVoice implements ByokVoicePort {
 	private readonly newId: () => string;
 	private readonly now: () => number;
 	private readonly log: (message: string) => void;
+	private readonly setTimer: (fn: () => void, ms: number) => unknown;
+	private readonly clearTimer: (handle: unknown) => void;
 
 	constructor(private readonly deps: ByokVoiceDeps) {
 		this.newId = deps.newId ?? (() => crypto.randomUUID());
 		this.now = deps.now ?? Date.now;
 		this.log = deps.log ?? (() => {});
+		this.setTimer =
+			deps.setTimer ??
+			((fn, ms) => {
+				const handle = setTimeout(fn, ms);
+				handle.unref?.();
+				return handle;
+			});
+		this.clearTimer =
+			deps.clearTimer ??
+			((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
 	}
 
 	/**
@@ -246,8 +279,20 @@ export class ByokVoice implements ByokVoicePort {
 		this.generation += 1;
 		this.stopReply();
 		this.pageOpen = false;
+		this.resetReady();
 		this.failed = true;
 		this.say("page_failed");
+	}
+
+	/**
+	 * The page adapter rebuilt a crashed page: the new document has not proven
+	 * anything yet, so the strip stops saying Listening until it says `ready`.
+	 */
+	pageRestarted(): void {
+		if (!this.pageOpen) return;
+		this.stopReply();
+		this.armReady();
+		this.say("starting");
 	}
 
 	stop(): void {
@@ -261,8 +306,12 @@ export class ByokVoice implements ByokVoicePort {
 		const sessionId = this.slot;
 		// PRIVACY: a take with no holder (or voice off) is dropped, not relayed.
 		if (!this.active || sessionId === null) return;
+		const begunUnder = this.speechSlot;
+		this.speechSlot = null;
+		// The conversation moved mid-utterance: those words belong to the old one.
+		if (begunUnder !== null && begunUnder !== sessionId) return;
 		if (!(raw instanceof Uint8Array)) return;
-		if (raw.byteLength < MIN_TAKE_BYTES || raw.byteLength > MAX_TAKE_BYTES)
+		if (raw.byteLength <= WAV_HEADER_BYTES || raw.byteLength > MAX_TAKE_BYTES)
 			return;
 		// "RIFF....WAVE": the page's encoder writes it; anything else is not ours.
 		if (!hasWavHeader(raw)) return;
@@ -276,7 +325,32 @@ export class ByokVoice implements ByokVoicePort {
 	/** `voice-page:vad`: the page's detector, as the strip's hearing events. */
 	onVad(raw: unknown): void {
 		if (!this.active || this.slot === null) return;
+		if (raw === "ready") {
+			// The page's own proof: only now is anything listening.
+			if (!this.pageOpen || this.pageReady) return;
+			this.pageReady = true;
+			this.disarmReady();
+			this.say("listening");
+			return;
+		}
+		if (raw === "failed") {
+			if (this.pageOpen) this.pageFailed("the page could not hear");
+			return;
+		}
+		if (raw === "speech_cancel") {
+			// A start that never became an utterance: release "Hearing you". Only
+			// for a start main heard, so it cannot clear an unrelated "Speaking".
+			this.speechSlot = null;
+			if (!this.hearing) return;
+			this.hearing = false;
+			this.event("realtime.provider.speech_stopped");
+			return;
+		}
 		if (raw !== "speech_start" && raw !== "speech_end") return;
+		if (raw === "speech_start") {
+			this.speechSlot = this.slot;
+			this.hearing = true;
+		} else this.hearing = false;
 		this.event(
 			raw === "speech_start"
 				? "realtime.provider.speech_started"
@@ -309,6 +383,12 @@ export class ByokVoice implements ByokVoicePort {
 			}
 			reply.waiting.get(value.index)?.();
 			reply.waiting.delete(value.index);
+			return;
+		}
+		if (value.kind === "failed") {
+			// The page could not play a segment (undecodable audio): the reply is
+			// over, and the person is told, not left on a silent "Speaking".
+			this.failReply(reply, "failed");
 			return;
 		}
 		if (value.kind === "drained") {
@@ -489,7 +569,7 @@ export class ByokVoice implements ByokVoicePort {
 			return;
 		}
 		if (this.pageOpen) {
-			this.say("listening");
+			this.say(this.pageReady ? "listening" : "starting");
 			return;
 		}
 		if (this.deps.page.allowed === false) {
@@ -528,7 +608,39 @@ export class ByokVoice implements ByokVoicePort {
 		if (this.pageOpen || !this.providerReady()) return;
 		this.deps.page.open();
 		this.pageOpen = true;
-		this.say("listening");
+		// Opened is not listening: the page says `ready` once its detector runs.
+		this.armReady();
+		this.say("starting");
+	}
+
+	/** The page is open and unproven: the next `ready` (or the budget) decides. */
+	private armReady(): void {
+		this.pageReady = false;
+		this.disarmReady();
+		this.readyTimer = this.setTimer(() => {
+			this.readyTimer = null;
+			if (this.pageOpen && !this.pageReady)
+				this.pageFailed("the page never became ready");
+		}, PAGE_READY_BUDGET_MS);
+	}
+
+	private disarmReady(): void {
+		if (this.readyTimer === null) return;
+		this.clearTimer(this.readyTimer);
+		this.readyTimer = null;
+	}
+
+	private resetReady(): void {
+		this.pageReady = false;
+		this.disarmReady();
+	}
+
+	/** The page is open but cannot hear: release the microphone and say so. */
+	private pageFailed(reason: string): void {
+		this.log(`byok-voice: ${reason}`);
+		this.closePage(true);
+		this.failed = true;
+		this.say("page_failed");
 	}
 
 	/** `always` closes even a page this file thinks is closed (idempotent, and cheap). */
@@ -537,6 +649,9 @@ export class ByokVoice implements ByokVoicePort {
 		this.stopReply();
 		if (this.pageOpen || always) this.deps.page.close();
 		this.pageOpen = false;
+		this.resetReady();
+		this.speechSlot = null;
+		this.hearing = false;
 	}
 
 	/** Listening is over: close the page (releasing the microphone) and say idle. */

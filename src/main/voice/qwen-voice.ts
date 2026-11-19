@@ -1129,6 +1129,10 @@ export class QwenVoice {
 						: { rig: "stopped", webui_url: null },
 				);
 				return;
+			case "starting":
+				// Opened, not yet proven: the page's `ready` decides Listening.
+				this.setStatus({ rig: "starting", webui_url: null });
+				return;
 			case "checking":
 				// The provider status has not been read yet: not an error, and not
 				// listening either.

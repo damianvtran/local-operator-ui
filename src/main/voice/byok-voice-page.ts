@@ -65,6 +65,8 @@ export type ByokVoicePageDeps = {
 	log?: (message: string) => void;
 	/** A page that cannot be brought back; listening cannot continue. */
 	onStopped: (reason: string) => void;
+	/** A crashed page was rebuilt: the new document is unproven until it says ready. */
+	onRestarted?: () => void;
 	now?: () => number;
 };
 
@@ -274,6 +276,7 @@ export class ByokVoicePage implements ByokPagePort {
 				return;
 			}
 			this.open();
+			this.deps.onRestarted?.();
 		});
 	}
 }
