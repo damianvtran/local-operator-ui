@@ -381,7 +381,15 @@ export function hasHiddenCharacters(body: string | null | undefined): boolean {
 	for (let index = 0; index < chars.length; index += 1) {
 		const char = chars[index];
 		if (!INVISIBLE.test(char)) continue;
-		if (VARIATION_SELECTOR.test(char) && index > 0) continue;
+		/* S-9: a selector is presentation only directly after a visible base,
+		   and one per base. A run of them (or one after a format character)
+		   renders at zero width and can carry a covert bit channel, so it
+		   counts as hidden. */
+		if (VARIATION_SELECTOR.test(char)) {
+			const previous = index > 0 ? chars[index - 1] : undefined;
+			if (previous !== undefined && !INVISIBLE.test(previous)) continue;
+			return true;
+		}
 		if (char === "\u200D") {
 			// Walk back over selectors and skin-tone modifiers to the base.
 			let back = index - 1;

@@ -404,6 +404,22 @@ test("a body with hidden characters offers Discard only (S-6)", () => {
 	])
 		assert.equal(m.hasHiddenCharacters(emoji), false, emoji);
 	assert.equal(m.hasHiddenCharacters("plain text, émoji-free"), false);
+	// S-9: one selector after a visible base is presentation; a run is not.
+	assert.equal(m.hasHiddenCharacters("❤\uFE0F"), false);
+	assert.equal(m.hasHiddenCharacters("keycap 1\uFE0F\u20E3"), false);
+	assert.equal(m.hasHiddenCharacters("text \u2709\uFE0E"), false);
+	const run = `a${"\uFE0F".repeat(200)}`;
+	assert.equal(m.hasHiddenCharacters(run), true);
+	assert.deepEqual(
+		m.armedWords(open, shown, true, m.hasHiddenCharacters(run)),
+		{
+			deliver: false,
+			discard: true,
+		},
+	);
+	assert.equal(m.hasHiddenCharacters("😀\uFE0F\uFE0E\uFE0F"), true);
+	assert.equal(m.hasHiddenCharacters("\uFE0Fa"), true);
+	assert.equal(m.hasHiddenCharacters("a\u200B\uFE0F"), true);
 	assert.equal(m.hasHiddenCharacters(null), false);
 });
 

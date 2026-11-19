@@ -408,18 +408,23 @@ function HeldRow({
 				)}
 				{/* C11/Q3: "you can still discard it" only where Discard IS armed
 				    (withheld); with no usable hash at all, nothing is. */}
-				{offers && affordance.deliver && binding?.state === "withheld" && (
-					<p className="text-meta text-ink-dim">
-						{t("ui.teamBridge.holds.body_withheld")}
-					</p>
-				)}
+				{offers &&
+					affordance.deliver &&
+					binding?.state === "withheld" &&
+					armed.discard && (
+						<p className="text-meta text-ink-dim">
+							{t("ui.teamBridge.holds.body_withheld")}
+						</p>
+					)}
 				{offers && binding?.state === "none" && (
 					<p className="text-meta text-ink-dim">
 						{t("ui.teamBridge.holds.details_unavailable")}
 					</p>
 				)}
-				{offers && affordance.deliver && hidden && (
-					/* S-6: Discard only, and the owner is told why. */
+				{offers && affordance.deliver && hidden && armed.discard && (
+					/* S-6: Discard only, and the owner is told why. C16: the line
+					   says "you can still discard it", so only where Discard is
+					   armed (a mismatched hash arms nothing). */
 					<p className="text-meta text-ink-dim">
 						{t("ui.teamBridge.holds.hidden_characters")}
 					</p>
