@@ -1,0 +1,14 @@
+{
+	"ui.settings.speech.provider.label": "اسپیچ فراہم کنندہ",
+	"ui.settings.speech.provider.description": "کون سنتا اور بولتا ہے، ہینڈز فری آواز اور پیغامات پر پڑھ کر سنانے والے بٹن کے لیے۔ صرف وہی استعمال ہوتا ہے جو آپ چنیں؛ کوئی دوسرے کی جگہ نہیں لیتا۔",
+	"ui.settings.speech.provider.radient.label": "Radient کلاؤڈ",
+	"ui.settings.speech.provider.radient.description": "آپ کے Radient کریڈٹ سے بل بنتا ہے۔",
+	"ui.settings.speech.provider.elevenlabs.label": "میری ElevenLabs کلید",
+	"ui.settings.speech.provider.elevenlabs.description": "آپ کا اپنا ElevenLabs اکاؤنٹ استعمال ہوتا ہے، جس کا بل ElevenLabs بھیجتا ہے۔",
+	"ui.settings.speech.provider.ready": "تیار",
+	"ui.settings.speech.provider.not_ready": "ابھی تیار نہیں۔",
+	"ui.settings.speech.provider.setup": "فراہم کنندگان میں سیٹ اپ کریں",
+	"ui.settings.speech.provider.none_chosen": "ابھی کوئی فراہم کنندہ نہیں چنا گیا۔ جب تک آپ ایک نہ چنیں، ہینڈز فری آواز بند رہتی ہے۔",
+	"ui.settings.speech.provider.none_ready": "دونوں فراہم کنندگان میں سے ابھی کوئی تیار نہیں۔ فراہم کنندگان میں ایک سیٹ اپ کریں، پھر اسے یہاں چنیں۔",
+	"ui.settings.speech.provider.save_failed": "انتخاب محفوظ نہیں ہو سکا۔"
+}
