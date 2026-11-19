@@ -7818,6 +7818,7 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.section.temporary": { count: number };
 	"ui.chat.sidebar_view.section.today": undefined;
 	"ui.chat.sidebar_view.section.week": undefined;
+	"ui.chat.sidebar_view.section.yesterday": undefined;
 	"ui.chat.sidebar_view.sections": undefined;
 	"ui.chat.sidebar_view.tag": undefined;
 	"ui.chat.sidebar_view.temporary.deletes_in": { minutes: number };
