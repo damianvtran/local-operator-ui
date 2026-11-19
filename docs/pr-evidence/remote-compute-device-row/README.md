@@ -40,9 +40,11 @@ pinned region beside the primary (agent review round 3, MAJOR-1). Four frames ar
 panel in the frame is the panel a refused press produces, with the refusal, its
 `Add credits` remedy and the primary all inside the clip while the body is scrolled to
 its very top. `sheet-open-after-pick-*` was re-driven through the pointer door (a real
-press on the chip, then a real press on the `Radient - ready` row) and is the frame the
-pointer-door focus claim rests on: after the press the focused element is the sheet's
-own panel, and one Tab lands inside it (UX round 3, U6).
+press on the chip, then a real press on the `Radient - ready` row); it is the surface the
+pointer-door focus measurement was taken on, and it is a still - a frame at rest cannot say
+where the caret is. The claim itself is the DOM read taken in the same pass: after the press
+the focused element is the sheet's own panel, one Tab lands on `View runs` inside it, and no
+Tab reaches the page behind the modal (UX round 3, U6).
 
 Measurements quoted in the PR are taken from these PNG files, not from the palette:
 the band's ground against the panel's in each theme, the panel's height and its body's
