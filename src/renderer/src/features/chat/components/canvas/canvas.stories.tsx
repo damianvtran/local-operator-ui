@@ -614,6 +614,8 @@ const observed = (
 type DesktopAnswers = {
 	list: () => DesktopAnswer;
 	features?: Record<string, number>;
+	files?: () => DesktopAnswer;
+	userAttachments?: () => DesktopAnswer;
 	/**
 	 * The Projects view's two reads: the conversation's linked rows
 	 * (`projects.for_session`; `"hang"` holds the loading state on screen) and one
@@ -997,7 +999,7 @@ const CanvasFrame = ({
  * Files rows need no playable media to expose all four fallback labels.
  */
 const NamelessArtifactFiles = () => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const documents = (["image", "video", "audio", "file"] as const).map(
 		(kind, index) =>
 			canvasDocumentForArtifact({
@@ -1006,8 +1008,57 @@ const NamelessArtifactFiles = () => {
 				sessionId: STORY_SESSION_ID,
 			}),
 	);
+	// The preview installs an IPC bridge that desktopRequest prefers to fetch.
+	// Seed that real transport, including both inventories, before Canvas mounts:
+	// mentionedFiles alone cannot settle capability negotiation or the file index.
+	installProjectsBridge({
+		list: () => observed([]),
+		features: { session_files: 1, session_attachments: 1 },
+		files: () =>
+			ok({
+				state: "ready",
+				revision: 1,
+				total: documents.length,
+				counts: { image: 1, video: 1, audio: 1, file: 1 },
+				rows: documents.map((document, index) => ({
+					id: document.id,
+					ref: {
+						type: "artifact",
+						digest: document.artifact?.digest,
+						content_type: "application/octet-stream",
+					},
+					// The index requires a display name; derive it from the real nameless
+					// factory AFTER locale selection, never from a separate translation.
+					name: document.title,
+					kind: document.artifact?.kind,
+					size_bytes: null,
+					created_at: null,
+					modified_at: null,
+					origin: "generated",
+					highlighted: false,
+					highlight_why: null,
+					first_seq: index + 1,
+					last_seq: index + 1,
+					first_ts: 1,
+					last_ts: 1,
+					exists: true,
+					session: {
+						id: STORY_SESSION_ID,
+						role: "self",
+						child_id: null,
+						label: null,
+					},
+				})),
+				next_cursor: null,
+				cursor_reset: false,
+				stat_complete: true,
+				scan: { covered_bytes: 0, total_bytes: 0 },
+			}),
+		userAttachments: () => ok({ state: "ready", items: [], truncated: false }),
+	});
 	return (
 		<CanvasFrame
+			key={locale}
 			view="files"
 			activeId={null}
 			documents={documents}
@@ -3012,12 +3063,16 @@ const installProjectsBridge = (
 							desktop_auth: "bearer",
 							features: answers.features ?? {},
 						})
-					: request.op === "projects.for_session"
-						? (answers.projects?.list() ?? ok({ projects: [] }))
-						: request.op === "projects.get"
-							? (answers.projects?.detail?.(String(request.key ?? "")) ??
-								refused(404, "project_not_found", "no such project"))
-							: ok({});
+					: request.op === "sessions.files"
+						? (answers.files?.() ?? ok({}))
+						: request.op === "sessions.userAttachments"
+							? (answers.userAttachments?.() ?? ok({}))
+							: request.op === "projects.for_session"
+								? (answers.projects?.list() ?? ok({ projects: [] }))
+								: request.op === "projects.get"
+									? (answers.projects?.detail?.(String(request.key ?? "")) ??
+										refused(404, "project_not_found", "no such project"))
+									: ok({});
 			if (answer === "hang") return new Promise(() => {});
 			return { status: answer.status, body: answer.body };
 		},

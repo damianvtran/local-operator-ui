@@ -605,13 +605,14 @@ const openStrictAgentCaption: NonNullable<Story["play"]> = async ({
 		);
 		expect(caption).toBeVisible();
 		if (!caption) throw new Error("Agent closed-seat caption did not open");
-		expect(
-			caption?.querySelector("[data-header-identity-constraint]"),
-		).toBeVisible();
-		expect(within(caption).getByText("/agent", { exact: true })).toBeVisible();
-		expect(
-			within(caption).getByText("/team clear", { exact: true }),
-		).toBeVisible();
+		const constraint = caption.querySelector(
+			"[data-header-identity-constraint]",
+		);
+		expect(constraint).toBeVisible();
+		// Commands are embedded in one localized paragraph, not separate elements.
+		// Scope to that visible constraint so neighboring menu copy cannot pass.
+		expect(constraint).toHaveTextContent("/agent");
+		expect(constraint).toHaveTextContent("/team clear");
 	});
 };
 

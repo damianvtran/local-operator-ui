@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { test } from "node:test";
 import { build, transform } from "esbuild";
+import { JSDOM } from "jsdom";
 import { musicEvidenceRequested } from "./music-storybook-evidence.mjs";
 import { musicStoryScope } from "./storybook-music-scope.mjs";
 
@@ -97,6 +99,164 @@ const STORY_SESSION_ID = "story-session";`,
 	console.log("Real nameless factory titles:", JSON.stringify(titles));
 });
 
+// Exercise the extracted story fixture through the real transport, capability
+// query and inventory hooks. The small DOM projection is NOT a Canvas screenshot.
+test("nameless fixture settles real file and attachment hooks into loaded DOM", async () => {
+	const source = await readFile(
+		"src/renderer/src/features/chat/components/canvas/canvas.stories.tsx",
+		"utf8",
+	);
+	const fixture = source.slice(
+		source.indexOf("const NamelessArtifactFiles ="),
+		source.indexOf("export const NamelessGeneratedArtifacts"),
+	);
+	const bridge = source.slice(
+		source.indexOf("const installProjectsBridge ="),
+		source.indexOf("const projectsFrame ="),
+	);
+	const bundle = await build({
+		stdin: {
+			contents: `
+import React from "react";
+import { createRoot } from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useSessionFiles } from "./src/renderer/src/features/chat/canonical/use-session-files";
+import { useUserAttachments } from "./src/renderer/src/features/chat/canonical/use-user-attachments";
+import { indexedDocument } from "./src/renderer/src/features/chat/canonical/session-files";
+import { canvasDocumentForArtifact } from "./src/renderer/src/features/chat/utils/canvas-document";
+import { useI18nLocale } from "./src/renderer/src/shared/i18n/use-locale";
+import { setLocale } from "./src/i18n/locale";
+const STORY_SESSION_ID = "story-session";
+const ok = result => ({status:200,body:{status:200,message:"ok",result}});
+const observed = () => ok({});
+const refused = () => ({status:404,body:{}});
+${bridge}
+${fixture}
+function CanvasFrame() {
+ const index = useSessionFiles(STORY_SESSION_ID, true);
+ const attachments = useUserAttachments(STORY_SESSION_ID, null);
+ return <section data-state={index.state} data-mode={index.mode} data-attachments={attachments.state}>
+ {index.state === "ready" && index.rows.map(row => <p key={row.id}>{indexedDocument(row, STORY_SESSION_ID).title}</p>)}
+ </section>;
+}
+exports.mount = (node, locale, unconfigured = false) => {
+ setLocale(locale);
+ const client = new QueryClient({defaultOptions:{queries:{retry:false,networkMode:"always",gcTime:0}}});
+ const root = createRoot(node);
+ root.render(<QueryClientProvider client={client}>{unconfigured ? <CanvasFrame /> : <NamelessArtifactFiles />}</QueryClientProvider>);
+ return () => { root.unmount(); client.clear(); };
+};`,
+			resolveDir: process.cwd(),
+			loader: "tsx",
+		},
+		bundle: true,
+		format: "cjs",
+		platform: "node",
+		write: false,
+		tsconfig: "tsconfig.web.json",
+		jsx: "automatic",
+		define: { "import.meta.env": "{}" },
+		loader: {
+			".css": "empty",
+			".svg": "text",
+			".png": "dataurl",
+			".webp": "dataurl",
+		},
+	});
+	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
+		url: "http://localhost/",
+	});
+	const previous = new Map();
+	for (const key of [
+		"window",
+		"document",
+		"localStorage",
+		"navigator",
+		"HTMLElement",
+	]) {
+		previous.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+		Object.defineProperty(globalThis, key, {
+			configurable: true,
+			value: dom.window[key],
+		});
+	}
+	const module = { exports: {} };
+	try {
+		new Function("require", "module", "exports", bundle.outputFiles[0].text)(
+			createRequire(`${process.cwd()}/package.json`),
+			module,
+			module.exports,
+		);
+		// Negative control: the preview's refusing bridge leaves the REAL query
+		// unresolved and renders no inventory. Seeding documents cannot cure it.
+		dom.window.api = {
+			desktop: {
+				request: async () => {
+					throw new Error("unconfigured preview bridge");
+				},
+			},
+		};
+		const negativeCleanup = module.exports.mount(
+			dom.window.document.getElementById("root"),
+			"en",
+			true,
+		);
+		try {
+			await new Promise((resolve) => setTimeout(resolve, 50));
+			const section = dom.window.document.querySelector("section");
+			assert.equal(section?.dataset.mode, "negotiating");
+			assert.notEqual(section?.dataset.state, "ready");
+			assert.equal(section.querySelectorAll("p").length, 0);
+		} finally {
+			negativeCleanup();
+		}
+		for (const locale of ["en", "fr", "ur"]) {
+			dom.window.api = {
+				desktop: {
+					request: async () => {
+						throw new Error("unconfigured preview bridge");
+					},
+				},
+			};
+			const cleanup = module.exports.mount(
+				dom.window.document.getElementById("root"),
+				locale,
+			);
+			try {
+				// Observe calls to the fixture's actual bridge, not a fake hook result.
+				for (let turn = 0; turn < 100; turn++) {
+					await new Promise((resolve) => setTimeout(resolve, 10));
+					const section = dom.window.document.querySelector("section");
+					if (
+						section?.dataset.state === "ready" &&
+						section.dataset.attachments === "ready"
+					)
+						break;
+				}
+				const section = dom.window.document.querySelector("section");
+				assert.equal(section?.dataset.mode, "index");
+				assert.equal(section?.dataset.state, "ready");
+				assert.equal(section?.dataset.attachments, "ready");
+				const labels = [...section.querySelectorAll("p")].map(
+					(p) => p.textContent,
+				);
+				assert.equal(labels.length, 4);
+				for (let i = 0; i < 4; i++)
+					assert.ok(labels[i].includes(String(i + 1).repeat(8)));
+				console.log("Loaded inventory DOM", locale, labels);
+			} finally {
+				cleanup();
+			}
+		}
+	} finally {
+		dom.window.close();
+		for (const [key, descriptor] of previous) {
+			if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+			else Reflect.deleteProperty(globalThis, key);
+		}
+	}
+});
+
 test("strict caption play opens agent and checks the closed caption and both shortcuts", async () => {
 	const source = await readFile(
 		"src/renderer/src/features/chat/components/chat-header-identity.stories.tsx",
@@ -113,15 +273,13 @@ test("strict caption play opens agent and checks the closed caption and both sho
 		),
 		{ loader: "ts" },
 	);
-	const agent = {};
-	const caption = {
-		querySelector: (selector) => {
-			assert.equal(selector, "[data-header-identity-constraint]");
-			return caption;
-		},
-	};
-	let clicked = false;
-	const tokens = [];
+	const dom = new JSDOM(`<button data-header-identity="agent"></button>
+		<div data-header-identity-menu="agent" data-header-identity-closed hidden>
+		<p data-header-identity-constraint>team lopdev owns this session: manager is the speaker, so /agent is closed. Run /team clear to release it.</p></div>`);
+	const canvasElement = dom.window.document.body;
+	const agent = canvasElement.querySelector("button");
+	const caption = canvasElement.querySelector("div");
+	const constraint = caption.querySelector("p");
 	const run = new Function(
 		"expect",
 		"userEvent",
@@ -131,44 +289,47 @@ test("strict caption play opens agent and checks the closed caption and both sho
 	)(
 		(value) => ({
 			not: { toBeNull: () => assert.notEqual(value, null) },
-			toBeVisible: () => assert.ok(value),
+			toBeVisible: () =>
+				assert.ok(value?.isConnected && !value.closest("[hidden]")),
+			toHaveTextContent: (text) =>
+				assert.ok(
+					value?.textContent.includes(text),
+					`Missing ${text} in scoped constraint`,
+				),
 		}),
 		{
 			click: async (target) => {
 				assert.equal(target, agent);
-				clicked = true;
+				caption.hidden = false;
 			},
 		},
 		async (fn) => fn(),
-		(target) => {
-			assert.equal(target, caption);
-			return {
-				getByText: (token) => {
-					tokens.push(token);
-					return caption;
-				},
-			};
-		},
+		// Match real exact text semantics: the previous assertion MUST fail on
+		// a sentence containing a token, rather than returning fake success.
+		(target) => ({
+			getByText: (text) => {
+				const match = [...target.querySelectorAll("*")].find(
+					(el) => el.textContent === text,
+				);
+				assert.ok(match, `No exact text element: ${text}`);
+				return match;
+			},
+		}),
 	);
-	await run({
-		canvasElement: {
-			querySelector: (selector) => {
-				assert.equal(selector, '[data-header-identity="agent"]');
-				return agent;
-			},
-			ownerDocument: {
-				querySelector: (selector) => {
-					assert.ok(clicked);
-					assert.equal(
-						selector,
-						'[data-header-identity-menu="agent"][data-header-identity-closed]',
-					);
-					return caption;
-				},
-			},
-		},
-	});
-	assert.deepEqual(tokens, ["/agent", "/team clear"]);
+	try {
+		await run({ canvasElement });
+		constraint.textContent = "Wrong /role command; run /team clear.";
+		await assert.rejects(run({ canvasElement }), /Missing \/agent/);
+		constraint.textContent = "Only /agent remains; wrong /team reset command.";
+		await assert.rejects(run({ canvasElement }), /Missing \/team clear/);
+		constraint.remove();
+		// Tokens elsewhere in the open dialog must not substitute for its caption.
+		caption.append("/agent /team clear");
+		await assert.rejects(run({ canvasElement }));
+	} finally {
+		dom.window.close();
+	}
+
 	for (const name of [
 		"StrictTeam",
 		"StrictTeamNoSpeaker",
