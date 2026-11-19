@@ -116,6 +116,7 @@ import {
 	MeshPairingSection,
 	type MeshPairingSectionProps,
 } from "./mesh-pairing-card";
+import { livePairingRows } from "./mesh-pairings";
 import { profileCardView } from "./mesh-profile-approval";
 import { ProfileConsentCard } from "./profile-consent-card";
 
@@ -471,10 +472,14 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 
 	const refusedRow = rows.find((row) => row.approvalId === refusal?.approvalId);
 
-	const pairingCount = pairings?.rows.length ?? 0;
+	// The header counts only cards still inside their window (design D4): an
+	// expired card stays drawn for its closing line but is waiting on nobody.
+	const pairingCount = pairings
+		? livePairingRows(pairings.rows, pairings.nowSeconds).length
+		: 0;
 	const pairingShown =
 		pairings !== undefined &&
-		(pairingCount > 0 ||
+		(pairings.rows.length > 0 ||
 			pairings.outcomes.length > 0 ||
 			pairings.loading ||
 			pairings.error !== null);

@@ -16,7 +16,9 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import type { FC } from "react";
+import { userEvent, within } from "@storybook/test";
+import { type FC, useState } from "react";
+import { type MeshApprovalRow, approvalRows } from "./mesh-approvals";
 import { MeshApprovalsTray } from "./mesh-approvals-tray";
 import type { MeshPairingSectionProps } from "./mesh-pairing-card";
 import {
@@ -62,7 +64,8 @@ const inviterWire = (over: Record<string, unknown> = {}) =>
 		peer_name: "Ana's MacBook Air",
 		role: "drive",
 		offers: {
-			state: "sent",
+			// Core's final one-vocabulary state (#4259 remediation; code review F1).
+			state: "listed",
 			items: [
 				{
 					key: "openai",
@@ -95,15 +98,51 @@ const bundle = (
 	nowSeconds: NOW,
 	pending: null,
 	refusal: null,
+	// What main answers on a signed Mac launch (`pairings.eligibility`).
+	eligibility: { eligible: true, reason: "" },
 	onAnswer: () => {},
 	...over,
 });
 
+/**
+ * One ordinary onboarding approval record (the frozen §3.5 read shape), for the
+ * story that stacks a pairing card above a regular approval.
+ */
+const approval: MeshApprovalRow[] = approvalRows({
+	approvals: [
+		{
+			approval_id: "ap_2v9k4m0q7r1s",
+			state: "requested",
+			what: {
+				connect: true,
+				install: true,
+				unattended: true,
+				grant: ["approve"],
+				network_id: "net_home",
+				role: "drive",
+			},
+			requested_by: { surface: "cli", session_id: "0123456789ef" },
+			expires_at: NOW + 42 * 60,
+			device: {
+				device_id: "dev_devon",
+				name: "devon-laptop",
+				host: "devon-laptop.local",
+				user: "damian",
+				transport: "ssh",
+				host_key_fp: "SHA256:9f3cQm2p…",
+			},
+		},
+	],
+});
+
 /** The tray exactly as the Mesh tab mounts it, with no approval records. */
-const Tray: FC<{ pairings: MeshPairingSectionProps }> = ({ pairings }) => (
+const Tray: FC<{
+	pairings: MeshPairingSectionProps;
+	rows?: MeshApprovalRow[];
+}> = ({ pairings, rows: approvalRecords = [] }) => (
 	<div className="max-w-180">
 		<MeshApprovalsTray
-			rows={[]}
+			rows={approvalRecords}
 			error={null}
 			pending={null}
 			refusal={null}
@@ -238,7 +277,7 @@ export const NeedsForeground: Story = {
 			rows: rows(wire()),
 			refusal: {
 				id: "joiner:inv_7Kd2",
-				refusal: { kind: "foreground" },
+				refusal: { kind: "foreground", action: "confirm" },
 				serial: 1,
 			},
 		}),
@@ -260,4 +299,88 @@ export const ReadError: Story = {
 /** No pairing and no approval: the tray draws nothing at all. */
 export const Empty: Story = {
 	args: { pairings: bundle() },
+};
+
+/**
+ * A card that answers like the real tray: a press sets the in-flight state and
+ * holds it (the answer never returns here), so the frame after a click is the
+ * frame a person sees while main confirms, attests and core checks the code.
+ */
+const LiveTray: FC<{ pairings: MeshPairingSectionProps }> = ({ pairings }) => {
+	const [pending, setPending] =
+		useState<MeshPairingSectionProps["pending"]>(null);
+	return (
+		<Tray
+			pairings={{
+				...pairings,
+				pending,
+				onAnswer: (ask) =>
+					setPending({ id: ask.row.id, decision: ask.decision }),
+			}}
+		/>
+	);
+};
+
+const typeCode = async (canvasElement: HTMLElement) => {
+	const canvas = within(canvasElement);
+	await userEvent.type(
+		await canvas.findByTestId("mesh-pairing-code-input"),
+		"481926",
+	);
+	return canvas;
+};
+
+/** Inviter, stage 2, six digits typed: Admit is live (design D5). */
+export const InviterCodeTyped: Story = {
+	render: (args) => <LiveTray {...args} />,
+	args: { pairings: bundle({ rows: rows(inviterWire()) }) },
+	play: async ({ canvasElement }) => {
+		await typeCode(canvasElement);
+	},
+};
+
+/** The press landed: "Checking…" while main confirms and attests and core compares. */
+export const Confirming: Story = {
+	render: (args) => <LiveTray {...args} />,
+	args: { pairings: bundle({ rows: rows(inviterWire()) }) },
+	play: async ({ canvasElement }) => {
+		const canvas = await typeCode(canvasElement);
+		await userEvent.click(await canvas.findByTestId("mesh-pairing-admit"));
+	},
+};
+
+/** A pairing card renders FIRST, above the regular approvals waiting in the same tray. */
+export const StackedAboveApproval: Story = {
+	args: {
+		pairings: bundle({ rows: rows(wire()) }),
+		rows: approval,
+	},
+};
+
+/**
+ * Main says this LAUNCH can never attest (an unpackaged/dev build here): the
+ * card is disabled up front, no "type the digits" hint, and the terminal
+ * fallback - the joiner's with its `<code>` argument (design D1, UX U1/U2).
+ */
+export const DevBuildIneligible: Story = {
+	args: {
+		pairings: bundle({
+			rows: rows(inviterWire(), wire({ id: "joiner:inv_other" })),
+			eligibility: { eligible: false, reason: "not_packaged" },
+		}),
+	},
+};
+
+/** The listener did not answer in time: retryable, never "a development build" (UX U1). */
+export const ListenerRetry: Story = {
+	args: {
+		pairings: bundle({
+			rows: rows(wire()),
+			refusal: {
+				id: "joiner:inv_7Kd2",
+				refusal: { kind: "relay" },
+				serial: 1,
+			},
+		}),
+	},
 };

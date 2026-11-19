@@ -13,17 +13,21 @@
  * - ADMIT IS DISABLED UNTIL SIX DIGITS ARE TYPED, and Enter in the field never
  *   submits: there is no form, the same rule the phone pairing popup keeps
  *   (`pairing-popup.tsx`), so a stray Enter cannot answer for the person.
- * - A HOST THAT CANNOT ATTEST SAYS SO AND DISABLES EVERYTHING. `can_answer_here`
- *   false with `answer_unavailable` set (not macOS, or the listener did not bind)
- *   means every answer would be refused 403: the card still shows the code (the
- *   OTHER device may well be able to answer) and names the terminal fallback,
- *   with the input and both buttons disabled rather than offered and refused.
+ * - A HOST THAT CANNOT ATTEST SAYS SO AND DISABLES EVERYTHING, UP FRONT. Core's
+ *   `answer_unavailable` (not macOS, or the listener did not bind) and main's own
+ *   static eligibility (`pairings.eligibility`: an unpackaged/dev build, a debug
+ *   or driver launch - design D1 / UX U1) both mean every answer would be refused
+ *   403: the card still shows the code (the OTHER device may well be able to
+ *   answer), names the terminal fallback, and disables the input and both buttons
+ *   - with the shared `Input`'s disabled paint, so it LOOKS disabled - rather than
+ *   taking six digits and refusing them. The "type the six digits" hint is not
+ *   drawn there, nor on an expired card.
  *
  * Register: the tray's borderless list (hairlines, no box), its type scale and
  * its tokens only - see the tray's own header and AGENTS.md "Design and branding".
  */
 
-import { Button, Skeleton } from "@shared/components/ui";
+import { Button, Checkbox, Input, Skeleton } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { Link2 } from "lucide-react";
@@ -47,6 +51,7 @@ import {
 import {
 	type MeshPairingRow,
 	type PairingAnswerAsk,
+	type PairingEligibility,
 	type PairingOutcome,
 	type PairingRefusal,
 	pairingCardMode,
@@ -72,11 +77,14 @@ const CODE_LTR = {
 /**
  * The terminal fallback a host that cannot attest names (design §3.6: the CLI
  * stays, unchanged). Commands, not copy: never translated. The joiner's takes the
- * code shown on the other device as its argument, which the copy above says.
+ * code shown on the other device as its argument, so it is printed WITH the
+ * `<code>` placeholder the copy above explains (UX review U2: without it the line
+ * failed as printed); the placeholder is never filled from the row, for the same
+ * reason the input never is.
  */
 const FALLBACK_COMMAND = {
 	inviter: "lop network confirm", // i18n: ignore a command line, not interface copy
-	joiner: "lop network join --confirm", // i18n: ignore a command line, not interface copy
+	joiner: "lop network join --confirm <code>", // i18n: ignore a command line and its CLI placeholder, not interface copy
 } as const;
 
 /** The six-digit field: the phone popup's edit model, on this card's state. */
@@ -87,7 +95,17 @@ export const MeshPairingCodeInput: FC<{
 	disabled: boolean;
 	invalid: boolean;
 	describedBy?: string;
-}> = ({ id, digits, onDigits, disabled, invalid, describedBy }) => {
+	/** Bumped to put focus back in the field (a wrong code, UX review U3). */
+	focusSerial?: number;
+}> = ({
+	id,
+	digits,
+	onDigits,
+	disabled,
+	invalid,
+	describedBy,
+	focusSerial = 0,
+}) => {
 	const inputRef = useRef<HTMLInputElement>(null);
 	const pendingCaret = useRef<number | null>(null);
 	const setCode = (next: { digits: string; caretDigit: number }) => {
@@ -104,8 +122,13 @@ export const MeshPairingCodeInput: FC<{
 		const offset = caretForDigitIndex(caret);
 		input.setSelectionRange(offset, offset);
 	});
+	// After a wrong code the field was cleared; the next six digits go straight in,
+	// as in the phone popup, instead of focus falling to the page body.
+	useEffect(() => {
+		if (focusSerial > 0) inputRef.current?.focus();
+	}, [focusSerial]);
 	return (
-		<input
+		<Input
 			ref={inputRef}
 			id={id}
 			{...CODE_LTR}
@@ -154,7 +177,10 @@ export const MeshPairingCodeInput: FC<{
 				setCode(edit);
 			}}
 			disabled={disabled}
-			className="h-9 w-36 rounded-sm border border-control bg-surface px-3 text-center font-mono text-ink tracking-widest [font-size:1.125rem] disabled:text-ink-dim"
+			// The shared field's border, invalid (`aria-invalid` → danger, design D3)
+			// and disabled paint (design D1); only width and the code's type here.
+			inputSize="lg"
+			className="w-36 text-center font-mono tracking-widest [font-size:1.125rem]"
 			data-testid="mesh-pairing-code-input"
 		/>
 	);
@@ -169,6 +195,12 @@ export interface MeshPairingCardProps {
 	refusal: PairingRefusal | null;
 	/** Bumped on every refusal so a repeat of the same one still clears the field. */
 	refusalSerial?: number;
+	/**
+	 * Main's static eligibility (`pairings.eligibility`), or `null` while unknown:
+	 * answerable, and main still refuses at the click. Main answers that read
+	 * without asking core, so it lands before the card list it gates.
+	 */
+	eligibility?: PairingEligibility | null;
 	onAnswer: (ask: PairingAnswerAsk) => void;
 }
 
@@ -178,6 +210,7 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 	pending,
 	refusal,
 	refusalSerial = 0,
+	eligibility = null,
 	onAnswer,
 }) => {
 	// Always starts EMPTY: there is deliberately no prop that could seed it.
@@ -186,8 +219,12 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 	const inputId = useId();
 	const hintId = useId();
 	const errorId = useId();
+	const offerId = useId();
 	const mode = pairingCardMode(row);
-	const terminal = pairingNeedsTerminal(row);
+	const appIneligible = eligibility?.eligible === false;
+	// A "this build cannot" refusal is the same dead end, found at the click.
+	const buildRefused = refusal?.kind === "build";
+	const terminal = pairingNeedsTerminal(row) || appIneligible || buildRefused;
 	const busy = pending !== null;
 	const seconds = pairingSecondsLeft(row, nowSeconds);
 	const lapsed = seconds <= 0;
@@ -195,23 +232,46 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 
 	// A wrong code clears the field so the next attempt starts from the other
 	// screen, never from what was typed last. A new stage (a new nonce) does too.
+	// ...and puts focus back in the field for the retry (UX review U3).
+	const [focusSerial, setFocusSerial] = useState(0);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the serial and nonce ARE the triggers
 	useEffect(() => {
-		if (refusal?.kind === "mismatch") setDigits("");
+		if (refusal?.kind !== "mismatch") return;
+		setDigits("");
+		setFocusSerial((serial) => serial + 1);
 	}, [refusalSerial, refusal?.kind]);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the nonce IS the trigger
 	useEffect(() => {
 		setDigits("");
 	}, [row.nonce]);
 
-	const canType = mode === "type_code" && row.canAnswerHere && !lapsed;
+	const canType =
+		mode === "type_code" && row.canAnswerHere && !lapsed && !terminal;
 	const canAdmit = canType && digits.length === 6 && !busy;
 	// Decline needs the same attestation (core binds `decline` too) and the same
 	// answerable stage: core refuses either decision on the inviter's stage 1
 	// (`pairing_not_ready`) and on a joiner that already matched, so the controls
 	// exist only on a `type_code` card and are disabled where the host cannot answer.
-	const canDecline = row.canAnswerHere && !lapsed && !busy;
-	const describedBy = [hintId, refusal ? errorId : null]
+	const canDecline = row.canAnswerHere && !lapsed && !busy && !terminal;
+	/*
+	 * The hint under the code. Expired: what to do next, by side (a joiner cannot
+	 * start an invite - UX U5). A host that cannot answer: no "type the digits"
+	 * line at all - the fallback block below says what to do instead (design D1).
+	 */
+	const hint = lapsed
+		? row.side === "inviter"
+			? t("ui.mesh.pairing.expired_hint.inviter")
+			: t("ui.mesh.pairing.expired_hint.joiner", { peer: row.peerName })
+		: mode === "show_code"
+			? t("ui.mesh.pairing.waiting.joiner_types", { peer: row.peerName })
+			: mode === "waiting_other"
+				? t("ui.mesh.pairing.waiting.other", { peer: row.peerName })
+				: terminal
+					? null
+					: t("ui.mesh.pairing.code.type_hint", { peer: row.peerName });
+	// The build refusal is said once, as the fallback block's first line.
+	const errorShown = refusal !== null && !buildRefused;
+	const describedBy = [hint ? hintId : null, errorShown ? errorId : null]
 		.filter(Boolean)
 		.join(" ");
 
@@ -278,19 +338,22 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 							onDigits={setDigits}
 							disabled={!canType || busy}
 							invalid={refusal?.kind === "mismatch"}
-							describedBy={describedBy}
+							describedBy={describedBy || undefined}
+							focusSerial={focusSerial}
 						/>
 					</div>
 				)}
 			</div>
 
-			<p id={hintId} className="text-meta text-ink-muted">
-				{mode === "show_code"
-					? t("ui.mesh.pairing.waiting.joiner_types", { peer: row.peerName })
-					: mode === "waiting_other"
-						? t("ui.mesh.pairing.waiting.other", { peer: row.peerName })
-						: t("ui.mesh.pairing.code.type_hint", { peer: row.peerName })}
-			</p>
+			{hint && (
+				<p
+					id={hintId}
+					className="text-meta text-ink-muted"
+					data-testid="mesh-pairing-hint"
+				>
+					{hint}
+				</p>
+			)}
 
 			{offers.kind === "sentence" && (
 				<p className="text-meta text-ink-muted">{offers.sentence}</p>
@@ -307,28 +370,38 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 						</bdi>
 					</legend>
 					<ul className="flex flex-col gap-1">
-						{offers.items.map((item) => {
+						{offers.items.map((item, index) => {
 							const kept = item.share && !removed.has(item.key);
+							const boxId = `${offerId}-${index}`;
 							return (
 								<li
 									key={item.key}
 									className="flex items-center gap-2 text-body-sm"
 								>
 									{offers.editable && item.share ? (
-										<label className="flex items-center gap-2 text-ink">
-											<input
-												type="checkbox"
+										<>
+											{/* The shared Checkbox (design D2), not the browser's. */}
+											<Checkbox
+												id={boxId}
 												checked={kept}
 												disabled={!canType || busy}
-												onChange={(event) => {
+												onCheckedChange={(checked) => {
 													const next = new Set(removed);
-													if (event.target.checked) next.delete(item.key);
+													if (checked === true) next.delete(item.key);
 													else next.add(item.key);
 													setRemoved(next);
 												}}
+												data-testid="mesh-pairing-share"
 											/>
-											<bdi>{item.label}</bdi>
-										</label>
+											<label
+												htmlFor={boxId}
+												className={
+													!canType || busy ? "text-ink-dim" : "text-ink"
+												}
+											>
+												<bdi>{item.label}</bdi>
+											</label>
+										</>
 									) : (
 										<span className={kept ? "text-ink" : "text-ink-dim"}>
 											<bdi>{item.label}</bdi>
@@ -359,7 +432,7 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 					</p>
 				)}
 
-			{refusal && (
+			{refusal && errorShown && (
 				<p
 					id={errorId}
 					role="alert"
@@ -370,15 +443,23 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 				</p>
 			)}
 
-			{terminal && (
+			{/* An expired card has nothing left to answer, from here or a terminal. */}
+			{terminal && !lapsed && (
 				<div
 					className="flex flex-col gap-1"
 					data-testid="mesh-pairing-terminal-fallback"
 				>
-					<p className="text-meta text-ink-muted">
-						{row.answerUnavailable === "unsupported_host"
+					<p
+						className="text-meta text-ink-muted"
+						// Said at the click (a build refusal): announce it like the error.
+						role={buildRefused ? "alert" : undefined}
+					>
+						{row.answerUnavailable === "unsupported_host" ||
+						eligibility?.reason === "not_macos"
 							? t("ui.mesh.pairing.unavailable.host")
-							: t("ui.mesh.pairing.unavailable.no_attestation")}
+							: row.answerUnavailable === "no_app_attestation"
+								? t("ui.mesh.pairing.unavailable.no_attestation")
+								: t("ui.mesh.pairing.error.build")}
 					</p>
 					<p className="text-meta text-ink-muted">
 						{t(
@@ -473,6 +554,8 @@ export interface MeshPairingSectionProps {
 	nowSeconds: number;
 	pending: { id: string; decision: "admit" | "decline" } | null;
 	refusal: { id: string; refusal: PairingRefusal; serial: number } | null;
+	/** Main's static eligibility; see `MeshPairingCardProps.eligibility`. */
+	eligibility?: PairingEligibility | null;
 	onAnswer: MeshPairingCardProps["onAnswer"];
 }
 
@@ -486,6 +569,7 @@ export const MeshPairingSection: FC<MeshPairingSectionProps> = ({
 	nowSeconds,
 	pending,
 	refusal,
+	eligibility = null,
 	onAnswer,
 }) => {
 	if (rows.length === 0 && outcomes.length === 0 && !loading && !error)
@@ -525,6 +609,7 @@ export const MeshPairingSection: FC<MeshPairingSectionProps> = ({
 							pending={pending?.id === row.id ? pending.decision : null}
 							refusal={refusal?.id === row.id ? refusal.refusal : null}
 							refusalSerial={refusal?.id === row.id ? refusal.serial : 0}
+							eligibility={eligibility}
 							onAnswer={onAnswer}
 						/>
 					))}

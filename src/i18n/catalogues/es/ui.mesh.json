@@ -339,7 +339,7 @@
 	"ui.mesh.pairing.error.mismatch": "Ese código no coincide. Revisa la otra pantalla y vuelve a escribirlo. {count, plural, one {Queda {count, number, ::group-off} intento.} other {Quedan {count, number, ::group-off} intentos.}}",
 	"ui.mesh.pairing.error.mismatch_spent": "Ese código no coincide y no quedan intentos. Se rechazó la vinculación.",
 	"ui.mesh.pairing.error.needs_app": "Para aprobar una vinculación se necesita la app firmada de Local Operator en este dispositivo.",
-	"ui.mesh.pairing.error.foreground": "Trae esta ventana al frente y vuelve a pulsar el botón.",
+	"ui.mesh.pairing.error.foreground": "{action, select, admit {Trae esta ventana al frente y vuelve a pulsar “Admitir”.} confirm {Trae esta ventana al frente y vuelve a pulsar “Confirmar”.} decline {Trae esta ventana al frente y vuelve a pulsar “Rechazar”.} other {Trae esta ventana al frente y vuelve a pulsar el botón.}}",
 	"ui.mesh.pairing.error.build": "Esta copia de la app no puede aprobar vinculaciones (es una versión de desarrollo o la controla una herramienta). Usa la app firmada.",
 	"ui.mesh.pairing.error.expired": "Esta vinculación ha caducado.",
 	"ui.mesh.pairing.error.relay": "El servicio de red de este dispositivo no respondió. Inténtalo de nuevo.",
@@ -355,5 +355,8 @@
 	"ui.mesh.pairing.unavailable.no_attestation": "Esta app no puede aprobar vinculaciones ahora mismo: su comprobación de aprobación no se inició.",
 	"ui.mesh.pairing.unavailable.fallback_inviter": "Para responder a {peer} desde este dispositivo, ejecuta esto en una terminal:",
 	"ui.mesh.pairing.unavailable.fallback_joiner": "Para responder desde este dispositivo, ejecuta esto en una terminal con el código que muestra {peer}:",
-	"ui.mesh.pairing.result.finished": "{peer} tiene el código correcto. Si admitió este dispositivo, {network} aparecerá aquí en breve."
+	"ui.mesh.pairing.result.finished": "{peer} tiene el código correcto. Si admitió este dispositivo, {network} aparecerá aquí en breve.",
+	"ui.mesh.pairing.expired_hint.inviter": "Crea una invitación nueva para volver a intentarlo.",
+	"ui.mesh.pairing.expired_hint.joiner": "Crea una invitación nueva en {peer} para volver a intentarlo.",
+	"ui.mesh.pairing.result.expired_joiner": "La vinculación con {peer} caducó. Crea una invitación nueva en {peer} para volver a intentarlo."
 }

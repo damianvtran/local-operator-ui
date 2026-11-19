@@ -6374,6 +6374,8 @@ test(
 					import {useState} from "react";
 					export function Button({variant,size,children,...props}){return <button {...props}>{children}</button>}
 					export function Skeleton(props){return <div {...props} />}
+					export function Input({inputSize,...props}){return <input {...props} />}
+					export function Checkbox({checked,onCheckedChange,...props}){return <button role="checkbox" aria-checked={checked} onClick={()=>onCheckedChange?.(!checked)} {...props} />}
 					export function Disclosure({summary,children,open,onOpenChange}){
 						const [local,setLocal]=useState(false);const expanded=open??local;
 						return <section><button onClick={()=>{setLocal(!expanded);onOpenChange?.(!expanded)}}>{summary}</button>{expanded&&children}</section>

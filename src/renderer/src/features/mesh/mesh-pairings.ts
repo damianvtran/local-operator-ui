@@ -13,7 +13,8 @@
  * Each card shows ITS OWN code under "Show this code on <peer>" and, when it is
  * this device's turn, an EMPTY input under "Type the code shown on <peer>":
  *
- *   inviter `awaiting_joiner`        shows its code; nothing to answer (Decline only)
+ *   inviter `awaiting_joiner`        shows its code; nothing to answer (no controls:
+ *                                    core refuses either decision here)
  *   joiner  `awaiting_confirmation`  shows its code + input (types the inviter's)
  *   joiner  `waiting_for_other_device` after a local match: waits for the inviter
  *   inviter `awaiting_confirmation`  shows its code + input + reduce-only shares
@@ -90,6 +91,7 @@ export type MeshPairingRow = {
 
 export const meshPairingKeys = {
 	pairings: ["desktop", "mesh", "pairings"] as const,
+	eligibility: ["desktop", "mesh", "pairings", "eligibility"] as const,
 };
 
 /**
@@ -255,9 +257,15 @@ export function pairingTimeLeft(seconds: number): string {
 /**
  * The offers line(s), from the structured state - never core's sentence.
  *
- * Inviter (`offer_state`): `sent` (the list is authoritative; empty means nothing
- * is served), `skipped_peer_unsupported` (an older joiner cannot be shown one),
- * `""` (an older record: no list). Joiner: `listed`, `empty`, `absent`.
+ * ONE vocabulary on both sides since core #4259's remediation (QA Q2 there):
+ * `listed` (items to show), `empty` (nothing offered), `absent` /
+ * `skipped_peer_unsupported` (one build cannot carry a list). An inviter row from
+ * a core before that remediation says `sent` for both of the first two, so it is
+ * read as `listed`/`empty` by its items (code review F1).
+ *
+ * THE INVITER'S VIEW IS ALSO ITS SHARE LIST: `pairingShares` admits with exactly
+ * the items drawn here, so a state this build does not know draws "nothing will
+ * be shared" and shares nothing - never an invisible list.
  */
 export type PairingOffersView =
 	| { kind: "list"; items: MeshPairingOffer[]; editable: boolean }
@@ -267,24 +275,24 @@ export type PairingOffersView =
 export function pairingOffersView(row: MeshPairingRow): PairingOffersView {
 	const { state, items } = row.offers;
 	if (row.side === "inviter") {
-		if (state === "sent")
-			return items.length > 0
-				? {
-						kind: "list",
-						items,
-						// Reduce-only toggles exist only on the turn that answers.
-						editable: pairingCardMode(row) === "type_code",
-					}
-				: {
-						kind: "sentence",
-						sentence: t("ui.mesh.pairing.offers.owner_none"),
-					};
+		// Keyed on the STATE, as core asks: `empty` draws "nothing" even if a row
+		// carried items; only `listed` (or a legacy `sent`) with items draws a list.
+		if ((state === "listed" || state === "sent") && items.length > 0)
+			return {
+				kind: "list",
+				items,
+				// Reduce-only toggles exist only on the turn that answers.
+				editable: pairingCardMode(row) === "type_code",
+			};
 		if (state === "skipped_peer_unsupported")
 			return {
 				kind: "sentence",
 				sentence: t("ui.mesh.pairing.offers.owner_peer_older"),
 			};
-		return { kind: "none" };
+		return {
+			kind: "sentence",
+			sentence: t("ui.mesh.pairing.offers.owner_none"),
+		};
 	}
 	if (state === "listed" && items.length > 0)
 		return { kind: "list", items, editable: false };
@@ -295,13 +303,19 @@ export function pairingOffersView(row: MeshPairingRow): PairingOffersView {
 	return { kind: "none" };
 }
 
-/** The share keys an inviter admits with: the offered set minus what the person removed. */
+/**
+ * The share keys an inviter admits with: the items the card DRAWS, minus what
+ * the person removed (code review F1). Nothing drawn, nothing shared - core
+ * requires the list on an inviter admit and `[]` serves none.
+ */
 export function pairingShares(
 	row: MeshPairingRow,
 	removed: ReadonlySet<string>,
 ): string[] | undefined {
 	if (row.side !== "inviter") return undefined;
-	return row.offers.items
+	const view = pairingOffersView(row);
+	if (view.kind !== "list") return [];
+	return view.items
 		.filter((item) => item.share && !removed.has(item.key))
 		.map((item) => item.key)
 		.sort();
@@ -313,12 +327,16 @@ export function pairingShares(
 export type PairingRefusal =
 	| { kind: "mismatch"; attemptsLeft: number }
 	| { kind: "needs_app" }
-	| { kind: "foreground" }
+	/** Bring the window forward and press the button again; `action` names it. */
+	| { kind: "foreground"; action?: PairingAction }
 	| { kind: "build" }
 	| { kind: "expired" }
 	| { kind: "not_ready" }
 	| { kind: "relay" }
 	| { kind: "other"; sentence: string };
+
+/** The button a refusal asks the person to press again. */
+export type PairingAction = "admit" | "confirm" | "decline";
 
 /** The provenance refusals a person can fix by bringing the window forward and clicking. */
 const FOREGROUND_REASONS = new Set([
@@ -326,6 +344,22 @@ const FOREGROUND_REASONS = new Set([
 	"window_not_focused",
 	"no_window",
 	"no_user_action",
+	// The one-shot confirmation was missing, stale or for another card: a fresh
+	// press mints a new one (security review round 1, US-R1-1).
+	"no_confirmation",
+	"confirmation_mismatch",
+]);
+
+/**
+ * Main reached the listener stage and it did not answer in time or closed on the
+ * frame: the app may well be able to attest, so this is "try again", never "this
+ * build cannot" (UX review U1: a signed Mac with a slow listener was told it was
+ * a development build).
+ */
+const RETRYABLE_ATTEST_REASONS = new Set([
+	"listener_unavailable",
+	"frame_refused",
+	"timeout",
 ]);
 
 export function pairingRefusal(error: unknown): PairingRefusal {
@@ -348,8 +382,9 @@ export function pairingRefusal(error: unknown): PairingRefusal {
 			const reason = typeof body?.reason === "string" ? body.reason : "";
 			if (FOREGROUND_REASONS.has(reason)) return { kind: "foreground" };
 			if (reason === "expired") return { kind: "expired" };
-			// Not macOS, not packaged, a driver/debug launch, or a listener that
-			// would not take the frame: this build cannot attest, full stop.
+			if (RETRYABLE_ATTEST_REASONS.has(reason)) return { kind: "relay" };
+			// Not macOS, not packaged, a driver/debug launch, DevTools, or a listener
+			// that refused THIS process: this build cannot attest, full stop.
 			return { kind: "build" };
 		}
 		case "pairing_expired":
@@ -383,7 +418,9 @@ export function pairingRefusalSentence(
 		case "needs_app":
 			return t("ui.mesh.pairing.error.needs_app");
 		case "foreground":
-			return t("ui.mesh.pairing.error.foreground");
+			return t("ui.mesh.pairing.error.foreground", {
+				action: refusal.action ?? "other",
+			});
 		case "build":
 			return t("ui.mesh.pairing.error.build");
 		case "expired":
@@ -463,7 +500,10 @@ export function pairingOutcomeSentence(outcome: PairingOutcome): string {
 		case "spent":
 			return t("ui.mesh.pairing.result.spent", values);
 		case "expired":
-			return t("ui.mesh.pairing.result.expired", values);
+			// A joiner cannot start an invite; it asks the inviter for one (UX U5).
+			return outcome.row.side === "inviter"
+				? t("ui.mesh.pairing.result.expired", values)
+				: t("ui.mesh.pairing.result.expired_joiner", values);
 		case "finished":
 			return t("ui.mesh.pairing.result.finished", values);
 		case "ended":
@@ -498,6 +538,96 @@ export function useFeedMeshPairing(
 	return named;
 }
 
+/**
+ * Whether the badge/tab should read the cards now, from the feed's word.
+ *
+ * `null` ("none open") is the only answer that skips the read. `undefined` - the
+ * feed has not spoken since this renderer subscribed, which is EVERY launch and
+ * reload with a pairing already open (QA round 1, Q1: the badge stayed dark) -
+ * reads the list once, and keeps the cards' cadence only if it found any; phone
+ * pairing makes the same move (`pairing-model.ts` `livePairingCard`).
+ */
+export function pairingReadWanted(feedId: string | null | undefined): boolean {
+	return feedId !== null;
+}
+
+/** Cards still inside their window: the only ones that count as waiting (design D4). */
+export function livePairingRows(
+	rows: readonly MeshPairingRow[],
+	nowSeconds: number,
+): MeshPairingRow[] {
+	return rows.filter((row) => pairingSecondsLeft(row, nowSeconds) > 0);
+}
+
+/**
+ * The badge's pairing count: live cards in the read, and at least one while the
+ * feed names a card the read has not caught up with (a fresh ceremony lights the
+ * badge at feed latency, never at read latency).
+ */
+export function pairingBadgeCount(
+	rows: readonly MeshPairingRow[] | undefined,
+	feedId: string | null | undefined,
+	nowSeconds: number,
+): number {
+	const live = livePairingRows(rows ?? [], nowSeconds).length;
+	if (
+		typeof feedId === "string" &&
+		!(rows ?? []).some((row) => row.id === feedId)
+	)
+		return Math.max(1, live);
+	return live;
+}
+
+/**
+ * The rail badge's pairing count (`sidebar-navigation.tsx`), as one hook so the
+ * badge's whole rule - read while the feed has not said "none", count live cards,
+ * never wait on the read for a card the feed named - is tested as the sidebar
+ * runs it (QA round 1, Q1). The read shares the tab's query key and cadence.
+ */
+export function useMeshPairingBadgeCount(enabled: boolean): number {
+	const feedId = useFeedMeshPairing(enabled);
+	const read = useMeshPairings(enabled && pairingReadWanted(feedId));
+	if (!enabled) return 0;
+	return pairingBadgeCount(read.data, feedId, Math.floor(Date.now() / 1000));
+}
+
+/** What main says about THIS launch's ability to attest (`pairings.eligibility`). */
+export type PairingEligibility = {
+	eligible: boolean;
+	/** Main's static refusal (`not_macos`, `not_packaged`, ...), or "" when eligible. */
+	reason: string;
+};
+
+/**
+ * Main's STATIC attest eligibility, read once per session (design D1 / UX U1).
+ *
+ * A launch that can never attest - not macOS, an unpackaged/dev build, a debug or
+ * driver switch, a headless/inactive window - is known before anyone types, so
+ * the card disables its input and buttons and names the terminal fallback up
+ * front. `staleTime: Infinity` because nothing it reads changes while the process
+ * lives. A failed read is `null` ("unknown"): the card stays answerable and main
+ * still refuses at the click, so an unknown never hides a working path.
+ */
+export function useMeshPairingEligibility(enabled: boolean) {
+	return useQuery({
+		queryKey: meshPairingKeys.eligibility,
+		enabled,
+		queryFn: async (): Promise<PairingEligibility> => {
+			const result = await desktopResult<{
+				eligible?: unknown;
+				reason?: unknown;
+			}>({ op: "pairings.eligibility" });
+			return {
+				eligible: result?.eligible === true,
+				reason: typeof result?.reason === "string" ? result.reason : "",
+			};
+		},
+		retry: false,
+		staleTime: Number.POSITIVE_INFINITY,
+		refetchOnWindowFocus: false,
+	});
+}
+
 /** `GET /v1/desktop/mesh/pairings`; polls only while a card is open. */
 export function useMeshPairings(enabled: boolean) {
 	return useQuery({
@@ -527,8 +657,11 @@ export type PairingAnswerAsk = {
  * One answer. NEVER RETRIED: a replayed admit with a wrong code is a second
  * strike on a 3-attempt budget shared with the wire.
  *
- * The request goes through the ordinary desktop bridge; main intercepts this op,
- * runs its provenance gate, attests and only then forwards (`desktop-ipc.ts`).
+ * TWO HOPS, back to back, both answered by main (`desktop-ipc.ts`):
+ * `pairings.confirm` mints a one-shot token for THIS card's act while the click's
+ * transient activation is still live, then `pairings.answer` spends it - main
+ * consumes it, re-checks the sender document and focus, attests and only then
+ * forwards (security review round 1, US-R1-1). A refused confirm sends no answer.
  * `deadline` here is the card's expiry as an UPPER BOUND - main picks the real one.
  */
 export function useMeshPairingAnswer() {
@@ -537,6 +670,17 @@ export function useMeshPairingAnswer() {
 		retry: false,
 		mutationFn: async (ask: PairingAnswerAsk) => {
 			const admit = ask.decision === "admit";
+			const confirmed = await desktopResult<{ confirmation?: unknown }>({
+				op: "pairings.confirm",
+				side: ask.row.side,
+				inviteId: ask.row.inviteId,
+				nonce: ask.row.nonce,
+				decision: ask.decision,
+			});
+			const confirmation = confirmed?.confirmation;
+			// Main answers 200 only with a token; anything else is not an answer.
+			if (typeof confirmation !== "string" || confirmation === "")
+				throw new Error(t("ui.mesh.pairing.error.unknown"));
 			const result = await desktopResult<{
 				status?: unknown;
 				attempts_left?: unknown;
@@ -551,6 +695,7 @@ export function useMeshPairingAnswer() {
 					? { shares: ask.shares }
 					: {}),
 				deadline: Math.floor(ask.row.expiresAt),
+				confirmation,
 			});
 			const status = result?.status;
 			return {

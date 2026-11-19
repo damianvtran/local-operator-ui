@@ -21,6 +21,7 @@ import {
 	pairingRefusal,
 	useFeedMeshPairing,
 	useMeshPairingAnswer,
+	useMeshPairingEligibility,
 	useMeshPairings,
 	useSecondClock,
 } from "./mesh-pairings";
@@ -34,7 +35,20 @@ export function useMeshPairingTray(
 ): MeshPairingSectionProps | undefined {
 	const feedId = useFeedMeshPairing(enabled);
 	const read = useMeshPairings(enabled);
+	const eligibility = useMeshPairingEligibility(enabled);
 	const answer = useMeshPairingAnswer();
+	/*
+	 * A SENT HOLD (UX review U6): after an accepted answer the card keeps its
+	 * in-flight look until a read that STARTED after the answer lands, so Admit /
+	 * Confirm cannot re-enable with the digits still filled for the second or two
+	 * before the card moves on. `at` is compared with the query's own
+	 * `dataUpdatedAt`; a read that shows the card unchanged releases it too.
+	 */
+	const [held, setHeld] = useState<{
+		id: string;
+		decision: "admit" | "decline";
+		at: number;
+	} | null>(null);
 	const answers = useRef(new Map<string, PairingAnswerRecord>());
 	const previous = useRef<readonly MeshPairingRow[]>(EMPTY_ROWS);
 	const joinedRef = useRef(joinedNetworkIds);
@@ -50,9 +64,14 @@ export function useMeshPairingTray(
 		enabled && (rows.length > 0 || outcomes.length > 0),
 	);
 
+	// A new read (data or only its timestamp) is the trigger: an unchanged list
+	// still releases the sent hold.
 	useEffect(() => {
 		const next = read.data;
 		if (!next) return;
+		setHeld((current) =>
+			current && read.dataUpdatedAt > current.at ? null : current,
+		);
 		// Captured NOW: the updater runs at the next render, after the ref below
 		// has already moved on to `next` (which would fold nothing).
 		const prior = previous.current;
@@ -73,7 +92,7 @@ export function useMeshPairingTray(
 		setRefusal((current) =>
 			current && next.some((row) => row.id === current.id) ? current : null,
 		);
-	}, [read.data]);
+	}, [read.data, read.dataUpdatedAt]);
 
 	// Outcomes leave on the same clock the time-left lines read.
 	useEffect(() => {
@@ -106,9 +125,23 @@ export function useMeshPairingTray(
 					decision: ask.decision,
 					status: result.status,
 				});
+				setHeld({ id: ask.row.id, decision: ask.decision, at: Date.now() });
 			},
 			onError: (error) => {
-				const refused = pairingRefusal(error);
+				const mapped = pairingRefusal(error);
+				// Name the button to press again (design D6).
+				const refused: PairingRefusal =
+					mapped.kind === "foreground"
+						? {
+								...mapped,
+								action:
+									ask.decision === "decline"
+										? "decline"
+										: ask.row.side === "inviter"
+											? "admit"
+											: "confirm",
+							}
+						: mapped;
 				if (refused.kind === "mismatch" && refused.attemptsLeft === 0)
 					answers.current.set(ask.row.id, {
 						decision: ask.decision,
@@ -130,7 +163,11 @@ export function useMeshPairingTray(
 		pending:
 			answer.isPending && answer.variables
 				? { id: answer.variables.row.id, decision: answer.variables.decision }
-				: null,
+				: held
+					? { id: held.id, decision: held.decision }
+					: null,
+		// `null` until main has said, or when it could not: unknown, answerable.
+		eligibility: eligibility.data ?? null,
 		refusal,
 		onAnswer,
 	};

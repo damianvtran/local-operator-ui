@@ -1587,7 +1587,7 @@
 	"ui.mesh.pairing.code.show": {
 		"role": "label over a six-digit code — mesh pairing card",
 		"tone": "Instructional",
-		"note": "Above THIS device's code; the person reads it and types it on the other device {peer}. Must clearly mean 'display on / read out to the other device'."
+		"note": "Above THIS device's code; the person reads it here and TYPES it on the other device {peer} (that device's card asks for it). The operator chose 'Show': render it as 'display / read this code out for {peer}', or as 'enter this code on {peer}' where that reads more naturally; either way it must point the reader at the other device, not at this one."
 	},
 	"ui.mesh.pairing.code.aria": {
 		"role": "aria-label — six-digit code",
@@ -1700,9 +1700,9 @@
 		"note": "The answer was refused because only the signed desktop app on this device can approve pairings."
 	},
 	"ui.mesh.pairing.error.foreground": {
-		"role": "inline error — window not focused / no click",
+		"role": "inline error — window not focused / no click / confirmation stale",
 		"tone": "Helpful",
-		"note": "The app only approves when its window is in front and the person pressed the button; asks them to do that."
+		"note": "The app only approves when its window is in front and the person pressed the card's button; asks them to do that. {action} names the button they pressed: admit = the 'Admit' button (ui.mesh.pairing.action.admit), confirm = 'Confirm' (action.confirm), decline = 'Decline' (action.decline). Quote each arm's label EXACTLY as your translation of that key, in your locale's quotation marks; 'other' is the generic 'press the button again'."
 	},
 	"ui.mesh.pairing.error.build": {
 		"role": "inline error — this build cannot approve",
@@ -1752,7 +1752,7 @@
 	"ui.mesh.pairing.result.expired": {
 		"role": "outcome line",
 		"tone": "Neutral",
-		"note": "The pairing window ran out; a new invite is needed."
+		"note": "The pairing window ran out; a new invite is needed. INVITER side (this device made the invite and can start the new one); the joiner's twin is ui.mesh.pairing.result.expired_joiner."
 	},
 	"ui.mesh.pairing.result.ended": {
 		"role": "outcome line",
@@ -1783,5 +1783,20 @@
 		"role": "outcome line — joiner",
 		"tone": "Calm, factual",
 		"note": "Shown after the joining device's card closes but before the network appears: the other device {peer} has the code and decided; if it admitted this device, the network {network} shows up soon. Do not claim success."
+	},
+	"ui.mesh.pairing.expired_hint.inviter": {
+		"role": "hint line on an expired pairing card — this device made the invite",
+		"tone": "Helpful",
+		"note": "Replaces the 'type the six digits' hint once the window ran out. This device is the inviter, so it can start a new invite itself (`lop network invite` or the Mesh tab)."
+	},
+	"ui.mesh.pairing.expired_hint.joiner": {
+		"role": "hint line on an expired pairing card — this device is joining",
+		"tone": "Helpful",
+		"note": "Replaces the 'type the six digits' hint once the window ran out. A joiner cannot start an invite; the new invite has to be made on the other device {peer} (a device name)."
+	},
+	"ui.mesh.pairing.result.expired_joiner": {
+		"role": "closing line after a joiner's pairing card expired",
+		"tone": "Neutral, factual",
+		"note": "Joiner-side twin of ui.mesh.pairing.result.expired: the window ran out (not declined, not closed without an answer). {peer} is the inviting device's name, where a new invite has to be made."
 	}
 }

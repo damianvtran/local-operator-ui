@@ -40,10 +40,7 @@ import {
 	useMeshApprovals,
 	waitingApprovalCount,
 } from "@features/mesh/mesh-approvals";
-import {
-	useFeedMeshPairing,
-	useMeshPairings,
-} from "@features/mesh/mesh-pairings";
+import { useMeshPairingBadgeCount } from "@features/mesh/mesh-pairings";
 import { useMeshMembership } from "@features/mesh/mesh-store";
 import { useNotificationsCount } from "@features/notifications/notifications-api";
 import { badgeCountOf } from "@features/notifications/notifications-model";
@@ -470,23 +467,19 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	/*
 	 * OPEN MESH PAIRINGS LIGHT THE SAME BADGE (`features.mesh_pairing`). The feed
 	 * names the oldest open card (`approvals.pairing_id`), so the badge moves at
-	 * feed latency - the "nobody saw it" failure the cards exist to fix - and the
-	 * card read runs only while the feed says one is open (it then polls on the
-	 * cards' own short cadence, shared with the tab through one query key). NOT
-	 * gated on membership: a device joining its FIRST network is in no mesh, and
-	 * it is exactly the device whose person must find the card.
+	 * feed latency - the "nobody saw it" failure the cards exist to fix. Until the
+	 * feed has spoken (every launch and reload: a new subscriber is not told what
+	 * is already open - QA round 1, Q1) the list is read ONCE and its rows count;
+	 * only the feed's "none open" skips the read. The read polls on the cards' own
+	 * short cadence while any is open, shared with the tab through one query key.
+	 * Only LIVE cards count (design D4). NOT gated on membership: a device joining
+	 * its FIRST network is in no mesh, and it is exactly the device whose person
+	 * must find the card.
 	 */
-	const meshPairingEnabled =
-		desktopFeatureState(capabilities.data, "mesh_pairing") === "enabled";
-	const feedPairingId = useFeedMeshPairing(meshPairingEnabled);
-	const meshPairings = useMeshPairings(
-		meshPairingEnabled && typeof feedPairingId === "string",
+	const pairingCount = useMeshPairingBadgeCount(
+		desktopFeatureState(capabilities.data, "mesh_pairing") === "enabled",
 	);
-	const pairingOpen = meshPairingEnabled && typeof feedPairingId === "string";
-	// The feed's id counts as one until the read lands, so the badge never waits.
-	const pairingCount = pairingOpen
-		? Math.max(1, meshPairings.data?.length ?? 0)
-		: 0;
+	const pairingOpen = pairingCount > 0;
 	const meshWaiting =
 		waitingApprovalCount(meshApprovals.data ?? []) + pairingCount;
 	const proposalsEnabled = desktopFeatureEnabled(

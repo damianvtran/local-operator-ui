@@ -339,7 +339,7 @@
 	"ui.mesh.pairing.error.mismatch": "That code doesn't match. Check the other screen and type it again. {count, plural, one {{count, number, ::group-off} attempt left.} other {{count, number, ::group-off} attempts left.}}",
 	"ui.mesh.pairing.error.mismatch_spent": "That code doesn't match, and no attempts are left. The pairing was declined.",
 	"ui.mesh.pairing.error.needs_app": "Approving a pairing needs the signed Local Operator app on this device.",
-	"ui.mesh.pairing.error.foreground": "Bring this window to the front and press the button again.",
+	"ui.mesh.pairing.error.foreground": "{action, select, admit {Bring this window to the front and press Admit again.} confirm {Bring this window to the front and press Confirm again.} decline {Bring this window to the front and press Decline again.} other {Bring this window to the front and press the button again.}}",
 	"ui.mesh.pairing.error.build": "This copy of the app can't approve pairings (a development build, or one being driven by a tool). Use the signed app.",
 	"ui.mesh.pairing.error.expired": "This pairing has expired.",
 	"ui.mesh.pairing.error.relay": "The network service on this device didn't answer. Try again.",
@@ -355,5 +355,8 @@
 	"ui.mesh.pairing.unavailable.no_attestation": "This app can't approve pairings right now: its approval check did not start.",
 	"ui.mesh.pairing.unavailable.fallback_inviter": "To answer {peer} from this device, run this in a terminal:",
 	"ui.mesh.pairing.unavailable.fallback_joiner": "To answer from this device, run this in a terminal with the code shown on {peer}:",
-	"ui.mesh.pairing.result.finished": "{peer} has the matching code. If it admitted this device, {network} appears here shortly."
+	"ui.mesh.pairing.result.finished": "{peer} has the matching code. If it admitted this device, {network} appears here shortly.",
+	"ui.mesh.pairing.expired_hint.inviter": "Start a new invite to try again.",
+	"ui.mesh.pairing.expired_hint.joiner": "Start a new invite on {peer} to try again.",
+	"ui.mesh.pairing.result.expired_joiner": "The pairing with {peer} expired. Start a new invite on {peer} to try again."
 }

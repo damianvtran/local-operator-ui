@@ -337,9 +337,9 @@
 	"ui.mesh.pairing.action.decline": "Từ chối",
 	"ui.mesh.pairing.action.declining": "Đang từ chối…",
 	"ui.mesh.pairing.error.mismatch": "Mã không khớp. Hãy kiểm tra màn hình kia và nhập lại. {count, plural, other {Còn {count, number, ::group-off} lần thử.}}",
-	"ui.mesh.pairing.error.mismatch_spent": "Mã không khớp và đã hết lượt thử. Lần ghép nối đã bị từ chối.",
+	"ui.mesh.pairing.error.mismatch_spent": "Mã không khớp và đã hết số lần thử. Lần ghép nối đã bị từ chối.",
 	"ui.mesh.pairing.error.needs_app": "Để phê duyệt ghép nối, thiết bị này cần ứng dụng Local Operator đã ký.",
-	"ui.mesh.pairing.error.foreground": "Đưa cửa sổ này lên phía trước rồi nhấn lại nút.",
+	"ui.mesh.pairing.error.foreground": "{action, select, admit {Đưa cửa sổ này lên phía trước rồi nhấn lại “Chấp nhận”.} confirm {Đưa cửa sổ này lên phía trước rồi nhấn lại “Xác nhận”.} decline {Đưa cửa sổ này lên phía trước rồi nhấn lại “Từ chối”.} other {Đưa cửa sổ này lên phía trước rồi nhấn lại nút.}}",
 	"ui.mesh.pairing.error.build": "Bản ứng dụng này không thể phê duyệt ghép nối (bản phát triển, hoặc đang bị một công cụ điều khiển). Hãy dùng ứng dụng đã ký.",
 	"ui.mesh.pairing.error.expired": "Lần ghép nối này đã hết hạn.",
 	"ui.mesh.pairing.error.relay": "Dịch vụ mạng trên thiết bị này không phản hồi. Hãy thử lại.",
@@ -355,5 +355,8 @@
 	"ui.mesh.pairing.unavailable.no_attestation": "Ứng dụng này hiện không thể phê duyệt ghép nối: bước kiểm tra phê duyệt của nó chưa khởi động.",
 	"ui.mesh.pairing.unavailable.fallback_inviter": "Để trả lời {peer} từ thiết bị này, hãy chạy lệnh sau trong terminal:",
 	"ui.mesh.pairing.unavailable.fallback_joiner": "Để trả lời từ thiết bị này, hãy chạy lệnh sau trong terminal kèm mã hiển thị trên {peer}:",
-	"ui.mesh.pairing.result.finished": "{peer} có mã khớp. Nếu thiết bị đó đã chấp nhận thiết bị này, {network} sẽ sớm xuất hiện ở đây."
+	"ui.mesh.pairing.result.finished": "{peer} có mã khớp. Nếu thiết bị đó đã chấp nhận thiết bị này, {network} sẽ sớm xuất hiện ở đây.",
+	"ui.mesh.pairing.expired_hint.inviter": "Hãy tạo lời mời mới để thử lại.",
+	"ui.mesh.pairing.expired_hint.joiner": "Hãy tạo lời mời mới trên {peer} để thử lại.",
+	"ui.mesh.pairing.result.expired_joiner": "Lần ghép nối với {peer} đã hết hạn. Hãy tạo lời mời mới trên {peer} để thử lại."
 }

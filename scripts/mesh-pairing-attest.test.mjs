@@ -17,7 +17,14 @@ import { build } from "esbuild";
  *    driver / smoke-test env, a headless or inactive window mode, no window, a
  *    hidden/minimised/unfocused window, DevTools open, a debugger attached, a dev
  *    (unpackaged) build, a non-macOS host, and a renderer without transient user
- *    activation.
+ *    activation (read in an isolated world, timer cleared - F2/F3).
+ *  - THE ONE-SHOT CONFIRMATION (security review round 1, US-R1-1): an answer with
+ *    no token, a replayed token, a token for another card / act / nonce / side, a
+ *    token from another frame, document generation or window, an expired token,
+ *    and a sender document that changed between consume and dial are all refused
+ *    with NO dial and NO forward; a refused attempt burns the token.
+ *  - STATIC ELIGIBILITY (`pairings.eligibility`, design D1 / UX U1) reports the
+ *    launch half of the gate only, so the card can disable itself up front.
  *  - ATTEST-THEN-FORWARD with ONE object: the forwarded body is byte-for-byte the
  *    attested answer (sorted shares, decline carries no code, main's own deadline
  *    clamped to the card's expiry), so core's consume matches.
@@ -73,6 +80,12 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 globalThis.__handlers = new Map();
 const {
 	answerMeshPairing,
+	confirmMeshPairing,
+	meshPairingEligibility,
+	pairingStaticRefusal,
+	MeshPairingConfirmations,
+	MESH_PAIRING_CONFIRMATION_TTL_MS,
+	MESH_PAIRING_PROBE_WORLD_ID,
 	attestMeshPairing,
 	meshPairingFrame,
 	meshPairingSocketPath,
@@ -87,6 +100,28 @@ await unlink(bundlePath);
 
 const scratch = mkdtempSync(join(tmpdir(), "lo-pairing-attest-"));
 after(() => rmSync(scratch, { recursive: true, force: true }));
+
+/**
+ * What the card does: `pairings.confirm` for this exact act, then the answer
+ * carrying the token main minted. Every answer test below goes through it.
+ */
+async function confirmed(request, h) {
+	const minted = await confirmMeshPairing(
+		{
+			op: "pairings.confirm",
+			side: request.side,
+			inviteId: request.inviteId,
+			nonce: request.nonce,
+			decision: request.decision,
+		},
+		h,
+	);
+	assert.equal(minted.status, 200, JSON.stringify(minted.body));
+	return answerMeshPairing(
+		{ ...request, confirmation: minted.body.result.confirmation },
+		h,
+	);
+}
 
 /** The facts of a launch a person is driving: the gate's one passing case. */
 const person = () => ({
@@ -107,6 +142,15 @@ const person = () => ({
 const NOW_MS = 1_763_500_000_000;
 const NOW_S = NOW_MS / 1000;
 
+/** The `pairings.confirm` request the card sends before `answer`. */
+const confirmOf = (answer) => ({
+	op: "pairings.confirm",
+	side: answer.side,
+	inviteId: answer.inviteId,
+	nonce: answer.nonce,
+	decision: answer.decision,
+});
+
 const inviterAdmit = (extra = {}) => ({
 	op: "pairings.answer",
 	side: "inviter",
@@ -119,13 +163,26 @@ const inviterAdmit = (extra = {}) => ({
 	...extra,
 });
 
+/** The sending document as main reads it off the IPC event. */
+const mainDocument = (over = {}) => ({
+	webContentsId: 7,
+	processId: 41,
+	frameToken: "frame-token-a",
+	generation: 0,
+	...over,
+});
+
 /** A host double recording every dial and forward. */
 function host(overrides = {}) {
 	const calls = { attest: [], forward: [], activation: 0 };
+	const clock = { ms: NOW_MS };
 	return {
 		calls,
+		clock,
 		host: {
 			facts: person,
+			document: () => mainDocument(),
+			confirmations: new MeshPairingConfirmations({ nowMs: () => clock.ms }),
 			userActivation: async () => {
 				calls.activation += 1;
 				return true;
@@ -250,10 +307,12 @@ test("every gate refusal answers 403 and neither dials nor forwards", async () =
 	}
 });
 
-test("no transient user activation: refused, no dial, no forward", async () => {
+test("no transient user activation: no token is minted, so nothing can answer", async () => {
 	const { host: h, calls } = host({ userActivation: async () => false });
-	const response = await answerMeshPairing(inviterAdmit(), h);
+	const response = await confirmMeshPairing(confirmOf(inviterAdmit()), h);
+	assert.equal(response.status, 403);
 	assert.equal(response.body.detail.reason, "no_user_action");
+	assert.equal(h.confirmations.size, 0);
 	assert.deepEqual([calls.attest.length, calls.forward.length], [0, 0]);
 });
 
@@ -262,10 +321,11 @@ test("a renderer that never answers the activation question is refused, not awai
 		userActivation: () => new Promise(() => {}),
 	});
 	const started = Date.now();
-	const response = await answerMeshPairing(inviterAdmit(), h);
+	const response = await confirmMeshPairing(confirmOf(inviterAdmit()), h);
 	assert.equal(response.body.detail.reason, "no_user_action");
 	assert.ok(Date.now() - started < 3_000);
 	assert.equal(calls.attest.length, 0);
+	assert.equal(h.confirmations.size, 0);
 });
 
 test("focus lost while the page answered: re-read, refused", async () => {
@@ -279,14 +339,15 @@ test("focus lost while the page answered: re-read, refused", async () => {
 				: { ...facts, window: { ...facts.window, focused: false } };
 		},
 	});
-	const response = await answerMeshPairing(inviterAdmit(), h);
+	const response = await confirmMeshPairing(confirmOf(inviterAdmit()), h);
 	assert.equal(response.body.detail.reason, "window_not_focused");
 	assert.equal(calls.attest.length, 0);
+	assert.equal(h.confirmations.size, 0);
 });
 
 test("attest then forward ONE object: the frame names exactly the forwarded body", async () => {
 	const { host: h, calls } = host();
-	const response = await answerMeshPairing(
+	const response = await confirmed(
 		inviterAdmit({ deadline: 9_999_999_999 }),
 		h,
 	);
@@ -327,10 +388,10 @@ test("attest then forward ONE object: the frame names exactly the forwarded body
 
 test("a card closer than the deadline window uses its own expiry; a lapsed one is refused", async () => {
 	const soon = host();
-	await answerMeshPairing(inviterAdmit({ deadline: NOW_S + 5 }), soon.host);
+	await confirmed(inviterAdmit({ deadline: NOW_S + 5 }), soon.host);
 	assert.equal(soon.calls.forward[0].deadline, NOW_S + 5);
 	const lapsed = host();
-	const response = await answerMeshPairing(
+	const response = await confirmed(
 		inviterAdmit({ deadline: NOW_S }),
 		lapsed.host,
 	);
@@ -340,7 +401,7 @@ test("a card closer than the deadline window uses its own expiry; a lapsed one i
 
 test("a decline binds no code; a joiner answer carries no share list", async () => {
 	const { host: h, calls } = host();
-	await answerMeshPairing(
+	await confirmed(
 		{
 			op: "pairings.answer",
 			side: "joiner",
@@ -361,14 +422,14 @@ test("a decline binds no code; a joiner answer carries no share list", async () 
 
 test("an inviter with no share list sends an explicit empty list (never omitted)", async () => {
 	const { host: h, calls } = host();
-	await answerMeshPairing(inviterAdmit({ shares: undefined }), h);
+	await confirmed(inviterAdmit({ shares: undefined }), h);
 	assert.deepEqual(calls.forward[0].shares, []);
 	assert.deepEqual(desktopEndpoint(calls.forward[0]).body.shares, []);
 });
 
 test("a failed attestation is a 403 and forwards nothing", async () => {
 	const { host: h, calls } = host({ attest: async () => "frame_refused" });
-	const response = await answerMeshPairing(inviterAdmit(), h);
+	const response = await confirmed(inviterAdmit(), h);
 	assert.equal(response.status, 403);
 	assert.equal(response.body.detail.reason, "frame_refused");
 	assert.equal(calls.forward.length, 0);
@@ -394,6 +455,233 @@ test("the schema refuses an admit without six digits and a decline carrying digi
 	);
 	assert.equal(
 		desktopRequestSchema.safeParse({ ...base, extra: 1 }).success,
+		false,
+	);
+});
+
+/* ------------------------------------------- the one-shot confirmation */
+
+/** Mint a token for `request`'s act on host `h`; returns it. */
+async function mint(request, h) {
+	const minted = await confirmMeshPairing(confirmOf(request), h);
+	assert.equal(minted.status, 200);
+	return minted.body.result.confirmation;
+}
+
+/** An answer refused for `reason` that neither dialled nor forwarded. */
+function assertRefused(response, calls, reason) {
+	assert.equal(response.status, 403);
+	assert.equal(response.body.detail.code, MESH_PAIRING_ATTEST_REFUSED);
+	assert.equal(response.body.detail.reason, reason);
+	assert.deepEqual([calls.attest.length, calls.forward.length], [0, 0]);
+}
+
+test("a minted token is 32 random bytes, never the same twice, one per window", async () => {
+	const { host: h } = host();
+	const first = await mint(inviterAdmit(), h);
+	const second = await mint(inviterAdmit(), h);
+	assert.match(first, /^[0-9a-f]{64}$/);
+	assert.notEqual(first, second);
+	// The second mint REPLACED the first: the store stays bounded per window.
+	assert.equal(h.confirmations.size, 1);
+	assert.ok(desktopRequestSchema.safeParse(confirmOf(inviterAdmit())).success);
+});
+
+test("an answer with no confirmation is refused before any dial", async () => {
+	const { host: h, calls } = host();
+	assertRefused(
+		await answerMeshPairing(inviterAdmit(), h),
+		calls,
+		"no_confirmation",
+	);
+});
+
+test("a token is good for ONE answer: the replay finds nothing", async () => {
+	const { host: h, calls } = host();
+	const token = await mint(inviterAdmit(), h);
+	const first = await answerMeshPairing(
+		inviterAdmit({ confirmation: token }),
+		h,
+	);
+	assert.equal(first.status, 200);
+	const replay = await answerMeshPairing(
+		inviterAdmit({ confirmation: token }),
+		h,
+	);
+	assert.equal(replay.body.detail.reason, "no_confirmation");
+	assert.deepEqual([calls.attest.length, calls.forward.length], [1, 1]);
+});
+
+test("a token minted for one card action cannot answer another (and is burnt trying)", async () => {
+	const other = [
+		["another act (decline)", { decision: "decline", code: "" }],
+		["another invite", { inviteId: "inv_other" }],
+		["another stage nonce", { nonce: "n0nce.2" }],
+		[
+			"another side",
+			{ side: "joiner", shares: undefined, inviteId: "inv_abc123" },
+		],
+	];
+	for (const [name, patch] of other) {
+		const { host: h, calls } = host();
+		const token = await mint(inviterAdmit(), h);
+		const response = await answerMeshPairing(
+			inviterAdmit({ ...patch, confirmation: token }),
+			h,
+		);
+		assertRefused(response, calls, "confirmation_mismatch");
+		// Burnt: the RIGHT answer with the same token is refused too.
+		const retry = await answerMeshPairing(
+			inviterAdmit({ confirmation: token }),
+			h,
+		);
+		assert.equal(retry.body.detail.reason, "no_confirmation", name);
+		assert.equal(calls.forward.length, 0, name);
+	}
+});
+
+test("a token is bound to its document: another frame, generation or window is refused", async () => {
+	const moved = [
+		["another frame token", { frameToken: "frame-token-b" }],
+		["another renderer process", { processId: 42 }],
+		["a navigated document (generation bumped)", { generation: 1 }],
+	];
+	for (const [name, patch] of moved) {
+		let document = mainDocument();
+		const { host: h, calls } = host({ document: () => document });
+		const token = await mint(inviterAdmit(), h);
+		document = mainDocument(patch);
+		const response = await answerMeshPairing(
+			inviterAdmit({ confirmation: token }),
+			h,
+		);
+		assert.equal(response.body.detail.reason, "confirmation_mismatch", name);
+		assert.deepEqual([calls.attest.length, calls.forward.length], [0, 0]);
+	}
+	// Another WINDOW holds no token of its own at all.
+	let document = mainDocument();
+	const { host: h, calls } = host({ document: () => document });
+	const token = await mint(inviterAdmit(), h);
+	document = mainDocument({ webContentsId: 8 });
+	assertRefused(
+		await answerMeshPairing(inviterAdmit({ confirmation: token }), h),
+		calls,
+		"no_confirmation",
+	);
+	// A sender main does not admit (no document) cannot confirm or answer.
+	const none = host({ document: () => null });
+	assertRefused(
+		await confirmMeshPairing(confirmOf(inviterAdmit()), none.host),
+		none.calls,
+		"no_window",
+	);
+});
+
+test("a token older than the activation lifespan is refused", async () => {
+	const { host: h, calls, clock } = host();
+	const token = await mint(inviterAdmit(), h);
+	clock.ms += MESH_PAIRING_CONFIRMATION_TTL_MS;
+	assertRefused(
+		await answerMeshPairing(inviterAdmit({ confirmation: token }), h),
+		calls,
+		"no_confirmation",
+	);
+});
+
+test("sender document and focus are re-read immediately before the dial", async () => {
+	// The document changes AFTER the token was consumed and checked.
+	let reads = 0;
+	const flip = host({
+		document: () => {
+			reads += 1;
+			// confirm reads twice, answer's binding once; the 4th is pre-dial.
+			return mainDocument(reads >= 4 ? { generation: 1 } : {});
+		},
+	});
+	const token = await mint(inviterAdmit(), flip.host);
+	assertRefused(
+		await answerMeshPairing(inviterAdmit({ confirmation: token }), flip.host),
+		flip.calls,
+		"confirmation_mismatch",
+	);
+	// Focus lost between the gate and the dial.
+	let factReads = 0;
+	const blur = host({
+		facts: () => {
+			factReads += 1;
+			const facts = person();
+			// confirm: 2 reads; answer: gate then pre-dial.
+			return factReads >= 4
+				? { ...facts, window: { ...facts.window, focused: false } }
+				: facts;
+		},
+	});
+	const blurToken = await mint(inviterAdmit(), blur.host);
+	assertRefused(
+		await answerMeshPairing(
+			inviterAdmit({ confirmation: blurToken }),
+			blur.host,
+		),
+		blur.calls,
+		"window_not_focused",
+	);
+});
+
+test("the activation read leaves no timer behind (code review F3)", async () => {
+	const timers = () =>
+		process.getActiveResourcesInfo().filter((kind) => kind === "Timeout")
+			.length;
+	const before = timers();
+	const { host: h } = host();
+	await mint(inviterAdmit(), h);
+	assert.equal(timers(), before);
+});
+
+test("the activation is read in a world of its own, not the page's or the preload's", () => {
+	// 0 is the page's main world (a script can redefine the getter there); 999 is
+	// Electron's contextIsolation world, which holds the bridge.
+	assert.ok(Number.isInteger(MESH_PAIRING_PROBE_WORLD_ID));
+	assert.notEqual(MESH_PAIRING_PROBE_WORLD_ID, 0);
+	assert.notEqual(MESH_PAIRING_PROBE_WORLD_ID, 999);
+});
+
+/* ------------------------------------------------- static eligibility */
+
+test("eligibility reports the launch half of the gate only", () => {
+	const eligible = meshPairingEligibility(person());
+	assert.deepEqual(eligible, {
+		status: 200,
+		body: { result: { eligible: true, reason: null } },
+	});
+	for (const [patch, reason] of [
+		[{ platform: "linux" }, "not_macos"],
+		[{ packaged: false }, "not_packaged"],
+		[{ argv: ["app", "--remote-debugging-port=9222"] }, "remote_debugging"],
+		[{ argv: ["app", "--lo-dev-driver"] }, "dev_flag"],
+		[{ windowMode: "inactive" }, "window_mode"],
+	]) {
+		const response = meshPairingEligibility({ ...person(), ...patch });
+		assert.deepEqual(response.body.result, { eligible: false, reason });
+	}
+	// Window state is per-answer, never part of the static reading.
+	const facts = person();
+	assert.equal(
+		pairingStaticRefusal({
+			...facts,
+			window: { ...facts.window, focused: false },
+		}),
+		null,
+	);
+	assert.ok(
+		desktopRequestSchema.safeParse({ op: "pairings.eligibility" }).success,
+	);
+	// Main-only: no core route, so no answer to one can prove the daemon paired.
+	assert.equal(
+		desktopEndpoint({ op: "pairings.eligibility" }).path.startsWith("/v1/"),
+		false,
+	);
+	assert.equal(
+		desktopEndpoint(confirmOf(inviterAdmit())).path.startsWith("/v1/"),
 		false,
 	);
 });
@@ -514,6 +802,18 @@ test("desktop-request never forwards a pairing answer by itself", async () => {
 	assert.equal(forwarded.length, 0);
 });
 
+test("desktop-request never forwards confirm or eligibility either", async () => {
+	const { handler, event, forwarded } = registered(undefined);
+	for (const request of [
+		confirmOf(inviterAdmit()),
+		{ op: "pairings.eligibility" },
+	]) {
+		const response = await handler(event, request);
+		assert.equal(response.status, 403);
+	}
+	assert.equal(forwarded.length, 0);
+});
+
 test("desktop-request hands a pairing answer to the attester, parsed, and nothing else", async () => {
 	const seen = [];
 	const { handler, event, forwarded } = registered(async (_event, request) => {
@@ -524,10 +824,23 @@ test("desktop-request hands a pairing answer to the attester, parsed, and nothin
 	assert.equal(response.status, 200);
 	assert.equal(seen.length, 1);
 	assert.equal(forwarded.length, 0);
+	// The other two main-only ops reach the same handler, parsed.
+	await handler(event, confirmOf(inviterAdmit()));
+	await handler(event, { op: "pairings.eligibility" });
+	assert.deepEqual(
+		seen.map((request) => request.op),
+		["pairings.answer", "pairings.confirm", "pairings.eligibility"],
+	);
+	assert.equal(forwarded.length, 0);
 	// A malformed answer is refused before the attester sees it.
 	const bad = await handler(event, { ...inviterAdmit(), code: "12" });
 	assert.equal(bad.status, 422);
-	assert.equal(seen.length, 1);
+	const badToken = await handler(event, {
+		...inviterAdmit(),
+		confirmation: "not-hex",
+	});
+	assert.equal(badToken.status, 422);
+	assert.equal(seen.length, 3);
 	// Every other op still forwards as before.
 	await handler(event, { op: "pairings.list" });
 	assert.deepEqual(forwarded, [{ op: "pairings.list" }]);

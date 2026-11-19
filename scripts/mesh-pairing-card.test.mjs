@@ -21,7 +21,15 @@ import React, { act } from "react";
  *    shares, the card's expiry as the deadline bound); a wrong code keeps the card
  *    with attempts left and clears the field; a provenance refusal says what to do.
  *  - OUTCOMES: a card the read stops serving becomes admitted / declined / expired.
- *  - OFFERS render from `offers.state/items`, never from a sentence.
+ *  - OFFERS render from `offers.state/items`, never from a sentence, in core's
+ *    final one-vocabulary `listed`/`empty` (and a legacy inviter `sent`); the
+ *    inviter admits with EXACTLY the items drawn (code review F1).
+ *  - ROUND 1 REMEDIATION: confirm-then-answer (US-R1-1), main's static
+ *    eligibility disabling the card up front (D1/U1), retryable vs build
+ *    refusals (U1), the joiner fallback with `<code>` (U2), focus back after a
+ *    wrong code (U3), expired hints (U5), the sent hold (U6), live-only counts
+ *    (D4), the badge reading the list before the feed speaks (Q1), "press
+ *    Confirm again" (D6).
  */
 
 const bootstrapDOM = new JSDOM("<!doctype html><html><body></body></html>", {
@@ -87,6 +95,13 @@ globalThis.window.api = {
 		request: async (request) => {
 			sent.push(request);
 			const reply = script[request.op];
+			// Main mints a confirmation for every click a person made (the real gate
+			// is `mesh-pairing-attest.test.mjs`'s); a case scripts a refusal itself.
+			if (!reply && request.op === "pairings.confirm")
+				return {
+					status: 200,
+					body: { result: { confirmation: "c".repeat(64) } },
+				};
 			if (!reply) return { status: 404, body: { detail: "no script" } };
 			return typeof reply === "function" ? reply(request) : reply;
 		},
@@ -194,7 +209,7 @@ const inviter = (over = {}) =>
 		peer_name: "Ana's Laptop",
 		role: "drive",
 		offers: {
-			state: "sent",
+			state: "listed",
 			items: [
 				{ key: "openai", label: "OpenAI key", kind: "api_key", share: true },
 				{ key: "github", label: "GitHub token", kind: "token", share: true },
@@ -391,17 +406,42 @@ test("offers come from the structured state, per side", () => {
 		/older version/,
 	);
 	assert.equal(owner(inviter().offers).editable, true);
-	// A sentence a newer core might add is never rendered: unknown state, nothing.
+	// Core's final vocabulary (#4259 remediation) on the inviter side too.
 	assert.equal(
-		owner({ state: "something_new", items: [], sentence: "English!" }).kind,
-		"none",
+		owner({ state: "empty", items: [] }).sentence,
+		"Nothing will be shared in this pairing.",
 	);
+	assert.equal(
+		owner({ state: "listed", items: inviter().offers.items }).kind,
+		"list",
+	);
+	// A legacy inviter `sent` with items still draws its list.
+	assert.equal(
+		owner({ state: "sent", items: inviter().offers.items }).kind,
+		"list",
+	);
+	// A sentence a newer core might add is never rendered; an unknown inviter
+	// state draws "nothing will be shared", which is exactly what it then sends.
+	const unknown = owner({
+		state: "something_new",
+		items: inviter().offers.items,
+		sentence: "English!",
+	});
+	assert.equal(unknown.sentence, "Nothing will be shared in this pairing.");
 });
 
 test("kept shares: the offered set minus what was unticked, sorted", () => {
 	const inv = model.parsePairingRow(inviter());
 	assert.deepEqual(model.pairingShares(inv, new Set()), ["github", "openai"]);
 	assert.deepEqual(model.pairingShares(inv, new Set(["openai"])), ["github"]);
+	// ONLY what is drawn is shared (code review F1): a state that draws no list
+	// shares nothing, whatever items the row carries.
+	for (const state of ["empty", "absent", "skipped_peer_unsupported", "new"]) {
+		const hidden = model.parsePairingRow(
+			inviter({ offers: { state, items: inviter().offers.items } }),
+		);
+		assert.deepEqual(model.pairingShares(hidden, new Set()), [], state);
+	}
 	assert.equal(
 		model.pairingShares(model.parsePairingRow(row()), new Set()),
 		undefined,
@@ -596,10 +636,15 @@ test("inviter awaiting: reduce-only shares; the admit carries the kept set, sort
 	await render(createElement(Tray));
 	assert.match(card().textContent, /This device will share with Ana's Laptop:/);
 	assert.match($("mesh-pairing-attempts").textContent, /3 attempts left/);
-	const boxes = [...card().querySelectorAll('input[type="checkbox"]')];
+	// The shared Checkbox (design D2): a Radix `role="checkbox"` button.
+	const boxes = [
+		...card().querySelectorAll('[data-testid="mesh-pairing-share"]'),
+	];
 	assert.equal(boxes.length, 2);
-	assert.ok(boxes.every((box) => box.checked));
+	assert.ok(boxes.every((box) => box.getAttribute("role") === "checkbox"));
+	assert.ok(boxes.every((box) => box.getAttribute("aria-checked") === "true"));
 	await click(boxes[0]); // untick OpenAI key
+	assert.equal(boxes[0].getAttribute("aria-checked"), "false");
 	await type(input(), "481926");
 	await click(admit());
 	await until(() => answers().length === 1, "answer");
@@ -619,9 +664,10 @@ test("a provenance refusal says what to do, keyed", async () => {
 	await type(input(), "481926");
 	await click(admit());
 	await until(() => $("mesh-pairing-error"), "refusal");
+	// Names the button (design D6): the joiner's is Confirm.
 	assert.equal(
 		$("mesh-pairing-error").textContent,
-		"Bring this window to the front and press the button again.",
+		"Bring this window to the front and press Confirm again.",
 	);
 });
 
@@ -718,4 +764,273 @@ test("the feed naming a card re-reads the list at once", async () => {
 		payload: { pending: true, pairing_id: "joiner:inv_1" },
 	});
 	await until(() => card(), "card after feed frame");
+});
+
+/* ------------------------------------------------- round 1 remediation */
+
+const confirms = () =>
+	sent.filter((request) => request.op === "pairings.confirm");
+
+test("a click asks main for a confirmation for THIS act, then answers with it (US-R1-1)", async () => {
+	script["pairings.list"] = list(row());
+	script["pairings.confirm"] = ok({ confirmation: "ab".repeat(32) });
+	script["pairings.answer"] = ok({
+		status: "waiting_for_other_device",
+		attempts_left: 3,
+	});
+	await render(createElement(Tray));
+	await type(input(), "112233");
+	await click(admit());
+	await until(() => answers().length === 1, "answer");
+	const ops = sent
+		.map((request) => request.op)
+		.filter((op) => op === "pairings.confirm" || op === "pairings.answer");
+	assert.deepEqual(ops, ["pairings.confirm", "pairings.answer"]);
+	assert.deepEqual(confirms()[0], {
+		op: "pairings.confirm",
+		side: "joiner",
+		inviteId: "inv_1",
+		nonce: "n1",
+		decision: "admit",
+	});
+	assert.equal(answers()[0].confirmation, "ab".repeat(32));
+});
+
+test("a refused confirmation sends no answer and asks for the press again", async () => {
+	script["pairings.list"] = list(inviter());
+	script["pairings.confirm"] = refuse(403, {
+		code: "pairing_attest_refused",
+		reason: "no_user_action",
+		message: "This app could not approve the pairing here (no_user_action).",
+	});
+	await render(createElement(Tray));
+	await type(input(), "481926");
+	await click(admit());
+	await until(() => $("mesh-pairing-error"), "refusal");
+	assert.equal(answers().length, 0, "nothing answered without a token");
+	assert.equal(
+		$("mesh-pairing-error").textContent,
+		"Bring this window to the front and press Admit again.",
+	);
+});
+
+test("a stale or foreign confirmation asks for the press again, too", async () => {
+	for (const reason of ["no_confirmation", "confirmation_mismatch"]) {
+		script = {
+			"pairings.list": list(row()),
+			"pairings.answer": refuse(403, {
+				code: "pairing_attest_refused",
+				reason,
+				message: `This app could not approve the pairing here (${reason}).`,
+			}),
+		};
+		await render(createElement(Tray));
+		await type(input(), "481926");
+		await click(admit());
+		await until(() => $("mesh-pairing-error"), reason);
+		assert.equal(
+			$("mesh-pairing-error").textContent,
+			"Bring this window to the front and press Confirm again.",
+			reason,
+		);
+		await act(async () => root.unmount());
+		root = undefined;
+	}
+});
+
+test("main's static ineligibility disables the card UP FRONT with the terminal fallback (D1/U1)", async () => {
+	script["pairings.eligibility"] = ok({
+		eligible: false,
+		reason: "not_packaged",
+	});
+	script["pairings.list"] = list(row());
+	await render(createElement(Tray));
+	await until(
+		() => $("mesh-pairing-terminal-fallback"),
+		"fallback before any typing",
+	);
+	assert.equal(input().disabled, true);
+	assert.equal(admit().disabled, true);
+	assert.equal($("mesh-pairing-decline").disabled, true);
+	const fallback = $("mesh-pairing-terminal-fallback");
+	assert.match(fallback.textContent, /can't approve pairings/);
+	// The joiner's command carries its argument (U2).
+	assert.equal(
+		fallback.querySelector("code").textContent,
+		"lop network join --confirm <code>",
+	);
+	// No "type the six digits" hint on a card that cannot take them.
+	assert.equal($("mesh-pairing-hint"), null);
+	assert.equal(answers().length + confirms().length, 0);
+});
+
+test("a non-macOS launch names the signed Mac app; an unknown eligibility stays answerable", async () => {
+	script["pairings.eligibility"] = ok({ eligible: false, reason: "not_macos" });
+	script["pairings.list"] = list(inviter());
+	await render(createElement(Tray));
+	await until(() => $("mesh-pairing-terminal-fallback"), "fallback");
+	assert.match(
+		$("mesh-pairing-terminal-fallback").textContent,
+		/needs the signed Mac app/,
+	);
+	await act(async () => root.unmount());
+	// Unscripted eligibility (a failed read) is unknown: the card stays live.
+	script = { "pairings.list": list(row()) };
+	root = undefined;
+	await render(createElement(Tray));
+	await until(() => input(), "card");
+	assert.equal(input().disabled, false);
+	assert.equal($("mesh-pairing-terminal-fallback"), null);
+	assert.match($("mesh-pairing-hint").textContent, /Type the six digits/);
+});
+
+test("a listener that did not answer is retryable, never 'a development build' (U1)", async () => {
+	for (const reason of ["listener_unavailable", "timeout", "frame_refused"]) {
+		script = {
+			"pairings.list": list(row()),
+			"pairings.answer": refuse(403, {
+				code: "pairing_attest_refused",
+				reason,
+				message: "x",
+			}),
+		};
+		sent = [];
+		await act(async () => root?.unmount());
+		root = undefined;
+		await render(createElement(Tray));
+		await type(input(), "112233");
+		await click(admit());
+		await until(() => $("mesh-pairing-error"), reason);
+		assert.match(
+			$("mesh-pairing-error").textContent,
+			/didn't answer\. Try again\./,
+			reason,
+		);
+		assert.equal($("mesh-pairing-terminal-fallback"), null, reason);
+		assert.equal(input().disabled, false, reason);
+	}
+});
+
+test("a build refusal at the click becomes the fallback block, said once", async () => {
+	script["pairings.list"] = list(row());
+	script["pairings.answer"] = refuse(403, {
+		code: "pairing_attest_refused",
+		reason: "devtools_open",
+		message: "x",
+	});
+	await render(createElement(Tray));
+	await type(input(), "112233");
+	await click(admit());
+	await until(() => $("mesh-pairing-terminal-fallback"), "fallback");
+	assert.equal($("mesh-pairing-error"), null, "not repeated as an error line");
+	assert.equal(
+		$("mesh-pairing-terminal-fallback").querySelector('[role="alert"]')
+			?.textContent,
+		"This copy of the app can't approve pairings (a development build, or one being driven by a tool). Use the signed app.",
+	);
+	assert.equal(input().disabled, true);
+});
+
+test("a wrong code puts focus back in the field (U3) with the invalid mark (D3)", async () => {
+	script["pairings.list"] = list(inviter());
+	script["pairings.answer"] = refuse(409, {
+		code: "sas_mismatch",
+		attempts_left: 2,
+	});
+	await render(createElement(Tray));
+	await type(input(), "000000");
+	admit().focus();
+	await click(admit());
+	await until(() => $("mesh-pairing-error"), "mismatch");
+	assert.equal(document.activeElement, input());
+	assert.equal(input().getAttribute("aria-invalid"), "true");
+	// The shared Input: its invalid and disabled paint come with it.
+	assert.match(input().className, /aria-invalid:border-danger/);
+	assert.match(input().className, /disabled:bg-sunken/);
+});
+
+test("an expired card drops the typing hint for what to do next, per side (D1/U5)", async () => {
+	script["pairings.list"] = list(
+		row({ expires_at: NOW() - 1 }),
+		inviter({ id: "inviter:inv_2", invite_id: "inv_2", expires_at: NOW() - 1 }),
+	);
+	await render(createElement(Tray));
+	const hints = [
+		...document.querySelectorAll('[data-testid="mesh-pairing-hint"]'),
+	];
+	assert.deepEqual(
+		hints.map((hint) => hint.textContent),
+		[
+			"Start a new invite on Studio Mac to try again.",
+			"Start a new invite to try again.",
+		],
+	);
+	// An expired card waits on nobody: the header counts no pairing (D4).
+	assert.doesNotMatch(document.body.textContent, /waiting/i);
+	const joinerClosed = model.pairingOutcomeSentence({
+		id: "joiner:inv_1",
+		row: model.parsePairingRow(row()),
+		kind: "expired",
+		at: 0,
+	});
+	assert.equal(
+		joinerClosed,
+		"The pairing with Studio Mac expired. Start a new invite on Studio Mac to try again.",
+	);
+});
+
+test("an accepted answer holds the sent state until the next read lands (U6)", async () => {
+	let release;
+	let reads = 0;
+	script["pairings.list"] = () => {
+		reads += 1;
+		if (reads === 1) return list(inviter());
+		return new Promise((resolve) => {
+			release = () => resolve(list(inviter()));
+		});
+	};
+	script["pairings.answer"] = ok({ status: "sent", attempts_left: 3 });
+	await render(createElement(Tray));
+	await type(input(), "481926");
+	await click(admit());
+	await until(() => answers().length === 1 && release, "answer + re-read");
+	assert.equal(admit().disabled, true, "no second Admit with digits filled");
+	assert.equal(admit().textContent, "Checking…");
+	await act(async () => release());
+	await settle();
+	await until(() => admit().textContent === "Admit", "released by the read");
+});
+
+test("the badge reads the list before the feed speaks, and counts live cards only (Q1/D4)", async () => {
+	function Badge() {
+		const count = model.useMeshPairingBadgeCount(true);
+		return createElement("output", { "data-testid": "badge" }, String(count));
+	}
+	// Launch/reload with a pairing ALREADY open: the feed never named it.
+	script["pairings.list"] = list(row());
+	await render(createElement(Badge));
+	await until(
+		() => $("badge").textContent === "1",
+		"badge lit without a frame",
+	);
+	assert.equal(sent.filter((r) => r.op === "pairings.list").length >= 1, true);
+	// The feed's "none open" stops counting (and reading).
+	script["pairings.list"] = list();
+	await publish({
+		type: "approvals",
+		payload: { pending: false, pairing_id: null },
+	});
+	await until(() => $("badge").textContent === "0", "dark on none");
+	// An expired card does not count; a card the feed named counts before the read.
+	assert.equal(
+		model.pairingBadgeCount(
+			[model.parsePairingRow(row({ expires_at: NOW() - 5 }))],
+			undefined,
+			Math.floor(NOW()),
+		),
+		0,
+	);
+	assert.equal(model.pairingBadgeCount(undefined, "joiner:inv_9", 0), 1);
+	assert.equal(model.pairingReadWanted(undefined), true);
+	assert.equal(model.pairingReadWanted(null), false);
 });

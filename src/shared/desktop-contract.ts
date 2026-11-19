@@ -5157,9 +5157,30 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 *
 	 * The ids are core's own grammar (`pairing_attest._ID`: `[A-Za-z0-9_.:-]{1,128}`),
 	 * repeated here so a hand-built id cannot become a path fragment.
+	 *
+	 * TWO MORE OPS NEVER LEAVE THE APP (security review round 1, US-R1-1, and UX/
+	 * design round 1, U1/D1). `pairings.eligibility` is main's STATIC reading of
+	 * whether this launch could ever attest (platform, packaged, debug/driver
+	 * switches, window mode), so a card disables its input up front instead of
+	 * taking six digits and refusing them. `pairings.confirm` asks main for a
+	 * ONE-SHOT confirmation bound to this card's exact action and to the sending
+	 * document; main mints it only while that document holds transient user
+	 * activation, and `pairings.answer` must carry it back (`confirmation`) or main
+	 * refuses before dialling. Both are answered by main (`desktop-ipc.ts`) and have
+	 * no core route - see their `desktopEndpoint` cases.
 	 */
 	z
 		.object({ op: z.literal("pairings.list") })
+		.strict(),
+	z.object({ op: z.literal("pairings.eligibility") }).strict(),
+	z
+		.object({
+			op: z.literal("pairings.confirm"),
+			side: z.enum(["inviter", "joiner"]),
+			inviteId: z.string().regex(MESH_PAIRING_ID),
+			nonce: z.string().regex(MESH_PAIRING_ID),
+			decision: z.enum(["admit", "decline"]),
+		})
 		.strict(),
 	z
 		.object({
@@ -5172,6 +5193,13 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			code: z.string().regex(/^([0-9]{6})?$/),
 			shares: z.array(z.string().min(1).max(256)).max(256).optional(),
 			deadline: z.number().int().positive().optional(),
+			// Main's one-shot token from `pairings.confirm` (32 random bytes, hex).
+			// Optional in the SCHEMA only because main's forwarded body drops it;
+			// main refuses an answer from a renderer without one.
+			confirmation: z
+				.string()
+				.regex(/^[0-9a-f]{64}$/)
+				.optional(),
 		})
 		// `admit` carries six digits, `decline` none: the cross-field rule lives in
 		// `desktopRequestSchema`'s superRefine (the union is discriminated).
@@ -9902,6 +9930,17 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "pairings.list":
 			return { path: "/v1/desktop/mesh/pairings", method: "GET" };
+		/*
+		 * MAIN-ONLY ops: `desktop-ipc.ts` answers them before any forwarding and core
+		 * has no such route. The path is deliberately OUTSIDE `/v1/desktop/`, so the
+		 * transport's admitted-prefix checks treat any answer as not-the-daemon's
+		 * (`desktopAnswerProvesPairing`, `desktopRefusalCodeForStatus`) and a request
+		 * that somehow reached the transport could not land on a real route.
+		 */
+		case "pairings.eligibility":
+			return { path: "app:mesh-pairing/eligibility", method: "GET" };
+		case "pairings.confirm":
+			return { path: "app:mesh-pairing/confirm", method: "POST" };
 		/*
 		 * The body is core's strict `PairingAnswer` and nothing else. `shares` is
 		 * omitted rather than sent as null when absent (the joiner has no list);

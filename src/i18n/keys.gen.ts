@@ -10237,13 +10237,15 @@ export type MessageParams = {
 	"ui.mesh.pairing.code.type_label": { peer: string };
 	"ui.mesh.pairing.error.build": undefined;
 	"ui.mesh.pairing.error.expired": undefined;
-	"ui.mesh.pairing.error.foreground": undefined;
+	"ui.mesh.pairing.error.foreground": { action: string };
 	"ui.mesh.pairing.error.mismatch": { count: number };
 	"ui.mesh.pairing.error.mismatch_spent": undefined;
 	"ui.mesh.pairing.error.needs_app": undefined;
 	"ui.mesh.pairing.error.read": undefined;
 	"ui.mesh.pairing.error.relay": undefined;
 	"ui.mesh.pairing.error.unknown": undefined;
+	"ui.mesh.pairing.expired_hint.inviter": undefined;
+	"ui.mesh.pairing.expired_hint.joiner": { peer: string };
 	"ui.mesh.pairing.loading": undefined;
 	"ui.mesh.pairing.offers.absent": undefined;
 	"ui.mesh.pairing.offers.listed": { peer: string };
@@ -10256,6 +10258,7 @@ export type MessageParams = {
 	"ui.mesh.pairing.result.declined": { peer: string };
 	"ui.mesh.pairing.result.ended": { peer: string };
 	"ui.mesh.pairing.result.expired": { peer: string };
+	"ui.mesh.pairing.result.expired_joiner": { peer: string };
 	"ui.mesh.pairing.result.finished": { peer: string; network: string };
 	"ui.mesh.pairing.result.joined": { network: string };
 	"ui.mesh.pairing.result.spent": { peer: string };
